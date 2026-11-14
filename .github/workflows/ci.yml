@@ -24,25 +24,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
-            go-${{ runner.os }}-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: bin
-          key: tools-lint-${{ runner.os }}-${{ hashFiles('Makefile', '.custom-gcl.yml', 'go.mod') }}
-          restore-keys: tools-lint-${{ runner.os }}-
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - run: make fmt-check vet
       - run: go vet -tags conformance,load ./test/...
       - run: make lint-config lint
@@ -56,25 +38,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
-            go-${{ runner.os }}-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: bin
-          key: tools-test-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
-          restore-keys: tools-test-${{ runner.os }}-
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - run: make bao
       - run: make test
       - name: Coverage floor
@@ -123,25 +87,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
-            go-${{ runner.os }}-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: bin
-          key: tools-integration-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
-          restore-keys: tools-integration-${{ runner.os }}-
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - run: make bao
       - if: matrix.shard == 'secrets'
         run: docker pull "$POSTGRES_IMAGE"
@@ -171,25 +117,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
-            go-${{ runner.os }}-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: bin
-          key: tools-integration-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
-          restore-keys: tools-integration-${{ runner.os }}-
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - run: make bao
       - run: make test-namespaces
 
@@ -202,25 +130,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
-            go-${{ runner.os }}-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: bin
-          key: tools-livekit-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
-          restore-keys: tools-livekit-${{ runner.os }}-
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - name: Install htpasswd for the bcrypt input Secret
         run: command -v htpasswd || { sudo apt-get update && sudo apt-get install -y --no-install-recommends apache2-utils; }
       - run: make live-render
@@ -239,25 +149,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
-            go-${{ runner.os }}-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: bin
-          key: tools-generate-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
-          restore-keys: tools-generate-${{ runner.os }}-
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - run: make verify-generated
 
   api-coverage:
@@ -269,20 +161,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
-            go-${{ runner.os }}-
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - run: make api-coverage
       - run: git diff --exit-code -- docs/api-coverage.md
 
@@ -295,20 +174,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
-            go-${{ runner.os }}-
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - run: make govulncheck
 
   manifests:
@@ -320,25 +186,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
-            go-${{ runner.os }}-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: bin
-          key: tools-manifests-${{ runner.os }}-${{ hashFiles('Makefile') }}
-          restore-keys: tools-manifests-${{ runner.os }}-
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - run: make helm-lint
       - name: Install helm-unittest
         env:

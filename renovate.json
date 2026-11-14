@@ -156,18 +156,6 @@
     },
     {
       "customType": "regex",
-      "description": "uv installed by helm/chart-testing-action",
-      "managerFilePatterns": [
-        "/^\\.github/workflows/.+\\.ya?ml$/"
-      ],
-      "matchStrings": [
-        "uv_version: \"(?<currentValue>[^\"]+)\""
-      ],
-      "depNameTemplate": "astral-sh/uv",
-      "datasourceTemplate": "github-releases"
-    },
-    {
-      "customType": "regex",
       "description": "Container images pinned by digest in workflow env (buildkit, gitleaks, osv-scanner, zizmor)",
       "managerFilePatterns": [
         "/^\\.github/workflows/.+\\.ya?ml$/"

@@ -1,0 +1,27 @@
+name: setup-go
+description: Go from go.mod with a Go module/build cache and a bin/ tool cache, both scoped to the calling job.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: go.mod
+        cache: false
+    # One cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
+        restore-keys: |
+          go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
+          go-${{ runner.os }}-
+    - shell: bash
+      run: mkdir -p bin
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: bin
+        key: tools-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('Makefile', 'go.mod', '.custom-gcl.yml') }}
+        restore-keys: tools-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-

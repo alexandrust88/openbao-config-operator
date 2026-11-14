@@ -36,13 +36,11 @@ required_checks=(
 )
 
 allowed_actions=(
-  "astral-sh/setup-uv@*"
   "crazy-max/ghaction-github-labeler@*"
   "docker/build-push-action@*"
   "docker/login-action@*"
   "docker/setup-buildx-action@*"
   "googleapis/release-please-action@*"
-  "helm/chart-testing-action@*"
   "ossf/scorecard-action@*"
   "sigstore/cosign-installer@*"
 )

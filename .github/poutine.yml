@@ -5,4 +5,3 @@ skip:
     purl:
       - pkg:githubactions/crazy-max/ghaction-github-labeler
       - pkg:githubactions/googleapis/release-please-action
-      - pkg:githubactions/helm/chart-testing-action

@@ -96,11 +96,10 @@ echo "waiting for ${#names[@]} objects (at most $timeout, or until 2m pass witho
 best=-1 progress=$(date +%s)
 while :; do
   pending=0
-  while IFS='|' read -r kind name status; do
-    [ "$status" = True ] && continue
-    excused_ref "$kind" "$name" >/dev/null || pending=$((pending + 1))
+  while IFS= read -r status; do
+    [ "$status" = True ] || pending=$((pending + 1))
   done < <(kubectl -n "$namespace" get "${names[@]}" --ignore-not-found \
-    -o 'jsonpath={range .items[*]}{.kind}{"|"}{.metadata.name}{"|"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}')
+    -o 'jsonpath={range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}')
   [ "$pending" -eq 0 ] && break
   now=$(date +%s)
   if [ "$best" -lt 0 ] || [ "$pending" -lt "$best" ]; then best=$pending progress=$now; fi
@@ -110,7 +109,7 @@ while :; do
   sleep 5
 done
 
-failed=0 ready=0 excused=0
+failed=0 ready=0
 printf '\n%-26s %-44s %-22s %s\n' KIND NAME REASON NOTE
 for ref in "${names[@]}"; do
   kind=${ref%%.*} name=${ref##*/}
@@ -119,10 +118,8 @@ for ref in "${names[@]}"; do
     ready=$((ready + 1))
     continue
   fi
-  note=""
-  if reason=$(excused_ref "$kind" "$name"); then note="excused: $reason"; fi
-  if [ -n "$note" ]; then excused=$((excused + 1)); else failed=$((failed + 1)); note=$(cut -d'|' -f3 <<<"$state"); fi
-  printf '%-26s %-44s %-22s %.140s\n' "$kind" "$name" "$(cut -d'|' -f2 <<<"$state")" "$note"
+  failed=$((failed + 1))
+  printf '%-26s %-44s %-22s %.140s\n' "$kind" "$name" "$(cut -d'|' -f2 <<<"$state")" "$(cut -d'|' -f3 <<<"$state")"
 done
 for e in "${skipped[@]}"; do
   IFS='|' read -r kind name reason <<<"$e"

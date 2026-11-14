@@ -28,25 +28,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
-            go-${{ runner.os }}-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: bin
-          key: tools-e2e-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
-          restore-keys: tools-e2e-${{ runner.os }}-
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
 
       - name: Create kind cluster
         run: make setup-test-e2e

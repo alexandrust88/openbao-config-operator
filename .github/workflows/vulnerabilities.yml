@@ -57,21 +57,6 @@ jobs:
       - osv-scanner
       - govulncheck-nightly
     if: failure() && github.event_name == 'schedule'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    uses: ./.github/workflows/report-failure.yml # zizmor: ignore[self-repository]
     permissions:
       issues: write # open or comment on the scheduled-failure issue
-    steps:
-      - name: Open or update the failure issue
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          export GH_REPO="$GITHUB_REPOSITORY"
-          title="Scheduled $GITHUB_WORKFLOW run failed"
-          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          number="$(gh issue list --label area/ci --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')"
-          if [ -n "$number" ]; then
-            gh issue comment "$number" --body "Failed again: $run_url"
-          else
-            gh issue create --title "$title" --label area/ci --label priority/important-soon --body "The scheduled run failed: $run_url"
-          fi

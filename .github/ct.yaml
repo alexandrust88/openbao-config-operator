@@ -1,8 +1,0 @@
-# chart-testing settings for .github/workflows/chart.yml and local `ct lint --config .github/ct.yaml --all`.
-chart-dirs:
-  - charts
-target-branch: main
-# The release sets version and appVersion from the git tag, so pull requests do not bump them.
-check-version-increment: false
-validate-maintainers: false
-helm-extra-args: --timeout 300s

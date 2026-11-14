@@ -99,8 +99,8 @@ Required status checks (the job names, or the job `name:` where one is set):
 | `pr-title.yml` | `Conventional commit title` |
 | `pages.yml` | `pages` (runs on every pull request and builds the site only when a docs path changed) |
 
-Not required, on purpose: `chart-testing` (`chart.yml`) and `labels` run only when their paths change, and a
-required check that never starts blocks the merge. `conformance` and `govulncheck-nightly` do not run on pull
+Not required, on purpose: `labels` runs only when its paths change, and a required check that never starts
+blocks the merge. `conformance` and `govulncheck-nightly` do not run on pull
 requests.
 
 ### `release-branches` (branch ruleset)
@@ -172,18 +172,14 @@ Settings > Actions > General.
 Allowed third-party actions (update when a workflow adds one):
 
 ```text
-astral-sh/setup-uv@*
 crazy-max/ghaction-github-labeler@*
 docker/build-push-action@*
 docker/login-action@*
 docker/setup-buildx-action@*
 googleapis/release-please-action@*
-helm/chart-testing-action@*
 ossf/scorecard-action@*
 sigstore/cosign-installer@*
 ```
-
-`astral-sh/setup-uv` is not in our workflows: `helm/chart-testing-action` uses it.
 
 ## Environments
 

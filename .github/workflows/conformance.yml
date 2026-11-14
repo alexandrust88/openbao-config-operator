@@ -1,29 +1,18 @@
 name: conformance
 
-# The matrix reconciles every kind against bao server -dev for over an hour: pull requests run it only when they
-# touch the kinds, the engine or the bao pin, and it is not a required check.
 on:
-  pull_request:
-    paths:
-      - api/**
-      - internal/controller/**
-      - internal/engine/**
-      - test/conformance/**
-      - Makefile
-      - hack/e2e/**
-      - .github/workflows/conformance.yml
   push:
     branches:
       - main
   schedule:
-    - cron: "17 2 * * *"
+    - cron: "17 2 * * 6"
   workflow_dispatch:
 
 permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 jobs:
   conformance:
@@ -35,25 +24,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
-            go-${{ runner.os }}-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: bin
-          key: tools-conformance-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
-          restore-keys: tools-conformance-${{ runner.os }}-
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - run: make bao
       - run: make test-conformance
         env:
@@ -82,25 +53,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
-            go-${{ runner.os }}-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: bin
-          key: tools-integration-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
-          restore-keys: tools-integration-${{ runner.os }}-
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - run: make bao
       - run: docker pull "$POSTGRES_IMAGE"
       - run: make test-integration
@@ -112,21 +65,6 @@ jobs:
       - conformance
       - integration-race
     if: failure() && github.event_name == 'schedule'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    uses: ./.github/workflows/report-failure.yml # zizmor: ignore[self-repository]
     permissions:
       issues: write # open or comment on the scheduled-failure issue
-    steps:
-      - name: Open or update the failure issue
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          export GH_REPO="$GITHUB_REPOSITORY"
-          title="Scheduled $GITHUB_WORKFLOW run failed"
-          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          number="$(gh issue list --label area/ci --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')"
-          if [ -n "$number" ]; then
-            gh issue comment "$number" --body "Failed again: $run_url"
-          else
-            gh issue create --title "$title" --label area/ci --label priority/important-soon --body "The scheduled run failed: $run_url"
-          fi

@@ -56,7 +56,7 @@ the line, and `.github/poutine.yml`. Both files are owned by the maintainers (`.
    the SHA from the tag yourself (`git ls-remote https://github.com/<owner>/<repo> refs/tags/<version>`) or run
    `pinact run` locally, which reads `.github/pinact.yaml`.
 3. Read the action's `action.yml` at that commit: nested `uses:` must be SHA-pinned too, and inputs that pick a tool
-   version must not default to `latest` (set them, as `chart.yml` does for `uv_version`).
+   version must not default to `latest` (set them, as the workflows do for `cosign-release`).
 4. Give the job only the permissions the action documents, and keep secrets in the step that needs them.
 5. Add a third-party action to the allowed-actions list in `hack/github/apply-settings.sh` and
    [GitHub settings](../maintainers/github-settings.md), including any action it calls.
