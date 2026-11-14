@@ -1,0 +1,31 @@
+{
+  "data": {
+    "dial_timeout": 10,
+    "host": "radius.example.org",
+    "nas_identifier": "openbao",
+    "nas_port": 10,
+    "port": 1812,
+    "read_timeout": 15,
+    "token_bound_cidrs": [
+      "192.168.10.0/24",
+      "10.0.0.0/8"
+    ],
+    "token_explicit_max_ttl": 28800,
+    "token_max_ttl": 14400,
+    "token_no_default_policy": false,
+    "token_num_uses": 0,
+    "token_period": 1800,
+    "token_policies": [
+      "readers",
+      "default-login",
+      "team-a-reader"
+    ],
+    "token_strictly_bind_ip": false,
+    "token_ttl": 3600,
+    "token_type": "service",
+    "unregistered_user_policies": [
+      "guest"
+    ]
+  },
+  "tamper": "read_timeout"
+}

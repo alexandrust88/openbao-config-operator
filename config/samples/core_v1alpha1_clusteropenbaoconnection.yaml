@@ -1,0 +1,16 @@
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: ClusterOpenBaoConnection
+metadata:
+  labels:
+    app.kubernetes.io/name: openbao-config-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: clusteropenbaoconnection-sample
+spec:
+  serverRef:
+    name: openbao
+  auth:
+    token:
+      secretRef:
+        name: openbao-token
+        namespace: openbao-config-operator-system
+        key: token

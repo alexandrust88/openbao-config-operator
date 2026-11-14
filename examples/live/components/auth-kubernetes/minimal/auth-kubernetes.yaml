@@ -1,0 +1,31 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: k8s
+spec:
+  connectionRef:
+    name: openbao
+  type: kubernetes
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthConfig
+metadata:
+  name: k8s-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: k8s
+  kubernetesHost: https://kubernetes.default.svc
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthRole
+metadata:
+  name: k8s-app
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: k8s
+  boundServiceAccountNames:
+    - app
+  boundServiceAccountNamespaces:
+    - apps

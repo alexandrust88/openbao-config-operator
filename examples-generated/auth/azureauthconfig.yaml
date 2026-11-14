@@ -1,0 +1,35 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AzureAuthConfig
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  clientID: example
+  clientSecretSecretRef:
+    key: value
+    name: azureauthconfig-client-secret-secret-ref
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  environment: AzurePublicCloud
+  managementPolicy: Manage
+  maxRetries: 1
+  maxRetryDelay: 1h
+  mountPath: azure
+  namespace: example
+  resource: example
+  retryDelay: 1h
+  tenantID: example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azureauthconfig-client-secret-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

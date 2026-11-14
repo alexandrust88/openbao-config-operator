@@ -1,0 +1,52 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: db
+spec:
+  connectionRef:
+    name: openbao
+  type: database
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseConnection
+metadata:
+  name: db-postgres
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: db
+  pluginName: postgresql-database-plugin
+  verifyConnection: false
+  allowedRoles:
+    - db-app
+    - db-app-static
+  passwordSecretRef:
+    name: live-db-root
+    key: password
+  postgresql:
+    connectionURL: postgresql://{{username}}:{{password}}@postgres.example.invalid:5432/app?sslmode=require
+    username: openbao
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseRole
+metadata:
+  name: db-app
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: db
+  dbName: db-postgres
+  creationStatements:
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseStaticRole
+metadata:
+  name: db-app-static
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: db
+  dbName: db-postgres
+  username: app
+  rotationPeriod: 24h

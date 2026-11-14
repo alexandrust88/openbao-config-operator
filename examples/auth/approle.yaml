@@ -1,0 +1,34 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AppRole
+metadata:
+  name: ci-deployer
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: approle
+  name: ci-deployer
+  roleID: ci-deployer-role-id
+  bindSecretID: true
+  secretIDBoundCIDRs:
+    - 10.42.0.0/16
+  secretIDNumUses: 0
+  secretIDTTL: 24h
+  localSecretIDs: false
+  tokenTTL: 20m
+  tokenMaxTTL: 1h
+  tokenExplicitMaxTTL: 2h
+  tokenPeriod: 0s
+  tokenPolicies:
+    - ci-deployer
+  policyRefs:
+    - name: obco-team-a-reader
+  tokenBoundCIDRs:
+    - 10.42.0.0/16
+  tokenNumUses: 0
+  tokenType: service
+  tokenNoDefaultPolicy: false
+  tokenStrictlyBindIP: false

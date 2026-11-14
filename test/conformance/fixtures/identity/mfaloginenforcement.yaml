@@ -1,0 +1,39 @@
+# The example shows every reference form, including IDs and accessors that exist on no server; the fixture keeps the
+# forms a fresh server can resolve.
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: userpass
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  path: userpass
+  type: userpass
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: MFALoginEnforcement
+metadata:
+  name: obco-admins-mfa
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  driftDetection: Enabled
+  managementPolicy: Manage
+  deletionPolicy: Delete
+  name: obco-admins-mfa
+  mfaMethods:
+    - methodRef:
+        name: obco-totp
+  authMounts:
+    - mountPath: userpass
+  authMethodTypes:
+    - userpass
+  entities:
+    - entityName: obco-alice
+  groups:
+    - groupName: obco-developers

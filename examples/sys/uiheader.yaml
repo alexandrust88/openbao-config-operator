@@ -1,0 +1,18 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: UIHeader
+metadata:
+  name: obco-permissions-policy
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  name: Permissions-Policy
+  values:
+    - camera=()
+    - microphone=()

@@ -1,0 +1,12 @@
+{
+  "data": {
+    "groups": [
+      "Developers",
+      "Admins"
+    ],
+    "policies": [
+      "personal-jane"
+    ]
+  },
+  "tamper": "groups"
+}

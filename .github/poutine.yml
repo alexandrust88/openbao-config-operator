@@ -1,0 +1,8 @@
+skip:
+  # SHA-pinned, on the allowed-actions list in docs/maintainers/github-settings.md and bumped by Renovate with a
+  # 7-day cooldown; "unverified creator" is a Marketplace badge, not a review.
+  - rule: github_action_from_unverified_creator_used
+    purl:
+      - pkg:githubactions/crazy-max/ghaction-github-labeler
+      - pkg:githubactions/googleapis/release-please-action
+      - pkg:githubactions/helm/chart-testing-action

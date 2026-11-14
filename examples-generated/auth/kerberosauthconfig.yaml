@@ -1,0 +1,31 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KerberosAuthConfig
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  addGroupAliases: true
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  keytabSecretRef:
+    key: value
+    name: kerberosauthconfig-keytab-secret-ref
+  managementPolicy: Manage
+  mountPath: kerberos
+  namespace: example
+  removeInstanceName: true
+  serviceAccount: example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kerberosauthconfig-keytab-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

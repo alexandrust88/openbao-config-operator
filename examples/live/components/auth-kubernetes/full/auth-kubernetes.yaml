@@ -1,0 +1,146 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: k8s
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: k8s
+  type: kubernetes
+  description: ServiceAccount logins from the workload cluster
+  local: false
+  sealWrap: false
+  externalEntropyAccess: false
+  forceNoCache: false
+  pluginVersion: ""
+  options: {}
+  defaultLeaseTTL: 1h
+  maxLeaseTTL: 24h
+  listingVisibility: hidden
+  auditNonHMACRequestKeys:
+    - role
+  auditNonHMACResponseKeys:
+    - lease_duration
+  passthroughRequestHeaders:
+    - X-Request-Id
+  allowedResponseHeaders:
+    - X-Request-Id
+  tokenType: default-service
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: k8s-app-read
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: k8s-app-read
+  policy: |
+    path "+/data/apps/{{identity.entity.aliases.${accessor:kubernetes}.metadata.service_account_namespace}}/*" {
+      capabilities = ["read"]
+    }
+  accessorRefs:
+    kubernetes:
+      authMountRef:
+        name: k8s
+  casRequired: false
+  allowWildcardsInIdentityTemplates: false
+  allowSlashesInIdentityTemplates: false
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthConfig
+metadata:
+  name: k8s-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: k8s
+  kubernetesHost: https://kubernetes.default.svc:443
+  kubernetesCACert: |
+    -----BEGIN CERTIFICATE-----
+    MIIBhTCCASqgAwIBAgIJAOQljLXsiNReMAoGCCqGSM49BAMCMDUxGDAWBgNVBAMM
+    D2xpdmUga2l0IFRMUyBDQTEZMBcGA1UECgwQb3BlbmJhbyBsaXZlIGtpdDAeFw0y
+    NjExMTQwOTQyMjVaFw0zNjExMTEwOTQyMjVaMDUxGDAWBgNVBAMMD2xpdmUga2l0
+    IFRMUyBDQTEZMBcGA1UECgwQb3BlbmJhbyBsaXZlIGtpdDBZMBMGByqGSM49AgEG
+    CCqGSM49AwEHA0IABA8rM2hh5PZmeyvUvkYeuAlDQq/gU1M0v0CiW41QoP/UKHc+
+    ZxDa1mCQR5PRSsethpagIveH8ebpPqwIens3Vh2jIzAhMA8GA1UdEwEB/wQFMAMB
+    Af8wDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMCA0kAMEYCIQDIOC+VfDcGyiga
+    yRz1DaItADfmeXNcV1L8PNH8wXBPzQIhAObjv9jMzlb0dYt4hpsLH+4a6f7hpgad
+    v1q4Vtq6ZO61
+    -----END CERTIFICATE-----
+  disableLocalCAJWT: true
+  pemKeys:
+    - |
+      -----BEGIN PUBLIC KEY-----
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0pXSraCfDOmwLZ5tBSLv
+      KVJYrd3Y+00VFNjDgfsTm/L1dpR8asKR+Qz3fKYsfUSJSxydqeYoSqo/MBfEN7WU
+      Ptj5QOjwaFlGA3wMJit8UIqotYKQZSH8r4dP8zoPzye8UXGD7zovlyn/CDWNovGE
+      Vig/EDOlAKi+S5wgpsrxN9QR65LMYe2oB6u2wVvm659x62jt6h9pP2sYQvYvdlwn
+      KT5XV5MlvwgqCgPN35gy4pYpRJX9u9fvcFjT6R2TjggVb0E/Ge3u+9c2Sxiuxgoo
+      30hpBbBgxa/MVI5+yqKSyt7/dERG7mE+wHXtRJIjQ5ICcgcenqUZQM4pxOejJiFq
+      5QIDAQAB
+      -----END PUBLIC KEY-----
+  tokenReviewerJWTSecretRef:
+    name: live-auth-kubernetes
+    key: token-reviewer-jwt
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthRole
+metadata:
+  name: k8s-app
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: k8s
+  name: k8s-app
+  boundServiceAccountNames:
+    - app
+    - worker
+  boundServiceAccountNamespaces:
+    - apps
+  boundServiceAccountNamespaceSelector:
+    matchLabels:
+      openbao.example.com/tenant: team-a
+  audience: openbao
+  aliasNameSource: serviceaccount_name
+  policyRefs:
+    - name: k8s-app-read
+  tokenPolicies:
+    - default
+  tokenTTL: 30m
+  tokenMaxTTL: 4h
+  tokenExplicitMaxTTL: 8h
+  tokenPeriod: 0s
+  tokenNumUses: 0
+  tokenNoDefaultPolicy: false
+  tokenStrictlyBindIP: false
+  tokenBoundCIDRs:
+    - 10.0.0.0/8
+    - 127.0.0.1/32
+  tokenType: service

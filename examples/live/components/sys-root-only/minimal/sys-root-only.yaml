@@ -1,0 +1,107 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: sys-kv
+spec:
+  connectionRef:
+    name: openbao
+  type: kv-v2
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Audit
+metadata:
+  name: sys-audit
+spec:
+  connectionRef:
+    name: openbao
+  type: file
+  options:
+    file_path: stdout
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuditRequestHeader
+metadata:
+  name: sys-request-header
+spec:
+  connectionRef:
+    name: openbao
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: RateLimitQuota
+metadata:
+  name: sys-kv-quota
+spec:
+  connectionRef:
+    name: openbao
+  path: sys-kv
+  rate: "1000"
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: QuotaConfig
+metadata:
+  name: sys-quota-config
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: CORSConfig
+metadata:
+  name: sys-cors
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  allowedOrigins:
+    - https://openbao.example.com
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: UIHeader
+metadata:
+  name: sys-ui-header
+spec:
+  connectionRef:
+    name: openbao
+  values:
+    - live-kit
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Logger
+metadata:
+  name: sys-logger
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  name: quotas
+  level: info
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: RaftAutopilot
+metadata:
+  name: sys-autopilot
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: KeyRotationConfig
+metadata:
+  name: sys-key-rotation
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Plugin
+metadata:
+  name: sys-plugin
+spec:
+  connectionRef:
+    name: openbao
+  type: secret
+  command: openbao-plugin-secrets-live-kit
+  sha256: 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae

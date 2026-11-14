@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or help
+    url: https://github.com/alexandrust88/openbao-config-operator/discussions/categories/q-a
+    about: Ask how to do something, or get help with your setup, in GitHub Discussions.
+  - name: Idea or design discussion
+    url: https://github.com/alexandrust88/openbao-config-operator/discussions/categories/ideas
+    about: Talk through a larger idea before it becomes a feature request or an ADR.
+  - name: Security vulnerability
+    url: https://github.com/alexandrust88/openbao-config-operator/security/advisories/new
+    about: Report a vulnerability privately. Do not open a public issue.

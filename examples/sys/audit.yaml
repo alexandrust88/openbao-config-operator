@@ -1,0 +1,54 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Audit
+metadata:
+  name: obco-stdout
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Adopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 15m
+  path: stdout
+  type: file
+  description: audit log to standard output, declared in the server configuration
+  local: false
+  options:
+    file_path: stdout
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: obco-siem-audit
+  namespace: openbao-config
+type: Opaque
+stringData:
+  headers: '{"Authorization":["Bearer fake-siem-token"]}'
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Audit
+metadata:
+  name: obco-siem
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  managementPolicy: Manage
+  path: siem
+  type: http
+  description: audit events forwarded to the SIEM collector
+  local: true
+  options:
+    uri: https://siem-collector.example.com/openbao
+    format: json
+    hmac_accessor: "true"
+  optionsSecretRefs:
+    headers:
+      name: obco-siem-audit
+      key: headers

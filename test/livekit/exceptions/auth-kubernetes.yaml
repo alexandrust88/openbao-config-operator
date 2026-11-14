@@ -1,0 +1,11 @@
+fullFields:
+  KubernetesAuthRole:
+    boundServiceAccountNamespaceSelector.matchExpressions[].key: the CRD rejects matchExpressions at admission because OpenBao 2.7 accepts only matchLabels (invalid "bound_service_account_namespace_selector" configured); the field stays in the schema so it is never pruned
+    boundServiceAccountNamespaceSelector.matchExpressions[].operator: the CRD rejects matchExpressions at admission because OpenBao 2.7 accepts only matchLabels (invalid "bound_service_account_namespace_selector" configured); the field stays in the schema so it is never pruned
+    boundServiceAccountNamespaceSelector.matchExpressions[].values: the CRD rejects matchExpressions at admission because OpenBao 2.7 accepts only matchLabels (invalid "bound_service_account_namespace_selector" configured); the field stays in the schema so it is never pruned
+notReady:
+  - kind: KubernetesAuthConfig
+    name: k8s-config
+    overlays:
+      - "*/minimal"
+    reason: without kubernetesCACert OpenBao reads its pod's /var/run/secrets/kubernetes.io/serviceaccount/ca.crt, which bao server -dev outside a cluster does not have; Ready when OpenBao runs in Kubernetes

@@ -1,0 +1,9 @@
+{
+  "path": "auth/kerberos/groups/engineering",
+  "payload": {
+    "policies": [
+      "engineering",
+      "readers"
+    ]
+  }
+}

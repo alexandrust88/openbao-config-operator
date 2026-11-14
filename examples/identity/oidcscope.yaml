@@ -1,0 +1,17 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: OIDCScope
+metadata:
+  name: obco-groups
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  deletionPolicy: Delete
+  name: obco-groups
+  template: '{"groups": {{identity.entity.groups.names}}}'
+  description: Group names of the authenticated entity

@@ -1,0 +1,16 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KerberosAuthGroup
+metadata:
+  name: engineering
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: kerberos
+  name: engineering
+  policies:
+    - engineering
+    - readers

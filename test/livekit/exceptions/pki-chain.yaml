@@ -1,0 +1,8 @@
+# pki-chain: OpenBao external keys (sys/external-keys) need a KMS or HSM, which neither bao server -dev nor a
+# plain OpenBao has, so the kms key source is not in the full example.
+fullFields:
+  PKIIssuer:
+    key.externalKeyRef: the kms key source needs an OpenBao external key backed by a KMS or HSM
+  PKIKey:
+    externalKeyRef: type kms needs an OpenBao external key backed by a KMS or HSM
+notReady: []

@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: e2e-tenant
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: obco-tenant
+  namespace: e2e-tenant
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoServer
+metadata:
+  name: openbao-e2e
+spec:
+  address: http://openbao.openbao.svc:8200
+  allowInsecureHTTP: true
+  allowedNamespaces:
+    matchLabels:
+      kubernetes.io/metadata.name: e2e-tenant
+  allowedAudiences:
+    - openbao
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoConnection
+metadata:
+  name: openbao
+  namespace: e2e-tenant
+spec:
+  serverRef:
+    name: openbao-e2e
+  auth:
+    kubernetes:
+      role: e2e-tenant
+      serviceAccountRef:
+        name: obco-tenant
+      audiences:
+        - openbao

@@ -1,0 +1,95 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+replacements:
+  - source:
+      kind: ConfigMap
+      name: live-params
+      fieldPath: data.kubernetesNamespace
+    targets:
+      # Cluster-scoped objects get it too: the API server drops it, and kustomize only renames references to an
+      # object in the referrer's namespace.
+      - select: {}
+        reject:
+          - kind: ConfigMap
+            name: live-params
+        fieldPaths:
+          - metadata.namespace
+        options:
+          create: true
+      - select:
+          kind: OpenBaoServer
+          name: openbao-server
+        fieldPaths:
+          - spec.caBundle.configMapRef.namespace
+          - spec.allowedNamespaces.matchLabels.[kubernetes.io/metadata.name]
+      - select:
+          kind: ClusterOpenBaoConnection
+          name: openbao-cluster
+        fieldPaths:
+          - spec.allowedNamespaces.matchLabels.[kubernetes.io/metadata.name]
+          - spec.auth.kubernetes.serviceAccountRef.namespace
+  - source:
+      kind: ConfigMap
+      name: live-params
+      fieldPath: data.openbaoAddress
+    targets:
+      - select:
+          kind: OpenBaoServer
+          name: openbao-server
+        fieldPaths:
+          - spec.address
+  - source:
+      kind: ConfigMap
+      name: live-params
+      fieldPath: data.caConfigMap
+    targets:
+      - select:
+          kind: OpenBaoServer
+          name: openbao-server
+        fieldPaths:
+          - spec.caBundle.configMapRef.name
+  - source:
+      kind: ConfigMap
+      name: live-params
+      fieldPath: data.caKey
+    targets:
+      - select:
+          kind: OpenBaoServer
+          name: openbao-server
+        fieldPaths:
+          - spec.caBundle.configMapRef.key
+  - source:
+      kind: ConfigMap
+      name: live-params
+      fieldPath: data.audience
+    targets:
+      - select:
+          kind: OpenBaoServer
+          name: openbao-server
+        fieldPaths:
+          - spec.allowedAudiences.0
+      - select:
+          group: core.openbaoconfig.io
+          kind: (Cluster)?OpenBaoConnection
+          name: ^openbao(-cluster)?$
+        fieldPaths:
+          - spec.auth.kubernetes.audiences.0
+patches:
+  - path: waves/0-connections.yaml
+    target:
+      kind: ^(OpenBaoServer|OpenBaoConnection|ClusterOpenBaoConnection)$
+  - path: waves/1-namespaces.yaml
+    target:
+      kind: ^(OpenBaoNamespace|Plugin)$
+  - path: waves/2-mounts.yaml
+    target:
+      kind: ^(AuthMount|SecretsMount|Policy|PasswordPolicy|Audit|AuditRequestHeader|CORSConfig|QuotaConfig|UIHeader|Logger|RaftAutopilot|KeyRotationConfig|Workflow|AccessLevel|Entity|Group|OIDCConfig|OIDCKey|OIDCScope|MFAMethod|TokenRole|OpenBaoEndpoint)$
+  - path: waves/3-configs.yaml
+    target:
+      kind: ^(KubernetesAuthConfig|JWTAuthConfig|CertAuthConfig|KVConfig|DatabaseConnection|RabbitMQConfig|KubernetesSecretsConfig|SSHCA|PKIKey|PKIIssuer|TransitKey|TOTPKey|RateLimitQuota)$
+  - path: waves/4-roles.yaml
+    target:
+      kind: ^(KubernetesAuthRole|JWTAuthRole|JWTCELRole|AppRole|CertAuthRole|UserpassUser|KVSecret|RandomSecret|EntityAlias|GroupAlias|GroupMembership|OIDCRole|OIDCAssignment|OIDCClient|PKIRole|PKIConfig|PKIACMEConfig|PKIAutoTidy|DatabaseRole|DatabaseStaticRole|SSHRole|KubernetesSecretsRole|RabbitMQRole)$
+  - path: waves/5-access.yaml
+    target:
+      kind: ^(AppRoleSecretID|OIDCProvider|MFALoginEnforcement|AccessGrant|AccessLayout)$

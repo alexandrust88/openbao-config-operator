@@ -1,0 +1,126 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: OpenBaoNamespace
+metadata:
+  name: ep-space
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: ep-space
+  customMetadata:
+    purpose: raw API calls through OpenBaoEndpoint
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoEndpoint
+metadata:
+  name: ep-token-role
+  labels:
+    live.openbaoconfig.io/nested: "true"
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: openbao-cluster
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  namespace: ep-space
+  path: auth/token/roles/live-kit
+  readPath: auth/token/roles/live-kit
+  deletePath: auth/token/roles/live-kit
+  ignoreAbsentFields: true
+  writeOnlyFields:
+    - token_explicit_max_ttl
+  data:
+    allowed_policies:
+      - default
+    orphan: true
+    renewable: true
+    path_suffix: live-kit
+    token_explicit_max_ttl: 24h
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoEndpoint
+metadata:
+  name: ep-kv-mount
+  labels:
+    live.openbaoconfig.io/nested: "true"
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  namespace: ep-space
+  path: sys/mounts/kv
+  deletePath: sys/mounts/kv
+  data:
+    type: kv
+    description: KV mount enabled through the raw API
+    options:
+      version: "2"
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoEndpoint
+metadata:
+  name: ep-kv-tune
+  labels:
+    live.openbaoconfig.io/nested: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  namespace: ep-space
+  path: sys/mounts/kv/tune
+  disableDelete: true
+  ignoreAbsentFields: true
+  writeOnlyFields:
+    - default_lease_ttl
+    - max_lease_ttl
+  data:
+    default_lease_ttl: 1h
+    max_lease_ttl: 24h
+    listing_visibility: hidden
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoEndpoint
+metadata:
+  name: ep-app-secret
+  labels:
+    live.openbaoconfig.io/nested: "true"
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  namespace: ep-space
+  path: kv/data/app
+  deletePath: kv/metadata/app
+  disableRead: true
+  dataSecretRef:
+    name: live-endpoint-app
+    key: payload

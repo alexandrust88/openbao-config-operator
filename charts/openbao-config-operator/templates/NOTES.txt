@@ -1,0 +1,39 @@
+{{ include "openbao-config-operator.fullname" . }} {{ .Chart.AppVersion }} is installed in namespace {{ .Release.Namespace }}.
+
+Check the manager:
+  kubectl -n {{ .Release.Namespace }} rollout status deployment/{{ include "openbao-config-operator.fullname" . }}
+
+{{- if .Values.watchNamespaces }}
+
+The manager watches only: {{ include "openbao-config-operator.watchNamespaces" . }}.
+Secrets, ConfigMaps and ServiceAccount tokens are readable only there, so list every namespace that holds
+credentials or CA bundles referenced by a ClusterOpenBaoConnection.
+{{- end }}
+
+Next steps:
+  1. Create an OpenBaoConnection (namespaced, tenant identity) or a ClusterOpenBaoConnection (platform team).
+  2. List every managed object: kubectl get openbao -A
+{{- if .Values.rbac.userRoles }}
+
+User roles: {{ .Release.Name }}-tenant-editor (every kind except connections) and {{ .Release.Name }}-viewer.
+{{- end }}
+{{- if .Values.metrics.enabled }}
+
+Metrics are served over HTTPS on port {{ .Values.metrics.port }} and need a token allowed to GET /metrics:
+bind ClusterRole {{ include "openbao-config-operator.fullname" . }}-metrics-reader to the scraper's ServiceAccount.
+{{- end }}
+{{- if not .Values.crds.install }}
+
+crds.install=false: install the CRDs separately before creating resources.
+{{- end }}
+{{- $np := .Values.networkPolicy }}
+{{- if and $np.enabled (or (and (eq $np.flavor "kubernetes") (or (not $np.apiServer.cidrs) (not $np.openbao.to))) (and (eq $np.flavor "cilium") (not $np.openbao.fqdns))) }}
+
+WARNING: the {{ $np.flavor }} network policy allows egress to any destination on the
+{{- if eq $np.flavor "kubernetes" }} API server or{{ end }} OpenBao ports. Set
+{{- if eq $np.flavor "kubernetes" }} networkPolicy.apiServer.cidrs and networkPolicy.openbao.to{{ else }} networkPolicy.openbao.fqdns{{ end }} to name the peers.
+{{- end }}
+{{- if not .Values.crds.keep }}
+
+WARNING: crds.keep=false: helm uninstall deletes the CRDs and every OpenBao custom resource in the cluster.
+{{- end }}

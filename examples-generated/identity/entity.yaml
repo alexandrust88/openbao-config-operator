@@ -1,0 +1,21 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Entity
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  disabled: true
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  metadata:
+    example: example
+  name: example
+  namespace: example
+  policies:
+  - default

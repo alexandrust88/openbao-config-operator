@@ -1,0 +1,59 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthRole
+metadata:
+  name: ci-deploy
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: jwt-ci
+  name: ci-deploy
+  roleType: jwt
+  userClaim: sub
+  userClaimJSONPointer: false
+  boundAudiences:
+    - https://openbao.example.com
+  boundSubject: project_path:platform/app:ref_type:branch:ref:main
+  boundClaimsType: glob
+  boundClaims:
+    project_path:
+      - platform/*
+    ref_protected:
+      - "true"
+  claimMappings:
+    project_path: project
+    ref: ref
+  groupsClaim: groups
+  oidcScopes:
+    - profile
+    - email
+  allowedRedirectURIs:
+    - https://openbao.example.com/ui/vault/auth/jwt-ci/oidc/callback
+  callbackMode: device
+  pollInterval: 5
+  maxAge: 1h
+  expirationLeeway: -1
+  notBeforeLeeway: 2m
+  clockSkewLeeway: 30
+  oauth2Metadata:
+    - id_token
+  verboseOIDCLogging: false
+  tokenPoliciesTemplateClaims: false
+  oidcDisableConfirmation: false
+  tokenTTL: 10m
+  tokenMaxTTL: 1h
+  tokenExplicitMaxTTL: 2h
+  tokenPeriod: 0s
+  tokenPolicies:
+    - ci-deploy
+  policyRefs:
+    - name: obco-team-a-reader
+  tokenBoundCIDRs:
+    - 10.50.0.0/16
+  tokenNumUses: 0
+  tokenType: batch
+  tokenNoDefaultPolicy: true
+  tokenStrictlyBindIP: false

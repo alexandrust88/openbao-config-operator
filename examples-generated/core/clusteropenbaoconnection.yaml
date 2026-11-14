@@ -1,0 +1,32 @@
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: ClusterOpenBaoConnection
+metadata:
+  name: example
+spec:
+  allowedNamespaces:
+    matchExpressions:
+    - key: example
+      operator: In
+      values:
+      - example
+    matchLabels:
+      example: example
+  auth:
+    token:
+      secretRef:
+        key: value
+        name: clusteropenbaoconnection-secret-ref
+        namespace: openbao-config
+  authNamespace: example
+  namespace: example
+  serverRef:
+    name: example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: clusteropenbaoconnection-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

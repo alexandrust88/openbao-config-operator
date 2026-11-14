@@ -1,0 +1,68 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: acc-kv
+spec:
+  connectionRef:
+    name: openbao
+  type: kv-v2
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: acc-kubernetes
+spec:
+  connectionRef:
+    name: openbao
+  type: kubernetes
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: acc-jwt
+spec:
+  connectionRef:
+    name: openbao
+  type: jwt
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessLevel
+metadata:
+  name: acc-read
+spec:
+  data:
+    - read
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessGrant
+metadata:
+  name: acc-workloads
+spec:
+  connectionRef:
+    name: openbao
+  authMountRef:
+    name: acc-kubernetes
+  subjects:
+    - name: app
+      namespace: payments
+  rules:
+    - mount: acc-kv
+      path: apps/app/*
+      level: acc-read
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessLayout
+metadata:
+  name: acc-teams
+spec:
+  connectionRef:
+    name: openbao
+  authMounts:
+    - acc-jwt
+  paths:
+    - mount: acc-kv
+      path: teams/*
+  roles:
+    - name: developer
+      levels:
+        - level: acc-read

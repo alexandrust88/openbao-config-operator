@@ -1,0 +1,16 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: LDAPAuthGroup
+metadata:
+  name: ops-team
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: ldap
+  name: Ops Team
+  policies:
+    - ops
+    - readers

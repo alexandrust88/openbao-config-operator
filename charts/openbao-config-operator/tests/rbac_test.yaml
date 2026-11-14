@@ -1,0 +1,365 @@
+suite: rbac
+templates:
+  - templates/rbac/manager.yaml
+  - templates/rbac/leader-election.yaml
+  - templates/rbac/metrics.yaml
+  - templates/rbac/user-roles.yaml
+  - templates/serviceaccount.yaml
+release:
+  name: obc
+  namespace: openbao-system
+tests:
+  - it: grants namespaced access cluster-wide when watchNamespaces is empty
+    template: templates/rbac/manager.yaml
+    asserts:
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: ClusterRole
+        documentIndex: 0
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [serviceaccounts/token]
+            verbs: [create]
+        documentIndex: 0
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [namespaces]
+            verbs: [get, list, watch]
+        documentIndex: 0
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [secrets]
+            verbs: [create, get, list, patch, update, watch]
+        documentIndex: 0
+      - notMatchRegex:
+          path: rules[*].resources[*]
+          pattern: ^\*$
+        documentIndex: 0
+      - notMatchRegex:
+          path: rules[*].verbs[*]
+          pattern: ^\*$
+        documentIndex: 0
+
+  - it: moves namespaced access into a Role per watched namespace and the release namespace
+    template: templates/rbac/manager.yaml
+    set:
+      watchNamespaces: [team-a, team-b]
+    asserts:
+      - hasDocuments:
+          count: 8
+      - notContains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [serviceaccounts/token]
+            verbs: [create]
+        documentIndex: 0
+      - isKind:
+          of: Role
+        documentIndex: 2
+      - equal:
+          path: metadata.namespace
+          value: team-a
+        documentIndex: 2
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [serviceaccounts/token]
+            verbs: [create]
+        documentIndex: 2
+      - isKind:
+          of: RoleBinding
+        documentIndex: 5
+      - equal:
+          path: metadata.namespace
+          value: team-b
+        documentIndex: 5
+      - equal:
+          path: subjects[0]
+          value: {kind: ServiceAccount, name: obc-openbao-config-operator, namespace: openbao-system}
+        documentIndex: 5
+      - equal:
+          path: metadata.namespace
+          value: openbao-system
+        documentIndex: 6
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [secrets]
+            verbs: [create, get, list, patch, update, watch]
+        documentIndex: 6
+
+  - it: keeps only cluster-scoped kinds, namespaces and nonResourceURLs in the ClusterRole when watchNamespaces is set
+    template: templates/rbac/manager.yaml
+    set:
+      watchNamespaces: [team-a, team-b]
+    documentIndex: 0
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - notMatchRegex:
+          path: rules[*].resources[*]
+          pattern: ^(policies|openbaoconnections|openbaoendpoints|kvsecrets|secrets|configmaps)(/.*)?$
+      - notMatchRegex:
+          path: rules[*].apiGroups[*]
+          pattern: ^(access|auth|identity|secrets|sys)\.openbaoconfig\.io$
+      - contains:
+          path: rules
+          content:
+            apiGroups: [core.openbaoconfig.io]
+            resources: [clusteropenbaoconnections, openbaoservers]
+            verbs: [get, list, patch, update, watch]
+      - contains:
+          path: rules
+          content:
+            apiGroups: [core.openbaoconfig.io]
+            resources: [clusteropenbaoconnections/status, openbaoservers/status]
+            verbs: [get, patch, update]
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [namespaces]
+            verbs: [get, list, watch]
+      - contains:
+          path: rules
+          content:
+            nonResourceURLs: [/.well-known/openid-configuration]
+            verbs: [get]
+
+  - it: grants namespaced managed kinds in every manager Role when watchNamespaces is set
+    template: templates/rbac/manager.yaml
+    set:
+      watchNamespaces: [team-a, team-b]
+    asserts:
+      - contains:
+          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].resources
+          content: policies
+        documentIndex: 2
+      - equal:
+          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].verbs
+          value: [get, list, patch, update, watch]
+        documentIndex: 2
+      - contains:
+          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].resources
+          content: policies
+        documentIndex: 4
+      - equal:
+          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].verbs
+          value: [get, list, patch, update, watch]
+        documentIndex: 4
+      - contains:
+          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].resources
+          content: policies
+        documentIndex: 6
+      - equal:
+          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].verbs
+          value: [get, list, patch, update, watch]
+        documentIndex: 6
+      - contains:
+          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "patch")].resources
+          content: policies/status
+        documentIndex: 4
+      - equal:
+          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "patch")].verbs
+          value: [get, patch, update]
+        documentIndex: 4
+      - contains:
+          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[0] == "update")].resources
+          content: policies/finalizers
+        documentIndex: 6
+      - equal:
+          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[0] == "update")].verbs
+          value: [update]
+        documentIndex: 6
+      - contains:
+          path: rules
+          content:
+            apiGroups: [core.openbaoconfig.io]
+            resources: [openbaoconnections, openbaoendpoints]
+            verbs: [get, list, patch, update, watch]
+        documentIndex: 6
+      - notMatchRegex:
+          path: rules[*].resources[*]
+          pattern: ^(openbaoservers|clusteropenbaoconnections|namespaces)(/.*)?$
+        documentIndex: 2
+
+  - it: keeps namespaced managed kinds in the ClusterRole by default
+    template: templates/rbac/manager.yaml
+    documentIndex: 0
+    asserts:
+      - contains:
+          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].resources
+          content: policies
+      - equal:
+          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].verbs
+          value: [get, list, patch, update, watch]
+      - contains:
+          path: rules
+          content:
+            apiGroups: [core.openbaoconfig.io]
+            resources: [openbaoconnections, openbaoendpoints]
+            verbs: [get, list, patch, update, watch]
+      - contains:
+          path: rules
+          content:
+            apiGroups: [core.openbaoconfig.io]
+            resources: [clusteropenbaoconnections, openbaoservers]
+            verbs: [get, list, patch, update, watch]
+
+  - it: lets the manager read and create the hash-key Secret in its own namespace
+    template: templates/rbac/manager.yaml
+    set:
+      watchNamespaces: [team-a]
+    asserts:
+      - isKind:
+          of: Role
+        documentIndex: 4
+      - equal:
+          path: metadata.namespace
+          value: openbao-system
+        documentIndex: 4
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [secrets]
+            verbs: [create, get, list, patch, update, watch]
+        documentIndex: 4
+
+  - it: creates no manager RBAC when rbac.create is false
+    template: templates/rbac/manager.yaml
+    set:
+      rbac.create: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: grants leases for leader election in the release namespace
+    template: templates/rbac/leader-election.yaml
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: openbao-system
+        documentIndex: 0
+      - contains:
+          path: rules
+          content:
+            apiGroups: [coordination.k8s.io]
+            resources: [leases]
+            verbs: [get, list, watch, create, update, patch, delete]
+        documentIndex: 0
+
+  - it: allows the metrics auth filter to review tokens
+    template: templates/rbac/metrics.yaml
+    asserts:
+      - hasDocuments:
+          count: 3
+      - contains:
+          path: rules
+          content:
+            apiGroups: [authentication.k8s.io]
+            resources: [tokenreviews]
+            verbs: [create]
+        documentIndex: 0
+
+  - it: names and aggregates the user roles
+    template: templates/rbac/user-roles.yaml
+    asserts:
+      - equal:
+          path: metadata.name
+          value: obc-tenant-editor
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["rbac.authorization.k8s.io/aggregate-to-edit"]
+          value: "true"
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["rbac.authorization.k8s.io/aggregate-to-admin"]
+          value: "true"
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: obc-viewer
+        documentIndex: 1
+      - equal:
+          path: metadata.labels["rbac.authorization.k8s.io/aggregate-to-view"]
+          value: "true"
+        documentIndex: 1
+
+  - it: keeps connections and secrets out of the tenant editor
+    template: templates/rbac/user-roles.yaml
+    documentIndex: 0
+    asserts:
+      - notMatchRegex:
+          path: rules[*].resources[*]
+          pattern: openbaoconnections|^secrets$
+      - notContains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [secrets]
+          any: true
+
+  - it: drops aggregation labels when disabled
+    template: templates/rbac/user-roles.yaml
+    set:
+      rbac.aggregate.edit: false
+      rbac.aggregate.admin: false
+      rbac.aggregate.view: false
+    asserts:
+      - notExists:
+          path: metadata.labels["rbac.authorization.k8s.io/aggregate-to-edit"]
+        documentIndex: 0
+      - notExists:
+          path: metadata.labels["rbac.authorization.k8s.io/aggregate-to-view"]
+        documentIndex: 1
+
+  - it: mounts the ServiceAccount token for TokenRequest and kubernetes auth
+    template: templates/serviceaccount.yaml
+    asserts:
+      - equal:
+          path: automountServiceAccountToken
+          value: true
+      - equal:
+          path: metadata.name
+          value: obc-openbao-config-operator
+
+  - it: lists plugin kinds in the user roles only when pluginKinds.enabled is true
+    template: templates/rbac/user-roles.yaml
+    documentIndex: 0
+    asserts:
+      - notMatchRegex:
+          path: rules[*].resources[*]
+          pattern: ^ldapauthconfigs$
+
+  - it: adds plugin kinds to the user roles when enabled
+    template: templates/rbac/user-roles.yaml
+    documentIndex: 0
+    set:
+      pluginKinds.enabled: true
+    asserts:
+      - contains:
+          path: rules[2].resources
+          content: ldapauthconfigs
+
+  - it: keeps OpenBaoServers out of the tenant roles
+    template: templates/rbac/user-roles.yaml
+    asserts:
+      - notMatchRegex:
+          path: rules[*].resources[*]
+          pattern: ^openbaoservers
+        documentIndex: 0
+      - notMatchRegex:
+          path: rules[*].resources[*]
+          pattern: ^openbaoservers
+        documentIndex: 1

@@ -1,0 +1,16 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AWSAuthSTSRole
+metadata:
+  name: aws-sts-123456789012
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: aws
+  accountID: "123456789012"
+  stsRole: arn:aws:iam::123456789012:role/openbao-login-verifier
+  externalID: openbao-config

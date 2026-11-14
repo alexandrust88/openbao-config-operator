@@ -1,0 +1,27 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Plugin
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  args:
+  - example
+  command: example
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  env:
+  - name: example
+    secretKeyRef:
+      key: value
+      name: example
+  managementPolicy: Manage
+  name: example
+  oci: true
+  sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  type: auth
+  version: 0.0.0

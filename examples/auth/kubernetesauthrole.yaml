@@ -1,0 +1,39 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthRole
+metadata:
+  name: app-reader
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: kubernetes
+  name: app-reader
+  boundServiceAccountNames:
+    - app
+    - app-worker
+  boundServiceAccountNamespaces:
+    - team-a
+  boundServiceAccountNamespaceSelector:
+    matchLabels:
+      tenant: team-a
+      environment: dev
+  audience: openbao
+  aliasNameSource: serviceaccount_name
+  tokenTTL: 1h
+  tokenMaxTTL: 4h
+  tokenExplicitMaxTTL: 8h
+  tokenPeriod: 30m
+  tokenPolicies:
+    - app-reader
+  policyRefs:
+    - name: obco-team-a-reader
+  tokenBoundCIDRs:
+    - 10.42.0.0/16
+    - 10.43.0.10
+  tokenNumUses: 0
+  tokenType: service
+  tokenNoDefaultPolicy: false
+  tokenStrictlyBindIP: false

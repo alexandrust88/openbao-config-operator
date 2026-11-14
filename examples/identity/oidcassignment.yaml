@@ -1,0 +1,31 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: OIDCAssignment
+metadata:
+  name: obco-portal-users
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  deletionPolicy: Delete
+  name: obco-portal-users
+  entities:
+    - entityID: 6f1e3c2a-0000-4000-8000-000000000001
+    - entityName: obco-alice
+    - entityRef:
+        name: obco-bob
+    - entitySelector:
+        matchLabels:
+          obco.example.com/portal: "true"
+  groups:
+    - groupID: 6f1e3c2a-0000-4000-8000-000000000002
+    - groupName: obco-developers
+    - groupRef:
+        name: obco-operators
+    - groupSelector:
+        matchLabels:
+          obco.example.com/portal: "true"

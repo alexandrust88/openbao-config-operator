@@ -1,0 +1,26 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTCELRole
+metadata:
+  name: ci-cel
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: jwt-ci
+  name: ci-cel
+  celProgram:
+    variables:
+      - name: project
+        expression: claims.project_path
+      - name: protected
+        expression: claims.ref_protected == "true"
+    expression: 'project.startsWith("platform/") && protected'
+  message: only protected refs of platform projects may log in
+  boundAudiences:
+    - https://openbao.example.com
+  expirationLeeway: 150
+  notBeforeLeeway: 2m30s
+  clockSkewLeeway: -1

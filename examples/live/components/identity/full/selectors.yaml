@@ -1,0 +1,41 @@
+# Selector labels carry the referent's own name, so the overlay's namePrefix renames label and selector together
+# and a selector never matches the objects of another overlay in the same Kubernetes namespace.
+nameReference:
+  - kind: AuthMount
+    fieldSpecs:
+      - path: metadata/labels/livekit-select
+        kind: AuthMount
+      - path: spec/mountSelector/matchLabels/livekit-select
+        kind: EntityAlias
+      - path: spec/mountSelector/matchLabels/livekit-select
+        kind: GroupAlias
+      - path: spec/authMounts/mountSelector/matchLabels/livekit-select
+        kind: MFALoginEnforcement
+  - kind: Entity
+    fieldSpecs:
+      - path: metadata/labels/livekit-select
+        kind: Entity
+      - path: spec/entitySelector/matchLabels/livekit-select
+        kind: EntityAlias
+      - path: spec/entitySelector/matchLabels/livekit-select
+        kind: GroupMembership
+      - path: spec/entities/entitySelector/matchLabels/livekit-select
+        kind: MFALoginEnforcement
+  - kind: Group
+    fieldSpecs:
+      - path: metadata/labels/livekit-select
+        kind: Group
+      - path: spec/groupSelector/matchLabels/livekit-select
+        kind: GroupAlias
+      - path: spec/groupSelector/matchLabels/livekit-select
+        kind: GroupMembership
+      - path: spec/memberGroupSelector/matchLabels/livekit-select
+        kind: GroupMembership
+      - path: spec/groups/groupSelector/matchLabels/livekit-select
+        kind: MFALoginEnforcement
+  - kind: MFAMethod
+    fieldSpecs:
+      - path: metadata/labels/livekit-select
+        kind: MFAMethod
+      - path: spec/mfaMethods/methodSelector/matchLabels/livekit-select
+        kind: MFALoginEnforcement

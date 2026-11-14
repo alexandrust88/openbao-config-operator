@@ -1,0 +1,68 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: userpass
+spec:
+  connectionRef:
+    name: openbao
+  type: userpass
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: UserpassUser
+metadata:
+  name: userpass-alice
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: userpass
+  passwordSecretRef:
+    name: live-auth-userpass
+    key: password
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: cert
+spec:
+  connectionRef:
+    name: openbao
+  type: cert
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: CertAuthConfig
+metadata:
+  name: cert-config
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  mountPath: cert
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: CertAuthRole
+metadata:
+  name: cert-device
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: cert
+  certificate: |
+    -----BEGIN CERTIFICATE-----
+    MIIDFjCCAf6gAwIBAgIJAOMO4RrHZCFrMA0GCSqGSIb3DQEBCwUAMDgxGzAZBgNV
+    BAMMEmxpdmUga2l0IGRldmljZSBDQTEZMBcGA1UECgwQb3BlbmJhbyBsaXZlIGtp
+    dDAeFw0yNjExMTQwOTQxMTVaFw0zNjExMTEwOTQxMTVaMDgxGzAZBgNVBAMMEmxp
+    dmUga2l0IGRldmljZSBDQTEZMBcGA1UECgwQb3BlbmJhbyBsaXZlIGtpdDCCASIw
+    DQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALaBbUVMzqf++N7q9STQPQRMn5US
+    7EgP0VKI+HgyBmG0Ia21TKx87sA59OxL0epv0WNxzrqocJUsudlvLiEh0lbHC01i
+    GJvkRayJvAenCkjX65OvYBL6hRqg0naL/gkXYc3MCWcewx/UqkivUaBGnclDqub8
+    xQScq1+ju0xqx+IttmMtTnD6FsaDt+u6/4wVs3LCojYe1u6KglvpOByCBA//9j6T
+    9PBS0r41Qy1Fy8j6CHu4nwvn07NiU9P2183ILSytRqPNNckB61IrggTxa9jjfi1A
+    vMVoEIdvTK3lxI7c0GK7sEWhVovxzW0Ny+Z+sMkfPoAJnq9FvgyK6/EA2isCAwEA
+    AaMjMCEwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwDQYJKoZIhvcN
+    AQELBQADggEBAHwDcnI5khRbXtL0og28P0C4ulotHGg8YOB6PqC71wTlr0yhjrK6
+    PxasOT+j/C5VpSEZ5n0hfmmovcBE1QwUaagNcFQla5fqd08+eHhed59UvCUHE6Cg
+    U9s5uLCXzxM6Rlf/cvnPwN7L3lxmCpRjCNifxP1b1cqSTyURtgLV1tbTMrD+KnO/
+    bSkB+7Rh7taNPZq0/adl6+TJdYd8zn19Btte8LNREiDW6Wxpvuo4n+OT87J30+xZ
+    Xn3NfatUvfMJGpB0dl0Aa4RxxD38iwGgn7pi7cmbUtgTPyn0wMUPVi0MvUZ0O8+n
+    ModOYnbADY29hA+8H6UPgzDtxzn6kHeNZbE=
+    -----END CERTIFICATE-----

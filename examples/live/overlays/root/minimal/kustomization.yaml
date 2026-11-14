@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: root-min-
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: openbao-live-kit
+      live.openbaoconfig.io/overlay: root-min
+resources:
+  - ../../../params
+components:
+  - ../../../base
+  - ../../../modes/root
+  - ../../../sets/namespaced-minimal
+  - ../../../sets/root-only-minimal
+  - ../../../finalize

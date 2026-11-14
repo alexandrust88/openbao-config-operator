@@ -1,0 +1,14 @@
+# Makes OpenBao record the X-Openbao-Config-Resource header that the operator sends with every request
+# (<group>/<kind>/<k8s-namespace>/<name>), in clear text, so each audit entry traces to its custom resource.
+# Request headers are configured in the root namespace, so use a connection whose OpenBao namespace is root.
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuditRequestHeader
+metadata:
+  name: obco-resource-attribution
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  name: X-Openbao-Config-Resource
+  hmac: false

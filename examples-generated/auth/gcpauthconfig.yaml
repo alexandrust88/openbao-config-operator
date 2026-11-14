@@ -1,0 +1,39 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: GCPAuthConfig
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  credentialsSecretRef:
+    key: value
+    name: gcpauthconfig-credentials-secret-ref
+  customEndpoint:
+    api: example
+    compute: example
+    crm: example
+    iam: example
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  gceAlias: role_id
+  gceMetadata:
+  - example
+  iamAlias: role_id
+  iamMetadata:
+  - example
+  managementPolicy: Manage
+  mountPath: gcp
+  namespace: example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gcpauthconfig-credentials-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

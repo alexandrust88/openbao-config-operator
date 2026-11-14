@@ -1,0 +1,20 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: RaftAutopilot
+metadata:
+  name: obco-autopilot
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  cleanupDeadServers: true
+  lastContactThreshold: 10s
+  deadServerLastContactThreshold: 24h
+  maxTrailingLogs: 1000
+  minQuorum: 3
+  serverStabilizationTime: 10s

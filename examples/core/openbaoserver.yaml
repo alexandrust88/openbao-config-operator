@@ -1,0 +1,22 @@
+# The platform team declares the OpenBao server once. Tenants in namespaces labelled
+# openbaoconfig.io/tenant=true may connect to it with OpenBaoConnections that request the openbao token audience;
+# the Kubernetes API server's own audiences are always refused.
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoServer
+metadata:
+  name: openbao
+spec:
+  address: https://openbao.openbao.svc:8200
+  caBundle:
+    configMapRef:
+      namespace: openbao
+      name: openbao-ca
+  allowedNamespaces:
+    matchLabels:
+      openbaoconfig.io/tenant: "true"
+  allowedAudiences:
+    - openbao
+  rateLimit:
+    qps: 50
+    burst: 100
+  requestTimeout: 30s

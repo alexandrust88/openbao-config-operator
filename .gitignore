@@ -1,0 +1,74 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/*
+Dockerfile.cross
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Go workspace file
+go.work
+
+# Kubernetes Generated files - skip generated files, except for vendored files
+!vendor/**/zz_generated.*
+
+# editor and IDE paraphernalia
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Kubeconfig might contain secrets
+*.kubeconfig
+
+# local scratch, references and agent notes
+.tmp/
+__pycache__/
+
+# credentials and key material
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+*.keytab
+*.kubeconfig
+kubeconfig*
+.env
+.env.*
+*.env
+.envrc
+
+# build, release and docs output
+cover.out
+/coverage.*
+dist/
+site/
+*.tgz
+*.tar
+*.oci.tar
+*.sigstore.json
+*.intoto.jsonl
+*.spdx.json
+*.cdx.json
+go.work.sum
+
+# local tooling and OS files
+.venv/
+venv/
+node_modules/
+.DS_Store
+.cursor/
+.kiro/
+.claude/
+CLAUDE.md

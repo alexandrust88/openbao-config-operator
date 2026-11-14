@@ -1,0 +1,72 @@
+name: New kind request
+description: Ask for a typed kind for an OpenBao API path that today needs OpenBaoEndpoint.
+title: "New kind: "
+labels: ["kind/new-kind", "triage/needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [kind catalogue](https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/kinds.md)
+        and the [API coverage report](https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/api-coverage.md)
+        first: the path may already be typed, planned, or deliberately left to `OpenBaoEndpoint` (one-off actions
+        such as login, issue, sign, rotate or tidy get no typed kind).
+  - type: input
+    id: api-path
+    attributes:
+      label: OpenBao API path
+      description: "The configuration endpoint, relative to the OpenBao namespace. Use <m> for a secrets mount and <b> for an auth mount, e.g. <m>/cache-config or auth/<b>/crls/<name>."
+      placeholder: "<m>/cache-config"
+    validations:
+      required: true
+  - type: input
+    id: docs
+    attributes:
+      label: OpenBao documentation link
+      description: The API docs page for the path on openbao.org.
+    validations:
+      required: true
+  - type: dropdown
+    id: availability
+    attributes:
+      label: Availability
+      description: Is the backend compiled into OpenBao, or an external plugin?
+      options:
+        - builtin (compiled into OpenBao)
+        - external plugin (openbao-plugins or third party)
+        - not sure
+    validations:
+      required: true
+  - type: input
+    id: openbao-version
+    attributes:
+      label: OpenBao versions
+      description: The OpenBao releases you need it on, e.g. 2.7.x.
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: What you configure with it, and how many objects you expect.
+    validations:
+      required: true
+  - type: textarea
+    id: wire-shape
+    attributes:
+      label: Read and write shape
+      description: |
+        Optional but very helpful: `bao read -format=json <path>` against `bao server -dev` (no real values), and the
+        fields that are write-only, create-only, renamed on read, unordered lists or durations.
+      render: json
+  - type: textarea
+    id: endpoint
+    attributes:
+      label: Current OpenBaoEndpoint workaround
+      description: The OpenBaoEndpoint you use today, if any. Remove secret values.
+      render: yaml
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to implement this kind myself (the recipe is in AGENTS.md, "Adding a kind").

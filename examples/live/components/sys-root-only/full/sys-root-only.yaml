@@ -1,0 +1,283 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: sys-kv
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: sys-kv
+  type: kv-v2
+  description: KV mount the live kit's rate-limit quota applies to
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Audit
+metadata:
+  name: sys-audit-stdout
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: sys-audit-stdout
+  type: file
+  description: Live kit audit log to the server's standard output
+  local: false
+  options:
+    file_path: stdout
+    hmac_accessor: "true"
+    elide_list_responses: "true"
+  optionsSecretRefs:
+    format:
+      name: live-sys-audit
+      key: format
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuditRequestHeader
+metadata:
+  name: sys-request-id-header
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: X-Request-Id
+  hmac: false
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: RateLimitQuota
+metadata:
+  name: sys-kv-quota
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: sys-kv-quota
+  path: sys-kv
+  rate: "500"
+  interval: 1s
+  blockInterval: 30s
+  inheritable: false
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: QuotaConfig
+metadata:
+  name: sys-quota-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  enableRateLimitAuditLogging: true
+  enableRateLimitResponseHeaders: false
+  rateLimitExemptPaths:
+    - sys/generate-recovery-token/attempt
+    - sys/generate-recovery-token/update
+    - sys/generate-root/attempt
+    - sys/generate-root/update
+    - sys/health
+    - sys/seal-status
+    - sys/unseal
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: CORSConfig
+metadata:
+  name: sys-cors
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  allowedOrigins:
+    - https://openbao.example.com
+  allowedHeaders:
+    - X-Request-Id
+  allowCredentials: false
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: UIHeader
+metadata:
+  name: sys-ui-header
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: X-Live-Kit
+  values:
+    - full
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Logger
+metadata:
+  name: sys-logger
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: policy
+  level: info
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: RaftAutopilot
+metadata:
+  name: sys-autopilot
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  cleanupDeadServers: false
+  lastContactThreshold: 10s
+  deadServerLastContactThreshold: 24h
+  maxTrailingLogs: 1000
+  minQuorum: 3
+  serverStabilizationTime: 10s
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: KeyRotationConfig
+metadata:
+  name: sys-key-rotation
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  enabled: true
+  interval: "0"
+  maxOperations: 3865470566
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Plugin
+metadata:
+  name: sys-plugin-secrets
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  type: secret
+  name: live-kit-secrets
+  command: openbao-plugin-secrets-live-kit
+  sha256: 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
+  args:
+    - -tls-skip-verify=false
+  env:
+    - name: PLUGIN_LOG_LEVEL
+      secretKeyRef:
+        name: live-sys-plugin
+        key: log-level
+  version: v0.1.0
+  oci: false
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Plugin
+metadata:
+  name: sys-plugin-auth
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  type: auth
+  name: live-kit-auth
+  command: openbao-plugin-auth-live-kit
+  sha256: fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9
+  oci: true
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: sys-plugin-mount
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: sys-plugin-mount
+  type: live-kit-secrets
+  pluginRef:
+    name: sys-plugin-secrets
+  description: Secrets engine run by the plugin that sys-plugin-secrets registers
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: sys-plugin-auth-mount
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: sys-plugin-auth-mount
+  type: live-kit-auth
+  pluginRef:
+    name: sys-plugin-auth
+  description: Auth method run by the plugin that sys-plugin-auth registers

@@ -1,0 +1,5 @@
+# Exceptions for the kit's shared parts (base, modes, kv-app). Each scenario keeps its own file next to this one;
+# the test merges them. fullFields: spec fields no full example sets. notReady: objects that do not reach Ready in
+# the end-to-end run against bao server -dev. Every entry carries the reason; an entry is a gap, not a convenience.
+fullFields: {}
+notReady: []

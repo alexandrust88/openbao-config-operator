@@ -1,0 +1,25 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: QuotaConfig
+metadata:
+  name: obco-quota-config
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  rateLimitExemptPaths:
+    - sys/generate-recovery-token/attempt
+    - sys/generate-recovery-token/update
+    - sys/generate-root/attempt
+    - sys/generate-root/update
+    - sys/health
+    - sys/seal-status
+    - sys/unseal
+    - sys/metrics
+  enableRateLimitAuditLogging: true
+  enableRateLimitResponseHeaders: true

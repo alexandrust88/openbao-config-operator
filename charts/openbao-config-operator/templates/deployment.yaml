@@ -1,0 +1,176 @@
+{{- if and (gt (int .Values.replicas) 1) (not .Values.leaderElection.enabled) }}
+{{- fail "replicas > 1 requires leaderElection.enabled=true" }}
+{{- end }}
+{{- $projectedToken := .Values.injectedIdentity.projectedToken }}
+{{- if and $projectedToken.enabled (eq (dir $projectedToken.path) "/var/run/secrets/kubernetes.io/serviceaccount") }}
+{{- fail "injectedIdentity.projectedToken.path must not be in the automounted ServiceAccount token directory" }}
+{{- end }}
+{{- if not (or .Values.crds.install .Values.crds.keep) }}
+{{- fail "crds.install=false with crds.keep=false deletes the CRDs installed by an earlier release, and every custom resource with them" }}
+{{- end }}
+{{- $metricsCert := and .Values.metrics.enabled .Values.metrics.certSecret }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openbao-config-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openbao-config-operator.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.replicas }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "openbao-config-operator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "openbao-config-operator.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "openbao-config-operator.serviceAccountName" . }}
+      automountServiceAccountToken: true
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: manager
+          image: {{ include "openbao-config-operator.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /manager
+          args:
+            - --leader-elect={{ .Values.leaderElection.enabled }}
+            - --health-probe-bind-address=:{{ .Values.health.port }}
+            {{- if .Values.pprof.enabled }}
+            - --pprof-bind-address=127.0.0.1:{{ .Values.pprof.port }}
+            {{- end }}
+            {{- if .Values.metrics.enabled }}
+            - --metrics-bind-address=:{{ .Values.metrics.port }}
+            - --metrics-secure=true
+            {{- with .Values.metrics.certSecret }}
+            - --metrics-cert-path=/etc/openbao-config-operator/metrics-certs
+            {{- end }}
+            {{- else }}
+            - --metrics-bind-address=0
+            {{- end }}
+            {{- with .Values.watchNamespaces }}
+            - --watch-namespaces={{ include "openbao-config-operator.watchNamespaces" $ }}
+            {{- end }}
+            {{- with .Values.apiServerAudiences }}
+            - --apiserver-audiences={{ join "," . }}
+            {{- end }}
+            {{- if .Values.pluginKinds.enabled }}
+            - --enable-plugin-kinds
+            {{- end }}
+            {{- with .Values.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: health
+              containerPort: {{ .Values.health.port }}
+              protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if or $metricsCert $projectedToken.enabled .Values.extraVolumeMounts }}
+          volumeMounts:
+            {{- if $metricsCert }}
+            - name: metrics-certs
+              mountPath: /etc/openbao-config-operator/metrics-certs
+              readOnly: true
+            {{- end }}
+            {{- if $projectedToken.enabled }}
+            - name: injected-identity-token
+              mountPath: {{ dir $projectedToken.path }}
+              readOnly: true
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+      {{- if or $metricsCert $projectedToken.enabled .Values.extraVolumes }}
+      volumes:
+        {{- if $metricsCert }}
+        - name: metrics-certs
+          secret:
+            secretName: {{ .Values.metrics.certSecret }}
+        {{- end }}
+        {{- if $projectedToken.enabled }}
+        - name: injected-identity-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: {{ $projectedToken.audience | quote }}
+                  expirationSeconds: {{ int $projectedToken.expirationSeconds }}
+                  path: {{ base $projectedToken.path }}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- $selector := include "openbao-config-operator.selectorLabels" $ | fromYaml }}
+        {{- range . }}
+        {{- $constraint := deepCopy . }}
+        {{- if not (hasKey $constraint "labelSelector") }}
+        {{- $_ := set $constraint "labelSelector" (dict "matchLabels" $selector) }}
+        {{- end }}
+        - {{- toYaml $constraint | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

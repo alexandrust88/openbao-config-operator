@@ -1,0 +1,47 @@
+title = "openbao-config-operator"
+# gitleaks 8.27.2 did not apply these targetRules allowlists; 8.30.1 (the CI pin) does.
+minVersion = "v8.30.1"
+
+[extend]
+useDefault = true
+
+# Each entry is one fake test value, scoped to its rule, its file and the exact value, so a real
+# secret added next to it is still reported. A pull request that edits this file needs a code owner.
+
+[[allowlists]]
+description = "fake AppRole role_id constant in unit tests"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^internal/controller/auth/builtindefaults_test\.go$''']
+regexes = ['''^c39eeec9-bd06-c208-d5ae-97defbf5ca0e$''']
+
+[[allowlists]]
+description = "fake Kerberos keytab in a golden file (base64 of a placeholder string)"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^internal/controller/auth/testdata/kerberosauthconfig\.golden\.json$''']
+regexes = ['''^ZmFrZS1rZXl0YWItYnl0ZXMtcmVwbGFjZS13aXRoLWt1YmVjdGwtY3JlYXRlLXNlY3JldC1mcm9tLWZpbGU=$''']
+
+[[allowlists]]
+description = "fake TOTP seed in unit and integration tests"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = [
+  '''^internal/controller/secrets/totpkey_test\.go$''',
+  '''^test/integration/secrets_engines_test\.go$''',
+]
+regexes = ['''^KRSXG5CTMVRXEZLU$''']
+
+[[allowlists]]
+description = "PEM header without a key body in a fake PKI response"
+condition = "AND"
+targetRules = ["private-key"]
+paths = ['''^internal/controller/secrets/pki_test\.go$''']
+regexes = ['''^-----BEGIN PRIVATE KEY-----", "private_key_type": "rsa",''']
+
+[[allowlists]]
+description = "Go identifier concatenation in the namespace matrix catalogue, not a secret"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^test/nsmatrix/catalog_test\.go$''']
+regexes = ['''nsmKindSecret\+''']

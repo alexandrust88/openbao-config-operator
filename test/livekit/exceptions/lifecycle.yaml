@@ -1,0 +1,4 @@
+notReady:
+  - kind: Policy
+    name: lc-paused
+    reason: carries openbaoconfig.io/paused, so the operator never reconciles it and it gets no Ready condition

@@ -1,0 +1,46 @@
+name: Feature request
+description: A new field or behaviour on an existing kind, or a change to the engine, chart or tooling.
+labels: ["kind/feature", "triage/needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a new typed kind, use the **New kind request** form instead. A proposal that changes an accepted
+        [ADR](https://github.com/alexandrust88/openbao-config-operator/tree/main/docs/adr) needs a new ADR;
+        say which one in the proposal.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and why is it hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The field, flag or behaviour you would like, with an example custom resource if you can.
+      render: yaml
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: What you use today (OpenBaoEndpoint, a script, another tool) and why it is not enough.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - engine (drift, ownership, write budget, conditions)
+        - connections and tenant boundary
+        - a typed kind
+        - import CLI or observe mode
+        - Helm chart or install
+        - docs
+        - other
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to implement this myself, with guidance.

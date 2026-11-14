@@ -1,0 +1,37 @@
+# Categories of the notes `gh release create --generate-notes` adds to each GitHub release (release workflow).
+# A pull request lands in the first category whose label it has; label pull requests with kind/* during review.
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+      - "autorelease: pending"
+      - "autorelease: tagged"
+  categories:
+    - title: API changes
+      labels:
+        - kind/api-change
+    - title: Deprecations and removals
+      labels:
+        - kind/deprecation
+    - title: Security
+      labels:
+        - kind/security
+    - title: New kinds
+      labels:
+        - kind/new-kind
+    - title: Features
+      labels:
+        - kind/feature
+    - title: Bug fixes
+      labels:
+        - kind/bug
+        - kind/regression
+    - title: Documentation
+      labels:
+        - kind/docs
+    - title: Dependencies
+      labels:
+        - kind/dependencies
+    - title: Other changes
+      labels:
+        - "*"

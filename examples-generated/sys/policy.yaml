@@ -1,0 +1,27 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  accessorRefs:
+    example:
+      authMountRef:
+        name: example
+  allowSlashesInIdentityTemplates: true
+  allowWildcardsInIdentityTemplates: true
+  casRequired: true
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  name: example
+  namespace: example
+  policy: |
+    path "secret/data/example/*" {
+      capabilities = ["read"]
+    }

@@ -1,0 +1,191 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: acc-kv
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: acc-kv
+  type: kv-v2
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: acc-kubernetes
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: acc-kubernetes
+  type: kubernetes
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: acc-jwt
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: acc-jwt
+  type: jwt
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessLevel
+metadata:
+  name: acc-read
+spec:
+  data:
+    - read
+  metadata:
+    - read
+    - list
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessLevel
+metadata:
+  name: acc-write
+spec:
+  data:
+    - create
+    - read
+    - update
+    - patch
+  metadata:
+    - read
+    - list
+  versions: false
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessLevel
+metadata:
+  name: acc-owner
+spec:
+  data:
+    - create
+    - read
+    - update
+    - patch
+    - delete
+    - list
+  metadata:
+    - create
+    - read
+    - update
+    - patch
+    - delete
+    - list
+  versions: true
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessGrant
+metadata:
+  name: acc-workloads
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  authMountRef:
+    name: acc-kubernetes
+  subjects:
+    - name: payments-api
+      namespace: payments
+  rules:
+    - mount: acc-kv
+      path: apps/payments/payments-api/*
+      metadataPath: apps/payments/payments-api
+      level: acc-write
+    - mount: acc-kv
+      path: shared/{org}/*
+      metadataPath: shared/{org}
+      level: acc-read
+      organizations:
+        - acme
+        - globex
+  tokenTTL: 15m
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessGrant
+metadata:
+  name: acc-team-workloads
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: acc-kubernetes
+  subjects:
+    - name: "*"
+      namespaceSelector:
+        matchLabels:
+          team: payments
+  rules:
+    - mount: acc-kv
+      path: apps/{sa.namespace}/{sa.name}/*
+      metadataPath: apps/{sa.namespace}/{sa.name}
+      level: acc-owner
+  tokenTTL: 30m
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessLayout
+metadata:
+  name: acc-teams
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  authMounts:
+    - acc-jwt
+  organizations:
+    - acme
+    - globex
+  groupAliasTemplate: "{org}-{role}"
+  paths:
+    - mount: acc-kv
+      path: teams/{org}/+/*
+      metadataPath: teams/{org}/*
+  roles:
+    - name: developer
+      levels:
+        - namespace: ""
+          level: acc-write
+    - name: lead
+      levels:
+        - namespace: ""
+          level: acc-owner

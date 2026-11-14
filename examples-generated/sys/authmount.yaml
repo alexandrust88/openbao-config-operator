@@ -1,0 +1,44 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  allowedResponseHeaders:
+  - example
+  auditNonHMACRequestKeys:
+  - example
+  auditNonHMACResponseKeys:
+  - example
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  defaultLeaseTTL: 1h
+  deletionPolicy: Orphan
+  description: example
+  driftDetection: Enabled
+  driftInterval: 1h
+  externalEntropyAccess: true
+  forceNoCache: true
+  listingVisibility: unauth
+  local: true
+  managementPolicy: Manage
+  maxLeaseTTL: 1h
+  namespace: example
+  options:
+    example: example
+  passthroughRequestHeaders:
+  - example
+  path: example
+  pluginRef:
+    name: example
+  pluginVersion: example
+  sealWrap: true
+  tokenType: default-service
+  type: approle
+  userLockout:
+    counterResetDuration: 1h
+    disable: true
+    duration: 1h
+    threshold: 1

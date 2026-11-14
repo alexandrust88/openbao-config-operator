@@ -1,0 +1,19 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: CORSConfig
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  allowCredentials: true
+  allowedHeaders:
+  - example
+  allowedOrigins:
+  - example
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage

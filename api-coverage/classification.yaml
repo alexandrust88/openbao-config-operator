@@ -1,0 +1,390 @@
+# Classification of every writable (POST, PUT, PATCH, DELETE) path template in the OpenAPI snapshots
+# api-coverage/openapi-<minor>.json. Each path has exactly one class:
+#   typed: <Kind>             a CRD kind in config/crd/bases configures the object behind the path
+#   endpoint-only: <reason>   configuration without a typed kind; use the OpenBaoEndpoint kind
+#                             ("unreviewed" marks a path nobody has classified yet)
+#   action: <reason>          a one-off operation, not configuration (login, issue, sign, rotate, ...)
+# go test ./test/apicoverage/... fails on an unclassified, doubly classified or stale path and on an
+# unknown kind; go run ./hack/apicoverage rewrites docs/api-coverage.md.
+"/auth/token/create": {action: "creates a token"}
+"/auth/token/create-orphan": {action: "creates a token"}
+"/auth/token/create/{role_name}": {action: "creates a token"}
+"/auth/token/lookup": {action: "looks up a token"}
+"/auth/token/lookup-accessor": {action: "looks up a token"}
+"/auth/token/lookup-self": {action: "looks up a token"}
+"/auth/token/renew": {action: "renews a token"}
+"/auth/token/renew-accessor": {action: "renews a token"}
+"/auth/token/renew-self": {action: "renews a token"}
+"/auth/token/revoke": {action: "revokes a token"}
+"/auth/token/revoke-accessor": {action: "revokes a token"}
+"/auth/token/revoke-orphan": {action: "revokes a token"}
+"/auth/token/revoke-self": {action: "revokes a token"}
+"/auth/token/roles/{role_name}": {typed: "TokenRole"}
+"/auth/token/tidy": {action: "tidies the token store"}
+"/auth/{approle_mount_path}/login": {action: "login"}
+"/auth/{approle_mount_path}/role/{role_name}": {typed: "AppRole"}
+"/auth/{approle_mount_path}/role/{role_name}/bind-secret-id": {typed: "AppRole"}
+"/auth/{approle_mount_path}/role/{role_name}/bound-cidr-list": {typed: "AppRole"}
+"/auth/{approle_mount_path}/role/{role_name}/custom-secret-id": {action: "creates a caller-chosen secret ID; AppRoleSecretID generates secret IDs"}
+"/auth/{approle_mount_path}/role/{role_name}/period": {typed: "AppRole"}
+"/auth/{approle_mount_path}/role/{role_name}/policies": {typed: "AppRole"}
+"/auth/{approle_mount_path}/role/{role_name}/role-id": {typed: "AppRole"}
+"/auth/{approle_mount_path}/role/{role_name}/secret-id": {typed: "AppRoleSecretID"}
+"/auth/{approle_mount_path}/role/{role_name}/secret-id-accessor/destroy": {action: "destroys a secret ID"}
+"/auth/{approle_mount_path}/role/{role_name}/secret-id-accessor/lookup": {action: "looks up a secret ID"}
+"/auth/{approle_mount_path}/role/{role_name}/secret-id-bound-cidrs": {typed: "AppRole"}
+"/auth/{approle_mount_path}/role/{role_name}/secret-id-num-uses": {typed: "AppRole"}
+"/auth/{approle_mount_path}/role/{role_name}/secret-id-ttl": {typed: "AppRole"}
+"/auth/{approle_mount_path}/role/{role_name}/secret-id/destroy": {action: "destroys a secret ID"}
+"/auth/{approle_mount_path}/role/{role_name}/secret-id/lookup": {action: "looks up a secret ID"}
+"/auth/{approle_mount_path}/role/{role_name}/token-bound-cidrs": {typed: "AppRole"}
+"/auth/{approle_mount_path}/role/{role_name}/token-max-ttl": {typed: "AppRole"}
+"/auth/{approle_mount_path}/role/{role_name}/token-num-uses": {typed: "AppRole"}
+"/auth/{approle_mount_path}/role/{role_name}/token-ttl": {typed: "AppRole"}
+"/auth/{approle_mount_path}/tidy/secret-id": {action: "tidies expired secret IDs"}
+"/auth/{cert_mount_path}/certs/{name}": {typed: "CertAuthRole"}
+"/auth/{cert_mount_path}/config": {typed: "CertAuthConfig"}
+"/auth/{cert_mount_path}/crls/{name}": {endpoint-only: "no typed kind yet: CRL used by cert auth"}
+"/auth/{cert_mount_path}/login": {action: "login"}
+"/auth/{jwt_mount_path}/cel/login": {action: "login"}
+"/auth/{jwt_mount_path}/cel/role/{name}": {typed: "JWTCELRole"}
+"/auth/{jwt_mount_path}/config": {typed: "JWTAuthConfig"}
+"/auth/{jwt_mount_path}/login": {action: "login"}
+"/auth/{jwt_mount_path}/oidc/auth_url": {action: "OIDC login flow"}
+"/auth/{jwt_mount_path}/oidc/callback": {action: "OIDC login flow"}
+"/auth/{jwt_mount_path}/oidc/poll": {action: "OIDC login flow"}
+"/auth/{jwt_mount_path}/role/{name}": {typed: "JWTAuthRole"}
+"/auth/{kerberos_mount_path}/config": {typed: "KerberosAuthConfig"}
+"/auth/{kerberos_mount_path}/config/ldap": {typed: "KerberosAuthLDAPConfig"}
+"/auth/{kerberos_mount_path}/groups/{name}": {typed: "KerberosAuthGroup"}
+"/auth/{kerberos_mount_path}/login": {action: "login"}
+"/auth/{kubernetes_mount_path}/config": {typed: "KubernetesAuthConfig"}
+"/auth/{kubernetes_mount_path}/login": {action: "login"}
+"/auth/{kubernetes_mount_path}/role/{name}": {typed: "KubernetesAuthRole"}
+"/auth/{ldap_mount_path}/config": {typed: "LDAPAuthConfig"}
+"/auth/{ldap_mount_path}/groups/{name}": {typed: "LDAPAuthGroup"}
+"/auth/{ldap_mount_path}/login/{username}": {action: "login"}
+"/auth/{ldap_mount_path}/users/{name}": {typed: "LDAPAuthUser"}
+"/auth/{oidc_mount_path}/cel/login": {action: "login"}
+"/auth/{oidc_mount_path}/cel/role/{name}": {typed: "JWTCELRole"}
+"/auth/{oidc_mount_path}/config": {typed: "JWTAuthConfig"}
+"/auth/{oidc_mount_path}/login": {action: "login"}
+"/auth/{oidc_mount_path}/oidc/auth_url": {action: "OIDC login flow"}
+"/auth/{oidc_mount_path}/oidc/callback": {action: "OIDC login flow"}
+"/auth/{oidc_mount_path}/oidc/poll": {action: "OIDC login flow"}
+"/auth/{oidc_mount_path}/role/{name}": {typed: "JWTAuthRole"}
+"/auth/{radius_mount_path}/config": {typed: "RADIUSAuthConfig"}
+"/auth/{radius_mount_path}/login": {action: "login"}
+"/auth/{radius_mount_path}/login/{urlusername}": {action: "login"}
+"/auth/{radius_mount_path}/users/{name}": {typed: "RADIUSAuthUser"}
+"/auth/{userpass_mount_path}/login/{username}": {action: "login"}
+"/auth/{userpass_mount_path}/users/{username}": {typed: "UserpassUser"}
+"/auth/{userpass_mount_path}/users/{username}/password": {typed: "UserpassUser"}
+"/auth/{userpass_mount_path}/users/{username}/policies": {typed: "UserpassUser"}
+"/cubbyhole/{path}": {endpoint-only: "token-scoped storage: data written there is visible only to the operator's own token"}
+"/identity/alias": {typed: "EntityAlias"}
+"/identity/alias/id/{id}": {typed: "EntityAlias"}
+"/identity/entity": {typed: "Entity"}
+"/identity/entity-alias": {typed: "EntityAlias"}
+"/identity/entity-alias/id/{id}": {typed: "EntityAlias"}
+"/identity/entity/batch-delete": {action: "deletes entities in bulk"}
+"/identity/entity/id/{id}": {typed: "Entity"}
+"/identity/entity/merge": {action: "merges entities"}
+"/identity/entity/name/{name}": {typed: "Entity"}
+"/identity/group": {typed: "Group"}
+"/identity/group-alias": {typed: "GroupAlias"}
+"/identity/group-alias/id/{id}": {typed: "GroupAlias"}
+"/identity/group/id/{id}": {typed: "GroupMembership"}
+"/identity/group/name/{name}": {typed: "Group"}
+"/identity/lookup/entity": {action: "looks up an identity object"}
+"/identity/lookup/group": {action: "looks up an identity object"}
+"/identity/mfa/login-enforcement/{name}": {typed: "MFALoginEnforcement"}
+"/identity/mfa/method/duo/{method_id}": {typed: "MFAMethod"}
+"/identity/mfa/method/okta/{method_id}": {typed: "MFAMethod"}
+"/identity/mfa/method/pingid/{method_id}": {typed: "MFAMethod"}
+"/identity/mfa/method/totp/admin-destroy": {action: "generates or destroys an entity's TOTP secret"}
+"/identity/mfa/method/totp/admin-generate": {action: "generates or destroys an entity's TOTP secret"}
+"/identity/mfa/method/totp/generate": {action: "generates or destroys an entity's TOTP secret"}
+"/identity/mfa/method/totp/{method_id}": {typed: "MFAMethod"}
+"/identity/oidc/assignment/{name}": {typed: "OIDCAssignment"}
+"/identity/oidc/client/{name}": {typed: "OIDCClient"}
+"/identity/oidc/config": {typed: "OIDCConfig"}
+"/identity/oidc/introspect": {action: "introspects an identity token"}
+"/identity/oidc/key/{name}": {typed: "OIDCKey"}
+"/identity/oidc/key/{name}/rotate": {action: "rotates an OIDC key"}
+"/identity/oidc/provider/{name}": {typed: "OIDCProvider"}
+"/identity/oidc/provider/{name}/authorize": {action: "OIDC provider protocol endpoint"}
+"/identity/oidc/provider/{name}/token": {action: "OIDC provider protocol endpoint"}
+"/identity/oidc/provider/{name}/userinfo": {action: "OIDC provider protocol endpoint"}
+"/identity/oidc/role/{name}": {typed: "OIDCRole"}
+"/identity/oidc/scope/{name}": {typed: "OIDCScope"}
+"/identity/persona": {typed: "EntityAlias"}
+"/identity/persona/id/{id}": {typed: "EntityAlias"}
+"/sys/audit-hash/{path}": {action: "hashes a value with an audit device's salt"}
+"/sys/audit/{path}": {typed: "Audit"}
+"/sys/auth/{path}": {typed: "AuthMount"}
+"/sys/auth/{path}/tune": {typed: "AuthMount"}
+"/sys/capabilities": {action: "looks up token capabilities"}
+"/sys/capabilities-accessor": {action: "looks up token capabilities"}
+"/sys/capabilities-self": {action: "looks up token capabilities"}
+"/sys/config/auditing/request-headers/{header}": {typed: "AuditRequestHeader"}
+"/sys/config/cors": {typed: "CORSConfig"}
+"/sys/config/reload/{subsystem}": {action: "reloads a subsystem"}
+"/sys/config/ui/headers/{header}": {typed: "UIHeader"}
+"/sys/control-group/authorize": {action: "control group request or authorisation"}
+"/sys/control-group/request": {action: "control group request or authorisation"}
+"/sys/decode-token": {action: "decodes an encoded token"}
+"/sys/external-keys/configs/{config}": {endpoint-only: "unreviewed"}
+"/sys/external-keys/configs/{config}/keys/{key}": {endpoint-only: "unreviewed"}
+"/sys/external-keys/configs/{config}/keys/{key}/grants/{mount}": {endpoint-only: "unreviewed"}
+"/sys/generate-root": {action: "root token generation"}
+"/sys/generate-root-token/attempt": {action: "root token generation"}
+"/sys/generate-root-token/update": {action: "root token generation"}
+"/sys/generate-root/attempt": {action: "root token generation"}
+"/sys/generate-root/update": {action: "root token generation"}
+"/sys/init": {action: "initialises the server"}
+"/sys/internal/specs/openapi": {action: "generates the OpenAPI document"}
+"/sys/leases/lookup": {action: "lease lookup, renewal, revocation or tidy"}
+"/sys/leases/renew": {action: "lease lookup, renewal, revocation or tidy"}
+"/sys/leases/renew/{url_lease_id}": {action: "lease lookup, renewal, revocation or tidy"}
+"/sys/leases/revoke": {action: "lease lookup, renewal, revocation or tidy"}
+"/sys/leases/revoke-force/{prefix}": {action: "lease lookup, renewal, revocation or tidy"}
+"/sys/leases/revoke-prefix/{prefix}": {action: "lease lookup, renewal, revocation or tidy"}
+"/sys/leases/revoke/{url_lease_id}": {action: "lease lookup, renewal, revocation or tidy"}
+"/sys/leases/tidy": {action: "lease lookup, renewal, revocation or tidy"}
+"/sys/locked-users/{mount_accessor}/unlock/{alias_identifier}": {action: "unlocks a locked user"}
+"/sys/loggers": {endpoint-only: "sets the level of every logger at once; Logger manages one named logger"}
+"/sys/loggers/{name}": {typed: "Logger"}
+"/sys/mfa/validate": {action: "validates an MFA login"}
+"/sys/mounts/{path}": {typed: "SecretsMount"}
+"/sys/mounts/{path}/tune": {typed: "SecretsMount"}
+"/sys/namespaces/api-lock/lock": {action: "locks or unlocks a namespace API"}
+"/sys/namespaces/api-lock/lock/{path}": {action: "locks or unlocks a namespace API"}
+"/sys/namespaces/api-lock/unlock": {action: "locks or unlocks a namespace API"}
+"/sys/namespaces/api-lock/unlock/{path}": {action: "locks or unlocks a namespace API"}
+"/sys/namespaces/{path}": {typed: "OpenBaoNamespace"}
+"/sys/namespaces/{path}/delete-sealed": {action: "seals, unseals or deletes a sealed namespace"}
+"/sys/namespaces/{path}/seal": {action: "seals, unseals or deletes a sealed namespace"}
+"/sys/namespaces/{path}/unseal": {action: "seals, unseals or deletes a sealed namespace"}
+"/sys/plugins/catalog/{name}": {typed: "Plugin"}
+"/sys/plugins/catalog/{type}/{name}": {typed: "Plugin"}
+"/sys/plugins/reload/backend": {action: "reloads a plugin"}
+"/sys/policies/acl/{name}": {typed: "Policy"}
+"/sys/policies/password/{name}": {typed: "PasswordPolicy"}
+"/sys/policy/{name}": {typed: "Policy"}
+"/sys/quotas/config": {typed: "QuotaConfig"}
+"/sys/quotas/rate-limit/{name}": {typed: "RateLimitQuota"}
+"/sys/raw": {endpoint-only: "raw storage access, break-glass only; deliberately untyped"}
+"/sys/raw/{path}": {endpoint-only: "raw storage access, break-glass only; deliberately untyped"}
+"/sys/rekey/backup": {action: "rekey operation"}
+"/sys/rekey/init": {action: "rekey operation"}
+"/sys/rekey/recovery-key-backup": {action: "rekey operation"}
+"/sys/rekey/update": {action: "rekey operation"}
+"/sys/rekey/verify": {action: "rekey operation"}
+"/sys/remount": {action: "moves a mount"}
+"/sys/rotate": {action: "rotates the keyring"}
+"/sys/rotate/config": {typed: "KeyRotationConfig"}
+"/sys/rotate/keyring": {action: "rotates the keyring"}
+"/sys/rotate/keyring/config": {typed: "KeyRotationConfig"}
+"/sys/rotate/recovery/backup": {action: "root or recovery key rotation"}
+"/sys/rotate/recovery/init": {action: "root or recovery key rotation"}
+"/sys/rotate/recovery/update": {action: "root or recovery key rotation"}
+"/sys/rotate/recovery/verify": {action: "root or recovery key rotation"}
+"/sys/rotate/root": {action: "root or recovery key rotation"}
+"/sys/rotate/root/backup": {action: "root or recovery key rotation"}
+"/sys/rotate/root/init": {action: "root or recovery key rotation"}
+"/sys/rotate/root/update": {action: "root or recovery key rotation"}
+"/sys/rotate/root/verify": {action: "root or recovery key rotation"}
+"/sys/seal": {action: "seal, unseal or step-down"}
+"/sys/step-down": {action: "seal, unseal or step-down"}
+"/sys/tools/hash": {action: "hash or random bytes"}
+"/sys/tools/hash/{urlalgorithm}": {action: "hash or random bytes"}
+"/sys/tools/random": {action: "hash or random bytes"}
+"/sys/tools/random/{source}": {action: "hash or random bytes"}
+"/sys/tools/random/{source}/{urlbytes}": {action: "hash or random bytes"}
+"/sys/tools/random/{urlbytes}": {action: "hash or random bytes"}
+"/sys/unseal": {action: "seal, unseal or step-down"}
+"/sys/workflows/execute/{path}": {action: "runs or traces a workflow"}
+"/sys/workflows/manage/{path}": {typed: "Workflow"}
+"/sys/workflows/trace/{path}": {action: "runs or traces a workflow"}
+"/sys/wrapping/lookup": {action: "response wrapping"}
+"/sys/wrapping/rewrap": {action: "response wrapping"}
+"/sys/wrapping/unwrap": {action: "response wrapping"}
+"/sys/wrapping/wrap": {action: "response wrapping"}
+"/{database_mount_path}/config/{name}": {typed: "DatabaseConnection"}
+"/{database_mount_path}/reset/{name}": {action: "resets a connection"}
+"/{database_mount_path}/roles/{name}": {typed: "DatabaseRole"}
+"/{database_mount_path}/rotate-role/{name}": {action: "rotates credentials"}
+"/{database_mount_path}/rotate-root/{name}": {action: "rotates credentials"}
+"/{database_mount_path}/static-roles/{name}": {typed: "DatabaseStaticRole"}
+"/{kubernetes_mount_path}/config": {typed: "KubernetesSecretsConfig"}
+"/{kubernetes_mount_path}/creds/{name}": {action: "issues credentials"}
+"/{kubernetes_mount_path}/roles/{name}": {typed: "KubernetesSecretsRole"}
+"/{kv_mount_path}/{path}": {typed: "KVSecret"}
+"/{ldap_mount_path}/config": {typed: "LDAPSecretsConfig"}
+"/{ldap_mount_path}/library/manage/{name}/check-in": {action: "checks a library account in or out"}
+"/{ldap_mount_path}/library/{name}": {endpoint-only: "no typed kind yet: service account library set"}
+"/{ldap_mount_path}/library/{name}/check-in": {action: "checks a library account in or out"}
+"/{ldap_mount_path}/library/{name}/check-out": {action: "checks a library account in or out"}
+"/{ldap_mount_path}/role/{name}": {typed: "LDAPSecretsDynamicRole"}
+"/{ldap_mount_path}/rotate-role/{name}": {action: "rotates credentials"}
+"/{ldap_mount_path}/rotate-root": {action: "rotates credentials"}
+"/{ldap_mount_path}/static-role/{name}": {typed: "LDAPSecretsStaticRole"}
+"/{openldap_mount_path}/config": {typed: "LDAPSecretsConfig"}
+"/{openldap_mount_path}/library/manage/{name}/check-in": {action: "checks a library account in or out"}
+"/{openldap_mount_path}/library/{name}": {endpoint-only: "no typed kind yet: service account library set"}
+"/{openldap_mount_path}/library/{name}/check-in": {action: "checks a library account in or out"}
+"/{openldap_mount_path}/library/{name}/check-out": {action: "checks a library account in or out"}
+"/{openldap_mount_path}/role/{name}": {typed: "LDAPSecretsDynamicRole"}
+"/{openldap_mount_path}/rotate-role/{name}": {action: "rotates credentials"}
+"/{openldap_mount_path}/rotate-root": {action: "rotates credentials"}
+"/{openldap_mount_path}/static-role/{name}": {typed: "LDAPSecretsStaticRole"}
+"/{pki_mount_path}/acme/account/{kid}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/acme/authorization/{auth_id}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/acme/challenge/{auth_id}/{challenge_type}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/acme/new-account": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/acme/new-eab": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/acme/new-order": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/acme/order/{order_id}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/acme/order/{order_id}/cert": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/acme/order/{order_id}/finalize": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/acme/orders": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/acme/revoke-cert": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/cel/issue/{role}": {action: "issues or signs a certificate"}
+"/{pki_mount_path}/cel/roles/{name}": {endpoint-only: "no typed kind yet: CEL-based PKI role"}
+"/{pki_mount_path}/cel/sign/{role}": {action: "issues or signs a certificate"}
+"/{pki_mount_path}/config/acme": {typed: "PKIACMEConfig"}
+"/{pki_mount_path}/config/auto-tidy": {typed: "PKIAutoTidy"}
+"/{pki_mount_path}/config/ca": {action: "imports a CA bundle with its private key"}
+"/{pki_mount_path}/config/cluster": {typed: "PKIConfig"}
+"/{pki_mount_path}/config/crl": {typed: "PKIConfig"}
+"/{pki_mount_path}/config/issuers": {typed: "PKIConfig"}
+"/{pki_mount_path}/config/keys": {endpoint-only: "no typed kind yet: default signing key; PKIConfig covers cluster, crl, issuers and urls"}
+"/{pki_mount_path}/config/urls": {typed: "PKIConfig"}
+"/{pki_mount_path}/eab/{key_id}": {action: "deletes an unused ACME EAB token"}
+"/{pki_mount_path}/intermediate/cross-sign": {action: "cross-signs or imports a signed intermediate"}
+"/{pki_mount_path}/intermediate/generate/{exported}": {action: "generates a CA; PKIIssuer drives it on create"}
+"/{pki_mount_path}/intermediate/set-signed": {action: "cross-signs or imports a signed intermediate"}
+"/{pki_mount_path}/issue/{role}": {action: "issues or signs a certificate"}
+"/{pki_mount_path}/issuer/{issuer_ref}": {typed: "PKIIssuer"}
+"/{pki_mount_path}/issuer/{issuer_ref}/acme/account/{kid}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/acme/authorization/{auth_id}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/acme/challenge/{auth_id}/{challenge_type}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/acme/new-account": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/acme/new-eab": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/acme/new-order": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/acme/order/{order_id}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/acme/order/{order_id}/cert": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/acme/order/{order_id}/finalize": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/acme/orders": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/acme/revoke-cert": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/issue/{role}": {action: "issues or signs a certificate"}
+"/{pki_mount_path}/issuer/{issuer_ref}/resign-crls": {action: "revokes an issuer or re-signs CRLs"}
+"/{pki_mount_path}/issuer/{issuer_ref}/revoke": {action: "revokes an issuer or re-signs CRLs"}
+"/{pki_mount_path}/issuer/{issuer_ref}/roles/{role}/acme/account/{kid}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/roles/{role}/acme/authorization/{auth_id}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/roles/{role}/acme/challenge/{auth_id}/{challenge_type}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/roles/{role}/acme/new-account": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/roles/{role}/acme/new-eab": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/roles/{role}/acme/new-order": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/roles/{role}/acme/order/{order_id}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/roles/{role}/acme/order/{order_id}/cert": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/roles/{role}/acme/order/{order_id}/finalize": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/roles/{role}/acme/orders": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/roles/{role}/acme/revoke-cert": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/issuer/{issuer_ref}/sign-intermediate": {action: "signs an intermediate, self-issued certificate or CRL"}
+"/{pki_mount_path}/issuer/{issuer_ref}/sign-revocation-list": {action: "signs an intermediate, self-issued certificate or CRL"}
+"/{pki_mount_path}/issuer/{issuer_ref}/sign-self-issued": {action: "signs an intermediate, self-issued certificate or CRL"}
+"/{pki_mount_path}/issuer/{issuer_ref}/sign-verbatim": {action: "issues or signs a certificate"}
+"/{pki_mount_path}/issuer/{issuer_ref}/sign-verbatim/{role}": {action: "issues or signs a certificate"}
+"/{pki_mount_path}/issuer/{issuer_ref}/sign/{role}": {action: "issues or signs a certificate"}
+"/{pki_mount_path}/issuers/generate/intermediate/{exported}": {action: "generates a CA; PKIIssuer drives it on create"}
+"/{pki_mount_path}/issuers/generate/root/{exported}": {action: "generates a CA; PKIIssuer drives it on create"}
+"/{pki_mount_path}/issuers/import/bundle": {action: "imports issuers"}
+"/{pki_mount_path}/issuers/import/cert": {action: "imports issuers"}
+"/{pki_mount_path}/key/{key_ref}": {typed: "PKIKey"}
+"/{pki_mount_path}/keys/generate/exported": {action: "generates or imports a key; PKIKey drives it on create"}
+"/{pki_mount_path}/keys/generate/internal": {action: "generates or imports a key; PKIKey drives it on create"}
+"/{pki_mount_path}/keys/generate/kms": {action: "generates or imports a key; PKIKey drives it on create"}
+"/{pki_mount_path}/keys/import": {action: "generates or imports a key; PKIKey drives it on create"}
+"/{pki_mount_path}/ocsp": {action: "OCSP or certificate revocation"}
+"/{pki_mount_path}/revoke": {action: "OCSP or certificate revocation"}
+"/{pki_mount_path}/revoke-with-key": {action: "OCSP or certificate revocation"}
+"/{pki_mount_path}/roles/{name}": {typed: "PKIRole"}
+"/{pki_mount_path}/roles/{role}/acme/account/{kid}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/roles/{role}/acme/authorization/{auth_id}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/roles/{role}/acme/challenge/{auth_id}/{challenge_type}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/roles/{role}/acme/new-account": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/roles/{role}/acme/new-eab": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/roles/{role}/acme/new-order": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/roles/{role}/acme/order/{order_id}": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/roles/{role}/acme/order/{order_id}/cert": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/roles/{role}/acme/order/{order_id}/finalize": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/roles/{role}/acme/orders": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/roles/{role}/acme/revoke-cert": {action: "ACME protocol endpoint"}
+"/{pki_mount_path}/root": {action: "deletes the CA"}
+"/{pki_mount_path}/root/generate/{exported}": {action: "generates a CA; PKIIssuer drives it on create"}
+"/{pki_mount_path}/root/replace": {action: "replaces or rotates the root"}
+"/{pki_mount_path}/root/rotate/{exported}": {action: "replaces or rotates the root"}
+"/{pki_mount_path}/root/sign-intermediate": {action: "signs an intermediate, self-issued certificate or CRL"}
+"/{pki_mount_path}/root/sign-self-issued": {action: "signs an intermediate, self-issued certificate or CRL"}
+"/{pki_mount_path}/sign-verbatim": {action: "issues or signs a certificate"}
+"/{pki_mount_path}/sign-verbatim/{role}": {action: "issues or signs a certificate"}
+"/{pki_mount_path}/sign/{role}": {action: "issues or signs a certificate"}
+"/{pki_mount_path}/tidy": {action: "starts or cancels a tidy"}
+"/{pki_mount_path}/tidy-cancel": {action: "starts or cancels a tidy"}
+"/{rabbitmq_mount_path}/config/connection": {typed: "RabbitMQConfig"}
+"/{rabbitmq_mount_path}/config/lease": {typed: "RabbitMQConfig"}
+"/{rabbitmq_mount_path}/roles/{name}": {typed: "RabbitMQRole"}
+"/{secret_mount_path}/config": {typed: "KVConfig"}
+"/{secret_mount_path}/data/{path}": {typed: "KVSecret"}
+"/{secret_mount_path}/delete/{path}": {action: "deletes, destroys or restores secret versions"}
+"/{secret_mount_path}/destroy/{path}": {action: "deletes, destroys or restores secret versions"}
+"/{secret_mount_path}/metadata/{path}": {endpoint-only: "no typed kind yet: per-secret metadata (max_versions, custom_metadata); KVSecret only deletes through it"}
+"/{secret_mount_path}/undelete/{path}": {action: "deletes, destroys or restores secret versions"}
+"/{ssh_mount_path}/config/ca": {typed: "SSHCA"}
+"/{ssh_mount_path}/config/issuers": {typed: "SSHCA"}
+"/{ssh_mount_path}/config/zeroaddress": {endpoint-only: "no typed kind yet: roles that default to the zero address"}
+"/{ssh_mount_path}/creds/{role}": {action: "issues or signs credentials"}
+"/{ssh_mount_path}/issue/{role}": {action: "issues or signs credentials"}
+"/{ssh_mount_path}/issuer/{issuer_ref}": {endpoint-only: "no typed kind yet: named SSH issuer; SSHCA manages the default issuer through config/ca"}
+"/{ssh_mount_path}/issuers/import": {action: "imports an SSH issuer"}
+"/{ssh_mount_path}/issuers/import/{issuer_name}": {action: "imports an SSH issuer"}
+"/{ssh_mount_path}/lookup": {action: "looks up roles or verifies an OTP"}
+"/{ssh_mount_path}/roles/{role}": {typed: "SSHRole"}
+"/{ssh_mount_path}/sign/{role}": {action: "issues or signs credentials"}
+"/{ssh_mount_path}/tidy/dynamic-keys": {action: "tidies dynamic keys"}
+"/{ssh_mount_path}/verify": {action: "looks up roles or verifies an OTP"}
+"/{totp_mount_path}/code/{name}": {action: "generates or validates a code"}
+"/{totp_mount_path}/keys/{name}": {typed: "TOTPKey"}
+"/{transit_mount_path}/cache-config": {endpoint-only: "no typed kind yet: transit mount-wide setting"}
+"/{transit_mount_path}/config/keys": {endpoint-only: "no typed kind yet: transit mount-wide setting"}
+"/{transit_mount_path}/datakey/{plaintext}/{name}": {action: "cryptographic operation"}
+"/{transit_mount_path}/decrypt/{name}": {action: "cryptographic operation"}
+"/{transit_mount_path}/derive-key/{name}": {action: "cryptographic operation"}
+"/{transit_mount_path}/encrypt/{name}": {action: "cryptographic operation"}
+"/{transit_mount_path}/hash": {action: "cryptographic operation"}
+"/{transit_mount_path}/hash/{urlalgorithm}": {action: "cryptographic operation"}
+"/{transit_mount_path}/hmac/{name}": {action: "cryptographic operation"}
+"/{transit_mount_path}/hmac/{name}/{urlalgorithm}": {action: "cryptographic operation"}
+"/{transit_mount_path}/keys/{name}": {typed: "TransitKey"}
+"/{transit_mount_path}/keys/{name}/config": {typed: "TransitKey"}
+"/{transit_mount_path}/keys/{name}/csr": {action: "imports key material or a certificate chain"}
+"/{transit_mount_path}/keys/{name}/import": {action: "imports key material or a certificate chain"}
+"/{transit_mount_path}/keys/{name}/import_version": {action: "imports key material or a certificate chain"}
+"/{transit_mount_path}/keys/{name}/rotate": {action: "rotates, trims, soft-deletes or restores a key"}
+"/{transit_mount_path}/keys/{name}/set-certificate": {action: "imports key material or a certificate chain"}
+"/{transit_mount_path}/keys/{name}/soft-delete": {action: "rotates, trims, soft-deletes or restores a key"}
+"/{transit_mount_path}/keys/{name}/soft-delete-restore": {action: "rotates, trims, soft-deletes or restores a key"}
+"/{transit_mount_path}/keys/{name}/trim": {action: "rotates, trims, soft-deletes or restores a key"}
+"/{transit_mount_path}/random": {action: "cryptographic operation"}
+"/{transit_mount_path}/random/{source}": {action: "cryptographic operation"}
+"/{transit_mount_path}/random/{source}/{urlbytes}": {action: "cryptographic operation"}
+"/{transit_mount_path}/random/{urlbytes}": {action: "cryptographic operation"}
+"/{transit_mount_path}/restore": {action: "restores a key from a backup"}
+"/{transit_mount_path}/restore/{name}": {action: "restores a key from a backup"}
+"/{transit_mount_path}/rewrap/{name}": {action: "cryptographic operation"}
+"/{transit_mount_path}/sign/{name}": {action: "cryptographic operation"}
+"/{transit_mount_path}/sign/{name}/{urlalgorithm}": {action: "cryptographic operation"}
+"/{transit_mount_path}/verify/{name}": {action: "cryptographic operation"}
+"/{transit_mount_path}/verify/{name}/{urlalgorithm}": {action: "cryptographic operation"}

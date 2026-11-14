@@ -1,0 +1,21 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: CORSConfig
+metadata:
+  name: obco-cors
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  allowedOrigins:
+    - https://openbao.example.com
+    - https://backstage.example.com
+  allowedHeaders:
+    - X-Request-Id
+    - X-Correlation-Id
+  allowCredentials: true

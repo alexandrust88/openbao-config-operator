@@ -1,0 +1,73 @@
+{{- if and .Values.networkPolicy.enabled (eq .Values.networkPolicy.flavor "kubernetes") }}
+{{- $np := .Values.networkPolicy }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "openbao-config-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openbao-config-operator.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "openbao-config-operator.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    {{- if .Values.metrics.enabled }}
+    - ports:
+        - port: {{ .Values.metrics.port }}
+          protocol: TCP
+      from:
+        {{- if $np.metrics.from }}
+        {{- toYaml $np.metrics.from | nindent 8 }}
+        {{- else }}
+        {{- range compact (uniq (list .Release.Namespace $np.metrics.monitoringNamespace)) }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . }}
+        {{- end }}
+        {{- end }}
+    {{- end }}
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+      {{- if or $np.dns.to $np.dns.nodeLocalDNS.enabled }}
+      to:
+        {{- with $np.dns.to }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if $np.dns.nodeLocalDNS.enabled }}
+        - ipBlock:
+            cidr: {{ $np.dns.nodeLocalDNS.address }}/32
+        {{- end }}
+      {{- end }}
+    - ports:
+        {{- range $np.apiServer.ports }}
+        - port: {{ . }}
+          protocol: TCP
+        {{- end }}
+      {{- with $np.apiServer.cidrs }}
+      to:
+        {{- range . }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
+      {{- end }}
+    - ports:
+        {{- range $np.openbao.ports }}
+        - port: {{ . }}
+          protocol: TCP
+        {{- end }}
+      {{- with $np.openbao.to }}
+      to:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with $np.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

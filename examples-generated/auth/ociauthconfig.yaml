@@ -1,0 +1,17 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: OCIAuthConfig
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  homeTenancyID: example
+  managementPolicy: Manage
+  mountPath: oci
+  namespace: example

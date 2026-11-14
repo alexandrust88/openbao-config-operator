@@ -1,0 +1,20 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: OIDCKey
+metadata:
+  name: obco-signing-key
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  deletionPolicy: Delete
+  name: obco-signing-key
+  rotationPeriod: 24h
+  verificationTTL: 48h
+  algorithm: ES256
+  allowedClientIDs:
+    - "*"

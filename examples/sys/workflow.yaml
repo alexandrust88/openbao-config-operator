@@ -1,0 +1,74 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Workflow
+metadata:
+  name: obco-generate-password
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  path: obco/generate-password
+  description: Generates a password with a password policy and stores it in a KV v2 mount.
+  casRequired: true
+  allowUnauthenticated: false
+  workflow: |
+    input {
+      field "policy" {
+        type     = "string"
+        required = true
+      }
+      field "mount" {
+        type     = "string"
+        required = true
+      }
+      field "secret" {
+        type     = "string"
+        required = true
+      }
+    }
+
+    flow "generate-password" {
+      request "generate" {
+        operation = "read"
+        path = {
+          eval_source = "template"
+          eval_type   = "string"
+          template    = "sys/policies/password/{{ .input.policy }}/generate"
+        }
+      }
+
+      request "store" {
+        operation = "update"
+        path = {
+          eval_source = "template"
+          eval_type   = "string"
+          template    = "{{ .input.mount }}/data/{{ .input.secret }}"
+        }
+        data = {
+          data = {
+            "password" = {
+              eval_source    = "response"
+              eval_type      = "string"
+              flow_name      = "generate-password"
+              response_name  = "generate"
+              field_selector = ["data", "password"]
+            }
+          }
+        }
+      }
+    }
+
+    output {
+      data = {
+        stored = {
+          eval_source = "template"
+          eval_type   = "string"
+          template    = "{{ .input.mount }}/data/{{ .input.secret }}"
+        }
+      }
+    }

@@ -1,0 +1,63 @@
+# OCM component version of a release, filled by hack/ocm/component.sh (ocm subst templater, explicit values only).
+# The image and the chart are referenced by digest; the manifests and SBOMs travel inside the component as local blobs.
+name: github.com/alexandrust88/openbao-config-operator
+version: "${VERSION}"
+provider:
+  name: github.com/alexandrust88
+sources:
+  - name: source
+    type: git
+    version: ${VERSION}
+    access:
+      type: gitHub
+      repoUrl: ${REPO_URL}
+      commit: "${COMMIT}"
+resources:
+  - name: operator-image
+    type: ociImage
+    version: ${VERSION}
+    relation: local
+    access:
+      type: ociArtifact
+      imageReference: ${IMAGE}@${IMAGE_DIGEST}
+  - name: helm-chart
+    type: helmChart
+    version: ${VERSION}
+    relation: local
+    access:
+      type: ociArtifact
+      imageReference: ${CHART}@${CHART_DIGEST}
+  - name: install-manifest
+    type: blob
+    version: ${VERSION}
+    relation: local
+    input:
+      type: file
+      path: ${DIST}/install.yaml
+      mediaType: application/x-yaml
+  - name: crds
+    type: blob
+    version: ${VERSION}
+    relation: local
+    input:
+      type: file
+      path: ${DIST}/crds.yaml
+      mediaType: application/x-yaml
+  - name: sbom-spdx
+    type: sbom
+    version: ${VERSION}
+    relation: local
+    input:
+      type: dir
+      path: ${DIST}
+      includeFiles: ["*.spdx.json"]
+      compress: true
+  - name: sbom-cyclonedx
+    type: sbom
+    version: ${VERSION}
+    relation: local
+    input:
+      type: dir
+      path: ${DIST}
+      includeFiles: ["*.cdx.json"]
+      compress: true

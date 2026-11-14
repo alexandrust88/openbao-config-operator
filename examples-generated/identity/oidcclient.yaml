@@ -1,0 +1,28 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: OIDCClient
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  accessTokenTTL: 1h
+  assignments:
+  - example
+  authorizationCode: true
+  clientCredentials: true
+  clientType: confidential
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  idTokenTTL: 1h
+  key: default
+  managementPolicy: Manage
+  name: example
+  namespace: example
+  redirectURIs:
+  - https://openbao.example.com:8200
+  writeSecretRef:
+    name: oidcclient-write-secret-ref

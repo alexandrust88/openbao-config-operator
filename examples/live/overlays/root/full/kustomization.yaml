@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: root-full-
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: openbao-live-kit
+      live.openbaoconfig.io/overlay: root-full
+resources:
+  - ../../../params
+components:
+  - ../../../base
+  - ../../../modes/root
+  - ../../../sets/namespaced-full
+  - ../../../sets/root-only-full
+  - ../../../finalize

@@ -1,0 +1,39 @@
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessLayout
+metadata:
+  name: platform-teams
+  namespace: openbao-config
+  annotations:
+    openbaoconfig.io/allow-disruptive-update: "false"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 15m
+  managementPolicy: Manage
+  authMounts:
+    - oidc
+  organizations:
+    - acme
+    - globex
+  groupAliasTemplate: "{org}_{role}"
+  paths:
+    - mount: orgs
+      path: "{org}/+/*"
+      metadataPath: "{org}/*"
+  roles:
+    - name: developer
+      levels:
+        - namespace: ""
+          level: write
+        - namespace: prod
+          level: read
+    - name: lead
+      levels:
+        - namespace: ""
+          level: owner
+        - namespace: prod
+          level: write

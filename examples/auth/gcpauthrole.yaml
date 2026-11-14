@@ -1,0 +1,70 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: GCPAuthRole
+metadata:
+  name: gcp-gce
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: gcp
+  name: gce
+  type: gce
+  boundServiceAccounts:
+    - app@fake-project.iam.gserviceaccount.com
+  boundProjects:
+    - fake-project
+  addGroupAliases: true
+  boundZones:
+    - europe-west3-a
+  boundRegions:
+    - europe-west3
+  boundInstanceGroups:
+    - openbao-config-group
+  boundLabels:
+    env: sandbox
+    team: obco
+  tokenTTL: 1h
+  tokenMaxTTL: 8h
+  tokenExplicitMaxTTL: 24h
+  tokenPeriod: 30m
+  tokenPolicies:
+    - default-login
+    - app-read
+  policyRefs:
+    - name: obco-team-a-reader
+  tokenBoundCIDRs:
+    - 10.0.0.0/8
+    - 192.168.10.0/24
+  tokenNumUses: 0
+  tokenType: service
+  tokenNoDefaultPolicy: false
+  tokenStrictlyBindIP: false
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: GCPAuthRole
+metadata:
+  name: gcp-iam
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: gcp
+  name: iam
+  type: iam
+  boundServiceAccounts:
+    - app@fake-project.iam.gserviceaccount.com
+  boundProjects:
+    - fake-project
+  addGroupAliases: false
+  maxJWTExp: 15m
+  allowGCEInference: true
+  tokenPolicies:
+    - app-read

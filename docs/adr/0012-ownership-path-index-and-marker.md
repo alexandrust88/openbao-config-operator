@@ -1,0 +1,23 @@
+# 0012. Ownership: path index and server-side marker
+
+Status: accepted. Date: 2026-11-14.
+
+## Context
+
+v1 marks ownership only in `status.acquired`. Two CRs on the same path both believe they own it
+and overwrite each other on every reconcile. After status loss (restore, re-create) the operator
+cannot tell its own object from a foreign one.
+
+## Decision
+
+Ownership is checked in order: a server-side marker (managed-by, cluster id, CR UID) where the API
+has metadata (entities, groups, namespaces, KV v2 metadata), then `status.acquired` with a matching
+`status.path`. A field index on server + absolute namespace + path finds duplicates: the older CR
+keeps the path, the newer gets `Conflict` and never writes.
+
+## Consequences
+
+- Two tenants cannot fight over one path inside one cluster.
+- After status loss, marked kinds recover without writes; other kinds need a one-time `Adopt`.
+- Which kinds can carry a marker must be tested per kind.
+- Status: path index in progress (phase 1); marker planned (phase 3).

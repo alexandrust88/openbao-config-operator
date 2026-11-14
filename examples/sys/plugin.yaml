@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: obco-ldap-plugin-env
+  namespace: openbao-config
+type: Opaque
+stringData:
+  https-proxy: http://obco-plugin:fake-proxy-password@proxy.example.com:3128
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Plugin
+metadata:
+  name: obco-ldap-auth-plugin
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  type: auth
+  name: ldap
+  command: openbao-plugin-auth-ldap
+  sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+  args:
+    - -tls-skip-verify=false
+  env:
+    - name: HTTPS_PROXY
+      secretKeyRef:
+        name: obco-ldap-plugin-env
+        key: https-proxy
+  version: v0.1.0
+  oci: false
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Plugin
+metadata:
+  name: obco-nomad-secrets-plugin
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  type: secret
+  name: nomad
+  command: openbao-plugin-secrets-nomad
+  sha256: 89abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567
+  oci: true

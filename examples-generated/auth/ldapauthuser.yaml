@@ -1,0 +1,21 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: LDAPAuthUser
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  groups:
+  - example
+  managementPolicy: Manage
+  mountPath: ldap
+  name: example
+  namespace: example
+  policies:
+  - default

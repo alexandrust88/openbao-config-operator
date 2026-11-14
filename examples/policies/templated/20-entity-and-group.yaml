@@ -1,0 +1,78 @@
+# Identity templates: a folder per entity name, per entity ID and per group membership.
+# A Kubernetes login creates an entity named entity_<random> unless an alias already points at a named
+# entity. The EntityAlias below binds team-a/app (by ServiceAccount UID, the default alias name source)
+# to the entity "billing", which is a member of the group "developers".
+#   kubectl get serviceaccount app -n team-a -o jsonpath='{.metadata.uid}'
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Entity
+metadata:
+  name: billing
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: EntityAlias
+metadata:
+  name: billing-kubernetes
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  aliasName: 6f1e3c2a-0000-4000-8000-000000000001
+  mountRef:
+    name: kubernetes
+  entityRef:
+    name: billing
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: developers
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupMembership
+metadata:
+  name: developers-billing
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  groupRef:
+    name: developers
+  entityRef:
+    name: billing
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: entity-own-folder
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  policy: |
+    path "apps/data/entity/{{identity.entity.name}}/*" {
+      capabilities = ["create", "read", "update"]
+    }
+    path "apps/data/entity-id/{{identity.entity.id}}/*" {
+      capabilities = ["create", "read", "update"]
+    }
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: group-folder
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  policy: |
+    path "apps/data/group/{{identity.groups.names.developers.id}}/*" {
+      capabilities = ["create", "read", "update"]
+    }

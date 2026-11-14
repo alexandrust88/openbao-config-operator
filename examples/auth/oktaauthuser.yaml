@@ -1,0 +1,18 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: OktaAuthUser
+metadata:
+  name: jane
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: okta
+  name: jane@example.org
+  groups:
+    - Admins
+    - Developers
+  policies:
+    - personal-jane

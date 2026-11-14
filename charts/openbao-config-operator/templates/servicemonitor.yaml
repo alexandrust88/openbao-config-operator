@@ -1,0 +1,42 @@
+{{- if and .Values.metrics.enabled .Values.serviceMonitor.enabled }}
+{{- $tls := .Values.serviceMonitor.tlsConfig | default dict }}
+{{- if and .Values.metrics.certSecret (or (not (or $tls.ca $tls.caFile)) (not $tls.serverName) $tls.insecureSkipVerify) }}
+{{- fail "metrics.certSecret requires serviceMonitor.tlsConfig.ca (or caFile) and serverName, and insecureSkipVerify unset" }}
+{{- end }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "openbao-config-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openbao-config-operator.labels" . | nindent 4 }}
+    {{- with .Values.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  endpoints:
+    - port: https
+      path: /metrics
+      scheme: https
+      interval: {{ .Values.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      {{- with $tls }}
+      tlsConfig:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.serviceMonitor.relabelings }}
+      relabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.serviceMonitor.metricRelabelings }}
+      metricRelabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      {{- include "openbao-config-operator.selectorLabels" . | nindent 6 }}
+{{- end }}

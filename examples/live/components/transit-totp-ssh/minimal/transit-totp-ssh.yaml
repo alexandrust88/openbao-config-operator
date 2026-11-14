@@ -1,0 +1,69 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: transit
+spec:
+  connectionRef:
+    name: openbao
+  type: transit
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-app
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: transit
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: totp
+spec:
+  connectionRef:
+    name: openbao
+  type: totp
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TOTPKey
+metadata:
+  name: totp-alice
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: totp
+  issuer: Example
+  accountName: alice@example.com
+  generate:
+    writeSecretRef:
+      name: totp-alice
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: ssh
+spec:
+  connectionRef:
+    name: openbao
+  type: ssh
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: SSHCA
+metadata:
+  name: ssh-ca
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: ssh
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: SSHRole
+metadata:
+  name: ssh-users
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: ssh
+  keyType: ca
+  allowUserCertificates: true

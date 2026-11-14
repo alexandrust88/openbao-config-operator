@@ -1,0 +1,514 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: pki-root
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: pki-root
+  type: pki
+  description: Root CA of the live kit
+  defaultLeaseTTL: 8760h
+  maxLeaseTTL: 87600h
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: pki-int
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: pki-int
+  type: pki
+  description: Intermediate CA of the live kit, with the headers ACME needs
+  defaultLeaseTTL: 720h
+  maxLeaseTTL: 43800h
+  allowedResponseHeaders:
+    - Last-Modified
+    - Location
+    - Replay-Nonce
+    - Link
+  passthroughRequestHeaders:
+    - If-Modified-Since
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-root-ca
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-root
+  name: pki-root-ca
+  type: root
+  key:
+    source: internal
+    name: pki-root-ca-key
+    type: ec
+    bits: 384
+  certificate:
+    commonName: Live Kit Root CA
+    altNames:
+      - root-ca.openbao.example.com
+      - pki@openbao.example.com
+    ipSANs:
+      - 192.0.2.10
+    uriSANs:
+      - spiffe://openbao.example.com/ca/root
+    otherSANs:
+      - 1.3.6.1.4.1.311.20.2.3;UTF8:root-ca@openbao.example.com
+    excludeCNFromSANs: true
+    ou:
+      - Platform
+    organization:
+      - Live Kit
+    country:
+      - DE
+    locality:
+      - Berlin
+    province:
+      - Berlin
+    streetAddress:
+      - Example Street 1
+    postalCode:
+      - "10115"
+    serialNumber: live-kit-root-ca
+    ttl: 87600h
+    notBeforeDuration: 30s
+    maxPathLength: 1
+    permittedDNSDomains:
+      - openbao.example.com
+    signatureBits: 384
+    usePSS: false
+  leafNotAfterBehavior: err
+  usage:
+    - issuing-certificates
+    - crl-signing
+    - ocsp-signing
+  manualChain:
+    - pki-root-ca
+  revocationSignatureAlgorithm: ECDSAWithSHA384
+  issuingCertificates:
+    - https://openbao.example.com:8200/v1/pki-root/issuer/pki-root-ca/der
+  crlDistributionPoints:
+    - https://openbao.example.com:8200/v1/pki-root/issuer/pki-root-ca/crl/der
+  ocspServers:
+    - https://openbao.example.com:8200/v1/pki-root/ocsp
+  enableAIAURLTemplating: false
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-int-ca
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-int
+  name: pki-int-ca
+  type: intermediate
+  key:
+    source: exported
+    name: pki-int-ca-key
+    type: ec
+    bits: 256
+    privateKeyFormat: pkcs8
+  certificate:
+    commonName: Live Kit Intermediate CA
+    organization:
+      - Live Kit
+    notAfter: "2035-01-01T00:00:00Z"
+    maxPathLength: 0
+    permittedDNSDomains:
+      - openbao.example.com
+    addBasicConstraints: true
+  signer:
+    issuerRef:
+      name: pki-root-ca
+  writeSecretRef:
+    name: pki-int-ca
+  leafNotAfterBehavior: truncate
+  usage:
+    - issuing-certificates
+    - crl-signing
+  enableAIAURLTemplating: true
+  issuingCertificates:
+    - "{{cluster_aia_path}}/issuer/{{issuer_id}}/der"
+  crlDistributionPoints:
+    - "{{cluster_aia_path}}/issuer/{{issuer_id}}/crl/der"
+  ocspServers:
+    - "{{cluster_path}}/ocsp"
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-int-ca-reuse
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-int
+  name: pki-int-ca-reuse
+  type: intermediate
+  key:
+    source: existing
+    existing:
+      keyRef:
+        name: pki-int-key
+  certificate:
+    commonName: Live Kit Intermediate CA (existing key)
+    ttl: 43800h
+  signer:
+    mountPath: pki-root
+    issuerName: pki-root-ca
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-int-ca-imported
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-int
+  name: pki-int-ca-imported
+  type: intermediate
+  key:
+    source: existing
+    existing:
+      keyName: pki-int-key-imported
+  certificate:
+    commonName: Live Kit Intermediate CA (imported key)
+    ttl: 43800h
+  signer:
+    issuerRef:
+      name: pki-root-ca
+  revocationSignatureAlgorithm: SHA256WithRSA
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-int-key
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-int
+  name: pki-int-key
+  type: internal
+  keyType: ec
+  keyBits: 256
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-int-key-exported
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-int
+  name: pki-int-key-exported
+  type: exported
+  keyType: rsa
+  keyBits: 2048
+  writeSecretRef:
+    name: pki-int-key-exported
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-int-key-imported
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-int
+  name: pki-int-key-imported
+  type: import
+  pemBundleSecretRef:
+    name: live-pki-import
+    key: key.pem
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-web
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-int
+  name: pki-web
+  issuer:
+    issuerRef:
+      name: pki-int-ca
+  ttl: 24h
+  maxTTL: 720h
+  allowLocalhost: false
+  allowedDomains:
+    - openbao.example.com
+    - "{{identity.entity.metadata.team}}.openbao.example.com"
+  allowedDomainsTemplate: true
+  allowGlobsInIdentityTemplates: false
+  allowBareDomains: false
+  allowSubdomains: true
+  allowGlobDomains: false
+  allowWildcardCertificates: false
+  allowAnyName: false
+  enforceHostnames: true
+  allowIPSANs: true
+  allowedIPSANsCIDR:
+    - 10.0.0.0/8
+  allowedURISANs:
+    - spiffe://openbao.example.com/*
+  allowedURISANsTemplate: false
+  allowedOtherSANs:
+    - 1.3.6.1.4.1.311.20.2.3;UTF8:*@openbao.example.com
+  allowedSerialNumbers:
+    - live-*
+  allowedUserIDs:
+    - "*"
+  serverFlag: true
+  clientFlag: true
+  codeSigningFlag: false
+  emailProtectionFlag: false
+  keyType: ec
+  keyBits: 256
+  signatureBits: 256
+  usePSS: false
+  keyUsage:
+    - DigitalSignature
+    - KeyAgreement
+  extKeyUsage:
+    - ServerAuth
+    - ClientAuth
+  extKeyUsageOIDs:
+    - 1.3.6.1.5.5.7.3.1
+  useCSRCommonName: true
+  useCSRSANs: true
+  ou:
+    - Platform
+  organization:
+    - Live Kit
+  country:
+    - DE
+  locality:
+    - Berlin
+  province:
+    - Berlin
+  streetAddress:
+    - Example Street 1
+  postalCode:
+    - "10115"
+  generateLease: false
+  noStore: false
+  requireCN: true
+  cnValidations:
+    - hostname
+  policyIdentifiers:
+    - 1.3.6.1.4.1.44947.1.1.1
+  basicConstraintsValidForNonCA: false
+  notBeforeDuration: 30s
+  notBefore: "2026-01-01T00:00:00Z"
+  notBeforeBound: permit
+  notAfter: "2030-01-01T00:00:00Z"
+  notAfterBound: ttl-limited
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-acme
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-int
+  name: pki-acme
+  issuer:
+    issuerName: pki-int-ca
+  allowedDomains:
+    - acme.openbao.example.com
+  allowSubdomains: true
+  ttl: 72h
+  maxTTL: 2160h
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIConfig
+metadata:
+  name: pki-root-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-root
+  issuers:
+    default:
+      issuerName: pki-root-ca
+    defaultFollowsLatestIssuer: false
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIConfig
+metadata:
+  name: pki-int-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-int
+  cluster:
+    path: https://openbao.example.com:8200/v1/pki-int
+    aiaPath: http://openbao.example.com:8200/v1/pki-int
+  urls:
+    issuingCertificates:
+      - "{{cluster_aia_path}}/issuer/{{issuer_id}}/der"
+    crlDistributionPoints:
+      - "{{cluster_aia_path}}/issuer/{{issuer_id}}/crl/der"
+    deltaCRLDistributionPoints:
+      - "{{cluster_aia_path}}/issuer/{{issuer_id}}/crl/delta/der"
+    ocspServers:
+      - "{{cluster_path}}/ocsp"
+    enableTemplating: true
+  crl:
+    expiry: 72h
+    disable: false
+    ocspDisable: false
+    ocspExpiry: 12h
+    autoRebuild: true
+    autoRebuildGracePeriod: 12h
+    enableDelta: true
+    deltaRebuildInterval: 15m
+    allowExpiredCertRevocation: false
+  issuers:
+    default:
+      issuerRef:
+        name: pki-int-ca
+    defaultFollowsLatestIssuer: false
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIACMEConfig
+metadata:
+  name: pki-int-acme
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-int
+  enabled: true
+  allowedIssuers:
+    - pki-int-ca
+  allowedRoles:
+    - pki-acme
+  allowRoleExtKeyUsage: false
+  defaultDirectoryPolicy: sign-verbatim
+  dnsResolver: ""
+  eabPolicy: not-required
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIAutoTidy
+metadata:
+  name: pki-int-tidy
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-int
+  enabled: true
+  intervalDuration: 12h
+  tidyCertStore: true
+  tidyRevokedCerts: true
+  tidyInvalidCerts: false
+  tidyRevokedCertIssuerAssociations: true
+  tidyExpiredIssuers: true
+  tidyMoveLegacyCABundle: false
+  tidyACME: true
+  safetyBuffer: 72h
+  revokedSafetyBuffer: 72h
+  issuerSafetyBuffer: 8760h
+  acmeAccountSafetyBuffer: 720h
+  pageSize: 1000
+  pauseDuration: 0s
+  maintainStoredCertificateCounts: true
+  publishStoredCertificateCountMetrics: true

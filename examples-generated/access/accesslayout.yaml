@@ -1,0 +1,27 @@
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessLayout
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  authMounts:
+  - example
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  groupAliasTemplate: '{role}'
+  managementPolicy: Manage
+  namespace: example
+  paths:
+  - metadataPath: example
+    mount: example
+    path: example
+  roles:
+  - levels:
+    - level: example
+      namespace: ""
+    name: example

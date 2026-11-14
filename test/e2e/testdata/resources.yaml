@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: e2e-app
+  namespace: e2e-tenant
+type: Opaque
+stringData:
+  username: app
+  password: e2e-password-not-real
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: e2e-policy
+  namespace: e2e-tenant
+spec:
+  connectionRef:
+    name: openbao
+  deletionPolicy: Delete
+  name: e2e-policy
+  policy: |
+    path "secret/data/e2e/app" {
+      capabilities = ["read"]
+    }
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVSecret
+metadata:
+  name: e2e-app
+  namespace: e2e-tenant
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    name: openbao
+  deletionPolicy: Delete
+  mountPath: secret
+  path: e2e/app
+  kvVersion: 2
+  dataFrom:
+    - secretRef:
+        name: e2e-app
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoEndpoint
+metadata:
+  name: e2e-password-policy
+  namespace: e2e-tenant
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    name: openbao
+  deletionPolicy: Delete
+  path: sys/policies/password/e2e-endpoint
+  data:
+    policy: |
+      length = 24
+      rule "charset" {
+        charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+      }

@@ -1,0 +1,28 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTCELRole
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  boundAudiences:
+  - example
+  celProgram:
+    expression: example
+    variables:
+    - expression: example
+      name: example
+  clockSkewLeeway: 1
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  expirationLeeway: 1
+  managementPolicy: Manage
+  message: example
+  mountPath: jwt
+  name: example
+  namespace: example
+  notBeforeLeeway: 1

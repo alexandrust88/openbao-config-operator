@@ -1,0 +1,81 @@
+name: release-please
+
+# release-please keeps a release pull request (version bump and CHANGELOG.md from conventional commits) open on
+# main and on release-X.Y branches. It does not tag or publish: a maintainer pushes the signed tag after merging, the
+# release workflow publishes, and the tag push flips the merged pull request to "autorelease: tagged" so the next
+# release pull request can open. See docs/maintainers/release-process.md.
+on:
+  push:
+    branches:
+      - main
+      - "release-[0-9]*"
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-pr:
+    name: Release pull request
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-24.04
+    # Holds RELEASE_APP_CLIENT_ID and RELEASE_APP_PRIVATE_KEY; restricted to main and release-[0-9]* branches.
+    environment: release-please
+    timeout-minutes: 10
+    permissions:
+      contents: write # push the release-please branch
+      pull-requests: write # open, update and label the release pull request
+    steps:
+      # Pull requests opened with GITHUB_TOKEN start no workflows, so required checks never report on the release
+      # pull request. A GitHub App token avoids that; without the app the job falls back to GITHUB_TOKEN.
+      - id: app-token
+        if: vars.RELEASE_APP_CLIENT_ID != ''
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token || github.token }}
+          target-branch: ${{ github.ref_name }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+          skip-github-release: true
+
+  mark-tagged:
+    name: Mark release pull request tagged
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write # relabel the merged release pull request
+    steps:
+      - name: Mark the merged release pull request as tagged
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # The version lands inside the jq filter below.
+          if ! [[ $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::the tag must look like vX.Y.Z or vX.Y.Z-suffix"
+            exit 1
+          fi
+          version=${TAG#v}
+          prs=$(gh pr list --repo "$GITHUB_REPOSITORY" --state merged --label "autorelease: pending" --limit 50 \
+            --json number,title --jq ".[] | select(.title | endswith(\" release $version\")) | .number")
+          if [ -z "$prs" ]; then
+            echo "No merged release pull request for $version is pending"
+            exit 0
+          fi
+          for pr in $prs; do
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$pr/labels/autorelease:%20pending" >/dev/null
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$pr/labels" -f "labels[]=autorelease: tagged" >/dev/null
+            echo "Marked #$pr as tagged"
+          done

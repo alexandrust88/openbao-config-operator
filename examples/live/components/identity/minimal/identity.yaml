@@ -1,0 +1,104 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: id-userpass
+spec:
+  connectionRef:
+    name: openbao
+  type: userpass
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: id-jwt
+spec:
+  connectionRef:
+    name: openbao
+  type: jwt
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Entity
+metadata:
+  name: id-alice
+spec:
+  connectionRef:
+    name: openbao
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: EntityAlias
+metadata:
+  name: id-alice-userpass
+spec:
+  connectionRef:
+    name: openbao
+  aliasName: alice
+  entityRef:
+    name: id-alice
+  mountRef:
+    name: id-userpass
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: id-devs
+spec:
+  connectionRef:
+    name: openbao
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: id-ext-admins
+spec:
+  connectionRef:
+    name: openbao
+  type: external
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupAlias
+metadata:
+  name: id-ext-admins-jwt
+spec:
+  connectionRef:
+    name: openbao
+  aliasName: admins
+  groupRef:
+    name: id-ext-admins
+  mountRef:
+    name: id-jwt
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupMembership
+metadata:
+  name: id-devs-alice
+spec:
+  connectionRef:
+    name: openbao
+  groupRef:
+    name: id-devs
+  entityRef:
+    name: id-alice
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: MFAMethod
+metadata:
+  name: id-totp
+spec:
+  connectionRef:
+    name: openbao
+  totp:
+    issuer: OpenBao live kit
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: MFALoginEnforcement
+metadata:
+  name: id-userpass-mfa
+spec:
+  connectionRef:
+    name: openbao
+  mfaMethods:
+    - methodRef:
+        name: id-totp
+  authMounts:
+    - mountRef:
+        name: id-userpass

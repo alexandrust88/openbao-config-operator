@@ -1,0 +1,51 @@
+name: stale
+
+# Conservative on purpose: long windows, and anything accepted, prioritised, assigned or in a milestone is exempt.
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  stale:
+    name: Mark and close stale issues and pull requests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: write # the action keeps its progress in an Actions cache and deletes the old entry
+      issues: write # label, comment on and close issues
+      pull-requests: write # label, comment on and close pull requests
+    steps:
+      - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        with:
+          days-before-issue-stale: 90
+          days-before-issue-close: 30
+          days-before-pr-stale: 60
+          days-before-pr-close: 30
+          stale-issue-label: lifecycle/stale
+          stale-pr-label: lifecycle/stale
+          exempt-issue-labels: lifecycle/frozen,triage/accepted,priority/critical-urgent,priority/important-soon,kind/security,good first issue,help wanted
+          exempt-pr-labels: lifecycle/frozen,priority/critical-urgent,priority/important-soon,kind/security
+          exempt-all-milestones: true
+          exempt-all-assignees: true
+          exempt-draft-pr: true
+          close-issue-reason: not_planned
+          operations-per-run: 60
+          stale-issue-message: >
+            This issue has had no activity for 90 days and is marked stale. It closes in 30 days unless someone
+            comments or a maintainer adds lifecycle/frozen or triage/accepted. Closing is not a judgement on the
+            report; reopen it with new information at any time.
+          stale-pr-message: >
+            This pull request has had no activity for 60 days and is marked stale. It closes in 30 days unless
+            someone pushes or comments. If you are waiting on a review, say so and a maintainer will follow up.
+          close-issue-message: >
+            Closed after 120 days without activity. Reopen it, or open a new issue that links here, if it still
+            applies.
+          close-pr-message: >
+            Closed after 90 days without activity. Thank you for the contribution; reopen it to continue.

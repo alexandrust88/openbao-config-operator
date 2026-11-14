@@ -1,0 +1,30 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: lc-kv
+spec:
+  connectionRef:
+    name: openbao
+  type: kv-v2
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVConfig
+metadata:
+  name: lc-kv-config
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  mountPath: lc-kv
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVConfig
+metadata:
+  name: lc-kv-config-observed
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: Adopt
+  driftInterval: 30s
+  managementPolicy: Observe
+  mountPath: lc-kv

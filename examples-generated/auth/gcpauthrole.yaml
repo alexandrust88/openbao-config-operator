@@ -1,0 +1,39 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: GCPAuthRole
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  addGroupAliases: true
+  allowGCEInference: true
+  boundProjects:
+  - example
+  boundServiceAccounts:
+  - example
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  maxJWTExp: 1h
+  mountPath: gcp
+  name: example
+  namespace: example
+  policyRefs:
+  - name: example
+  tokenBoundCIDRs:
+  - 10.0.0.0/8
+  tokenExplicitMaxTTL: 1h
+  tokenMaxTTL: 1h
+  tokenNoDefaultPolicy: true
+  tokenNumUses: 1
+  tokenPeriod: 1h
+  tokenPolicies:
+  - default
+  tokenStrictlyBindIP: true
+  tokenTTL: 1h
+  tokenType: default
+  type: iam

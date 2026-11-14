@@ -1,0 +1,36 @@
+name: pr-title
+
+# Pull requests are squash-merged with the title as the commit subject, and release-please builds the version bump
+# and CHANGELOG.md from those subjects, so the title must be a conventional commit.
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  conventional-commit:
+    name: Conventional commit title
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Check the title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9._/-]+\))?!?: [^ ](.*[^. ])?$'
+          if [[ $TITLE =~ $pattern ]]; then
+            echo "Title is a conventional commit"
+            exit 0
+          fi
+          echo "::error title=Pull request title::Use '<type>(<optional scope>)<optional !>: <summary>', for example 'feat(secrets): add TransitCacheConfig' or 'fix(engine)!: compare omitted keys'. Types: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test. No trailing period."
+          exit 1

@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: child-min-
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: openbao-live-kit
+      live.openbaoconfig.io/overlay: child-min
+resources:
+  - ../../../params
+components:
+  - ../../../base
+  - ../../../modes/child
+  - ../../../sets/namespaced-minimal
+  - ../../../finalize

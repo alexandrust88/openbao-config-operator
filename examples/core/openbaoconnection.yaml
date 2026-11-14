@@ -1,0 +1,19 @@
+# A tenant connection logs in as a ServiceAccount of its own namespace with a TokenRequest token for the
+# OpenBao audience. The OpenBaoServer must select this namespace and allow the audience. Injected identity and file
+# sources exist only on ClusterOpenBaoConnection.
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoConnection
+metadata:
+  name: openbao
+  namespace: team-a
+spec:
+  serverRef:
+    name: openbao
+  namespace: tenants/team-a
+  auth:
+    kubernetes:
+      role: team-a-configurer
+      serviceAccountRef:
+        name: openbao-configurer
+      audiences:
+        - openbao

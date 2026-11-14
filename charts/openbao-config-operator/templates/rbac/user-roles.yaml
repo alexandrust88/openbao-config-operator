@@ -1,0 +1,29 @@
+{{- if .Values.rbac.userRoles }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-tenant-editor
+  labels:
+    {{- include "openbao-config-operator.labels" . | nindent 4 }}
+    {{- if .Values.rbac.aggregate.admin }}
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    {{- end }}
+    {{- if .Values.rbac.aggregate.edit }}
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    {{- end }}
+{{- /* connections choose the OpenBao identity, so only the platform team manages them */}}
+rules:
+  {{- include "openbao-config-operator.userRules" (dict "root" . "verbs" (list "create" "delete" "deletecollection" "get" "list" "patch" "update" "watch") "excludePlurals" (list "openbaoconnections" "clusteropenbaoconnections") "namespacedOnly" true) | indent 2 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-viewer
+  labels:
+    {{- include "openbao-config-operator.labels" . | nindent 4 }}
+    {{- if .Values.rbac.aggregate.view }}
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+    {{- end }}
+rules:
+  {{- include "openbao-config-operator.userRules" (dict "root" . "verbs" (list "get" "list" "watch") "excludePlurals" (list "openbaoservers") "namespacedOnly" false) | indent 2 }}
+{{- end }}

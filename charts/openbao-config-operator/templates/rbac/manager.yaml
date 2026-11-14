@@ -1,0 +1,60 @@
+{{- if .Values.rbac.create }}
+{{- $fullname := include "openbao-config-operator.fullname" . }}
+{{- $sa := include "openbao-config-operator.serviceAccountName" . }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $fullname }}-manager
+  labels:
+    {{- include "openbao-config-operator.labels" . | nindent 4 }}
+rules:
+  {{- include "openbao-config-operator.managerRules.cluster" . | nindent 2 }}
+  {{- if not .Values.watchNamespaces }}
+  {{- include "openbao-config-operator.managerRules.namespaced" . | nindent 2 }}
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $fullname }}-manager
+  labels:
+    {{- include "openbao-config-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $fullname }}-manager
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ .Release.Namespace }}
+{{- if .Values.watchNamespaces }}
+{{- range $ns := uniq (append .Values.watchNamespaces .Release.Namespace) }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $fullname }}-manager
+  namespace: {{ $ns }}
+  labels:
+    {{- include "openbao-config-operator.labels" $ | nindent 4 }}
+rules:
+  {{- include "openbao-config-operator.managerRules.namespaced" $ | nindent 2 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $fullname }}-manager
+  namespace: {{ $ns }}
+  labels:
+    {{- include "openbao-config-operator.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $fullname }}-manager
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ $.Release.Namespace }}
+{{- end }}
+{{- end }}
+{{- end }}

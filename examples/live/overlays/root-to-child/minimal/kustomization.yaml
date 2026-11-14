@@ -1,0 +1,65 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: r2c-min-
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: openbao-live-kit
+      live.openbaoconfig.io/overlay: r2c-min
+resources:
+  - ../../../params
+components:
+  - ../../../base
+  - ../../../modes/root-to-child
+  - ../../../sets/namespaced-minimal
+  - ../../../finalize
+# Runs after namePrefix, so objects in a namespace of the kit land in <tenantNamespace>/<prefixed name>.
+replacements:
+  - source:
+      kind: ConfigMap
+      name: live-params
+      fieldPath: data.tenantNamespace
+    targets:
+      - select:
+          group: ^(sys|auth|secrets|identity|access)\.openbaoconfig\.io$
+        reject:
+          - kind: AccessLevel
+          - labelSelector: live.openbaoconfig.io/nested=true
+        fieldPaths:
+          - spec.namespace
+        options:
+          create: true
+      - select:
+          kind: OpenBaoEndpoint
+        reject:
+          - labelSelector: live.openbaoconfig.io/nested=true
+        fieldPaths:
+          - spec.namespace
+        options:
+          create: true
+  - source:
+      kind: ConfigMap
+      name: live-params
+      fieldPath: metadata.name
+      options:
+        delimiter: -live-params
+        index: 0
+    targets:
+      - select:
+          labelSelector: live.openbaoconfig.io/nested=true
+        fieldPaths:
+          - spec.namespace
+        options:
+          delimiter: "-"
+          index: -1
+  - source:
+      kind: ConfigMap
+      name: live-params
+      fieldPath: data.tenantNamespace
+    targets:
+      - select:
+          labelSelector: live.openbaoconfig.io/nested=true
+        fieldPaths:
+          - spec.namespace
+        options:
+          delimiter: /
+          index: -1

@@ -1,0 +1,21 @@
+# The example's path is in an OpenBao child namespace that only exists in a namespaced install; secret/ is the
+# KV mount every bao server -dev has.
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: RateLimitQuota
+metadata:
+  name: obco-kv-limit
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  managementPolicy: Manage
+  name: secret-limit
+  path: secret
+  rate: "50"
+  interval: 1s
+  blockInterval: 30s
+  inheritable: false

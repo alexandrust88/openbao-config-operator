@@ -1,0 +1,78 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: obco-approle
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 15m
+  managementPolicy: Manage
+  path: approle-ci
+  type: approle
+  description: AppRole logins for CI pipelines
+  local: false
+  sealWrap: false
+  externalEntropyAccess: false
+  forceNoCache: false
+  pluginVersion: ""
+  options: {}
+  defaultLeaseTTL: 1h
+  maxLeaseTTL: 24h
+  listingVisibility: hidden
+  auditNonHMACRequestKeys:
+    - role_id
+  auditNonHMACResponseKeys:
+    - role_id
+  passthroughRequestHeaders:
+    - X-Request-Id
+  allowedResponseHeaders:
+    - X-Request-Id
+  tokenType: default-service
+  userLockout:
+    threshold: 5
+    duration: 15m
+    counterResetDuration: 10m
+    disable: false
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: obco-ldap
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 15m
+  managementPolicy: Manage
+  path: ldap
+  type: ldap
+  pluginRef:
+    name: obco-ldap-auth-plugin
+  description: LDAP logins through the external plugin registered by the Plugin obco-ldap-auth-plugin
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: obco-kubernetes
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 15m
+  managementPolicy: Manage
+  path: kubernetes
+  type: kubernetes
+  description: Kubernetes ServiceAccount logins from the workload cluster

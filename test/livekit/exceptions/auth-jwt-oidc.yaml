@@ -1,0 +1,7 @@
+fullFields: {}
+notReady:
+  - kind: JWTAuthConfig
+    name: jwt-k8s-config
+    overlays:
+      - "*/full"
+    reason: the kubernetes provider reads OpenBao's own ServiceAccount token, CA and KUBERNETES_SERVICE_HOST, which bao server -dev outside a cluster does not have; Ready when OpenBao runs in Kubernetes

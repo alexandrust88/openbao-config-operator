@@ -1,0 +1,9 @@
+{
+  "path": "auth/ldap/groups/Ops Team",
+  "payload": {
+    "policies": [
+      "ops",
+      "readers"
+    ]
+  }
+}

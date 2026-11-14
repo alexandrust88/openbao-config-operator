@@ -1,0 +1,104 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package v1alpha1
+
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/common/v1alpha1"
+)
+
+// +kubebuilder:validation:XValidation:rule="has(self.name) == has(oldSelf.name) && (!has(self.name) || self.name == oldSelf.name)",message="name is immutable"
+
+// PasswordPolicySpec defines a password policy at sys/policies/password/<name>.
+type PasswordPolicySpec struct {
+	commonv1alpha1.ResourceSpec `json:",inline"`
+
+	// Name of the password policy, the <name> in sys/policies/password/<name>. Default: metadata.name. Immutable. Example: db-passwords
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=256
+	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9_.-]+$`
+	// +optional
+	Name string `json:"name,omitempty"`
+
+	// Password policy document in HCL: a length and one or more rule "charset" blocks. Maps to `policy`. Example: length = 24 rule "charset" { charset = "abcdefghijklmnopqrstuvwxyz0123456789" }
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=65536
+	// +required
+	Policy string `json:"policy"`
+}
+
+// PasswordPolicyStatus is the observed state of a PasswordPolicy.
+type PasswordPolicyStatus struct {
+	commonv1alpha1.ResourceStatus `json:",inline"`
+}
+
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:categories=openbao
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+
+// PasswordPolicy manages an OpenBao password policy at sys/policies/password/<name>: the rules secrets engines (database, LDAP and others) and RandomSecret use to generate passwords. deletionPolicy defaults to Orphan; Delete removes the policy from OpenBao.
+//
+// Example:
+//
+//	spec:
+//	  connectionRef:
+//	    name: openbao
+//	  name: db-passwords
+//	  policy: |
+//	    length = 24
+//	    rule "charset" {
+//	      charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+//	    }
+type PasswordPolicy struct {
+	metav1.TypeMeta `json:",inline"`
+
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitzero"`
+
+	// Desired state of the OpenBao password policy.
+	// +required
+	Spec PasswordPolicySpec `json:"spec"`
+
+	// Observed state reported by the operator: conditions, OpenBao path and ownership.
+	// +optional
+	Status PasswordPolicyStatus `json:"status,omitzero"`
+}
+
+// GetResourceSpec implements commonv1alpha1.Managed.
+func (p *PasswordPolicy) GetResourceSpec() *commonv1alpha1.ResourceSpec { return &p.Spec.ResourceSpec }
+
+// GetResourceStatus implements commonv1alpha1.Managed.
+func (p *PasswordPolicy) GetResourceStatus() *commonv1alpha1.ResourceStatus {
+	return &p.Status.ResourceStatus
+}
+
+// +kubebuilder:object:root=true
+
+// PasswordPolicyList contains a list of PasswordPolicy.
+type PasswordPolicyList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitzero"`
+	Items           []PasswordPolicy `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&PasswordPolicy{}, &PasswordPolicyList{})
+}

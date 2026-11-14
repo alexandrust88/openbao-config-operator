@@ -1,0 +1,21 @@
+# Each selector label carries the name of the one object it selects, so the overlay prefix renames label and
+# selector together and a selector never matches the objects of another overlay in the same Kubernetes namespace.
+nameReference:
+  - kind: OIDCClient
+    fieldSpecs:
+      - path: metadata/labels/oidc-provider-client
+        kind: OIDCClient
+      - path: spec/allowedClients/clientSelector/matchLabels/oidc-provider-client
+        kind: OIDCProvider
+  - kind: Entity
+    fieldSpecs:
+      - path: metadata/labels/oidc-assignment-entity
+        kind: Entity
+      - path: spec/entities/entitySelector/matchLabels/oidc-assignment-entity
+        kind: OIDCAssignment
+  - kind: Group
+    fieldSpecs:
+      - path: metadata/labels/oidc-assignment-group
+        kind: Group
+      - path: spec/groups/groupSelector/matchLabels/oidc-assignment-group
+        kind: OIDCAssignment

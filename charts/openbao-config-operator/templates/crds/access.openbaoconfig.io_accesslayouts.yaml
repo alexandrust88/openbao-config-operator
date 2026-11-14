@@ -1,0 +1,357 @@
+{{- if .Values.crds.install }}
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+    {{- if .Values.crds.keep }}
+    helm.sh/resource-policy: keep
+    {{- end }}
+  name: accesslayouts.access.openbaoconfig.io
+  labels:
+    {{- include "openbao-config-operator.labels" . | nindent 4 }}
+spec:
+  group: access.openbaoconfig.io
+  names:
+    categories:
+      - openbao
+    kind: AccessLayout
+    listKind: AccessLayoutList
+    plural: accesslayouts
+    singular: accesslayout
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .status.conditions[?(@.type=="Ready")].status
+          name: Ready
+          type: string
+        - jsonPath: .status.conditions[?(@.type=="Synced")].status
+          name: Synced
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+      name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: "AccessLayout gives people, by identity provider group, access to KV version 2 secrets (the human access model). For each role, OpenBao namespace and organization it writes an ACL policy, sys/policies/acl/layout_<namespace>_<name>_<role>[_<org>], and per auth mount an external group identity/group/name/<policy>_<mount> with that policy and a group alias matching the identity provider group. An update that deletes a policy or group the layout created before needs the annotation openbaoconfig.io/allow-disruptive-update: \"true\". Default deletionPolicy Orphan keeps the objects.\n\nExample:\n\n\tspec:\n\t  connectionRef:\n\t    name: openbao\n\t  authMounts: [oidc]\n\t  paths:\n\t    - mount: secret\n\t      path: team-a/*\n\t  roles:\n\t    - name: developer\n\t      levels:\n\t        - level: writer"
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: 'Desired state: the auth mounts, secret paths and the role-by-namespace access matrix.'
+              properties:
+                authMounts:
+                  description: 'Paths of the OIDC or JWT auth methods people log in with, without the auth/ prefix, 1 to 4 entries. Each gets its own external group and group alias per policy; every OpenBao namespace of the layout must have each of them. Example: [oidc]'
+                  items:
+                    maxLength: 64
+                    pattern: ^[A-Za-z0-9_-]+$
+                    type: string
+                  maxItems: 4
+                  minItems: 1
+                  type: array
+                  x-kubernetes-list-type: set
+                connectionRef:
+                  description: Connection used to reach and log in to OpenBao. Immutable.
+                  properties:
+                    kind:
+                      default: OpenBaoConnection
+                      description: 'Kind of the connection: OpenBaoConnection (in the same Kubernetes namespace as this resource) or ClusterOpenBaoConnection (cluster-scoped; its allowedNamespaces must select this namespace). Default: OpenBaoConnection.'
+                      enum:
+                        - OpenBaoConnection
+                        - ClusterOpenBaoConnection
+                      type: string
+                    name:
+                      description: 'Name of the OpenBaoConnection or ClusterOpenBaoConnection. Example: openbao'
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                  required:
+                    - name
+                  type: object
+                creationPolicy:
+                  default: Create
+                  description: 'How an object that already exists in OpenBao, and is not yet owned by this resource, is treated. Create (default): create the object; an existing one is refused with reason Conflict. Adopt: take over an existing object and never create one. CreateOrAdopt: create it, or take over an existing one. Settings that always exist in OpenBao (configuration singletons) need Adopt or CreateOrAdopt.'
+                  enum:
+                    - Create
+                    - Adopt
+                    - CreateOrAdopt
+                  type: string
+                deletionPolicy:
+                  default: Orphan
+                  description: 'What happens in OpenBao when this resource is deleted. Orphan (default): the OpenBao object stays. Delete: the object is removed (a configuration singleton is reset to its defaults); data holders such as mounts, namespaces and KV data are removed only while the resource carries the annotation openbaoconfig.io/allow-destructive-delete: "true". Kinds whose OpenBao object cannot be deleted reject Delete.'
+                  enum:
+                    - Delete
+                    - Orphan
+                  type: string
+                driftDetection:
+                  default: Enabled
+                  description: 'Whether OpenBao is re-read periodically to detect and repair out-of-band changes. Enabled (default): re-read every driftInterval. Disabled: write only when the spec or a referenced Secret changes.'
+                  enum:
+                    - Enabled
+                    - Disabled
+                  type: string
+                driftInterval:
+                  description: 'How often OpenBao is re-read for drift, as a duration of at least 30s. Default: the operator''s interval for the kind (15m for kinds that grant access such as policies, auth mounts and roles, 1h for the rest), with jitter. Example: 30m'
+                  maxLength: 32
+                  type: string
+                  x-kubernetes-validations:
+                    - message: driftInterval must be at least 30s
+                      rule: duration(self) >= duration('30s')
+                groupAliasTemplate:
+                  description: 'Name of the group alias, which must equal the group name the identity provider sends in its groups claim; maps to the alias `name`. {role} is replaced by the role name and {org} by the organization; it must contain {role}, and {org} exactly when organizations are set. Default: "{role}", or "{org}_{role}" when organizations are set. Example: vault-{org}-{role}'
+                  maxLength: 128
+                  minLength: 1
+                  pattern: ^([A-Za-z0-9._-]|\{role\}|\{org\})+$
+                  type: string
+                managementPolicy:
+                  default: Manage
+                  description: 'Whether the operator writes to OpenBao. Manage (default): converge OpenBao to the spec, create and delete as the policies say. Observe: only read the object and report drift in the conditions; never write or delete.'
+                  enum:
+                    - Manage
+                    - Observe
+                  type: string
+                namespace:
+                  description: 'OpenBao namespace of the object, relative to the connection''s base namespace; empty means the connection namespace itself. Segments are separated by "/", without leading or trailing slash. Immutable: it cannot be added, changed or removed after creation. Example: team-a/apps'
+                  maxLength: 256
+                  pattern: ^[A-Za-z0-9_-][A-Za-z0-9._-]*(/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$
+                  type: string
+                organizations:
+                  description: 'When set, every role is repeated once per organization: {org} in paths and in groupAliasTemplate takes each value. Required when a path uses {org}. Lowercase letters, digits and "-", at most 40 characters. Example: [acme, globex]'
+                  items:
+                    maxLength: 40
+                    pattern: ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$
+                    type: string
+                  maxItems: 32
+                  type: array
+                  x-kubernetes-list-type: set
+                paths:
+                  description: Secret paths on KV version 2 mounts that each role's level applies to, 1 to 8 entries. {sa.namespace} and {sa.name} are not allowed here (they only exist for ServiceAccount logins).
+                  items:
+                    description: |-
+                      A pair of secret paths on a KV version 2 mount: one for secret data and one for secret metadata.
+
+                      A path is a list of segments separated by "/". A segment is a literal of letters, digits, ".", "_" and "-", or "+" (exactly one segment), or one of the tokens {org}, {sa.namespace} and {sa.name}. The last segment may also be "*" or end with "*" (any suffix). A token always fills a whole segment, and "." and ".." are not segments.
+                    properties:
+                      metadataPath:
+                        description: 'Secret path below the mount that the level''s metadata capabilities apply to; the policy grants them on <mount>/metadata/<metadataPath>. Same syntax as path. Default: the value of path. Example: apps/*'
+                        maxLength: 256
+                        minLength: 1
+                        pattern: ^((([A-Za-z0-9_-][A-Za-z0-9._-]*|\.[A-Za-z0-9_-][A-Za-z0-9._-]*|\.\.[A-Za-z0-9._-]+)|\+|\{org\}|\{sa\.namespace\}|\{sa\.name\})/)*(([A-Za-z0-9_-][A-Za-z0-9._-]*|\.[A-Za-z0-9_-][A-Za-z0-9._-]*|\.\.[A-Za-z0-9._-]+)\*?|\+|\{org\}|\{sa\.namespace\}|\{sa\.name\}|\*)$
+                        type: string
+                      mount:
+                        description: 'Path of the KV version 2 secrets engine, without leading or trailing slash. Example: secret'
+                        maxLength: 128
+                        minLength: 1
+                        pattern: ^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$
+                        type: string
+                      path:
+                        description: 'Secret path below the mount that the level''s data capabilities apply to; the policy grants them on <mount>/data/<path>. The level''s versions grant applies to the same path under delete/, undelete/ and destroy/. Example: apps/{sa.namespace}/*'
+                        maxLength: 256
+                        minLength: 1
+                        pattern: ^((([A-Za-z0-9_-][A-Za-z0-9._-]*|\.[A-Za-z0-9_-][A-Za-z0-9._-]*|\.\.[A-Za-z0-9._-]+)|\+|\{org\}|\{sa\.namespace\}|\{sa\.name\})/)*(([A-Za-z0-9_-][A-Za-z0-9._-]*|\.[A-Za-z0-9_-][A-Za-z0-9._-]*|\.\.[A-Za-z0-9._-]+)\*?|\+|\{org\}|\{sa\.namespace\}|\{sa\.name\}|\*)$
+                        type: string
+                    required:
+                      - mount
+                      - path
+                    type: object
+                  maxItems: 8
+                  minItems: 1
+                  type: array
+                roles:
+                  description: 'The access matrix: for each role, its level per OpenBao namespace, 1 to 16 roles keyed by name.'
+                  items:
+                    description: 'One row of the layout matrix: a role of people and its level in each OpenBao namespace.'
+                    properties:
+                      levels:
+                        description: Level of the role in each OpenBao namespace, at most 32 entries keyed by namespace. A namespace that is not listed gets nothing for this role.
+                        items:
+                          description: The level a role gets in one OpenBao namespace.
+                          properties:
+                            level:
+                              description: 'Name of the AccessLevel, in the same Kubernetes namespace, granted on spec.paths in this OpenBao namespace. Example: writer'
+                              maxLength: 253
+                              minLength: 1
+                              type: string
+                            namespace:
+                              default: ""
+                              description: 'OpenBao namespace, relative to spec.namespace; empty (default) means spec.namespace itself. Each namespace may appear once per role, and must have every auth method in spec.authMounts. Example: team-a'
+                              maxLength: 255
+                              pattern: ^([A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*)?$
+                              type: string
+                          required:
+                            - level
+                          type: object
+                        maxItems: 32
+                        type: array
+                        x-kubernetes-list-map-keys:
+                          - namespace
+                        x-kubernetes-list-type: map
+                      name:
+                        description: 'Name of the role: lowercase letters, digits and "-", starting with a letter, at most 32 characters. It is part of the policy and group names and replaces {role} in the group alias. Example: developer'
+                        maxLength: 32
+                        minLength: 1
+                        pattern: ^[a-z][a-z0-9-]{0,31}$
+                        type: string
+                    required:
+                      - name
+                    type: object
+                  maxItems: 16
+                  minItems: 1
+                  type: array
+                  x-kubernetes-list-map-keys:
+                    - name
+                  x-kubernetes-list-type: map
+              required:
+                - authMounts
+                - connectionRef
+                - paths
+                - roles
+              type: object
+              x-kubernetes-validations:
+                - message: groupAliasTemplate must contain {role}
+                  rule: '!has(self.groupAliasTemplate) || self.groupAliasTemplate.contains(''{role}'')'
+                - message: groupAliasTemplate contains {org} exactly when organizations are set
+                  rule: '!has(self.groupAliasTemplate) || self.groupAliasTemplate.contains(''{org}'') == (has(self.organizations) && size(self.organizations) > 0)'
+                - message: '{sa.namespace} and {sa.name} are only valid in AccessGrant rules'
+                  rule: self.paths.all(p, !p.path.contains('{sa.') && (!has(p.metadataPath) || !p.metadataPath.contains('{sa.')))
+                - message: paths that use {org} require organizations
+                  rule: '!self.paths.exists(p, p.path.contains(''{org}'') || (has(p.metadataPath) && p.metadataPath.contains(''{org}''))) || (has(self.organizations) && size(self.organizations) > 0)'
+                - message: namespace is immutable
+                  rule: has(self.__namespace__) == has(oldSelf.__namespace__) && (!has(self.__namespace__) || self.__namespace__ == oldSelf.__namespace__)
+                - message: connectionRef is immutable
+                  rule: self.connectionRef == oldSelf.connectionRef
+            status:
+              description: 'Observed state reported by the operator: conditions and the owned OpenBao objects.'
+              properties:
+                acquired:
+                  description: 'How the operator came to own the object: Created (it created it) or Adopted (it took over an existing one). Empty until owned.'
+                  type: string
+                children:
+                  description: 'Every OpenBao object the layout owns: its ACL policies and external groups with their aliases. With deletionPolicy Delete, deleting the layout deletes exactly these.'
+                  items:
+                    description: One OpenBao object created and owned by this resource; with deletionPolicy Delete it is removed when the resource is deleted.
+                    properties:
+                      kind:
+                        description: 'Kind of the OpenBao object: Policy (an ACL policy), KubernetesAuthRole (a Kubernetes auth role) or Group (an external identity group, together with its group alias).'
+                        enum:
+                          - Policy
+                          - KubernetesAuthRole
+                          - Group
+                        type: string
+                      namespace:
+                        description: 'OpenBao namespace of the object, relative to status.namespace; empty means status.namespace itself. Example: team-a'
+                        type: string
+                      path:
+                        description: 'OpenBao API path of the object in its namespace. Example: sys/policies/acl/grant_apps_reader'
+                        type: string
+                    required:
+                      - kind
+                      - path
+                    type: object
+                  type: array
+                conditions:
+                  description: 'Current state as conditions: Ready (the OpenBao object matches the spec) and Synced (the last reconcile succeeded), each with a reason such as Available, Drifted, Conflict, ConnectionNotReady or PermissionDenied, and the generation it describes.'
+                  items:
+                    description: Condition contains details for one aspect of the current state of this API Resource.
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          lastTransitionTime is the last time the condition transitioned from one status to another.
+                          This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                        format: date-time
+                        type: string
+                      message:
+                        description: |-
+                          message is a human readable message indicating details about the transition.
+                          This may be an empty string.
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        description: |-
+                          observedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                          with respect to the current state of the instance.
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        description: |-
+                          reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                          Producers of specific condition types may define expected values and meanings for this field,
+                          and whether the values are considered a guaranteed API.
+                          The value should be a CamelCase string.
+                          This field may not be empty.
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        description: status of the condition, one of True, False, Unknown.
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                        type: string
+                      type:
+                        description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+                id:
+                  description: 'Identifier OpenBao generated for the object (an entity, group or alias ID, or a mount accessor), for kinds that have one; other resources reference it. Example: 6c9f3e0a-1b2c-4d5e-8f90-123456789abc'
+                  type: string
+                namespace:
+                  description: 'Absolute OpenBao namespace the object was written in; empty means the root namespace. If it later differs from the spec, reconciling stops with reason NamespaceChanged. Example: team-a/apps'
+                  type: string
+                observedGeneration:
+                  description: The metadata.generation of this resource that the operator last reconciled.
+                  format: int64
+                  type: integer
+                path:
+                  description: 'Full OpenBao API path of the object, including its namespace, as last written; deletion uses it even after the spec changed. Example: team-a/sys/policies/acl/app-read'
+                  type: string
+                rotationNonce:
+                  description: Value of the resource's rotation nonce when one-time inputs, such as a root credential that OpenBao rotates afterwards, were last sent; changing the nonce in the spec sends them again.
+                  type: string
+                serverID:
+                  description: 'Cluster ID of the OpenBao server the object was acquired on. If the connection later reaches another server, reconciling stops with reason ServerChanged and nothing is written or deleted. Example: 80f7de92-c12e-e960-4754-255c32fc6b53'
+                  type: string
+                writeOnlyHash:
+                  description: Keyed hash (HMAC-SHA256) of the write-only inputs, such as passwords read from Secrets; a change forces a write. It never contains or reveals the values.
+                  type: string
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+{{- end }}

@@ -1,0 +1,50 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: RADIUSAuthConfig
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  dialTimeout: 1h
+  driftDetection: Enabled
+  driftInterval: 1h
+  host: https://openbao.example.com:8200
+  managementPolicy: Manage
+  mountPath: radius
+  namespace: example
+  nasIdentifier: example
+  nasPort: 1
+  policyRefs:
+  - name: example
+  port: 1
+  readTimeout: 1h
+  secretSecretRef:
+    key: value
+    name: radiusauthconfig-secret-secret-ref
+  tokenBoundCIDRs:
+  - 10.0.0.0/8
+  tokenExplicitMaxTTL: 1h
+  tokenMaxTTL: 1h
+  tokenNoDefaultPolicy: true
+  tokenNumUses: 1
+  tokenPeriod: 1h
+  tokenPolicies:
+  - default
+  tokenStrictlyBindIP: true
+  tokenTTL: 1h
+  tokenType: default
+  unregisteredUserPolicies:
+  - default
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: radiusauthconfig-secret-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

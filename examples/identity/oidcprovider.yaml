@@ -1,0 +1,26 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: OIDCProvider
+metadata:
+  name: obco-provider
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  deletionPolicy: Delete
+  name: obco-provider
+  issuer: https://openbao.obco.example.com:8200
+  allowedClients:
+    - clientRef:
+        name: obco-portal
+    - clientName: obco-cli
+    - clientID: obcoStaticClientId0000000000000
+    - clientSelector:
+        matchLabels:
+          obco.example.com/provider: obco-provider
+  scopesSupported:
+    - obco-groups

@@ -1,0 +1,33 @@
+package sys
+
+// Literals shared by the tests of this package.
+const (
+	lit10s                   = "10s"
+	litBuiltin               = "builtin"
+	litCommand               = "command"
+	litCoreClusterListener   = "core.cluster-listener"
+	litCustomMetadata        = "custom_metadata"
+	litDebug                 = "debug"
+	litDelete                = "Delete"
+	litDescription           = "description"
+	litEnabled               = "enabled"
+	litKubernetes            = "kubernetes"
+	litName                  = "name"
+	litOpenbaoPluginAuthLdap = "openbao-plugin-auth-ldap"
+	litPath                  = "path"
+	litPluginEnvProxy        = "plugin-env/proxy"
+	litSysAuth               = "sys/auth"
+	litSysNamespacesChild    = "sys/namespaces/child"
+	litUserLockoutDuration   = "user_lockout_duration"
+	litV0210                 = "v0.21.0"
+	litV100                  = "v1.0.0"
+	litVersion               = "version"
+	litXForwardedFor         = "X-Forwarded-For"
+	litRate                  = "rate"
+	litSha256                = "sha256"
+	litUserpass              = "userpass"
+	litPolicyP1              = "sys/policies/acl/p1"
+	litQuotaQ1               = "sys/quotas/rate-limit/q1"
+	litTeamA                 = "team-a/"
+	litInheritable           = "inheritable"
+)

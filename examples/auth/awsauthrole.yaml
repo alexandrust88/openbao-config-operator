@@ -1,0 +1,77 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AWSAuthRole
+metadata:
+  name: aws-app
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: aws
+  name: app
+  authType: iam
+  boundAMIIDs:
+    - ami-0123456789abcdef0
+  boundAccountIDs:
+    - "123456789012"
+  boundRegions:
+    - eu-central-1
+  boundVPCIDs:
+    - vpc-0123456789abcdef0
+  boundSubnetIDs:
+    - subnet-0123456789abcdef0
+  boundIAMRoleARNs:
+    - arn:aws:iam::123456789012:role/app
+  boundIAMInstanceProfileARNs:
+    - arn:aws:iam::123456789012:instance-profile/app
+  boundEC2InstanceIDs:
+    - i-0123456789abcdef0
+  boundIAMPrincipalARNs:
+    - arn:aws:iam::123456789012:role/app
+  inferredEntityType: ec2_instance
+  inferredAWSRegion: eu-central-1
+  resolveAWSUniqueIDs: true
+  tokenTTL: 1h
+  tokenMaxTTL: 8h
+  tokenExplicitMaxTTL: 24h
+  tokenPeriod: 30m
+  tokenPolicies:
+    - default-login
+    - app-read
+  policyRefs:
+    - name: obco-team-a-reader
+  tokenBoundCIDRs:
+    - 10.0.0.0/8
+    - 192.168.10.0/24
+  tokenNumUses: 0
+  tokenType: service
+  tokenNoDefaultPolicy: false
+  tokenStrictlyBindIP: false
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AWSAuthRole
+metadata:
+  name: aws-ec2
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: aws
+  name: ec2
+  authType: ec2
+  boundAMIIDs:
+    - ami-0123456789abcdef0
+  boundAccountIDs:
+    - "123456789012"
+  roleTag: VaultRole
+  allowInstanceMigration: false
+  disallowReauthentication: true
+  tokenPolicies:
+    - app-read

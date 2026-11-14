@@ -1,0 +1,48 @@
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessLevel
+metadata:
+  name: read
+  namespace: openbao-config
+spec:
+  data:
+    - read
+  metadata:
+    - read
+    - list
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessLevel
+metadata:
+  name: write
+  namespace: openbao-config
+spec:
+  data:
+    - create
+    - read
+    - update
+    - patch
+  metadata:
+    - read
+    - list
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessLevel
+metadata:
+  name: owner
+  namespace: openbao-config
+spec:
+  data:
+    - create
+    - read
+    - update
+    - patch
+    - delete
+    - list
+  metadata:
+    - create
+    - read
+    - update
+    - patch
+    - delete
+    - list
+  versions: true

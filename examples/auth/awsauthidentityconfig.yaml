@@ -1,0 +1,21 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AWSAuthIdentityConfig
+metadata:
+  name: aws-identity
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  mountPath: aws
+  iamAlias: unique_id
+  iamMetadata:
+    - account_id
+    - auth_type
+  ec2Alias: instance_id
+  ec2Metadata:
+    - region
+    - account_id

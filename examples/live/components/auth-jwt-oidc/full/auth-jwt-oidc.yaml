@@ -1,0 +1,421 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: jwt
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: jwt
+  type: jwt
+  description: JWT logins of CI pipelines, verified with a pinned public key
+  local: false
+  sealWrap: false
+  externalEntropyAccess: false
+  forceNoCache: false
+  pluginVersion: ""
+  options: {}
+  defaultLeaseTTL: 1h
+  maxLeaseTTL: 24h
+  listingVisibility: hidden
+  auditNonHMACRequestKeys:
+    - role
+  auditNonHMACResponseKeys:
+    - lease_duration
+  passthroughRequestHeaders:
+    - X-Request-Id
+  allowedResponseHeaders:
+    - X-Request-Id
+  tokenType: default-service
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: jwt-jwks
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: jwt-jwks
+  type: jwt
+  description: JWT logins verified against the issuer key set
+  local: false
+  sealWrap: false
+  externalEntropyAccess: false
+  forceNoCache: false
+  pluginVersion: ""
+  options: {}
+  defaultLeaseTTL: 1h
+  maxLeaseTTL: 24h
+  listingVisibility: hidden
+  auditNonHMACRequestKeys:
+    - role
+  auditNonHMACResponseKeys:
+    - lease_duration
+  passthroughRequestHeaders:
+    - X-Request-Id
+  allowedResponseHeaders:
+    - X-Request-Id
+  tokenType: default-service
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: jwt-oidc
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: jwt-oidc
+  type: oidc
+  description: Browser OIDC logins through Google Workspace
+  local: false
+  sealWrap: false
+  externalEntropyAccess: false
+  forceNoCache: false
+  pluginVersion: ""
+  options: {}
+  defaultLeaseTTL: 1h
+  maxLeaseTTL: 24h
+  listingVisibility: hidden
+  auditNonHMACRequestKeys:
+    - role
+  auditNonHMACResponseKeys:
+    - lease_duration
+  passthroughRequestHeaders:
+    - X-Request-Id
+  allowedResponseHeaders:
+    - X-Request-Id
+  tokenType: default-service
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: jwt-k8s
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: jwt-k8s
+  type: jwt
+  description: Kubernetes ServiceAccount JWTs verified with the cluster key set
+  local: false
+  sealWrap: false
+  externalEntropyAccess: false
+  forceNoCache: false
+  pluginVersion: ""
+  options: {}
+  defaultLeaseTTL: 1h
+  maxLeaseTTL: 24h
+  listingVisibility: hidden
+  auditNonHMACRequestKeys:
+    - role
+  auditNonHMACResponseKeys:
+    - lease_duration
+  passthroughRequestHeaders:
+    - X-Request-Id
+  allowedResponseHeaders:
+    - X-Request-Id
+  tokenType: default-service
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: jwt-ci-read
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: jwt-ci-read
+  policy: |
+    path "+/data/ci/*" {
+      capabilities = ["read"]
+    }
+  casRequired: false
+  allowWildcardsInIdentityTemplates: false
+  allowSlashesInIdentityTemplates: false
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: jwt-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: jwt
+  jwtValidationPubkeys:
+    - |
+      -----BEGIN PUBLIC KEY-----
+      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE4VR71Vwoy6PGpPAqj0Gsl5zfhx/O
+      ypmt/55X4LSKYghscKyiXopP0hUMJSdEknOumXTEkCPrJsy+yRGchptgJQ==
+      -----END PUBLIC KEY-----
+  jwtSupportedAlgs:
+    - ES256
+    - RS256
+  boundIssuer: https://gitlab.example.com
+  defaultRole: jwt-ci
+  namespaceInState: true
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: jwt-jwks-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: jwt-jwks
+  jwksURL: https://gitlab.example.com/oauth/discovery/keys
+  jwksCAPEM: |
+    -----BEGIN CERTIFICATE-----
+    MIIBhTCCASqgAwIBAgIJAOQljLXsiNReMAoGCCqGSM49BAMCMDUxGDAWBgNVBAMM
+    D2xpdmUga2l0IFRMUyBDQTEZMBcGA1UECgwQb3BlbmJhbyBsaXZlIGtpdDAeFw0y
+    NjExMTQwOTQyMjVaFw0zNjExMTEwOTQyMjVaMDUxGDAWBgNVBAMMD2xpdmUga2l0
+    IFRMUyBDQTEZMBcGA1UECgwQb3BlbmJhbyBsaXZlIGtpdDBZMBMGByqGSM49AgEG
+    CCqGSM49AwEHA0IABA8rM2hh5PZmeyvUvkYeuAlDQq/gU1M0v0CiW41QoP/UKHc+
+    ZxDa1mCQR5PRSsethpagIveH8ebpPqwIens3Vh2jIzAhMA8GA1UdEwEB/wQFMAMB
+    Af8wDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMCA0kAMEYCIQDIOC+VfDcGyiga
+    yRz1DaItADfmeXNcV1L8PNH8wXBPzQIhAObjv9jMzlb0dYt4hpsLH+4a6f7hpgad
+    v1q4Vtq6ZO61
+    -----END CERTIFICATE-----
+  skipJWKSValidation: true
+  jwtSupportedAlgs:
+    - RS256
+  boundIssuer: https://gitlab.example.com
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: jwt-oidc-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: jwt-oidc
+  oidcDiscoveryURL: https://accounts.google.com
+  oidcDiscoveryCAPEM: |
+    -----BEGIN CERTIFICATE-----
+    MIIBhTCCASqgAwIBAgIJAOQljLXsiNReMAoGCCqGSM49BAMCMDUxGDAWBgNVBAMM
+    D2xpdmUga2l0IFRMUyBDQTEZMBcGA1UECgwQb3BlbmJhbyBsaXZlIGtpdDAeFw0y
+    NjExMTQwOTQyMjVaFw0zNjExMTEwOTQyMjVaMDUxGDAWBgNVBAMMD2xpdmUga2l0
+    IFRMUyBDQTEZMBcGA1UECgwQb3BlbmJhbyBsaXZlIGtpdDBZMBMGByqGSM49AgEG
+    CCqGSM49AwEHA0IABA8rM2hh5PZmeyvUvkYeuAlDQq/gU1M0v0CiW41QoP/UKHc+
+    ZxDa1mCQR5PRSsethpagIveH8ebpPqwIens3Vh2jIzAhMA8GA1UdEwEB/wQFMAMB
+    Af8wDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMCA0kAMEYCIQDIOC+VfDcGyiga
+    yRz1DaItADfmeXNcV1L8PNH8wXBPzQIhAObjv9jMzlb0dYt4hpsLH+4a6f7hpgad
+    v1q4Vtq6ZO61
+    -----END CERTIFICATE-----
+  overrideAllowedServerNames:
+    - accounts.google.com
+  skipJWKSValidation: true
+  oidcClientID: openbao-live-kit.apps.googleusercontent.com
+  oidcClientSecretSecretRef:
+    name: live-auth-jwt-oidc
+    key: client-secret
+  oidcResponseMode: form_post
+  oidcResponseTypes:
+    - code
+    - id_token
+  boundIssuer: https://accounts.google.com
+  defaultRole: jwt-oidc-user
+  namespaceInState: true
+  providerConfig:
+    provider: gsuite
+    settings:
+      gsuite_admin_impersonate: openbao-admin@example.com
+      fetch_groups: true
+      fetch_user_info: true
+      groups_recurse_max_depth: 5
+      user_custom_schemas: Education,Preferences
+      domain: example.com
+    secretRef:
+      name: live-auth-jwt-oidc
+      key: provider-config
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: jwt-k8s-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: jwt-k8s
+  providerConfig:
+    provider: kubernetes
+  boundIssuer: https://kubernetes.default.svc.cluster.local
+  jwtSupportedAlgs:
+    - RS256
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthRole
+metadata:
+  name: jwt-ci
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: jwt
+  name: jwt-ci
+  roleType: jwt
+  userClaim: sub
+  userClaimJSONPointer: false
+  boundAudiences:
+    - openbao
+  boundSubject: project_path:platform/deploy:ref_type:branch:ref:main
+  boundClaimsType: glob
+  boundClaims:
+    namespace_path:
+      - platform
+      - platform/*
+  claimMappings:
+    project_path: project
+    ref: ref
+  groupsClaim: groups
+  clockSkewLeeway: 60
+  expirationLeeway: 30s
+  notBeforeLeeway: 30s
+  tokenPoliciesTemplateClaims: false
+  verboseOIDCLogging: false
+  policyRefs:
+    - name: jwt-ci-read
+  tokenPolicies:
+    - default
+  tokenTTL: 30m
+  tokenMaxTTL: 4h
+  tokenExplicitMaxTTL: 8h
+  tokenPeriod: 0s
+  tokenNumUses: 0
+  tokenNoDefaultPolicy: false
+  tokenStrictlyBindIP: false
+  tokenBoundCIDRs:
+    - 10.0.0.0/8
+    - 127.0.0.1/32
+  tokenType: service
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthRole
+metadata:
+  name: jwt-oidc-user
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: jwt-oidc
+  name: jwt-oidc-user
+  roleType: oidc
+  userClaim: email
+  groupsClaim: groups
+  boundAudiences:
+    - openbao-live-kit.apps.googleusercontent.com
+  allowedRedirectURIs:
+    - https://openbao.example.com:8200/ui/vault/auth/oidc/oidc/callback
+    - http://localhost:8250/oidc/callback
+  callbackMode: client
+  pollInterval: 5
+  maxAge: 1h
+  oauth2Metadata:
+    - id_token
+  oidcScopes:
+    - profile
+    - email
+  oidcDisableConfirmation: false
+  verboseOIDCLogging: false
+  policyRefs:
+    - name: jwt-ci-read
+  tokenTTL: 1h
+  tokenMaxTTL: 8h
+  tokenType: default
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTCELRole
+metadata:
+  name: jwt-cel
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: jwt
+  name: jwt-cel
+  boundAudiences:
+    - openbao
+  clockSkewLeeway: 60
+  expirationLeeway: 30s
+  notBeforeLeeway: 30s
+  message: only pipelines of the platform group may log in
+  celProgram:
+    variables:
+      - name: project
+        expression: 'has(claims.project_path) ? claims.project_path : ""'
+      - name: on_main
+        expression: 'has(claims.ref) && claims.ref == "main"'
+    expression: 'project.startsWith("platform/") && on_main'

@@ -1,0 +1,33 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: tacl-kubernetes
+spec:
+  connectionRef:
+    name: openbao
+  type: kubernetes
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: tacl-kv
+spec:
+  connectionRef:
+    name: openbao
+  type: kv-v2
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: tacl-sa-folder
+spec:
+  connectionRef:
+    name: openbao
+  policy: |
+    path "+/data/sa/{{identity.entity.aliases.${accessor:kubernetes}.metadata.service_account_namespace}}/*" {
+      capabilities = ["read"]
+    }
+  accessorRefs:
+    kubernetes:
+      authMountRef:
+        name: tacl-kubernetes

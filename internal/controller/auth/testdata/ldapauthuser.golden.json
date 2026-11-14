@@ -1,0 +1,12 @@
+{
+  "path": "auth/ldap/users/jdoe",
+  "payload": {
+    "groups": [
+      "Ops Team",
+      "auditors"
+    ],
+    "policies": [
+      "personal-jdoe"
+    ]
+  }
+}

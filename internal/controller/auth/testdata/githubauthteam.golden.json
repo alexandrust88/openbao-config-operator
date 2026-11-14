@@ -1,0 +1,6 @@
+{
+  "path": "auth/github/map/teams/platform-team",
+  "payload": {
+    "value": "platform-admin,readers"
+  }
+}

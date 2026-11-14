@@ -1,0 +1,24 @@
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoConnection
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  auth:
+    token:
+      secretRef:
+        key: value
+        name: openbaoconnection-secret-ref
+  authNamespace: example
+  namespace: example
+  serverRef:
+    name: example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openbaoconnection-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

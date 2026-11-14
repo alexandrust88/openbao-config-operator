@@ -1,0 +1,115 @@
+name: workflows
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # renovate: datasource=docker depName=ghcr.io/zizmorcore/zizmor
+  ZIZMOR_IMAGE: ghcr.io/zizmorcore/zizmor:1.32.0@sha256:3014cc8f68f663935f69b3c3e0e41f5ce102b268d97db13db0f62208747f860d
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: make actionlint
+      - run: bin/actionlint
+      - name: shellcheck
+        run: shellcheck hack/release/*.sh hack/github/*.sh hack/docs/*.sh
+
+  zizmor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write # upload the zizmor SARIF report to code scanning
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Code scanning needs GitHub Advanced Security on a private repository; the gate below runs either way.
+      - name: zizmor (SARIF)
+        if: ${{ !github.event.repository.private }}
+        run: |
+          docker run --rm --network none -v "$PWD:/repo:ro" -w /repo "$ZIZMOR_IMAGE" \
+            --offline --persona=auditor --format=sarif . > zizmor.sarif
+      # Fork pull requests get a read-only token, so the upload would fail; the gate below still runs.
+      - if: ${{ !github.event.repository.private && (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork) }}
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: zizmor.sarif
+          category: zizmor
+      # SARIF output always exits 0, so the gate is a second run that exits non-zero on medium or worse.
+      - name: zizmor (gate)
+        run: |
+          docker run --rm --network none -v "$PWD:/repo:ro" -w /repo "$ZIZMOR_IMAGE" \
+            --offline --min-severity=medium --format=github .
+
+  # Every uses: is a full SHA whose "# vX.Y.Z" comment resolves to that same commit upstream, which also rules out
+  # impostor commits from forks, and whose release is at least min_age days old (.github/pinact.yaml).
+  pinact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinact
+        env:
+          # renovate: datasource=github-release-attachments depName=suzuki-shunsuke/pinact
+          PINACT_VERSION: v5.0.2
+          PINACT_SHA256: 7f003d8f51e984c2264d2009d430e3e0e87ae404a0e2dc2a9a277b0f731bf5b7
+        run: |
+          archive="$RUNNER_TEMP/pinact.tgz"
+          curl -fsSLo "$archive" "https://github.com/suzuki-shunsuke/pinact/releases/download/${PINACT_VERSION}/pinact_linux_amd64.tar.gz"
+          echo "${PINACT_SHA256}  ${archive}" | sha256sum --check --strict -
+          tar -xzf "$archive" -C "$RUNNER_TEMP" pinact
+      - name: pinact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          "$RUNNER_TEMP/pinact" run --check --verify-comment
+
+  poutine:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install poutine
+        env:
+          # renovate: datasource=github-release-attachments depName=boostsecurityio/poutine
+          POUTINE_VERSION: v1.1.6
+          POUTINE_SHA256: abde716599a65608b023a69ed9316e5f083a7bca48612151c2720835883757ea
+        run: |
+          archive="$RUNNER_TEMP/poutine.tgz"
+          curl -fsSLo "$archive" "https://github.com/boostsecurityio/poutine/releases/download/${POUTINE_VERSION}/poutine_Linux_x86_64.tar.gz"
+          echo "${POUTINE_SHA256}  ${archive}" | sha256sum --check --strict -
+          tar -xzf "$archive" -C "$RUNNER_TEMP" poutine
+      # Accepted findings are skipped, with the reason, in .github/poutine.yml.
+      - name: poutine
+        run: |
+          "$RUNNER_TEMP/poutine" analyze_local . --disable-version-check --fail-on-violation --quiet

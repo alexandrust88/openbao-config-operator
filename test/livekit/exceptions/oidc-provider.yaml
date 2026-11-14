@@ -1,0 +1,5 @@
+fullFields:
+  OIDCAssignment:
+    entities[].entityID: server-generated, not known before apply; the ref/name/selector alternatives cover it
+    groups[].groupID: server-generated, not known before apply; the ref/name/selector alternatives cover it
+notReady: []

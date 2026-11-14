@@ -1,0 +1,20 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: EntityAlias
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  aliasName: example
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  customMetadata:
+    example: example
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  entityID: example
+  managementPolicy: Manage
+  mountAccessor: example
+  namespace: example

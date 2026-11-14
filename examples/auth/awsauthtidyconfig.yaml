@@ -1,0 +1,19 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AWSAuthTidyConfig
+metadata:
+  name: aws-tidy
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  mountPath: aws
+  identityAccessList:
+    safetyBuffer: 72h
+    disablePeriodicTidy: false
+  roleTagDenyList:
+    safetyBuffer: 72h
+    disablePeriodicTidy: false

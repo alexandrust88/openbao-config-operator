@@ -1,0 +1,17 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: KeyRotationConfig
+metadata:
+  name: obco-key-rotation
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  enabled: true
+  maxOperations: 1000000000
+  interval: 720h

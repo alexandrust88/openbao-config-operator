@@ -1,0 +1,16 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Logger
+metadata:
+  name: obco-core-debug
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  name: core
+  level: debug

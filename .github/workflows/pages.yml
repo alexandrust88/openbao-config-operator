@@ -1,0 +1,126 @@
+name: pages
+
+# Builds the docs site (MkDocs) and the classic Helm repository index (/charts/index.yaml, pointing at the signed chart
+# .tgz of every release tag) and deploys both to GitHub Pages. Repository settings: Pages source "GitHub Actions".
+# It runs on every pull request so the `pages` check can be required; the build steps only run when a docs path changed.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  # Runs on the default branch with its own token and reads no artifact of the triggering run.
+  workflow_run: # zizmor: ignore[dangerous-triggers]
+    workflows:
+      - release
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: pages
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read # checkout and list the releases
+      pages: read # configure-pages reads the site URL
+    outputs:
+      build: ${{ steps.changes.outputs.build }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The parent of HEAD: the base branch for a pull request merge commit, the previous main for a squash merge.
+          fetch-depth: 2
+          persist-credentials: false
+      - id: changes
+        name: Check for docs changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          build=true
+          if [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = push ]; then
+            changed=$(git diff --name-only HEAD^1 HEAD)
+            grep -qE '^(\.github/artifacthub-repo\.yml|\.github/workflows/pages\.yml|README\.md|config/crd/bases/|docs/|hack/docs/|hack/release/check-version\.sh|mkdocs\.yml)' <<<"$changed" ||
+              build=false
+          fi
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "docs build: $build"
+      - if: steps.changes.outputs.build == 'true'
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15"
+      - if: steps.changes.outputs.build == 'true'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - if: steps.changes.outputs.build == 'true'
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+        with:
+          cosign-release: v3.1.4
+      - id: pages
+        # GitHub Pages is not available for a private repository on the free plan; the build still runs as a check.
+        if: github.event_name != 'pull_request' && !github.event.repository.private && steps.changes.outputs.build == 'true'
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - if: steps.changes.outputs.build == 'true'
+        run: python -m pip install --require-hashes --no-deps -r hack/docs/requirements.txt
+      - name: Build the docs
+        if: steps.changes.outputs.build == 'true'
+        env:
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          [ -n "$BASE_URL" ] && export SITE_URL="$BASE_URL/"
+          REPO_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" mkdocs build --strict --site-dir _site
+      - if: steps.changes.outputs.build == 'true'
+        run: make helm yq
+      # chart-index.sh verifies each chart against its release's signed sha256sums.txt before indexing it.
+      - name: Build the Helm repository index
+        if: steps.changes.outputs.build == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --limit 1000 --json tagName --jq '.[].tagName' |
+            while read -r tag; do
+              if ! hack/release/check-version.sh "$tag" 2>/dev/null; then
+                echo "skip $tag: not a release tag"
+                continue
+              fi
+              charts=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets \
+                --jq '[.assets[].name | select(test("^openbao-config-operator-.*\\.tgz$"))] | length')
+              if [ "$charts" -gt 0 ]; then
+                gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "assets/$tag" \
+                  --pattern "openbao-config-operator-${tag#v}.tgz" --pattern sha256sums.txt --pattern sha256sums.txt.sigstore.json
+              fi
+            done
+          REPOSITORY=$GITHUB_REPOSITORY HELM=bin/helm YQ=bin/yq hack/docs/chart-index.sh assets _site/charts \
+            "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download"
+          cp .github/artifacthub-repo.yml _site/charts/artifacthub-repo.yml
+      - if: github.event_name != 'pull_request' && !github.event.repository.private && steps.changes.outputs.build == 'true'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request' && !github.event.repository.private && needs.build.outputs.build == 'true'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write # deploy the Pages artifact
+      id-token: write # deploy-pages proves the run identity with OIDC
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

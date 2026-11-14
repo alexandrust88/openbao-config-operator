@@ -1,0 +1,6 @@
+{
+  "path": "auth/github/map/users/octocat",
+  "payload": {
+    "value": "break-glass"
+  }
+}

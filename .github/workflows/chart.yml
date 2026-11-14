@@ -1,0 +1,76 @@
+name: chart
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - "hack/e2e/**"
+      - ".github/ct.yaml"
+      - ".github/workflows/chart.yml"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chart-testing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      KIND_CLUSTER: chart-testing
+      CT_IMAGE_REPOSITORY: localhost/openbao-config-operator
+      CT_IMAGE_TAG: ct
+      TARGET_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin
+          key: tools-chart-${{ runner.os }}-${{ hashFiles('Makefile') }}
+      - run: make helm kind
+      - uses: helm/chart-testing-action@720270857a28afd41e2426521a7801db09e9b510 # v2.9.0
+        with:
+          # The action defaults to the latest uv release at run time.
+          uv_version: "0.13.7"
+      - id: changed
+        name: List changed charts
+        run: |
+          if [ -n "$(ct list-changed --config .github/ct.yaml --target-branch "$TARGET_BRANCH")" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: ct lint
+        if: steps.changed.outputs.changed == 'true'
+        run: ct lint --config .github/ct.yaml --target-branch "$TARGET_BRANCH"
+      - name: Create the kind cluster (node image pinned by digest)
+        if: steps.changed.outputs.changed == 'true'
+        run: make setup-test-e2e
+      - name: Build and load the operator image
+        if: steps.changed.outputs.changed == 'true'
+        run: |
+          make docker-build IMG="$CT_IMAGE_REPOSITORY:$CT_IMAGE_TAG"
+          bin/kind load docker-image "$CT_IMAGE_REPOSITORY:$CT_IMAGE_TAG" --name "$KIND_CLUSTER"
+      - name: Deploy OpenBao dev
+        if: steps.changed.outputs.changed == 'true'
+        run: |
+          kubectl apply -f hack/e2e/openbao-dev.yaml
+          kubectl -n openbao rollout status deployment/openbao --timeout=180s
+      - name: ct install
+        if: steps.changed.outputs.changed == 'true'
+        run: |
+          ct install --config .github/ct.yaml --target-branch "$TARGET_BRANCH" \
+            --helm-extra-set-args "--set=image.repository=$CT_IMAGE_REPOSITORY --set=image.tag=$CT_IMAGE_TAG --set=image.pullPolicy=Never"
+      - name: Diagnostics
+        if: failure() && steps.changed.outputs.changed == 'true'
+        run: |
+          kubectl get pods -A -o wide || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -n 100 || true

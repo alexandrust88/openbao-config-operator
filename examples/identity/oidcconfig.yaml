@@ -1,0 +1,15 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: OIDCConfig
+metadata:
+  name: obco-oidc-config
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  deletionPolicy: Orphan
+  issuer: https://openbao.obco.example.com:8200

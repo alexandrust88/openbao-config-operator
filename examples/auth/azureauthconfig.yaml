@@ -1,0 +1,32 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AzureAuthConfig
+metadata:
+  name: azure
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  mountPath: azure
+  tenantID: 00000000-0000-0000-0000-000000000001
+  resource: https://management.azure.com/
+  environment: AzurePublicCloud
+  clientID: 00000000-0000-0000-0000-000000000002
+  clientSecretSecretRef:
+    name: azure-auth-credentials
+    key: client-secret
+  maxRetries: 3
+  retryDelay: 4s
+  maxRetryDelay: 60s
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-auth-credentials
+  namespace: openbao-config
+type: Opaque
+stringData:
+  client-secret: fake-client-secret-not-real

@@ -1,0 +1,74 @@
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessGrant
+metadata:
+  name: payments-workloads
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 15m
+  managementPolicy: Manage
+  mountPath: kubernetes
+  subjects:
+    - name: payments-api
+      namespace: payments
+    - name: "*"
+      namespaceSelector:
+        matchLabels:
+          team: payments
+          tier: workloads
+  rules:
+    - mount: secret
+      path: apps/{sa.namespace}/{sa.name}/*
+      metadataPath: apps/{sa.namespace}/{sa.name}
+      level: write
+    - mount: secret
+      path: shared/{org}/{sa.namespace}/+/*
+      metadataPath: shared/{org}/{sa.namespace}/*
+      level: read
+      organizations:
+        - acme
+        - globex
+  tokenTTL: 15m
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessGrant
+metadata:
+  name: payments-batch
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  authMountRef:
+    name: kubernetes
+  subjects:
+    - name: nightly-report
+      namespace: payments
+  rules:
+    - mount: secret
+      path: reports/*
+      level: read
+  tokenTTL: 10m
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessGrant
+metadata:
+  name: payments-migrations
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  mountAccessor: auth_kubernetes_1a2b3c4d
+  subjects:
+    - name: schema-migrator
+      namespace: payments
+  rules:
+    - mount: secret
+      path: databases/payments
+      level: owner

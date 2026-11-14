@@ -1,0 +1,235 @@
+# -- Override the chart name used in resource names.
+nameOverride: ""
+# -- Override the full resource name prefix.
+fullnameOverride: ""
+
+crds:
+  # -- Install and upgrade the CRDs with the release.
+  install: true
+  # -- Annotate the CRDs with helm.sh/resource-policy=keep so uninstalling the release does not delete every custom resource.
+  keep: true
+
+pluginKinds:
+  # -- Install the CRDs of kinds that need an external OpenBao plugin (cloud auth and secrets, GitHub, Okta, LDAP,
+  # Kerberos, RADIUS, Consul, Nomad, Quay, Terraform Cloud, MongoDB Atlas) and pass --enable-plugin-kinds.
+  enabled: false
+
+image:
+  # -- Manager image repository.
+  repository: ghcr.io/alexandrust88/openbao-config-operator
+  # -- Image tag. Defaults to the chart appVersion.
+  tag: ""
+  # -- Image digest (sha256:...). When set, the image is pulled by digest.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+# -- Image pull secrets, as a list of {name: ...}.
+imagePullSecrets: []
+
+# -- Replicas. More than one requires leaderElection.enabled.
+replicas: 2
+
+leaderElection:
+  # -- Run leader election (--leader-elect). Disable only with replicas: 1.
+  enabled: true
+
+# -- Namespaces the manager watches. Empty means cluster-wide. When set, access to Secrets, ConfigMaps,
+# ServiceAccount tokens, Events and every namespaced managed kind is granted through a Role in each listed namespace
+# instead of a ClusterRole.
+watchNamespaces: []
+
+# -- Audiences the Kubernetes API server accepts besides the built-in ones (https://kubernetes.default.svc,
+# https://kubernetes.default.svc.cluster.local, kubernetes.default.svc, rke2, k3s) and the service account issuer
+# the operator discovers. A tenant OpenBaoConnection is never given a token for them.
+apiServerAudiences: []
+
+injectedIdentity:
+  projectedToken:
+    # -- Mount a projected ServiceAccount token with its own audience for ClusterOpenBaoConnection
+    # injectedIdentity logins. The CRD's default tokenPath is the default path; the operator never sends the
+    # automounted token, so a connection with injectedIdentity needs this or another projected token.
+    enabled: true
+    # -- Token audience. The OpenBao kubernetes or jwt role must accept it.
+    audience: openbao-config-operator
+    # -- Token lifetime in seconds. The kubelet rotates the file before it expires.
+    expirationSeconds: 3600
+    # -- Token file in the manager container. Its directory must not hold other mounts.
+    path: /var/run/secrets/openbao/token
+
+serviceAccount:
+  # -- Create the ServiceAccount.
+  create: true
+  # -- ServiceAccount name. Defaults to the full name; required when create is false.
+  name: ""
+  annotations: {}
+
+rbac:
+  # -- Create the manager ClusterRole, Roles and bindings.
+  create: true
+  # -- Create the user-facing <release>-tenant-editor and <release>-viewer ClusterRoles.
+  userRoles: true
+  aggregate:
+    # -- Aggregate the tenant-editor role into the built-in admin role.
+    admin: true
+    # -- Aggregate the tenant-editor role into the built-in edit role.
+    edit: true
+    # -- Aggregate the viewer role into the built-in view role.
+    view: true
+
+metrics:
+  # -- Serve metrics over HTTPS on port 8443, protected by Kubernetes authentication and authorization.
+  enabled: true
+  port: 8443
+  # -- Secret (tls.crt, tls.key) with the metrics serving certificate. Empty uses a self-signed certificate.
+  certSecret: ""
+  service:
+    # -- Only ClusterIP: the metrics endpoint is for in-cluster scrapers.
+    type: ClusterIP
+    annotations: {}
+
+serviceMonitor:
+  # -- Create a prometheus-operator ServiceMonitor.
+  enabled: false
+  labels: {}
+  interval: 30s
+  scrapeTimeout: 10s
+  # -- TLS config of the scrape endpoint. insecureSkipVerify fits only the default self-signed certificate, which
+  # no CA can verify; with metrics.certSecret the chart requires ca (or caFile) and serverName and refuses insecureSkipVerify.
+  tlsConfig:
+    insecureSkipVerify: true
+  relabelings: []
+  metricRelabelings: []
+
+prometheusRule:
+  # -- Create a prometheus-operator PrometheusRule with the alerts in docs/operations/runbooks.md.
+  enabled: false
+  labels: {}
+  # -- Series selector of the operator's metrics. Empty means job="<fullname>-metrics" in the release namespace.
+  selector: ""
+  # -- Labels added to every alert, for example for routing.
+  alertLabels: {}
+  # -- Alert names to leave out.
+  disabledAlerts: []
+  # -- Ratio of failed reconciles per controller above which OpenBaoConfigOperatorReconcileErrors fires.
+  reconcileErrorRatio: 0.1
+  # -- Ratio of OpenBao 5xx and transport errors per connection above which OpenBaoConfigOperatorOpenBaoServerErrors fires.
+  openbaoErrorRatio: 0.05
+  # -- How long writes must continue before OpenBaoConfigOperatorSteadyStateWrites fires.
+  steadyStateWritesFor: 30m
+  runbookBaseURL: https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/operations/runbooks.md
+
+health:
+  port: 8081
+
+pprof:
+  # -- Serve Go pprof profiles on 127.0.0.1 inside the pod (no Service); reach them with kubectl port-forward.
+  enabled: false
+  port: 8082
+
+# -- Extra manager arguments. Flags with a dedicated value (--leader-elect, --metrics-secure, --metrics-bind-address,
+# --pprof-bind-address, --health-probe-bind-address) are refused here.
+extraArgs: []
+# -- Extra manager environment variables.
+extraEnv: []
+# -- Extra volumes, for example a CA bundle ConfigMap trusted through SSL_CERT_DIR in extraEnv.
+extraVolumes: []
+# -- Extra volume mounts of the manager container.
+extraVolumeMounts: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  privileged: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+livenessProbe:
+  initialDelaySeconds: 15
+  periodSeconds: 20
+readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+podDisruptionBudget:
+  # -- Create a PodDisruptionBudget when replicas > 1.
+  enabled: true
+  minAvailable: 1
+  # -- Used instead of minAvailable when set.
+  maxUnavailable: ""
+
+# -- Topology spread constraints. A missing labelSelector defaults to the pod selector labels.
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+
+priorityClassName: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+terminationGracePeriodSeconds: 10
+revisionHistoryLimit: 10
+
+podAnnotations: {}
+podLabels: {}
+annotations: {}
+
+networkPolicy:
+  # -- Restrict ingress to the metrics port and egress to DNS, the API server and OpenBao.
+  enabled: true
+  # -- kubernetes renders a NetworkPolicy; cilium renders a CiliumNetworkPolicy that reaches the API server through
+  # the kube-apiserver entity, which an ipBlock does not match on Cilium. metrics.from, dns.to, apiServer.cidrs and
+  # openbao.to apply to the kubernetes flavor only.
+  flavor: kubernetes
+  metrics:
+    # -- Namespace of the metrics scraper. With an empty from, the release namespace and this namespace may scrape.
+    monitoringNamespace: monitoring
+    # -- NetworkPolicy peers allowed to scrape metrics, replacing the release and monitoring namespaces.
+    from: []
+  dns:
+    to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            k8s-app: kube-dns
+    nodeLocalDNS:
+      # -- Also allow DNS to NodeLocal DNSCache.
+      enabled: false
+      address: 169.254.20.10
+  apiServer:
+    # -- API server CIDRs. Empty allows any destination on the API server ports.
+    cidrs: []
+    ports:
+      - 443
+      - 6443
+  openbao:
+    # -- OpenBao peers. Empty allows any destination on the OpenBao ports.
+    to: []
+    # -- OpenBao host names for the cilium flavor (toFQDNs, needs the Cilium DNS proxy). Empty allows any
+    # destination on the OpenBao ports.
+    fqdns: []
+    ports:
+      - 8200
+  # -- Extra egress rules, in the syntax of the selected flavor.
+  extraEgress: []

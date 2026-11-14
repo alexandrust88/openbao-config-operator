@@ -1,0 +1,25 @@
+# Enforced by the main ruleset (require review from code owners). List each maintainer by user name.
+# Paths that change the build, the release, the API contract or the security posture.
+
+/.github/                 @alexandrust88
+/charts/                  @alexandrust88
+/api/                     @alexandrust88
+/internal/engine/         @alexandrust88
+/docs/security/           @alexandrust88
+/SECURITY.md              @alexandrust88
+/renovate.json            @alexandrust88
+/Dockerfile               @alexandrust88
+/Makefile                 @alexandrust88
+/.gitleaks.toml           @alexandrust88
+/hack/release/            @alexandrust88
+/hack/github/             @alexandrust88
+/hack/ocm/                @alexandrust88
+/release/                 @alexandrust88
+/config/                  @alexandrust88
+/hack/docs/               @alexandrust88
+/.devcontainer/           @alexandrust88
+/go.mod                   @alexandrust88
+/go.sum                   @alexandrust88
+/.custom-gcl.yml          @alexandrust88
+/.dockerignore            @alexandrust88
+/mkdocs.yml               @alexandrust88

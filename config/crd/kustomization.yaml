@@ -1,0 +1,83 @@
+# This kustomization.yaml is not intended to be run by itself,
+# since it depends on service name and namespace that are out of this kustomize package.
+# It should be run by config/default
+resources:
+- bases/access.openbaoconfig.io_accessgrants.yaml
+- bases/access.openbaoconfig.io_accesslayouts.yaml
+- bases/access.openbaoconfig.io_accesslevels.yaml
+- bases/auth.openbaoconfig.io_approles.yaml
+- bases/auth.openbaoconfig.io_approlesecretids.yaml
+- bases/auth.openbaoconfig.io_certauthconfigs.yaml
+- bases/auth.openbaoconfig.io_certauthroles.yaml
+- bases/auth.openbaoconfig.io_jwtauthconfigs.yaml
+- bases/auth.openbaoconfig.io_jwtauthroles.yaml
+- bases/auth.openbaoconfig.io_jwtcelroles.yaml
+- bases/auth.openbaoconfig.io_kubernetesauthconfigs.yaml
+- bases/auth.openbaoconfig.io_kubernetesauthroles.yaml
+- bases/auth.openbaoconfig.io_tokenroles.yaml
+- bases/auth.openbaoconfig.io_userpassusers.yaml
+- bases/core.openbaoconfig.io_clusteropenbaoconnections.yaml
+- bases/core.openbaoconfig.io_openbaoconnections.yaml
+- bases/core.openbaoconfig.io_openbaoendpoints.yaml
+- bases/core.openbaoconfig.io_openbaoservers.yaml
+- bases/identity.openbaoconfig.io_entities.yaml
+- bases/identity.openbaoconfig.io_entityaliases.yaml
+- bases/identity.openbaoconfig.io_groupaliases.yaml
+- bases/identity.openbaoconfig.io_groupmemberships.yaml
+- bases/identity.openbaoconfig.io_groups.yaml
+- bases/identity.openbaoconfig.io_mfaloginenforcements.yaml
+- bases/identity.openbaoconfig.io_mfamethods.yaml
+- bases/identity.openbaoconfig.io_oidcassignments.yaml
+- bases/identity.openbaoconfig.io_oidcclients.yaml
+- bases/identity.openbaoconfig.io_oidcconfigs.yaml
+- bases/identity.openbaoconfig.io_oidckeys.yaml
+- bases/identity.openbaoconfig.io_oidcproviders.yaml
+- bases/identity.openbaoconfig.io_oidcroles.yaml
+- bases/identity.openbaoconfig.io_oidcscopes.yaml
+- bases/secrets.openbaoconfig.io_databaseconnections.yaml
+- bases/secrets.openbaoconfig.io_databaseroles.yaml
+- bases/secrets.openbaoconfig.io_databasestaticroles.yaml
+- bases/secrets.openbaoconfig.io_kubernetessecretsconfigs.yaml
+- bases/secrets.openbaoconfig.io_kubernetessecretsroles.yaml
+- bases/secrets.openbaoconfig.io_kvconfigs.yaml
+- bases/secrets.openbaoconfig.io_kvsecrets.yaml
+- bases/secrets.openbaoconfig.io_pkiacmeconfigs.yaml
+- bases/secrets.openbaoconfig.io_pkiautotidies.yaml
+- bases/secrets.openbaoconfig.io_pkiconfigs.yaml
+- bases/secrets.openbaoconfig.io_pkiissuers.yaml
+- bases/secrets.openbaoconfig.io_pkikeys.yaml
+- bases/secrets.openbaoconfig.io_pkiroles.yaml
+- bases/secrets.openbaoconfig.io_rabbitmqconfigs.yaml
+- bases/secrets.openbaoconfig.io_rabbitmqroles.yaml
+- bases/secrets.openbaoconfig.io_randomsecrets.yaml
+- bases/secrets.openbaoconfig.io_sshcas.yaml
+- bases/secrets.openbaoconfig.io_sshroles.yaml
+- bases/secrets.openbaoconfig.io_totpkeys.yaml
+- bases/secrets.openbaoconfig.io_transitkeys.yaml
+- bases/sys.openbaoconfig.io_auditrequestheaders.yaml
+- bases/sys.openbaoconfig.io_audits.yaml
+- bases/sys.openbaoconfig.io_authmounts.yaml
+- bases/sys.openbaoconfig.io_corsconfigs.yaml
+- bases/sys.openbaoconfig.io_keyrotationconfigs.yaml
+- bases/sys.openbaoconfig.io_loggers.yaml
+- bases/sys.openbaoconfig.io_openbaonamespaces.yaml
+- bases/sys.openbaoconfig.io_passwordpolicies.yaml
+- bases/sys.openbaoconfig.io_plugins.yaml
+- bases/sys.openbaoconfig.io_policies.yaml
+- bases/sys.openbaoconfig.io_quotaconfigs.yaml
+- bases/sys.openbaoconfig.io_raftautopilots.yaml
+- bases/sys.openbaoconfig.io_ratelimitquotas.yaml
+- bases/sys.openbaoconfig.io_secretsmounts.yaml
+- bases/sys.openbaoconfig.io_uiheaders.yaml
+- bases/sys.openbaoconfig.io_workflows.yaml
+# +kubebuilder:scaffold:crdkustomizeresource
+
+patches:
+# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
+# patches here are for enabling the conversion webhook for each CRD
+# +kubebuilder:scaffold:crdkustomizewebhookpatch
+
+# [WEBHOOK] To enable webhook, uncomment the following section
+# the following config is for teaching kustomize how to do kustomization for CRDs.
+#configurations:
+#- kustomizeconfig.yaml

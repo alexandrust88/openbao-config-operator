@@ -1,0 +1,43 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: UserpassUser
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  mountPath: userpass
+  name: example
+  namespace: example
+  passwordSecretRef:
+    key: value
+    name: userpassuser-password-secret-ref
+  policyRefs:
+  - name: example
+  tokenBoundCIDRs:
+  - 10.0.0.0/8
+  tokenExplicitMaxTTL: 1h
+  tokenMaxTTL: 1h
+  tokenNoDefaultPolicy: true
+  tokenNumUses: 1
+  tokenPeriod: 1h
+  tokenPolicies:
+  - default
+  tokenStrictlyBindIP: true
+  tokenTTL: 1h
+  tokenType: default
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: userpassuser-password-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

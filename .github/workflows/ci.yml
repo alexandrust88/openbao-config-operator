@@ -1,0 +1,250 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_call:
+
+permissions: {}
+
+# Not github.workflow: a call from release would share the caller's group and wait on itself.
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin
+          key: tools-lint-${{ runner.os }}-${{ hashFiles('Makefile', '.custom-gcl.yml', 'go.mod') }}
+      - run: make fmt-check vet
+      - run: go vet -tags conformance,load ./test/...
+      - run: make lint-config lint
+
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin
+          key: tools-test-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
+      - run: make bao
+      - run: make test
+      - name: Coverage floor
+        env:
+          # Measured 39.5% on 2026-11-14 (make test with bao); raise it as coverage grows.
+          COVERAGE_FLOOR: "37.5"
+        run: |
+          total="$(go tool cover -func=cover.out | tail -n 1 | awk '{print $NF}' | tr -d %)"
+          echo "Total coverage ${total}% (floor ${COVERAGE_FLOOR}%)" | tee -a "$GITHUB_STEP_SUMMARY"
+          awk -v total="$total" -v floor="$COVERAGE_FLOOR" 'BEGIN { exit !(total >= floor) }'
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage
+          path: cover.out
+          retention-days: 7
+
+  # The serial suite takes about 15 minutes; shards by top-level test name keep each under 10. The last shard
+  # skips every other shard's tests, so a new top-level test always runs somewhere.
+  integration-shard:
+    name: integration (${{ matrix.shard }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      # renovate: datasource=docker depName=postgres
+      POSTGRES_IMAGE: postgres:16-alpine@sha256:f377d590e5474681d4d7838635031a2b50647923b7abfa803ce9b5ff35d5c663
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: sys
+            run: ^Test(Integration|IntegrationSys.*|TemplatedACL)$
+          - shard: auth
+            run: ^Test(IntegrationAuth.*|IntegrationBuiltinAuth|Access)$
+          - shard: secrets
+            run: ^TestIntegrationSecrets.*$
+          - shard: pki
+            run: ^TestIntegrationPKI.*$
+          - shard: identity
+            run: ^TestIntegrationIdentity.*$
+          - shard: rest
+            run: .
+            skip: ^Test(Integration|IntegrationSys.*|TemplatedACL|IntegrationAuth.*|IntegrationBuiltinAuth|Access|IntegrationSecrets.*|IntegrationPKI.*|IntegrationIdentity.*)$
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin
+          key: tools-integration-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
+      - run: make bao
+      - if: matrix.shard == 'secrets'
+        run: docker pull "$POSTGRES_IMAGE"
+      - run: make test-integration
+        env:
+          INTEGRATION_RUN: ${{ matrix.run }}
+          INTEGRATION_SKIP: ${{ matrix.skip }}
+
+  # The required check: one stable name however the shards change.
+  integration:
+    needs: integration-shard
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - env:
+          RESULT: ${{ needs.integration-shard.result }}
+        run: test "$RESULT" = success
+
+  namespaces:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin
+          key: tools-integration-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
+      - run: make bao
+      - run: make test-namespaces
+
+  livekit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin
+          key: tools-livekit-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
+      - name: Install htpasswd for the bcrypt input Secret
+        run: command -v htpasswd || { sudo apt-get update && sudo apt-get install -y --no-install-recommends apache2-utils; }
+      - run: make live-render
+      - run: make bao
+      - run: make test-livekit
+      - name: End-to-end summary
+        if: always()
+        run: if [ -f .tmp/livekit/e2e.md ]; then cat .tmp/livekit/e2e.md >>"$GITHUB_STEP_SUMMARY"; fi
+
+  verify-generated:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin
+          key: tools-generate-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
+      - run: make verify-generated
+
+  api-coverage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make api-coverage
+      - run: git diff --exit-code -- docs/api-coverage.md
+
+  govulncheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make govulncheck
+
+  manifests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin
+          key: tools-manifests-${{ runner.os }}-${{ hashFiles('Makefile') }}
+      - run: make helm-lint
+      - name: Install helm-unittest
+        env:
+          # renovate: datasource=github-release-attachments depName=helm-unittest/helm-unittest
+          HELM_UNITTEST_VERSION: v1.0.3
+          HELM_UNITTEST_SHA256: 9761f23d9509c98770c026e019e743b524b57010f4bc29175f78d2582ace0633
+        run: |
+          archive="$RUNNER_TEMP/helm-unittest.tgz"
+          curl -fsSLo "$archive" "https://github.com/helm-unittest/helm-unittest/releases/download/${HELM_UNITTEST_VERSION}/helm-unittest-linux-amd64-${HELM_UNITTEST_VERSION#v}.tgz"
+          echo "${HELM_UNITTEST_SHA256}  ${archive}" | sha256sum -c -
+          plugin_dir="$(bin/helm env HELM_PLUGINS)/unittest"
+          mkdir -p "$plugin_dir"
+          tar -xzf "$archive" -C "$plugin_dir" untt plugin.yaml
+      - run: bin/helm unittest charts/openbao-config-operator
+      - run: make validate-manifests

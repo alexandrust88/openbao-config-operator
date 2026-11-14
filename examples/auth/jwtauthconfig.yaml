@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oidc-client
+type: Opaque
+stringData:
+  client-secret: fake-oidc-client-secret-not-real
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gsuite-provider
+type: Opaque
+stringData:
+  config: '{"gsuite_service_account": "{\"type\": \"service_account\", \"private_key\": \"fake-not-a-real-key\"}"}'
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: oidc
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  mountPath: oidc
+  oidcDiscoveryURL: https://keycloak.example.com/realms/platform
+  oidcDiscoveryCAPEM: |
+    -----BEGIN CERTIFICATE-----
+    RkFLRS1DQS1DRVJUSUZJQ0FURS1GT1ItRVhBTVBMRVMtT05MWQ==
+    -----END CERTIFICATE-----
+  oidcClientID: openbao
+  oidcClientSecretSecretRef:
+    name: oidc-client
+    key: client-secret
+  oidcResponseMode: form_post
+  oidcResponseTypes:
+    - code
+    - id_token
+  jwtSupportedAlgs:
+    - RS256
+    - ES256
+  boundIssuer: https://keycloak.example.com/realms/platform
+  defaultRole: reader
+  overrideAllowedServerNames:
+    - keycloak.internal.example.com
+  namespaceInState: true
+  skipJWKSValidation: false
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: jwt-jwks
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: jwt-ci
+  jwksURL: https://gitlab.example.com/oauth/discovery/keys
+  jwksCAPEM: |
+    -----BEGIN CERTIFICATE-----
+    RkFLRS1DQS1DRVJUSUZJQ0FURS1GT1ItRVhBTVBMRVMtT05MWQ==
+    -----END CERTIFICATE-----
+  boundIssuer: https://gitlab.example.com
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: jwt
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: jwt
+  jwtValidationPubkeys:
+    - |
+      -----BEGIN PUBLIC KEY-----
+      RkFLRS1QVUJMSUMtS0VZLUZPUi1FWEFNUExFUy1PTkxZ
+      -----END PUBLIC KEY-----
+  boundIssuer: https://kubernetes.default.svc.cluster.local
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: gsuite
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: gsuite
+  oidcDiscoveryURL: https://accounts.google.com
+  oidcClientID: fake-client-id.apps.googleusercontent.com
+  oidcClientSecretSecretRef:
+    name: oidc-client
+    key: client-secret
+  providerConfig:
+    provider: gsuite
+    settings:
+      admin_impersonate: admin@example.com
+      fetch_groups: true
+      groups_recurse_max_depth: 5
+    secretRef:
+      name: gsuite-provider
+      key: config

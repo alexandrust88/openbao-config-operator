@@ -1,0 +1,59 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: CertAuthRole
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  allowedCommonNames:
+  - example
+  allowedDNSSANs:
+  - example
+  allowedEmailSANs:
+  - user@example.com
+  allowedMetadataExtensions:
+  - example
+  allowedOrganizationalUnits:
+  - example
+  allowedURISANs:
+  - https://openbao.example.com:8200
+  certificate: |
+    -----BEGIN CERTIFICATE-----
+    ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
+    -----END CERTIFICATE-----
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  displayName: example
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  mountPath: cert
+  name: example
+  namespace: example
+  ocspCACertificates: |
+    -----BEGIN CERTIFICATE-----
+    ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
+    -----END CERTIFICATE-----
+  ocspEnabled: true
+  ocspFailOpen: true
+  ocspQueryAllServers: true
+  ocspServersOverride:
+  - example
+  policyRefs:
+  - name: example
+  requiredExtensions:
+  - example
+  tokenBoundCIDRs:
+  - 10.0.0.0/8
+  tokenExplicitMaxTTL: 1h
+  tokenMaxTTL: 1h
+  tokenNoDefaultPolicy: true
+  tokenNumUses: 1
+  tokenPeriod: 1h
+  tokenPolicies:
+  - default
+  tokenStrictlyBindIP: true
+  tokenTTL: 1h
+  tokenType: default

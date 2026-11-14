@@ -1,0 +1,235 @@
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoServer
+metadata:
+  name: conn-server-dev
+spec:
+  address: http://openbao.openbao.svc:8200
+  allowInsecureHTTP: true
+  allowedNamespaces:
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: In
+        values:
+          - openbao-live
+  allowedAudiences:
+    - openbao-config-operator
+  rateLimit:
+    qps: 20
+    burst: 40
+  requestTimeout: 30s
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoServer
+metadata:
+  name: conn-server-secret-ca
+spec:
+  address: https://openbao.example.com:8200
+  caBundle:
+    secretRef:
+      name: live-connection-auth-ca
+      namespace: openbao-live
+      key: ca.crt
+  allowedNamespaces:
+    matchLabels:
+      kubernetes.io/metadata.name: openbao-live
+  allowedAudiences:
+    - openbao-config-operator
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoConnection
+metadata:
+  name: conn-approle
+spec:
+  serverRef:
+    name: openbao-server
+  namespace: team-a
+  authNamespace: ""
+  auth:
+    appRole:
+      mountPath: approle
+      roleIDSecretRef:
+        name: live-connection-auth-approle
+        key: role-id
+      secretIDSecretRef:
+        name: live-connection-auth-approle
+        key: secret-id
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoConnection
+metadata:
+  name: conn-jwt
+spec:
+  serverRef:
+    name: openbao-server
+  auth:
+    jwt:
+      mountPath: jwt-k8s
+      role: openbao-config-operator
+      serviceAccountRef:
+        name: openbao-config-operator-root
+      audiences:
+        - openbao-config-operator
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoConnection
+metadata:
+  name: conn-token
+spec:
+  serverRef:
+    name: conn-server-dev
+  auth:
+    token:
+      secretRef:
+        name: live-connection-auth-token
+        key: token
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: ClusterOpenBaoConnection
+metadata:
+  name: conn-cluster-approle
+spec:
+  serverRef:
+    name: openbao-server
+  namespace: team-a
+  authNamespace: ""
+  allowedNamespaces:
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: In
+        values:
+          - openbao-live
+  auth:
+    appRole:
+      mountPath: approle
+      roleIDSecretRef:
+        name: live-connection-auth-approle
+        namespace: openbao-live
+        key: role-id
+      secretIDSecretRef:
+        name: live-connection-auth-approle
+        namespace: openbao-live
+        key: secret-id
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: ClusterOpenBaoConnection
+metadata:
+  name: conn-cluster-jwt-sa
+spec:
+  serverRef:
+    name: openbao-server
+  allowedNamespaces:
+    matchLabels:
+      kubernetes.io/metadata.name: openbao-live
+  auth:
+    jwt:
+      mountPath: jwt-k8s
+      role: openbao-config-operator
+      serviceAccountRef:
+        name: openbao-config-operator-root
+        namespace: openbao-live
+      audiences:
+        - openbao-config-operator
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: ClusterOpenBaoConnection
+metadata:
+  name: conn-cluster-jwt-injected
+spec:
+  serverRef:
+    name: openbao-server
+  allowedNamespaces:
+    matchLabels:
+      kubernetes.io/metadata.name: openbao-live
+  auth:
+    jwt:
+      mountPath: jwt-k8s
+      role: openbao-config-operator
+      injectedIdentity:
+        tokenPath: /var/run/secrets/openbao/token
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: ClusterOpenBaoConnection
+metadata:
+  name: conn-cluster-k8s-injected
+spec:
+  serverRef:
+    name: openbao-server
+  allowedNamespaces:
+    matchLabels:
+      kubernetes.io/metadata.name: openbao-live
+  auth:
+    kubernetes:
+      mountPath: kubernetes
+      role: openbao-config-operator
+      injectedIdentity:
+        tokenPath: /var/run/secrets/openbao/token
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: ClusterOpenBaoConnection
+metadata:
+  name: conn-cluster-token-file
+spec:
+  serverRef:
+    name: openbao-server
+  allowedNamespaces:
+    matchLabels:
+      kubernetes.io/metadata.name: openbao-live
+  auth:
+    token:
+      filesystem:
+        path: /var/run/openbao/token
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: ClusterOpenBaoConnection
+metadata:
+  name: conn-cluster-token-secret
+spec:
+  serverRef:
+    name: openbao-server
+  allowedNamespaces:
+    matchLabels:
+      kubernetes.io/metadata.name: openbao-live
+  auth:
+    token:
+      secretRef:
+        name: live-connection-auth-token
+        namespace: openbao-live
+        key: token
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: conn-approle-reader
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: conn-approle
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: conn-approle-reader
+  policy: |
+    path "+/data/connection-auth/*" {
+      capabilities = ["read"]
+    }
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: conn-cluster-reader
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: conn-cluster-approle
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: conn-cluster-reader
+  policy: |
+    path "+/data/connection-auth/*" {
+      capabilities = ["read"]
+    }

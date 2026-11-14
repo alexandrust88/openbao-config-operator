@@ -1,0 +1,189 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: OpenBaoNamespace
+metadata:
+  name: ns-team
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: ns-team
+  customMetadata:
+    owner: platform
+    cost-center: "4711"
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: OpenBaoNamespace
+metadata:
+  name: ns-apps
+  labels:
+    live.openbaoconfig.io/nested: "true"
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  namespace: ns-team
+  name: ns-apps
+  customMetadata:
+    owner: apps
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: ns-kv
+  labels:
+    live.openbaoconfig.io/nested: "true"
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  namespace: ns-team
+  path: ns-kv
+  type: kv-v2
+  description: Team secrets inside the team namespace
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: PasswordPolicy
+metadata:
+  name: ns-passwords
+  labels:
+    live.openbaoconfig.io/nested: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  namespace: ns-team
+  name: ns-passwords
+  policy: |
+    length = 24
+    rule "charset" {
+      charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      min-chars = 1
+    }
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: ns-team-reader
+  labels:
+    live.openbaoconfig.io/nested: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  namespace: ns-team
+  name: ns-team-reader
+  policy: |
+    path "+/data/*" {
+      capabilities = ["read", "list"]
+    }
+    path "sys/workflows/execute/*" {
+      capabilities = ["update"]
+    }
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Workflow
+metadata:
+  name: ns-generate-password
+  labels:
+    live.openbaoconfig.io/nested: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  namespace: ns-team
+  path: ns-generate-password
+  description: Generates a password with a password policy and stores it in a KV v2 mount.
+  casRequired: true
+  allowUnauthenticated: false
+  workflow: |
+    input {
+      field "policy" {
+        type     = "string"
+        required = true
+      }
+      field "mount" {
+        type     = "string"
+        required = true
+      }
+      field "secret" {
+        type     = "string"
+        required = true
+      }
+    }
+
+    flow "generate-password" {
+      request "generate" {
+        operation = "read"
+        path = {
+          eval_source = "template"
+          eval_type   = "string"
+          template    = "sys/policies/password/{{ .input.policy }}/generate"
+        }
+      }
+
+      request "store" {
+        operation = "update"
+        path = {
+          eval_source = "template"
+          eval_type   = "string"
+          template    = "{{ .input.mount }}/data/{{ .input.secret }}"
+        }
+        data = {
+          data = {
+            "password" = {
+              eval_source    = "response"
+              eval_type      = "string"
+              flow_name      = "generate-password"
+              response_name  = "generate"
+              field_selector = ["data", "password"]
+            }
+          }
+        }
+      }
+    }
+
+    output {
+      data = {
+        stored = {
+          eval_source = "template"
+          eval_type   = "string"
+          template    = "{{ .input.mount }}/data/{{ .input.secret }}"
+        }
+      }
+    }

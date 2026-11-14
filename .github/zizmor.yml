@@ -1,0 +1,5 @@
+rules:
+  # Job ids are the check names that the rulesets require (docs/maintainers/github-settings.md); a separate
+  # `name:` per job would only repeat them and risk drifting from the required-check list.
+  anonymous-definition:
+    disable: true

@@ -1,0 +1,96 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: pki-root
+spec:
+  connectionRef:
+    name: openbao
+  type: pki
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: pki-int
+spec:
+  connectionRef:
+    name: openbao
+  type: pki
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-root-ca
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: pki-root
+  type: root
+  certificate:
+    commonName: Live Kit Root CA
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-int-ca
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: pki-int
+  type: intermediate
+  certificate:
+    commonName: Live Kit Intermediate CA
+  signer:
+    issuerRef:
+      name: pki-root-ca
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-int-key
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: pki-int
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-web
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: pki-int
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIConfig
+metadata:
+  name: pki-int-config
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  mountPath: pki-int
+  issuers:
+    default:
+      issuerRef:
+        name: pki-int-ca
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIACMEConfig
+metadata:
+  name: pki-int-acme
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  mountPath: pki-int
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIAutoTidy
+metadata:
+  name: pki-int-tidy
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  mountPath: pki-int

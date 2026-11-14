@@ -1,0 +1,39 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthConfig
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  disableLocalCAJWT: true
+  driftDetection: Enabled
+  driftInterval: 1h
+  kubernetesCACert: |
+    -----BEGIN CERTIFICATE-----
+    ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
+    -----END CERTIFICATE-----
+  kubernetesHost: https://openbao.example.com:8200
+  managementPolicy: Manage
+  mountPath: kubernetes
+  namespace: example
+  pemKeys:
+  - |
+    -----BEGIN CERTIFICATE-----
+    ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
+    -----END CERTIFICATE-----
+  tokenReviewerJWTSecretRef:
+    key: value
+    name: kubernetesauthconfig-token-reviewer-jwt-secret-ref
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubernetesauthconfig-token-reviewer-jwt-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

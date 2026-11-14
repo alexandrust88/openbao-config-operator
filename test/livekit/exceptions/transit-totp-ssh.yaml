@@ -1,0 +1,7 @@
+fullFields:
+  TransitKey:
+    externalKeyRef: type external-key needs an OpenBao external keys configuration (sys/external-keys, an HSM or cloud KMS), which bao server -dev does not have
+  TOTPKey:
+    urlSecretRef.key: needs an otpauth:// URL with a generated seed in an input Secret; create-secrets.sh has no otpauth generator
+    urlSecretRef.name: needs an otpauth:// URL with a generated seed in an input Secret; create-secrets.sh has no otpauth generator
+notReady: []

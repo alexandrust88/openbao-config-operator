@@ -1,0 +1,62 @@
+# Generated from charts/openbao-config-operator/templates/prometheusrule.yaml; regenerate with:
+#   helm template openbao-config-operator charts/openbao-config-operator --set prometheusRule.enabled=true \
+#     --set-string prometheusRule.selector='job="openbao-config-operator-controller-manager-metrics-service"' \
+#     --show-only templates/prometheusrule.yaml | yq 'del(.metadata.namespace) | .metadata.name = "controller-manager-alerts" | .metadata.labels = {"app.kubernetes.io/name": "openbao-config-operator", "app.kubernetes.io/managed-by": "kustomize"}'
+---
+# Source: openbao-config-operator/templates/prometheusrule.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: controller-manager-alerts
+  labels:
+    app.kubernetes.io/name: openbao-config-operator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  groups:
+    - name: openbao-config-operator
+      rules:
+        - alert: OpenBaoConfigOperatorDown
+          expr: "absent(up{job=\"openbao-config-operator-controller-manager-metrics-service\"} == 1)"
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "No openbao-config-operator replica is scraped as up."
+            description: "OpenBao configuration is not reconciled: drift is not repaired and new resources stay pending."
+            runbook_url: "https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/operations/runbooks.md#openbaoconfigoperatordown"
+        - alert: OpenBaoConfigOperatorReconcileErrors
+          expr: "sum by (controller) (rate(controller_runtime_reconcile_errors_total{job=\"openbao-config-operator-controller-manager-metrics-service\"}[5m])) / sum by (controller) (rate(controller_runtime_reconcile_total{job=\"openbao-config-operator-controller-manager-metrics-service\"}[5m])) > 0.1"
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Controller {{ $labels.controller }} fails more than {{ $value | humanizePercentage }} of its reconciles."
+            description: "Resources of this kind are not converging. Check their Synced condition and the manager logs."
+            runbook_url: "https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/operations/runbooks.md#openbaoconfigoperatorreconcileerrors"
+        - alert: OpenBaoConfigOperatorSteadyStateWrites
+          expr: "sum by (kind) (increase(openbao_writes_total{job=\"openbao-config-operator-controller-manager-metrics-service\"}[15m])) > 0"
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "The operator keeps writing {{ $labels.kind }} objects to OpenBao."
+            description: "Writes that never stop usually mean another tool or a person changes the same OpenBao objects, or a field never compares equal."
+            runbook_url: "https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/operations/runbooks.md#openbaoconfigoperatorsteadystatewrites"
+        - alert: OpenBaoConfigOperatorOpenBaoServerErrors
+          expr: "sum by (connection) (rate(openbao_requests_total{job=\"openbao-config-operator-controller-manager-metrics-service\", code=~\"5..|error\"}[5m])) / sum by (connection) (rate(openbao_requests_total{job=\"openbao-config-operator-controller-manager-metrics-service\"}[5m])) > 0.05"
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "OpenBao requests of connection {{ $labels.connection }} fail with 5xx or transport errors."
+            description: "The connection label is the connection UID. OpenBao is unreachable, sealed, standby without forwarding or overloaded."
+            runbook_url: "https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/operations/runbooks.md#openbaoconfigoperatoropenbaoservererrors"
+        - alert: OpenBaoConfigOperatorOpenBaoDenied
+          expr: "sum by (connection) (rate(openbao_requests_total{job=\"openbao-config-operator-controller-manager-metrics-service\", code=\"403\"}[5m])) > 0"
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "OpenBao keeps denying requests of connection {{ $labels.connection }}."
+            description: "The OpenBao policy of the connection identity does not cover a path that a resource manages, or the login fails."
+            runbook_url: "https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/operations/runbooks.md#openbaoconfigoperatoropenbaodenied"

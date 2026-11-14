@@ -1,0 +1,26 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: MFALoginEnforcement
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  authMethodTypes:
+  - example
+  authMounts:
+  - mountAccessor: example
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  entities:
+  - entityID: example
+  groups:
+  - groupID: example
+  managementPolicy: Manage
+  mfaMethods:
+  - methodID: example
+  name: example
+  namespace: example

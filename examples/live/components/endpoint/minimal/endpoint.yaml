@@ -1,0 +1,25 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: OpenBaoNamespace
+metadata:
+  name: ep-space
+spec:
+  connectionRef:
+    name: openbao
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoEndpoint
+metadata:
+  name: ep-password-policy
+  labels:
+    live.openbaoconfig.io/nested: "true"
+spec:
+  connectionRef:
+    name: openbao
+  namespace: ep-space
+  path: sys/policies/password/live-kit
+  data:
+    policy: |
+      length = 20
+      rule "charset" {
+        charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+      }

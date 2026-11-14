@@ -1,0 +1,36 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: TokenRole
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  allowedEntityAliases:
+  - example
+  allowedPolicies:
+  - default
+  allowedPoliciesGlob:
+  - default
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  disallowedPolicies:
+  - default
+  disallowedPoliciesGlob:
+  - default
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  name: example
+  namespace: example
+  orphan: true
+  pathSuffix: example
+  renewable: true
+  tokenBoundCIDRs:
+  - 10.0.0.0/8
+  tokenExplicitMaxTTL: 1h
+  tokenNoDefaultPolicy: true
+  tokenNumUses: 1
+  tokenPeriod: 1h
+  tokenType: default

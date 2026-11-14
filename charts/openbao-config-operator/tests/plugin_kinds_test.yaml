@@ -1,0 +1,28 @@
+suite: plugin kinds
+templates:
+  - templates/crds/auth.openbaoconfig.io_ldapauthconfigs.yaml
+release:
+  name: obc
+  namespace: openbao-system
+tests:
+  - it: leaves plugin-kind CRDs out by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: installs plugin-kind CRDs when pluginKinds.enabled is true
+    set:
+      pluginKinds.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: CustomResourceDefinition
+
+  - it: honours crds.install for plugin-kind CRDs
+    set:
+      pluginKinds.enabled: true
+      crds.install: false
+    asserts:
+      - hasDocuments:
+          count: 0

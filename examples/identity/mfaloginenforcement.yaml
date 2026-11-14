@@ -1,0 +1,49 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: MFALoginEnforcement
+metadata:
+  name: obco-admins-mfa
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  deletionPolicy: Delete
+  name: obco-admins-mfa
+  mfaMethods:
+    - methodRef:
+        name: obco-totp
+    - methodName: obco-duo
+    - methodID: 6f1e3c2a-0000-4000-8000-000000000003
+    - methodSelector:
+        matchLabels:
+          obco.example.com/mfa: required
+  authMounts:
+    - mountPath: userpass
+    - mountRef:
+        name: obco-oidc
+    - mountAccessor: auth_userpass_0000fake
+    - mountSelector:
+        matchLabels:
+          obco.example.com/mfa: required
+  authMethodTypes:
+    - userpass
+  entities:
+    - entityID: 6f1e3c2a-0000-4000-8000-000000000001
+    - entityName: obco-alice
+    - entityRef:
+        name: obco-bob
+    - entitySelector:
+        matchLabels:
+          obco.example.com/mfa: required
+  groups:
+    - groupID: 6f1e3c2a-0000-4000-8000-000000000002
+    - groupName: obco-admins
+    - groupRef:
+        name: obco-operators
+    - groupSelector:
+        matchLabels:
+          obco.example.com/mfa: required

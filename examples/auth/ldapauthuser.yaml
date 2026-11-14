@@ -1,0 +1,18 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: LDAPAuthUser
+metadata:
+  name: jdoe
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: ldap
+  name: jdoe
+  groups:
+    - Ops Team
+    - auditors
+  policies:
+    - personal-jdoe

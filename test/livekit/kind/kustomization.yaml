@@ -1,0 +1,18 @@
+# The root/full overlay against the in-cluster OpenBao dev server of the kind e2e job (hack/e2e/openbao-dev.yaml),
+# which listens on plain HTTP.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../examples/live/overlays/root/full
+patches:
+  - target:
+      kind: OpenBaoServer
+    patch: |-
+      - op: replace
+        path: /spec/address
+        value: http://openbao.openbao.svc:8200
+      - op: add
+        path: /spec/allowInsecureHTTP
+        value: true
+      - op: remove
+        path: /spec/caBundle

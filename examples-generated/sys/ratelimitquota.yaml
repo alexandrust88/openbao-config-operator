@@ -1,0 +1,21 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: RateLimitQuota
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  blockInterval: 1h
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  inheritable: true
+  interval: 1h
+  managementPolicy: Manage
+  name: example
+  path: example
+  rate: "1"
+  role: example

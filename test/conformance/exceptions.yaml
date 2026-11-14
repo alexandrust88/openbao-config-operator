@@ -1,0 +1,157 @@
+# Fields whose removal cannot restore the OpenBao default, so the default test does not expect a write when they
+# are removed. Every entry names the OpenBao behaviour that prevents it.
+#
+# An entry with `test` instead of `field` declares a kind-level test that cannot be measured for the kind:
+# examples (no example document), nowrite (no example gets Ready or reconciled), defaults (the minimal spec is
+# rejected or never gets Ready) or optional-fields (no optional field can be tested). Any n/a that is not declared
+# here fails the gate.
+- kind: AuthMount
+  field: spec.pluginVersion
+  reason: tune rejects an empty plugin_version (not a valid semantic version), so a pinned version cannot be unpinned
+- kind: SecretsMount
+  field: spec.pluginVersion
+  reason: tune rejects an empty plugin_version (not a valid semantic version), so a pinned version cannot be unpinned
+- kind: AuthMount
+  field: spec.userLockout
+  reason: a mount without user_lockout_config follows the server's user_lockout stanza; once tuned it keeps its own settings and empty values do not clear them, so that inheritance cannot be restored
+- kind: DatabaseRole
+  field: spec.credentialConfig
+  reason: OpenBao keeps the stored credential_config when a write sends none or an empty one for a password role, so it can only be cleared by recreating the role
+- kind: PKIConfig
+  field: spec.cluster
+  reason: config/cluster rejects an empty path or aia_path (non-URL), so a cluster address cannot be cleared once set
+- kind: PKIConfig
+  field: spec.issuers
+  reason: the default issuer has no default to return to; OpenBao sets it to the first issuer and it cannot be cleared
+- kind: TransitKey
+  field: spec.rotateNonce
+  reason: the nonce is an operator trigger, not an OpenBao field; removing it rotates nothing and writes nothing
+- kind: RandomSecret
+  field: spec.generator
+  reason: read only when a value is generated (on create and when refreshNonce changes); the stored value is kept
+- kind: RandomSecret
+  field: spec.passwordPolicyName
+  reason: read only when a value is generated (on create and when refreshNonce changes); the stored value is kept
+- kind: RandomSecret
+  field: spec.writeSecretRef
+  reason: names the Kubernetes Secret the stored value is delivered to; setting or removing it writes nothing to OpenBao
+- kind: OIDCProvider
+  field: spec.issuer
+  reason: unset, the read returns the issuer OpenBao derives from its api_addr, which cannot be told apart from a configured one, so a removal is not seen as drift; the next write for another field sends an empty issuer and clears it
+- kind: OIDCClient
+  field: spec.writeSecretRef
+  reason: names the Kubernetes Secret the operator writes the client credentials to, not an OpenBao field; removing it writes nothing to OpenBao
+- kind: AppRole
+  field: spec.roleID
+  reason: unset, OpenBao keeps the role ID it holds (generated on create); there is no default to return to, so the role ID is compared only when set
+- kind: AppRoleSecretID
+  field: spec.rotation
+  reason: the operator's schedule for replacing the secret ID before it expires, not an OpenBao field; setting or removing it writes nothing until a replacement is due
+- kind: Policy
+  field: spec.accessorRefs
+  reason: an operator-side setting that resolves auth mount accessors into the rendered policy, not an OpenBao field of its own
+- kind: OIDCRole
+  field: spec.clientID
+  reason: server-generated when unset; OpenBao keeps the client ID it holds (random on create), so there is no default to return to and the client ID is compared only when set
+- kind: Audit
+  test: nowrite
+  reason: bao server -dev refuses to enable audit devices through the API (unsafe_allow_api_audit_creation is off) and has none to adopt
+- kind: Audit
+  test: defaults
+  reason: bao server -dev refuses to enable audit devices through the API (unsafe_allow_api_audit_creation is off) and has none to adopt
+- kind: RaftAutopilot
+  test: nowrite
+  reason: autopilot needs raft storage; bao server -dev runs on inmem storage (covered by test/integration sys_raft_test.go)
+- kind: RaftAutopilot
+  test: defaults
+  reason: autopilot needs raft storage; bao server -dev runs on inmem storage (covered by test/integration sys_raft_test.go)
+- kind: Plugin
+  test: nowrite
+  reason: bao server -dev has no plugin_directory, so the catalog refuses every registration
+- kind: Plugin
+  test: defaults
+  reason: bao server -dev has no plugin_directory, so the catalog refuses every registration
+- kind: DatabaseConnection
+  test: defaults
+  reason: OpenBao verifies the connection on write; the minimal spec needs a reachable database server
+- kind: DatabaseStaticRole
+  test: nowrite
+  reason: needs a verified DatabaseConnection to a reachable database server that owns the static user
+- kind: DatabaseStaticRole
+  test: defaults
+  reason: needs a verified DatabaseConnection to a reachable database server that owns the static user
+- kind: RabbitMQConfig
+  test: nowrite
+  reason: OpenBao validates the connection on write; needs a reachable RabbitMQ management API
+- kind: RabbitMQConfig
+  test: defaults
+  reason: OpenBao validates the connection on write; needs a reachable RabbitMQ management API
+- kind: KubernetesAuthConfig
+  test: nowrite
+  reason: needs a real cluster CA certificate; the example carries a placeholder and OpenBao parses it on write
+- kind: KubernetesAuthConfig
+  test: defaults
+  reason: without kubernetes_ca_cert OpenBao reads the in-pod service account CA file, which a local bao server -dev does not have
+- kind: KubernetesSecretsConfig
+  test: defaults
+  reason: without kubernetes_host OpenBao reads KUBERNETES_SERVICE_HOST, which a local bao server -dev does not have
+- kind: JWTAuthConfig
+  test: defaults
+  reason: every minimal config names a discovery URL, JWKS URL or public key that OpenBao fetches or parses on write; the examples point at hosts that do not exist
+- kind: Logger
+  test: defaults
+  reason: OpenBao only accepts the names of loggers the server already has; the minimal spec takes the example's metadata name, which is not one
+- kind: AccessLevel
+  test: nowrite
+  reason: a template read by AccessGrant and AccessLayout; it writes nothing to OpenBao and has no drift requeue, so there are no reconciles to count
+- kind: PasswordPolicy
+  test: optional-fields
+  reason: the spec has no optional field besides the common and path-selecting ones (name)
+- kind: OIDCConfig
+  test: optional-fields
+  reason: the spec has no optional field besides the common and path-selecting ones (name)
+- kind: UIHeader
+  test: optional-fields
+  reason: the spec has no optional field besides the common and path-selecting ones (name)
+- kind: MFAMethod
+  test: optional-fields
+  reason: the method type blocks (duo, okta, pingID, totp) are one-of and immutable, so none can be set and removed on a live object
+- kind: SSHCA
+  test: optional-fields
+  reason: every optional field (keyType, keyBits, publicKey, privateKeySecretRef) is immutable; the CA key is set only at creation
+- kind: TOTPKey
+  test: optional-fields
+  reason: every optional field is either required by CEL for generated keys or immutable (keySecretRef, skew, urlSecretRef)
+- kind: PKIKey
+  test: optional-fields
+  reason: every optional field is immutable (key type, bits, import bundle, writeSecretRef) or has no example value (externalKeyRef needs a KMS)
+- kind: AccessLevel
+  field: spec.metadata
+  reason: an AccessLevel writes nothing to OpenBao; its fields only shape the policies that AccessGrant and AccessLayout render, so setting or removing one makes no write for the kind
+- kind: TransitKey
+  field: spec.minDecryptionVersion
+  reason: the example value needs a key with at least two versions, and rotating is the one-shot rotateNonce; the minimal key has one version, where the only valid value 1 is the default
+- kind: AppRoleSecretID
+  test: optional-fields
+  reason: OpenBao cannot update a secret ID; every optional field (cidrList, metadata, numUses, ttl, tokenBoundCIDRs, the role) is fixed at creation and immutable in the CRD
+- kind: GroupAlias
+  test: optional-fields
+  reason: every optional field is one of the one-of, immutable selectors of the alias's group or mount, so none can be set and removed on a live object
+- kind: GroupMembership
+  test: optional-fields
+  reason: every optional field is one of the one-of, immutable selectors of the group or member, so none can be set and removed on a live object
+- kind: OpenBaoEndpoint
+  field: spec.deletePath
+  reason: used only when the resource is deleted with deletionPolicy Delete; setting or removing it writes nothing
+- kind: OpenBaoEndpoint
+  field: spec.disableRead
+  reason: switches the operator's read-back off or on; the payload stays the same, so neither step writes
+- kind: OpenBaoEndpoint
+  field: spec.writeOnlyFields
+  reason: lists the data keys the operator leaves out of the comparison; it changes no payload, so setting or removing it writes nothing
+- kind: OpenBaoEndpoint
+  field: spec.readPath
+  reason: moves the operator's read to another path; any value other than the written path reads an object that does not hold the payload, so it cannot be set on its own
+- kind: OpenBaoEndpoint
+  field: spec.dataSecretRef
+  reason: the only example value is the generated example's Secret, which holds no JSON object for this endpoint; merging a Secret over data is covered by the adapter unit tests

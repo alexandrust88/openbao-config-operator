@@ -1,0 +1,47 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: CFAuthConfig
+metadata:
+  name: cf
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  mountPath: cf
+  identityCACertificates:
+    - |
+      -----BEGIN CERTIFICATE-----
+      MIIBfakeFAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfake
+      -----END CERTIFICATE-----
+  cfAPIAddr: https://api.cf.example.com
+  cfUsername: openbao
+  cfPasswordSecretRef:
+    name: cf-auth-credentials
+    key: password
+  cfAPITrustedCertificates:
+    - |
+      -----BEGIN CERTIFICATE-----
+      MIIBfakeFAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfake
+      -----END CERTIFICATE-----
+  cfAPIMutualTLSCertificate: |
+    -----BEGIN CERTIFICATE-----
+    MIIBfakeFAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfake
+    -----END CERTIFICATE-----
+  cfAPIMutualTLSKeySecretRef:
+    name: cf-auth-credentials
+    key: mtls-key
+  loginMaxSecondsNotBefore: 300
+  loginMaxSecondsNotAfter: 60
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cf-auth-credentials
+  namespace: openbao-config
+type: Opaque
+stringData:
+  password: fake-password-not-real
+  mtls-key: fake-mtls-private-key-not-real

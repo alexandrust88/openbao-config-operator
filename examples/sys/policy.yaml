@@ -1,0 +1,35 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: obco-team-a-reader
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 15m
+  managementPolicy: Manage
+  name: team-a-reader
+  policy: |
+    path "team-a/kv/data/{{identity.entity.metadata.app}}/*" {
+      capabilities = ["read", "list"]
+    }
+    path "team-a/kv/data/sa/{{identity.entity.aliases.${accessor:k8s}.metadata.service_account_namespace}}/*" {
+      capabilities = ["read"]
+    }
+    path "team-a/kv/data/ci/{{identity.entity.aliases.${accessor:ci}.name}}/*" {
+      capabilities = ["read"]
+    }
+  accessorRefs:
+    k8s:
+      authMountRef:
+        name: obco-kubernetes
+    ci:
+      authMountRef:
+        name: obco-approle
+  casRequired: false
+  allowWildcardsInIdentityTemplates: false
+  allowSlashesInIdentityTemplates: true

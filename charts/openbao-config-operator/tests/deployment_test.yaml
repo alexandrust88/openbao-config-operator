@@ -1,0 +1,347 @@
+suite: deployment
+templates:
+  - templates/deployment.yaml
+release:
+  name: obc
+  namespace: openbao-system
+tests:
+  - it: renders a restricted, highly available manager by default
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.replicas
+          value: 2
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/alexandrust88/openbao-config-operator:0.1.0
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --leader-elect=true
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --metrics-bind-address=:8443
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --watch-namespaces=
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --apiserver-audiences=
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: true
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.securityContext.seccompProfile.type
+          value: RuntimeDefault
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.capabilities.drop
+          value: [ALL]
+      - notExists:
+          path: spec.template.spec.containers[0].securityContext.appArmorProfile
+      - notExists:
+          path: spec.template.spec.securityContext.appArmorProfile
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet
+          value: {path: /healthz, port: health}
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet
+          value: {path: /readyz, port: health}
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content: {name: health, containerPort: 8081, protocol: TCP}
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content: {name: metrics, containerPort: 8443, protocol: TCP}
+      - equal:
+          path: spec.template.spec.topologySpreadConstraints[0].labelSelector.matchLabels
+          value:
+            app.kubernetes.io/name: openbao-config-operator
+            app.kubernetes.io/instance: obc
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+
+  - it: pins the image by digest
+    set:
+      image.digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/alexandrust88/openbao-config-operator@sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+  - it: uses an explicit tag
+    set:
+      image.tag: 0.2.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/alexandrust88/openbao-config-operator:0.2.0
+
+  - it: passes watchNamespaces through as one de-duplicated flag
+    set:
+      watchNamespaces: [team-a, team-b, team-a]
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --watch-namespaces=team-a,team-b
+
+  - it: passes apiServerAudiences through as one flag
+    set:
+      apiServerAudiences: [https://kubernetes.default.svc, https://oidc.example]
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --apiserver-audiences=https://kubernetes.default.svc,https://oidc.example
+
+  - it: appends extraArgs and extraEnv and scheduling settings
+    set:
+      extraArgs: [--zap-log-level=debug]
+      extraEnv:
+        - name: GOMEMLIMIT
+          value: 400MiB
+      priorityClassName: system-cluster-critical
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: dedicated
+          operator: Exists
+      imagePullSecrets:
+        - name: regcred
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --zap-log-level=debug
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: GOMEMLIMIT, value: 400MiB}
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: system-cluster-critical
+      - equal:
+          path: spec.template.spec.nodeSelector
+          value: {kubernetes.io/os: linux}
+      - equal:
+          path: spec.template.spec.tolerations[0].key
+          value: dedicated
+      - equal:
+          path: spec.template.spec.imagePullSecrets
+          value: [{name: regcred}]
+
+  - it: keeps an explicit topology labelSelector
+    set:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              custom: "true"
+    asserts:
+      - equal:
+          path: spec.template.spec.topologySpreadConstraints[0].labelSelector.matchLabels
+          value: {custom: "true"}
+
+  - it: mounts the metrics certificate secret
+    set:
+      metrics.certSecret: metrics-tls
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --metrics-cert-path=/etc/openbao-config-operator/metrics-certs
+      - contains:
+          path: spec.template.spec.volumes
+          content: {name: metrics-certs, secret: {secretName: metrics-tls}}
+
+  - it: disables metrics
+    set:
+      metrics.enabled: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --metrics-bind-address=0
+      - notContains:
+          path: spec.template.spec.containers[0].ports
+          content: {name: metrics, containerPort: 8443, protocol: TCP}
+
+  - it: refuses several replicas without leader election
+    set:
+      leaderElection.enabled: false
+    asserts:
+      - failedTemplate:
+          errorMessage: replicas > 1 requires leaderElection.enabled=true
+
+  - it: runs a single replica without leader election
+    set:
+      replicas: 1
+      leaderElection.enabled: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --leader-elect=false
+
+  - it: refuses flags that have a dedicated value in extraArgs
+    set:
+      extraArgs: [--leader-elect=false]
+    asserts:
+      - failedTemplate: {}
+
+  - it: refuses a ServiceAccount name left empty when the chart does not create it
+    set:
+      serviceAccount.create: false
+    asserts:
+      - failedTemplate: {}
+
+  - it: runs as an existing ServiceAccount
+    set:
+      serviceAccount.create: false
+      serviceAccount.name: platform-operator
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: platform-operator
+
+  - it: refuses to drop CRDs installed by an earlier release
+    set:
+      crds.install: false
+      crds.keep: false
+    asserts:
+      - failedTemplate:
+          errorMessage: crds.install=false with crds.keep=false deletes the CRDs installed by an earlier release, and every custom resource with them
+
+  - it: has no writable volume
+    asserts:
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: tmp
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            mountPath: /tmp
+          any: true
+
+  - it: mounts the projected injected identity token by default
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: {name: injected-identity-token, mountPath: /var/run/secrets/openbao, readOnly: true}
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: injected-identity-token
+            projected:
+              sources:
+                - serviceAccountToken: {audience: openbao-config-operator, expirationSeconds: 3600, path: token}
+
+  - it: mounts no projected injected identity token when disabled
+    set:
+      injectedIdentity.projectedToken.enabled: false
+    asserts:
+      - notExists:
+          path: spec.template.spec.volumes
+      - notExists:
+          path: spec.template.spec.containers[0].volumeMounts
+
+  - it: mounts a projected injected identity token
+    set:
+      injectedIdentity.projectedToken:
+        enabled: true
+        audience: bao.example.com
+        expirationSeconds: 7200
+        path: /var/run/secrets/bao/token
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: {name: injected-identity-token, mountPath: /var/run/secrets/bao, readOnly: true}
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: injected-identity-token
+            projected:
+              sources:
+                - serviceAccountToken: {audience: bao.example.com, expirationSeconds: 7200, path: token}
+
+  - it: refuses a projected token in the automounted token directory
+    set:
+      injectedIdentity.projectedToken:
+        enabled: true
+        path: /var/run/secrets/kubernetes.io/serviceaccount/openbao
+    asserts:
+      - failedTemplate:
+          errorMessage: injectedIdentity.projectedToken.path must not be in the automounted ServiceAccount token directory
+
+  - it: rejects a projected token shorter than the kubelet minimum
+    set:
+      injectedIdentity.projectedToken.expirationSeconds: 60
+    asserts:
+      - failedTemplate: {}
+
+  - it: mounts extra volumes for CA bundles
+    set:
+      extraVolumes:
+        - name: corp-ca
+          configMap:
+            name: corp-ca
+      extraVolumeMounts:
+        - name: corp-ca
+          mountPath: /etc/ssl/corp
+          readOnly: true
+      extraEnv:
+        - name: SSL_CERT_DIR
+          value: /etc/ssl/corp
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content: {name: corp-ca, configMap: {name: corp-ca}}
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: {name: corp-ca, mountPath: /etc/ssl/corp, readOnly: true}
+
+  - it: rejects an extra volume mount without a mount path
+    set:
+      extraVolumeMounts:
+        - name: corp-ca
+    asserts:
+      - failedTemplate: {}
+
+  - it: passes --enable-plugin-kinds only when pluginKinds.enabled is true
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --enable-plugin-kinds
+
+  - it: enables plugin kinds
+    set:
+      pluginKinds.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --enable-plugin-kinds
+
+  - it: keeps pprof off by default
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --pprof-bind-address=127.0.0.1:8082
+
+  - it: serves pprof on localhost when enabled
+    set:
+      pprof.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --pprof-bind-address=127.0.0.1:8082

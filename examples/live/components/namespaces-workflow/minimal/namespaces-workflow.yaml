@@ -1,0 +1,37 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: OpenBaoNamespace
+metadata:
+  name: ns-team
+spec:
+  connectionRef:
+    name: openbao
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: ns-team-reader
+  labels:
+    live.openbaoconfig.io/nested: "true"
+spec:
+  connectionRef:
+    name: openbao
+  namespace: ns-team
+  policy: |
+    path "+/data/*" {
+      capabilities = ["read"]
+    }
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Workflow
+metadata:
+  name: ns-health
+spec:
+  connectionRef:
+    name: openbao
+  workflow: |
+    flow "health" {
+      request "read" {
+        operation = "read"
+        path      = "sys/policies/acl/default"
+      }
+    }

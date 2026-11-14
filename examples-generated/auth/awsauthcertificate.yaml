@@ -1,0 +1,22 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AWSAuthCertificate
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  awsPublicCert: |
+    -----BEGIN CERTIFICATE-----
+    ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
+    -----END CERTIFICATE-----
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  mountPath: aws
+  name: example
+  namespace: example
+  type: pkcs7

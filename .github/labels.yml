@@ -1,0 +1,142 @@
+# Source of truth for the repository labels, synced by .github/workflows/labels.yml (skip-delete: labels created
+# by hand or by tools are kept). Rename a label with from_name so existing issues keep it.
+
+# kind: what the change or report is. Release notes are grouped by kind (.github/release.yml).
+- name: kind/bug
+  color: "d73a4a"
+  description: Something does not work as documented
+  from_name: bug
+- name: kind/regression
+  color: "b60205"
+  description: Worked in an earlier release
+- name: kind/feature
+  color: "a2eeef"
+  description: New behaviour or field on an existing kind
+  from_name: enhancement
+- name: kind/new-kind
+  color: "7057ff"
+  description: A new typed kind for an OpenBao API path
+- name: kind/api-change
+  color: "e99695"
+  description: Changes a CRD schema, default or validation rule
+- name: kind/deprecation
+  color: "fbca04"
+  description: Deprecates or removes a field, flag or kind
+- name: kind/security
+  color: "ee0701"
+  description: Hardening or a fix with security impact (report vulnerabilities privately, see SECURITY.md)
+- name: kind/docs
+  color: "0075ca"
+  description: Documentation only
+- name: kind/cleanup
+  color: "c5def5"
+  description: Refactoring, tech debt or test-only change
+- name: kind/dependencies
+  color: "0366d6"
+  description: Dependency or pinned version update
+
+# area: which part of the code.
+- name: area/engine
+  color: "bfdadc"
+  description: Generic reconciler, FieldSpec, ownership, drift, write budget
+- name: area/api
+  color: "bfdadc"
+  description: CRD types, markers and CEL rules in api/
+- name: area/connections
+  color: "bfdadc"
+  description: OpenBaoServer, connections, login, client cache, tenant boundary
+- name: area/sys
+  color: "bfdadc"
+  description: Kinds of the sys group
+- name: area/auth
+  color: "bfdadc"
+  description: Kinds of the auth group
+- name: area/secrets
+  color: "bfdadc"
+  description: Kinds of the secrets group
+- name: area/identity
+  color: "bfdadc"
+  description: Kinds of the identity group
+- name: area/access
+  color: "bfdadc"
+  description: AccessLevel, AccessGrant, AccessLayout
+- name: area/plugins
+  color: "bfdadc"
+  description: Plugin and plugin-gated kinds
+- name: area/import
+  color: "bfdadc"
+  description: The obc-import CLI and observe mode
+- name: area/chart
+  color: "bfdadc"
+  description: Helm chart and install.yaml
+- name: area/ci
+  color: "bfdadc"
+  description: GitHub workflows, tests harnesses, conformance and load tests
+- name: area/release
+  color: "bfdadc"
+  description: Release process, signing, SBOM, provenance
+- name: area/docs
+  color: "bfdadc"
+  description: Documentation site and guides
+
+# priority: set by a maintainer during triage.
+- name: priority/critical-urgent
+  color: "b60205"
+  description: Must be fixed now; blocks users or a release
+- name: priority/important-soon
+  color: "d93f0b"
+  description: Should be in the next minor release
+- name: priority/important-longterm
+  color: "fbca04"
+  description: Important, not scheduled for the next release
+- name: priority/backlog
+  color: "c2e0c6"
+  description: Wanted, picked up when someone has time
+
+# triage and lifecycle.
+- name: triage/needs-triage
+  color: "ededed"
+  description: Not yet looked at by a maintainer
+- name: triage/needs-information
+  color: "ededed"
+  description: Waiting for the reporter
+- name: triage/accepted
+  color: "0e8a16"
+  description: Confirmed and wanted; never marked stale
+- name: triage/duplicate
+  color: "cfd3d7"
+  description: Already tracked elsewhere
+- name: triage/not-planned
+  color: "cfd3d7"
+  description: Out of scope or contradicts an ADR
+- name: needs-adr
+  color: "5319e7"
+  description: Changes a design decision; needs an ADR before code
+- name: lifecycle/stale
+  color: "795548"
+  description: No activity for a long time; closes unless someone comments
+- name: lifecycle/frozen
+  color: "d4c5f9"
+  description: Exempt from the stale bot
+
+# contributor entry points.
+- name: good first issue
+  color: "7057ff"
+  description: Small, well-described, good for a first contribution
+- name: help wanted
+  color: "008672"
+  description: Maintainers would welcome a pull request
+
+# release tooling.
+- name: backport/candidate
+  color: "f9d0c4"
+  description: Fix to cherry-pick to the supported release branch
+- name: ignore-for-release
+  color: "ffffff"
+  description: Left out of the generated release notes
+- name: "autorelease: pending"
+  color: "ededed"
+  description: release-please release PR merged, tag not pushed yet
+- name: "autorelease: tagged"
+  color: "ededed"
+  description: release-please release PR whose tag was pushed

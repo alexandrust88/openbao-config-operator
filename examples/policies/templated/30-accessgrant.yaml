@@ -1,0 +1,36 @@
+# The access kinds render the identity templates for you: {sa.namespace} and {sa.name} become
+# {{identity.entity.aliases.<accessor>.metadata.service_account_namespace}} and ..._name, with the
+# accessor of the AuthMount named by authMountRef. Log in with the role in status.roles.
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessLevel
+metadata:
+  name: read-write
+  namespace: openbao-config
+spec:
+  data:
+    - create
+    - read
+    - update
+  metadata:
+    - read
+    - list
+---
+apiVersion: access.openbaoconfig.io/v1alpha1
+kind: AccessGrant
+metadata:
+  name: team-apps
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  authMountRef:
+    name: kubernetes
+  subjects:
+    - name: app
+      namespace: team-*
+  rules:
+    - mount: apps
+      path: grant/{sa.namespace}/{sa.name}/*
+      metadataPath: grant/{sa.namespace}/{sa.name}/*
+      level: read-write
+  tokenTTL: 15m

@@ -1,0 +1,200 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests",
+    "docker:pinDigests"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 10,
+  "minimumReleaseAge": "3 days",
+  "automerge": false,
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "osvVulnerabilityAlerts": true,
+  "dependencyDashboardOSVVulnerabilitySummary": "unresolved",
+  "vulnerabilityAlerts": {
+    "labels": [
+      "dependencies",
+      "security"
+    ],
+    "schedule": [
+      "at any time"
+    ],
+    "minimumReleaseAge": null
+  },
+  "kubernetes": {
+    "managerFilePatterns": [
+      "/^hack/e2e/.+\\.ya?ml$/"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "Bump the Kubernetes libraries, controller-runtime and controller-tools together",
+      "groupName": "kubernetes",
+      "matchPackageNames": [
+        "k8s.io/**",
+        "sigs.k8s.io/controller-runtime",
+        "sigs.k8s.io/controller-tools"
+      ]
+    },
+    {
+      "description": "Bump the go.mod toolchain and the golang images of the Dockerfile and devcontainer together",
+      "groupName": "go toolchain",
+      "matchDatasources": [
+        "golang-version",
+        "docker"
+      ],
+      "matchPackageNames": [
+        "go",
+        "golang"
+      ]
+    },
+    {
+      "description": "Move the OpenBao release binary (version and sha256 pins in the Makefile) and the e2e OpenBao image together",
+      "groupName": "openbao",
+      "matchPackageNames": [
+        "openbao/openbao",
+        "ghcr.io/openbao/openbao"
+      ]
+    },
+    {
+      "description": "One PR for non-major GitHub Actions updates and digest refreshes",
+      "groupName": "github actions",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ]
+    },
+    {
+      "description": "Everything CI and the release run (actions, images, tools) waits 7 days, the pinact min_age in .github/pinact.yaml",
+      "matchFileNames": [
+        ".github/workflows/**",
+        "Dockerfile",
+        "Makefile",
+        ".devcontainer/**"
+      ],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "ghcr.io and quay.io publish no release timestamps; without this, minimumReleaseAge would hold them forever",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/**",
+        "quay.io/**"
+      ],
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Tool versions pinned in the Makefile",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n[A-Z_]+_VERSION \\?= (?<currentValue>\\S+)"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Container images pinned by digest in the Makefile",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>docker) depName=(?<depName>\\S+)\\n[A-Z_]+_IMAGE \\?= \\S+?:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Release tarball sha256 pins in the Makefile, one dependency per platform, each carrying its own version copy",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>github-release-attachments) depName=(?<depName>\\S+) version=(?<currentValue>\\S+)\\n[A-Z_]+_SHA256_[a-z0-9_]+ \\?= (?<currentDigest>[a-f0-9]{64})"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "golangci-lint and its module plugins, built by make golangci-lint",
+      "managerFilePatterns": [
+        "/^\\.custom-gcl\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)version: (?<currentValue>\\S+)",
+        "module: \"(?<depName>[^\"]+)\"\\n\\s+import: \"[^\"]+\"\\n\\s+version: (?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "{{#if depName}}{{{depName}}}{{else}}github.com/golangci/golangci-lint/v2{{/if}}",
+      "datasourceTemplate": "go"
+    },
+    {
+      "customType": "regex",
+      "description": "cosign installed by sigstore/cosign-installer",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "cosign-release: (?<currentValue>v\\S+)"
+      ],
+      "depNameTemplate": "sigstore/cosign",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "uv installed by helm/chart-testing-action",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "uv_version: \"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "astral-sh/uv",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "Container images pinned by digest in workflow env (buildkit, gitleaks, osv-scanner, zizmor)",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>docker) depName=(?<depName>\\S+)\\n\\s+[A-Z_]+: \\S+?:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Release assets pinned by version and sha256 in workflow env (helm-unittest, pinact, poutine)",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>github-release-attachments) depName=(?<depName>\\S+)\\n\\s+[A-Z_]+_VERSION: (?<currentValue>\\S+)\\n\\s+[A-Z_]+_SHA256: (?<currentDigest>[a-f0-9]{64})"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Dev container tools pinned by version and per-arch sha256",
+      "managerFilePatterns": [
+        "/^\\.devcontainer/post-install\\.sh$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n[A-Z_]+_VERSION=(?<currentValue>\\S+)"
+      ]
+    }
+  ]
+}

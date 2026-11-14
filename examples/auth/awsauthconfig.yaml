@@ -1,0 +1,38 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AWSAuthConfig
+metadata:
+  name: aws-client
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  mountPath: aws
+  accessKeySecretRef:
+    name: aws-auth-credentials
+    key: access-key
+  secretKeySecretRef:
+    name: aws-auth-credentials
+    key: secret-key
+  ec2Endpoint: https://ec2.eu-central-1.amazonaws.com
+  iamEndpoint: https://iam.amazonaws.com
+  stsEndpoint: https://sts.eu-central-1.amazonaws.com
+  stsRegion: eu-central-1
+  useSTSRegionFromClient: false
+  iamServerIDHeaderValue: openbao.example.com
+  allowedSTSHeaderValues:
+    - X-Example-Trace
+  maxRetries: 5
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-auth-credentials
+  namespace: openbao-config
+type: Opaque
+stringData:
+  access-key: AKIAFAKEFAKEFAKEFAKE
+  secret-key: fake-secret-key-not-real

@@ -1,0 +1,69 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: CertAuthRole
+metadata:
+  name: web-clients
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: cert
+  name: web-clients
+  certificate: |
+    -----BEGIN CERTIFICATE-----
+    MIIBYTCCAQigAwIBAgIUDMw3azJKyUnZ9ymx9nkMtOKG9E4wCgYIKoZIzj0EAwIw
+    FzEVMBMGA1UEAwwMb2Jjby10ZXN0LWNhMB4XDTI2MTExMzIyMjQzMVoXDTM2MTEx
+    MDIyMjQzMVowFzEVMBMGA1UEAwwMb2Jjby10ZXN0LWNhMFkwEwYHKoZIzj0CAQYI
+    KoZIzj0DAQcDQgAEFoZh98uaZo4/3v5cSywC0uH8ZiSzf95fG9lCWe6uidPOb9Dy
+    C265JytUU1VV9tZ247yA5L72vzWiOTDa/9K3z6MyMDAwHQYDVR0OBBYEFAiOukMR
+    doR39VvDsVQ++aFecP+GMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDRwAw
+    RAIgBLc18g1ypCtJR5OaZI02SIu41XxJdIhT7jGPEsF57AkCIC92H/jJrXlX07vC
+    ymDvgfvtQ0UWHcdGzHZe+eCO1ZqD
+    -----END CERTIFICATE-----
+  displayName: web-clients
+  allowedCommonNames:
+    - "*.clients.example.com"
+  allowedDNSSANs:
+    - "*.clients.example.com"
+  allowedEmailSANs:
+    - ops@example.com
+  allowedURISANs:
+    - spiffe://example.com/clients/*
+  allowedOrganizationalUnits:
+    - platform
+  requiredExtensions:
+    - "2.1.1.1:client"
+  allowedMetadataExtensions:
+    - 2.1.1.2
+  ocspEnabled: false
+  ocspCACertificates: |
+    -----BEGIN CERTIFICATE-----
+    MIIBYTCCAQigAwIBAgIUDMw3azJKyUnZ9ymx9nkMtOKG9E4wCgYIKoZIzj0EAwIw
+    FzEVMBMGA1UEAwwMb2Jjby10ZXN0LWNhMB4XDTI2MTExMzIyMjQzMVoXDTM2MTEx
+    MDIyMjQzMVowFzEVMBMGA1UEAwwMb2Jjby10ZXN0LWNhMFkwEwYHKoZIzj0CAQYI
+    KoZIzj0DAQcDQgAEFoZh98uaZo4/3v5cSywC0uH8ZiSzf95fG9lCWe6uidPOb9Dy
+    C265JytUU1VV9tZ247yA5L72vzWiOTDa/9K3z6MyMDAwHQYDVR0OBBYEFAiOukMR
+    doR39VvDsVQ++aFecP+GMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDRwAw
+    RAIgBLc18g1ypCtJR5OaZI02SIu41XxJdIhT7jGPEsF57AkCIC92H/jJrXlX07vC
+    ymDvgfvtQ0UWHcdGzHZe+eCO1ZqD
+    -----END CERTIFICATE-----
+  ocspServersOverride:
+    - http://ocsp.example.com
+  ocspFailOpen: false
+  ocspQueryAllServers: false
+  tokenTTL: 1h
+  tokenMaxTTL: 4h
+  tokenExplicitMaxTTL: 8h
+  tokenPeriod: 0s
+  tokenPolicies:
+    - web-client
+  policyRefs:
+    - name: obco-team-a-reader
+  tokenBoundCIDRs:
+    - 10.42.0.0/16
+  tokenNumUses: 0
+  tokenType: default
+  tokenNoDefaultPolicy: false
+  tokenStrictlyBindIP: false

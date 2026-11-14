@@ -1,0 +1,19 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AWSAuthSTSRole
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  accountID: "000000000000"
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  externalID: example
+  managementPolicy: Manage
+  mountPath: aws
+  namespace: example
+  stsRole: 'arn:'

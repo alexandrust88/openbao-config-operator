@@ -1,0 +1,85 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: LDAPAuthConfig
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  anonymousGroupSearch: true
+  bindDN: cn=example,dc=example,dc=com
+  bindPassSecretRef:
+    key: value
+    name: ldapauthconfig-bind-pass-secret-ref
+  caseSensitiveNames: true
+  certificate: |
+    -----BEGIN CERTIFICATE-----
+    ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
+    -----END CERTIFICATE-----
+  clientTLSCert: |
+    -----BEGIN CERTIFICATE-----
+    ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
+    -----END CERTIFICATE-----
+  clientTLSKeySecretRef:
+    key: value
+    name: ldapauthconfig-client-tls-key-secret-ref
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  connectionTimeout: 1h
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  denyNullBind: true
+  dereferenceAliases: never
+  discoverDN: true
+  driftDetection: Enabled
+  driftInterval: 1h
+  groupAttr: example
+  groupDN: cn=example,dc=example,dc=com
+  groupFilter: example
+  insecureTLS: true
+  managementPolicy: Manage
+  maxPageSize: 1
+  mountPath: ldap
+  namespace: example
+  policyRefs:
+  - name: example
+  requestTimeout: 1h
+  startTLS: true
+  tlsMaxVersion: tls10
+  tlsMinVersion: tls10
+  tokenBoundCIDRs:
+  - 10.0.0.0/8
+  tokenExplicitMaxTTL: 1h
+  tokenMaxTTL: 1h
+  tokenNoDefaultPolicy: true
+  tokenNumUses: 1
+  tokenPeriod: 1h
+  tokenPolicies:
+  - default
+  tokenStrictlyBindIP: true
+  tokenTTL: 1h
+  tokenType: default
+  upnDomain: example
+  url: https://openbao.example.com:8200
+  useTokenGroups: true
+  userAttr: example
+  userDN: cn=example,dc=example,dc=com
+  userFilter: example
+  usernameAsAlias: true
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ldapauthconfig-bind-pass-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ldapauthconfig-client-tls-key-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

@@ -1,0 +1,186 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: kv
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: kv
+  type: kv
+  description: Application secrets of the live kit
+  local: false
+  sealWrap: false
+  externalEntropyAccess: false
+  forceNoCache: false
+  pluginVersion: ""
+  options:
+    version: "2"
+  defaultLeaseTTL: 1h
+  maxLeaseTTL: 24h
+  listingVisibility: hidden
+  auditNonHMACRequestKeys:
+    - path
+  auditNonHMACResponseKeys:
+    - version
+  passthroughRequestHeaders:
+    - X-Request-Id
+  allowedResponseHeaders:
+    - X-Request-Id
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVConfig
+metadata:
+  name: kv-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: kv
+  maxVersions: 20
+  casRequired: false
+  metadataCASRequired: false
+  deleteVersionAfter: 768h
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: PasswordPolicy
+metadata:
+  name: app-passwords
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: app-passwords
+  policy: |
+    length = 24
+    rule "charset" {
+      charset = "abcdefghijklmnopqrstuvwxyz"
+      min-chars = 1
+    }
+    rule "charset" {
+      charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      min-chars = 1
+    }
+    rule "charset" {
+      charset = "0123456789"
+      min-chars = 1
+    }
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVSecret
+metadata:
+  name: app-config
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: kv
+  path: app/config
+  kvVersion: 2
+  dataFrom:
+    - secretRef:
+        name: live-kv-app
+  data:
+    api-token:
+      secretKeyRef:
+        name: live-kv-app-api
+        key: token
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: app-session-key
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: kv
+  path: app/session
+  kvVersion: 2
+  key: session-key
+  generator:
+    length: 48
+    charset: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_
+  refreshNonce: "1"
+  writeSecretRef:
+    name: app-session-key
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: app-admin-password
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: kv
+  path: app/admin
+  kvVersion: 2
+  key: admin-password
+  passwordPolicyName: app-passwords
+  refreshNonce: "1"
+  writeSecretRef:
+    name: app-admin-password
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: app-reader
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: app-reader
+  policy: |
+    path "+/data/app/*" {
+      capabilities = ["read", "list"]
+    }
+    path "+/metadata/app/*" {
+      capabilities = ["list"]
+    }
+  casRequired: false
+  allowWildcardsInIdentityTemplates: false
+  allowSlashesInIdentityTemplates: false

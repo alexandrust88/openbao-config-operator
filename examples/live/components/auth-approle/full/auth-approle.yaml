@@ -1,0 +1,187 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: approle
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: approle
+  type: approle
+  description: AppRole logins of CI pipelines
+  local: false
+  sealWrap: false
+  externalEntropyAccess: false
+  forceNoCache: false
+  pluginVersion: ""
+  options: {}
+  defaultLeaseTTL: 1h
+  maxLeaseTTL: 24h
+  listingVisibility: hidden
+  auditNonHMACRequestKeys:
+    - role
+  auditNonHMACResponseKeys:
+    - lease_duration
+  passthroughRequestHeaders:
+    - X-Request-Id
+  allowedResponseHeaders:
+    - X-Request-Id
+  tokenType: default-service
+  userLockout:
+    threshold: 5
+    duration: 15m
+    counterResetDuration: 10m
+    disable: false
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: approle-ci-read
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: approle-ci-read
+  policy: |
+    path "+/data/ci/*" {
+      capabilities = ["read", "list"]
+    }
+  casRequired: false
+  allowWildcardsInIdentityTemplates: false
+  allowSlashesInIdentityTemplates: false
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AppRole
+metadata:
+  name: approle-ci
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: approle
+  name: approle-ci
+  roleID: approle-ci
+  bindSecretID: true
+  secretIDNumUses: 10
+  secretIDTTL: 72h
+  secretIDBoundCIDRs:
+    - 10.0.0.0/8
+  localSecretIDs: false
+  policyRefs:
+    - name: approle-ci-read
+  tokenPolicies:
+    - default
+  tokenTTL: 30m
+  tokenMaxTTL: 4h
+  tokenExplicitMaxTTL: 8h
+  tokenPeriod: 0s
+  tokenNumUses: 0
+  tokenNoDefaultPolicy: false
+  tokenStrictlyBindIP: false
+  tokenBoundCIDRs:
+    - 10.0.0.0/8
+    - 127.0.0.1/32
+  tokenType: service
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AppRoleSecretID
+metadata:
+  name: approle-ci-secret
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  roleRef:
+    name: approle-ci
+  writeSecretRef:
+    name: approle-ci-secret
+  metadata:
+    pipeline: deploy
+    team: platform
+  cidrList:
+    - 10.20.0.0/16
+  tokenBoundCIDRs:
+    - 10.0.0.0/8
+  ttl: 48h
+  numUses: 5
+  rotation:
+    enabled: true
+    renewBefore: 12h
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AppRoleSecretID
+metadata:
+  name: approle-ci-by-name
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: approle
+  roleName: approle-ci
+  writeSecretRef:
+    name: approle-ci-by-name
+  ttl: 24h
+  rotation:
+    enabled: false
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: TokenRole
+metadata:
+  name: approle-token
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: approle-token
+  allowedPolicies:
+    - approle-ci-read
+  allowedPoliciesGlob:
+    - "*-approle-ci-*"
+  disallowedPolicies:
+    - root
+  disallowedPoliciesGlob:
+    - "*-admin"
+  allowedEntityAliases:
+    - ci-*
+  orphan: false
+  renewable: true
+  pathSuffix: ci-v1
+  tokenExplicitMaxTTL: 8h
+  tokenPeriod: 1h
+  tokenNumUses: 0
+  tokenNoDefaultPolicy: false
+  tokenBoundCIDRs:
+    - 10.0.0.0/8
+  tokenType: service

@@ -1,0 +1,455 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: db
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: db
+  type: database
+  description: Database credentials for the live kit
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: PasswordPolicy
+metadata:
+  name: db-passwords
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: db-passwords
+  policy: |
+    length = 32
+    rule "charset" {
+      charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      min-chars = 1
+    }
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseConnection
+metadata:
+  name: db-postgres
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: db
+  name: db-postgres
+  pluginName: postgresql-database-plugin
+  verifyConnection: false
+  allowedRoles:
+    - db-app-ro
+    - db-app-cert
+    - db-app-static
+  rootRotationStatements:
+    - ALTER USER "{{name}}" WITH PASSWORD '{{password}}';
+  passwordPolicy: db-passwords
+  passwordSecretRef:
+    name: live-db-root
+    key: password
+  rotateRootOnCreate: false
+  postgresql:
+    connectionURL: postgresql://{{username}}:{{password}}@postgres.example.invalid:5432/app?sslmode=require
+    username: openbao
+    maxOpenConnections: 8
+    maxIdleConnections: 4
+    maxConnectionLifetime: 5m
+    usernameTemplate: '{{ printf "v-%s-%s" (.RoleName | truncate 16) (random 8) }}'
+    disableEscaping: false
+    passwordAuthentication: scram-sha-256
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseConnection
+metadata:
+  name: db-mysql
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: db
+  name: db-mysql
+  pluginName: mysql-database-plugin
+  verifyConnection: false
+  allowedRoles:
+    - "*"
+  passwordSecretRef:
+    name: live-db-root
+    key: password
+  mysql:
+    connectionURL: '{{username}}:{{password}}@tcp(mysql.example.invalid:3306)/'
+    username: openbao
+    maxOpenConnections: 4
+    maxIdleConnections: 2
+    maxConnectionLifetime: 1m
+    usernameTemplate: '{{ .RoleName | truncate 10 }}-{{ random 6 }}'
+    tlsCA: |
+      -----BEGIN CERTIFICATE-----
+      MIIC4jCCAcqgAwIBAgIJANbfbgYUrgDnMA0GCSqGSIb3DQEBCwUAMB4xHDAaBgNV
+      BAMME2xpdmUga2l0IGV4YW1wbGUgQ0EwHhcNMjYxMTE0MDk0MTA3WhcNMzYxMTEx
+      MDk0MTA3WjAeMRwwGgYDVQQDDBNsaXZlIGtpdCBleGFtcGxlIENBMIIBIjANBgkq
+      hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzKpYzG4fgWLHZ9Chh3MpIWzxIdoljyAs
+      LDqVTvgTln1iw2gKJ10Mo1B2YuLwE1N1sNrvVbx+DBmUVjkTESxiA43aSJ56VDWz
+      egDrg4PoMoXMVc0t9taDgxEBpyzsEDnemVd9bUYvnyYYUhQ7GxSbfR2H5FvaSUaZ
+      MyXdqGQCa++wavjyTvyoJ7dKPxxI69pZeaIHDtBFDBRok7ld96NxAEovjN69pLht
+      xZ0/8FbFovWV5Sbp5HU5HHU1qES9sUARPCMsA0lFmJim1CfS+nkLi4sozoIKmFvv
+      JyuY7RLy0GunagBSmzmQTa60gt8QNfLbv4Vn1Ndk8Ax48bpF7uBR6wIDAQABoyMw
+      ITAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBBjANBgkqhkiG9w0BAQsF
+      AAOCAQEANKsO0PR23R7GNbwxNeppqsgpbNI+m/Ea28UDB0W7ilc3vu1i01w4zr5m
+      Qbde9UaDXLPTw7ouxuPOwAsa2Pfj3LEhcA0iGTtHEqOyCddfBTaeiSHqZNMILzvX
+      LDQviDuW1vLFAk3SsC8QxmLk0mu2jy68v7nxxbPQeLV60ntI/a8qqldNlVglHOU6
+      jGLl1hGOLlaC78gFd55B3kFqfzuUTnhl/j+F5oVLv/mNKbU1m4WmdHsYihaNa6vA
+      30fap1SqXTJ7Fz6ukcP1YCScEZ1HnQDC7kCsLSxFp6G5N6YdwX5Z68r8suTFuIJl
+      qf9vVr1KLnFFpDvSSptIeZS6zg/azQ==
+      -----END CERTIFICATE-----
+    tlsCertificateKeySecretRef:
+      name: live-db-tls
+      key: client.pem
+    tlsServerName: mysql.example.invalid
+    tlsSkipVerify: false
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseConnection
+metadata:
+  name: db-mysql-rds
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: db
+  name: db-mysql-rds
+  pluginName: mysql-rds-database-plugin
+  verifyConnection: false
+  allowedRoles:
+    - "*"
+  passwordSecretRef:
+    name: live-db-root
+    key: password
+  pluginConfig:
+    connection_url: '{{username}}:{{password}}@tcp(rds.example.invalid:3306)/'
+    username: openbao
+    max_open_connections: "4"
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseConnection
+metadata:
+  name: db-cassandra
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: db
+  name: db-cassandra
+  pluginName: cassandra-database-plugin
+  verifyConnection: false
+  allowedRoles:
+    - "*"
+  passwordSecretRef:
+    name: live-db-root
+    key: password
+  cassandra:
+    hosts:
+      - cassandra-0.example.invalid
+      - cassandra-1.example.invalid
+    port: 9042
+    protocolVersion: 4
+    username: cassandra
+    tls: true
+    insecureTLS: false
+    tlsServerName: cassandra.example.invalid
+    tlsMinVersion: tls12
+    pemBundleSecretRef:
+      name: live-db-tls
+      key: client.pem
+    skipVerification: false
+    connectTimeout: 5s
+    socketKeepAlive: 30s
+    consistency: LOCAL_QUORUM
+    localDatacenter: dc1
+    usernameTemplate: '{{ .RoleName }}_{{ random 8 }}'
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseConnection
+metadata:
+  name: db-influxdb
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: db
+  name: db-influxdb
+  pluginName: influxdb-database-plugin
+  verifyConnection: false
+  allowedRoles:
+    - "*"
+  passwordSecretRef:
+    name: live-db-root
+    key: password
+  influxdb:
+    host: influxdb.example.invalid
+    port: 8086
+    username: admin
+    tls: true
+    insecureTLS: false
+    tlsMinVersion: tls12
+    pemBundleSecretRef:
+      name: live-db-tls
+      key: client.pem
+    connectTimeout: 5s
+    usernameTemplate: '{{ .RoleName }}_{{ random 8 }}'
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseConnection
+metadata:
+  name: db-valkey
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: db
+  name: db-valkey
+  pluginName: valkey-database-plugin
+  verifyConnection: false
+  allowedRoles:
+    - "*"
+  passwordSecretRef:
+    name: live-db-root
+    key: password
+  valkey:
+    host: valkey.example.invalid
+    port: 6379
+    username: default
+    tls: true
+    insecureTLS: false
+    caCert: |
+      -----BEGIN CERTIFICATE-----
+      MIIC4jCCAcqgAwIBAgIJANbfbgYUrgDnMA0GCSqGSIb3DQEBCwUAMB4xHDAaBgNV
+      BAMME2xpdmUga2l0IGV4YW1wbGUgQ0EwHhcNMjYxMTE0MDk0MTA3WhcNMzYxMTEx
+      MDk0MTA3WjAeMRwwGgYDVQQDDBNsaXZlIGtpdCBleGFtcGxlIENBMIIBIjANBgkq
+      hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzKpYzG4fgWLHZ9Chh3MpIWzxIdoljyAs
+      LDqVTvgTln1iw2gKJ10Mo1B2YuLwE1N1sNrvVbx+DBmUVjkTESxiA43aSJ56VDWz
+      egDrg4PoMoXMVc0t9taDgxEBpyzsEDnemVd9bUYvnyYYUhQ7GxSbfR2H5FvaSUaZ
+      MyXdqGQCa++wavjyTvyoJ7dKPxxI69pZeaIHDtBFDBRok7ld96NxAEovjN69pLht
+      xZ0/8FbFovWV5Sbp5HU5HHU1qES9sUARPCMsA0lFmJim1CfS+nkLi4sozoIKmFvv
+      JyuY7RLy0GunagBSmzmQTa60gt8QNfLbv4Vn1Ndk8Ax48bpF7uBR6wIDAQABoyMw
+      ITAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBBjANBgkqhkiG9w0BAQsF
+      AAOCAQEANKsO0PR23R7GNbwxNeppqsgpbNI+m/Ea28UDB0W7ilc3vu1i01w4zr5m
+      Qbde9UaDXLPTw7ouxuPOwAsa2Pfj3LEhcA0iGTtHEqOyCddfBTaeiSHqZNMILzvX
+      LDQviDuW1vLFAk3SsC8QxmLk0mu2jy68v7nxxbPQeLV60ntI/a8qqldNlVglHOU6
+      jGLl1hGOLlaC78gFd55B3kFqfzuUTnhl/j+F5oVLv/mNKbU1m4WmdHsYihaNa6vA
+      30fap1SqXTJ7Fz6ukcP1YCScEZ1HnQDC7kCsLSxFp6G5N6YdwX5Z68r8suTFuIJl
+      qf9vVr1KLnFFpDvSSptIeZS6zg/azQ==
+      -----END CERTIFICATE-----
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseConnection
+metadata:
+  name: db-redis
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: db
+  name: db-redis
+  pluginName: redis-database-plugin
+  verifyConnection: false
+  allowedRoles:
+    - "*"
+  valkey:
+    connectionURL: rediss://redis.example.invalid:6379
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseRole
+metadata:
+  name: db-app-ro
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: db
+  name: db-app-ro
+  dbName: db-postgres
+  credentialType: password
+  defaultTTL: 1h
+  maxTTL: 24h
+  creationStatements:
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';
+    - GRANT SELECT ON ALL TABLES IN SCHEMA public TO "{{name}}";
+  revocationStatements:
+    - REVOKE ALL ON ALL TABLES IN SCHEMA public FROM "{{name}}";
+    - DROP ROLE IF EXISTS "{{name}}";
+  rollbackStatements:
+    - DROP ROLE IF EXISTS "{{name}}";
+  renewStatements:
+    - ALTER ROLE "{{name}}" VALID UNTIL '{{expiration}}';
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseRole
+metadata:
+  name: db-app-cert
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: db
+  name: db-app-cert
+  dbName: db-postgres
+  credentialType: client_certificate
+  credentialConfig:
+    ca_cert: |
+      -----BEGIN CERTIFICATE-----
+      MIIC4jCCAcqgAwIBAgIJANbfbgYUrgDnMA0GCSqGSIb3DQEBCwUAMB4xHDAaBgNV
+      BAMME2xpdmUga2l0IGV4YW1wbGUgQ0EwHhcNMjYxMTE0MDk0MTA3WhcNMzYxMTEx
+      MDk0MTA3WjAeMRwwGgYDVQQDDBNsaXZlIGtpdCBleGFtcGxlIENBMIIBIjANBgkq
+      hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzKpYzG4fgWLHZ9Chh3MpIWzxIdoljyAs
+      LDqVTvgTln1iw2gKJ10Mo1B2YuLwE1N1sNrvVbx+DBmUVjkTESxiA43aSJ56VDWz
+      egDrg4PoMoXMVc0t9taDgxEBpyzsEDnemVd9bUYvnyYYUhQ7GxSbfR2H5FvaSUaZ
+      MyXdqGQCa++wavjyTvyoJ7dKPxxI69pZeaIHDtBFDBRok7ld96NxAEovjN69pLht
+      xZ0/8FbFovWV5Sbp5HU5HHU1qES9sUARPCMsA0lFmJim1CfS+nkLi4sozoIKmFvv
+      JyuY7RLy0GunagBSmzmQTa60gt8QNfLbv4Vn1Ndk8Ax48bpF7uBR6wIDAQABoyMw
+      ITAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBBjANBgkqhkiG9w0BAQsF
+      AAOCAQEANKsO0PR23R7GNbwxNeppqsgpbNI+m/Ea28UDB0W7ilc3vu1i01w4zr5m
+      Qbde9UaDXLPTw7ouxuPOwAsa2Pfj3LEhcA0iGTtHEqOyCddfBTaeiSHqZNMILzvX
+      LDQviDuW1vLFAk3SsC8QxmLk0mu2jy68v7nxxbPQeLV60ntI/a8qqldNlVglHOU6
+      jGLl1hGOLlaC78gFd55B3kFqfzuUTnhl/j+F5oVLv/mNKbU1m4WmdHsYihaNa6vA
+      30fap1SqXTJ7Fz6ukcP1YCScEZ1HnQDC7kCsLSxFp6G5N6YdwX5Z68r8suTFuIJl
+      qf9vVr1KLnFFpDvSSptIeZS6zg/azQ==
+      -----END CERTIFICATE-----
+    common_name_template: "{{.DisplayName}}_{{.RoleName}}"
+    key_type: ec
+    key_bits: "256"
+    signature_bits: "256"
+  caPrivateKeySecretRef:
+    name: live-db-client-ca
+    key: key
+  defaultTTL: 1h
+  maxTTL: 24h
+  creationStatements:
+    - CREATE ROLE "{{name}}" WITH LOGIN;
+  revocationStatements:
+    - DROP ROLE IF EXISTS "{{name}}";
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseStaticRole
+metadata:
+  name: db-app-static
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: db
+  name: db-app-static
+  dbName: db-postgres
+  username: app
+  rotationPeriod: 24h
+  rotationStatements:
+    - ALTER USER "{{name}}" WITH PASSWORD '{{password}}';
+  credentialType: password
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseStaticRole
+metadata:
+  name: db-app-static-cert
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: db
+  name: db-app-static-cert
+  dbName: db-postgres
+  username: app_cert
+  rotationPeriod: 168h
+  credentialType: client_certificate
+  credentialConfig:
+    ca_cert: |
+      -----BEGIN CERTIFICATE-----
+      MIIC4jCCAcqgAwIBAgIJANbfbgYUrgDnMA0GCSqGSIb3DQEBCwUAMB4xHDAaBgNV
+      BAMME2xpdmUga2l0IGV4YW1wbGUgQ0EwHhcNMjYxMTE0MDk0MTA3WhcNMzYxMTEx
+      MDk0MTA3WjAeMRwwGgYDVQQDDBNsaXZlIGtpdCBleGFtcGxlIENBMIIBIjANBgkq
+      hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzKpYzG4fgWLHZ9Chh3MpIWzxIdoljyAs
+      LDqVTvgTln1iw2gKJ10Mo1B2YuLwE1N1sNrvVbx+DBmUVjkTESxiA43aSJ56VDWz
+      egDrg4PoMoXMVc0t9taDgxEBpyzsEDnemVd9bUYvnyYYUhQ7GxSbfR2H5FvaSUaZ
+      MyXdqGQCa++wavjyTvyoJ7dKPxxI69pZeaIHDtBFDBRok7ld96NxAEovjN69pLht
+      xZ0/8FbFovWV5Sbp5HU5HHU1qES9sUARPCMsA0lFmJim1CfS+nkLi4sozoIKmFvv
+      JyuY7RLy0GunagBSmzmQTa60gt8QNfLbv4Vn1Ndk8Ax48bpF7uBR6wIDAQABoyMw
+      ITAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBBjANBgkqhkiG9w0BAQsF
+      AAOCAQEANKsO0PR23R7GNbwxNeppqsgpbNI+m/Ea28UDB0W7ilc3vu1i01w4zr5m
+      Qbde9UaDXLPTw7ouxuPOwAsa2Pfj3LEhcA0iGTtHEqOyCddfBTaeiSHqZNMILzvX
+      LDQviDuW1vLFAk3SsC8QxmLk0mu2jy68v7nxxbPQeLV60ntI/a8qqldNlVglHOU6
+      jGLl1hGOLlaC78gFd55B3kFqfzuUTnhl/j+F5oVLv/mNKbU1m4WmdHsYihaNa6vA
+      30fap1SqXTJ7Fz6ukcP1YCScEZ1HnQDC7kCsLSxFp6G5N6YdwX5Z68r8suTFuIJl
+      qf9vVr1KLnFFpDvSSptIeZS6zg/azQ==
+      -----END CERTIFICATE-----
+    common_name_template: app_cert
+    key_type: rsa
+    key_bits: "2048"
+  caPrivateKeySecretRef:
+    name: live-db-client-ca
+    key: key

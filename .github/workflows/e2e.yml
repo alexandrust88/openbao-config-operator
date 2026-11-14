@@ -1,0 +1,67 @@
+name: e2e
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_call:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      KIND_CLUSTER: openbao-config-operator-test-e2e
+      # Must match managerImage in test/e2e so the suite reuses the image loaded here.
+      E2E_IMG: example.com/openbao-config-operator:v0.0.1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin
+          key: tools-e2e-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
+
+      - name: Create kind cluster
+        run: make setup-test-e2e
+
+      - name: Build and load the operator image
+        run: |
+          make docker-build IMG="$E2E_IMG"
+          bin/kind load docker-image "$E2E_IMG" --name "$KIND_CLUSTER"
+
+      # The suite deploys OpenBao and installs the chart itself; it reuses the image loaded above.
+      - name: Run e2e tests
+        env:
+          E2E_SKIP_IMAGE_BUILD: "true"
+        run: make test-e2e
+
+      # Runs after the suite, which removes its chart and OpenBao; the script installs both again.
+      - name: Apply the live kit root overlay
+        run: |
+          command -v htpasswd || { sudo apt-get update && sudo apt-get install -y --no-install-recommends apache2-utils; }
+          make helm kustomize yq
+          test/livekit/kind.sh
+
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -n 100 || true
+          for ns in openbao-config-operator openbao-config-operator-system openbao openbao-live; do
+            kubectl -n "$ns" logs --all-containers --prefix --tail=200 -l app.kubernetes.io/name || true
+          done

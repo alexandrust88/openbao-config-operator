@@ -1,0 +1,16 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: OIDCConfig
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  issuer: https://openbao.example.com:8200
+  managementPolicy: Manage
+  namespace: example

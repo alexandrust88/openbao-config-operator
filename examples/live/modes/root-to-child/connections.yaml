@@ -1,0 +1,35 @@
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoConnection
+metadata:
+  name: openbao
+spec:
+  serverRef:
+    name: openbao-server
+  auth:
+    kubernetes:
+      mountPath: kubernetes
+      role: openbao-config-operator
+      serviceAccountRef:
+        name: openbao-config-operator
+      audiences:
+        - openbao-config-operator
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: ClusterOpenBaoConnection
+metadata:
+  name: openbao-cluster
+spec:
+  serverRef:
+    name: openbao-server
+  allowedNamespaces:
+    matchLabels:
+      kubernetes.io/metadata.name: openbao-live
+  auth:
+    kubernetes:
+      mountPath: kubernetes
+      role: openbao-config-operator
+      serviceAccountRef:
+        name: openbao-config-operator
+        namespace: openbao-live
+      audiences:
+        - openbao-config-operator

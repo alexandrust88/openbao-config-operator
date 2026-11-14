@@ -1,0 +1,31 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: GitHubAuthConfig
+metadata:
+  name: github
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  mountPath: github
+  organization: example-org
+  organizationID: 1234567
+  baseURL: https://github.example.org/api/v3/
+  tokenTTL: 1h
+  tokenMaxTTL: 4h
+  tokenExplicitMaxTTL: 8h
+  tokenPeriod: 30m
+  tokenPolicies:
+    - default-login
+    - readers
+  policyRefs:
+    - name: obco-team-a-reader
+  tokenBoundCIDRs:
+    - 10.0.0.0/8
+    - 192.168.10.0/24
+  tokenNumUses: 0
+  tokenType: service
+  tokenNoDefaultPolicy: false
+  tokenStrictlyBindIP: false

@@ -1,0 +1,8 @@
+{
+  "path": "auth/okta/groups/Admins",
+  "payload": {
+    "policies": [
+      "admin"
+    ]
+  }
+}

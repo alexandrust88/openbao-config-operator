@@ -1,0 +1,38 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: GCPAuthConfig
+metadata:
+  name: gcp
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  mountPath: gcp
+  credentialsSecretRef:
+    name: gcp-auth-credentials
+    key: credentials.json
+  iamAlias: unique_id
+  iamMetadata:
+    - project_id
+    - role
+  gceAlias: instance_id
+  gceMetadata:
+    - zone
+    - instance_id
+  customEndpoint:
+    api: https://www.googleapis.com
+    iam: https://iam.googleapis.com
+    crm: https://cloudresourcemanager.googleapis.com
+    compute: https://compute.googleapis.com
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gcp-auth-credentials
+  namespace: openbao-config
+type: Opaque
+stringData:
+  credentials.json: '{"type":"service_account","project_id":"fake-project","private_key":"fake-not-real"}'

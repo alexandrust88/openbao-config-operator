@@ -1,0 +1,6 @@
+apiVersion: openbaoconfig.io/v1alpha1
+kind: SyncWave
+metadata:
+  name: sync-wave
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"

@@ -1,0 +1,14 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: OCIAuthConfig
+metadata:
+  name: oci
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  mountPath: oci
+  homeTenancyID: ocid1.tenancy.oc1..aaaaaaaafakefakefakefake

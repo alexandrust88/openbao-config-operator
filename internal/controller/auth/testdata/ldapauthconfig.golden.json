@@ -1,0 +1,49 @@
+{
+  "path": "auth/ldap/config",
+  "payload": {
+    "anonymous_group_search": false,
+    "binddn": "cn=openbao,ou=services,dc=example,dc=org",
+    "bindpass": "fake-bind-password",
+    "case_sensitive_names": false,
+    "certificate": "-----BEGIN CERTIFICATE-----\nZmFrZS1sZGFwLWNh\n-----END CERTIFICATE-----\n",
+    "client_tls_cert": "-----BEGIN CERTIFICATE-----\nZmFrZS1sZGFwLWNsaWVudC1jZXJ0\n-----END CERTIFICATE-----\n",
+    "client_tls_key": "fake-ldap-client-key-not-pem",
+    "connection_timeout": 30,
+    "deny_null_bind": true,
+    "dereference_aliases": "never",
+    "discoverdn": false,
+    "groupattr": "cn",
+    "groupdn": "ou=groups,dc=example,dc=org",
+    "groupfilter": "(&(objectClass=groupOfNames)(member={{.UserDN}}))",
+    "insecure_tls": false,
+    "max_page_size": 500,
+    "request_timeout": 90,
+    "starttls": false,
+    "tls_max_version": "tls13",
+    "tls_min_version": "tls12",
+    "token_bound_cidrs": [
+      "10.0.0.0/8",
+      "192.168.10.0/24"
+    ],
+    "token_explicit_max_ttl": 28800,
+    "token_max_ttl": 14400,
+    "token_no_default_policy": false,
+    "token_num_uses": 0,
+    "token_period": 1800,
+    "token_policies": [
+      "default-login",
+      "readers",
+      "team-a-reader"
+    ],
+    "token_strictly_bind_ip": false,
+    "token_ttl": 3600,
+    "token_type": "service",
+    "upndomain": "example.org",
+    "url": "ldaps://ldap1.example.org,ldaps://ldap2.example.org",
+    "use_token_groups": false,
+    "userattr": "uid",
+    "userdn": "ou=people,dc=example,dc=org",
+    "userfilter": "(&(objectClass=inetOrgPerson)({{.UserAttr}}={{.Username}}))",
+    "username_as_alias": true
+  }
+}

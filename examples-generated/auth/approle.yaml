@@ -1,0 +1,38 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AppRole
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  bindSecretID: true
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  localSecretIDs: true
+  managementPolicy: Manage
+  mountPath: approle
+  name: example
+  namespace: example
+  policyRefs:
+  - name: example
+  roleID: example
+  secretIDBoundCIDRs:
+  - 10.0.0.0/8
+  secretIDNumUses: 1
+  secretIDTTL: 1h
+  tokenBoundCIDRs:
+  - 10.0.0.0/8
+  tokenExplicitMaxTTL: 1h
+  tokenMaxTTL: 1h
+  tokenNoDefaultPolicy: true
+  tokenNumUses: 1
+  tokenPeriod: 1h
+  tokenPolicies:
+  - default
+  tokenStrictlyBindIP: true
+  tokenTTL: 1h
+  tokenType: default

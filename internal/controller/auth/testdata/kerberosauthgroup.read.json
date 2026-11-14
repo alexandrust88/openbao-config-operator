@@ -1,0 +1,9 @@
+{
+  "data": {
+    "policies": [
+      "readers",
+      "engineering"
+    ]
+  },
+  "tamper": "policies"
+}

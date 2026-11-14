@@ -1,0 +1,21 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: OIDCKey
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  algorithm: RS256
+  allowedClientIDs:
+  - example
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  name: example
+  namespace: example
+  rotationPeriod: 1h
+  verificationTTL: 1h

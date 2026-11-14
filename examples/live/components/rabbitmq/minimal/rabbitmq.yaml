@@ -1,0 +1,35 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: rmq
+spec:
+  connectionRef:
+    name: openbao
+  type: rabbitmq
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: RabbitMQConfig
+metadata:
+  name: rmq-config
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  mountPath: rmq
+  connectionURI: http://rabbitmq.example.invalid:15672
+  username: openbao
+  passwordSecretRef:
+    name: live-rmq-admin
+    key: password
+  verifyConnection: false
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: RabbitMQRole
+metadata:
+  name: rmq-app
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: rmq
+  tags:
+    - management

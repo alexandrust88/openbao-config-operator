@@ -1,0 +1,5 @@
+version: 3
+# Same cooldown as minimumReleaseAge for workflows in renovate.json: a hijacked release is usually pulled within days.
+min_age:
+  value: 7
+  always: true

@@ -1,0 +1,100 @@
+# The GitHub organisation is not final: CI (.github/workflows/pages.yml) sets SITE_URL from actions/configure-pages
+# and REPO_URL from the repository it runs in, so only local builds use the fallbacks below.
+# Local build: pip install --require-hashes -r hack/docs/requirements.txt && mkdocs build (output in .tmp/site).
+site_name: openbao-config-operator
+site_description: Manage the configuration of an existing OpenBao server through Kubernetes custom resources.
+site_url: !ENV [SITE_URL, "https://alexandrust88.github.io/openbao-config-operator/"]
+repo_url: !ENV [REPO_URL, "https://github.com/alexandrust88/openbao-config-operator"]
+repo_name: openbao-config-operator
+copyright: Apache License 2.0
+
+docs_dir: docs
+site_dir: .tmp/site
+strict: true
+
+hooks:
+  - hack/docs/hooks.py
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+  not_found: warn
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.indexes
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Light mode
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Concepts:
+      - concepts.md
+      - Architecture v2: architecture.md
+  - Kinds:
+      - Kind catalogue: kinds.md
+      - API coverage: api-coverage.md
+      - Templated policies: templated-policies.md
+  - API reference: reference/api/
+  - Operations:
+      - operations/README.md
+      - operations/install.md
+      - operations/connections.md
+      - operations/openbao-policy.md
+      - operations/self-init.md
+      - operations/tenant-quotas.md
+      - operations/backup-restore.md
+      - operations/migration.md
+      - operations/argocd.md
+      - operations/troubleshooting.md
+      - operations/runbooks.md
+      - Upgrade: upgrade.md
+      - Import CLI: import.md
+      - Load testing: load-testing.md
+      - Live testing: live-testing.md
+  - Security:
+      - security.md
+      - Threat model: security/threat-model.md
+      - Hardening: security/hardening.md
+      - CI security: security/ci-security.md
+  - Decisions (ADRs): adr/
+  - Project:
+      - Backlog and roadmap: backlog.md
+      - Tech debt: tech-debt.md
+      - Verification guide: verification.md
+      - Maintainers: maintainers/
+      - Community: community/

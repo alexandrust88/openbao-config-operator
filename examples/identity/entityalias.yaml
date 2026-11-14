@@ -1,0 +1,61 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: EntityAlias
+metadata:
+  name: obco-alice-approle
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  aliasName: obco-alice-ci
+  mountRef:
+    name: obco-approle
+  entityRef:
+    name: obco-alice
+  customMetadata:
+    source: gitops
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: EntityAlias
+metadata:
+  name: obco-bob-approle
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  aliasName: obco-bob-ci
+  mountPath: approle-ci
+  entityName: obco-bob
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: EntityAlias
+metadata:
+  name: obco-platform-approle
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  aliasName: obco-platform-ci
+  mountSelector:
+    matchLabels:
+      obco.example.com/auth: approle
+  entitySelector:
+    matchLabels:
+      obco.example.com/service: platform-ci
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: EntityAlias
+metadata:
+  name: obco-legacy-approle
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  aliasName: obco-legacy-ci
+  mountAccessor: auth_approle_0a1b2c3d
+  entityID: 6f1e3c2a-0000-4000-8000-000000000001

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("{\"aud\":\"https://kubernetes.default.svc\",\"Aud\":\"openbao\"}")

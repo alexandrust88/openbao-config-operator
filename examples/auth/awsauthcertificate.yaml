@@ -1,0 +1,19 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AWSAuthCertificate
+metadata:
+  name: aws-cert-eu-central-1
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: aws
+  name: eu-central-1-pkcs7
+  awsPublicCert: |
+    -----BEGIN CERTIFICATE-----
+    MIIBfakeFAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfake
+    -----END CERTIFICATE-----
+  type: pkcs7

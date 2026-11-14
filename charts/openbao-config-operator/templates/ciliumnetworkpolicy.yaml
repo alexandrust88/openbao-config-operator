@@ -1,0 +1,74 @@
+{{- if and .Values.networkPolicy.enabled (eq .Values.networkPolicy.flavor "cilium") }}
+{{- $np := .Values.networkPolicy }}
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "openbao-config-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openbao-config-operator.labels" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      {{- include "openbao-config-operator.selectorLabels" . | nindent 6 }}
+  ingress:
+    {{- if .Values.metrics.enabled }}
+    - fromEndpoints:
+        {{- range compact (uniq (list .Release.Namespace $np.metrics.monitoringNamespace)) }}
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: {{ . }}
+        {{- end }}
+      toPorts:
+        - ports:
+            - port: {{ .Values.metrics.port | quote }}
+              protocol: TCP
+    {{- else }}
+    - {}
+    {{- end }}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          {{- if $np.openbao.fqdns }}
+          {{- /* toFQDNs learns the OpenBao addresses from DNS answers seen by the Cilium DNS proxy */}}
+          rules:
+            dns:
+              - matchPattern: "*"
+          {{- end }}
+    {{- if $np.dns.nodeLocalDNS.enabled }}
+    - toCIDR:
+        - {{ $np.dns.nodeLocalDNS.address }}/32
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    {{- end }}
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            {{- range $np.apiServer.ports }}
+            - port: {{ . | quote }}
+              protocol: TCP
+            {{- end }}
+    - toPorts:
+        - ports:
+            {{- range $np.openbao.ports }}
+            - port: {{ . | quote }}
+              protocol: TCP
+            {{- end }}
+      {{- with $np.openbao.fqdns }}
+      toFQDNs:
+        {{- range . }}
+        - matchName: {{ . | quote }}
+        {{- end }}
+      {{- end }}
+    {{- with $np.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

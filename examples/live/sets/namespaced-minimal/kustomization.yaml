@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+components:
+  - ../../components/kv-app/minimal
+  - ../../components/auth-kubernetes/minimal
+  - ../../components/auth-jwt-oidc/minimal
+  - ../../components/auth-approle/minimal
+  - ../../components/auth-userpass-cert/minimal
+  - ../../components/identity/minimal
+  - ../../components/oidc-provider/minimal
+  - ../../components/pki-chain/minimal
+  - ../../components/transit-totp-ssh/minimal
+  - ../../components/kubernetes-secrets/minimal
+  - ../../components/access/minimal
+  - ../../components/templated-acl/minimal
+  - ../../components/namespaces-workflow/minimal
+  - ../../components/endpoint/minimal
+  - ../../components/lifecycle/minimal

@@ -1,0 +1,16 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuditRequestHeader
+metadata:
+  name: obco-forwarded-for
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  name: X-Forwarded-For
+  hmac: false

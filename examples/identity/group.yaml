@@ -1,0 +1,49 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: obco-developers
+  namespace: openbao-config
+  labels:
+    obco.example.com/role: developers
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: obco-developers
+  type: internal
+  policies:
+    - obco-reader
+    - obco-writer
+  metadata:
+    owner: platform
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: obco-operators
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  type: internal
+  policies:
+    - obco-reader
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: obco-keycloak-admins
+  namespace: openbao-config
+  labels:
+    obco.example.com/idp: keycloak
+spec:
+  connectionRef:
+    name: openbao
+  type: external
+  policies:
+    - obco-admin

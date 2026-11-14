@@ -1,0 +1,37 @@
+apiVersion: v2
+name: openbao-config-operator
+description: Manage the configuration of an existing OpenBao server through Kubernetes custom resources.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.31.0-0"
+home: https://github.com/alexandrust88/openbao-config-operator
+sources:
+  - https://github.com/alexandrust88/openbao-config-operator
+keywords:
+  - openbao
+  - vault
+  - operator
+  - secrets
+# The release rewrites version, appVersion, artifacthub.io/images (image pinned by digest), artifacthub.io/changes and
+# artifacthub.io/prerelease (hack/release/package-chart.sh). The chart OCI artifact is signed with keyless cosign as a
+# Sigstore bundle and also as a legacy sha256-<digest>.sig tag, the layout Artifact Hub detects, so there is no
+# artifacthub.io/signKey.
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/operator: "true"
+  artifacthub.io/prerelease: "true"
+  artifacthub.io/images: |
+    - name: manager
+      image: ghcr.io/alexandrust88/openbao-config-operator:0.1.0
+      platforms:
+        - linux/amd64
+        - linux/arm64
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://github.com/alexandrust88/openbao-config-operator/tree/main/docs
+    - name: Verify the release
+      url: https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/security/hardening.md#r-supply-01-verify-and-enforce-signatures
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial release

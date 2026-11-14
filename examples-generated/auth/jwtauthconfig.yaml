@@ -1,0 +1,66 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  boundIssuer: https://openbao.example.com:8200
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  defaultRole: example
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  jwksCAPEM: |
+    -----BEGIN CERTIFICATE-----
+    ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
+    -----END CERTIFICATE-----
+  jwtSupportedAlgs:
+  - example
+  managementPolicy: Manage
+  mountPath: jwt
+  namespace: example
+  namespaceInState: true
+  oidcClientID: example
+  oidcClientSecretSecretRef:
+    key: value
+    name: jwtauthconfig-oidc-client-secret-secret-ref
+  oidcDiscoveryCAPEM: |
+    -----BEGIN CERTIFICATE-----
+    ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
+    -----END CERTIFICATE-----
+  oidcDiscoveryURL: https://openbao.example.com:8200
+  oidcResponseMode: query
+  oidcResponseTypes:
+  - code
+  overrideAllowedServerNames:
+  - example
+  providerConfig:
+    provider: azure
+    secretRef:
+      key: value
+      name: jwtauthconfig-secret-ref
+    settings:
+      example:
+        key: value
+  skipJWKSValidation: true
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jwtauthconfig-oidc-client-secret-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jwtauthconfig-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

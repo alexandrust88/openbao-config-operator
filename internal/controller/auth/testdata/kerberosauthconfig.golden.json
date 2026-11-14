@@ -1,0 +1,9 @@
+{
+  "path": "auth/kerberos/config",
+  "payload": {
+    "add_group_aliases": true,
+    "keytab": "ZmFrZS1rZXl0YWItYnl0ZXMtcmVwbGFjZS13aXRoLWt1YmVjdGwtY3JlYXRlLXNlY3JldC1mcm9tLWZpbGU=",
+    "remove_instance_name": true,
+    "service_account": "openbao_svc"
+  }
+}

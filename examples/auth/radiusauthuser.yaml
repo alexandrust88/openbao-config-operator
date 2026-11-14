@@ -1,0 +1,15 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: RADIUSAuthUser
+metadata:
+  name: alice
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: radius
+  name: alice
+  policies:
+    - vpn-users

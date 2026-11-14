@@ -1,0 +1,20 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: OIDCRole
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  clientID: example
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  key: example
+  managementPolicy: Manage
+  name: example
+  namespace: example
+  template: '{'
+  ttl: 1h

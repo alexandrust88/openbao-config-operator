@@ -1,0 +1,15 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: CertAuthConfig
+metadata:
+  name: cert
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  mountPath: cert
+  disableBinding: false
+  enableIdentityAliasMetadata: true
+  ocspCacheSize: 200

@@ -1,0 +1,10 @@
+# Grype settings for the release gate (hack/release/scan.sh). Every ignore needs a dated, justified reason; the gate
+# fails once the date has passed, so an exception is reviewed instead of living forever. Example:
+#
+# ignore:
+#   - vulnerability: CVE-2026-00000
+#     package:
+#       name: golang.org/x/net
+#     reason: "until 2026-12-31: the manager never parses HTML; govulncheck reports the symbol unreachable"
+check-for-app-update: false
+ignore: []

@@ -1,0 +1,97 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: rmq
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: rmq
+  type: rabbitmq
+  description: RabbitMQ users for the live kit
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: PasswordPolicy
+metadata:
+  name: rmq-passwords
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: rmq-passwords
+  policy: |
+    length = 24
+    rule "charset" {
+      charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      min-chars = 1
+    }
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: RabbitMQConfig
+metadata:
+  name: rmq-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: rmq
+  connectionURI: http://rabbitmq.example.invalid:15672
+  username: openbao
+  passwordSecretRef:
+    name: live-rmq-admin
+    key: password
+  verifyConnection: false
+  passwordPolicy: rmq-passwords
+  usernameTemplate: '{{ printf "live-%s-%s" (.RoleName | truncate 16) (random 8) }}'
+  lease:
+    ttl: 1h
+    maxTTL: 24h
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: RabbitMQRole
+metadata:
+  name: rmq-app
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: rmq
+  name: rmq-app
+  tags:
+    - management
+  vhosts:
+    /:
+      configure: ^app\.
+      write: ^app\.
+      read: .*
+    app:
+      configure: ""
+      write: .*
+      read: .*
+  vhostTopics:
+    /:
+      amq.topic:
+        write: ^app\.
+        read: .*

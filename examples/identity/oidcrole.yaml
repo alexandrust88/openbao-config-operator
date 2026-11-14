@@ -1,0 +1,19 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: OIDCRole
+metadata:
+  name: obco-workload-token
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  deletionPolicy: Delete
+  name: obco-workload-token
+  key: obco-signing-key
+  template: '{"team": {{identity.entity.metadata.team}}, "groups": {{identity.entity.groups.names}}}'
+  ttl: 1h
+  clientID: obco-workload-audience

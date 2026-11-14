@@ -1,0 +1,323 @@
+# A namePrefix renames these fields together with the object they name, so each overlay gets its own OpenBao names.
+# Policy accessorRefs keys are fixed (kubernetes, approle, jwt, userpass, cert): kustomize has no wildcard for map keys.
+nameReference:
+  - kind: OpenBaoServer
+    fieldSpecs:
+      - path: spec/serverRef/name
+        kind: OpenBaoConnection
+      - path: spec/serverRef/name
+        kind: ClusterOpenBaoConnection
+  - kind: OpenBaoConnection
+    fieldSpecs:
+      - path: spec/connectionRef/name
+  - kind: ClusterOpenBaoConnection
+    fieldSpecs:
+      - path: spec/connectionRef/name
+  - kind: ConfigMap
+    fieldSpecs:
+      - path: spec/caBundle/configMapRef/name
+        kind: OpenBaoServer
+  - kind: OpenBaoNamespace
+    fieldSpecs:
+      - path: spec/name
+        kind: OpenBaoNamespace
+      - path: spec/namespace
+  - kind: AuthMount
+    fieldSpecs:
+      - path: spec/path
+        kind: AuthMount
+      - path: spec/accessorRefs/kubernetes/authMountRef/name
+        kind: Policy
+      - path: spec/accessorRefs/approle/authMountRef/name
+        kind: Policy
+      - path: spec/accessorRefs/jwt/authMountRef/name
+        kind: Policy
+      - path: spec/accessorRefs/userpass/authMountRef/name
+        kind: Policy
+      - path: spec/accessorRefs/cert/authMountRef/name
+        kind: Policy
+      - path: spec/mountPath
+      - path: spec/path
+        kind: RateLimitQuota
+      - path: spec/mountRef/name
+        kind: EntityAlias
+      - path: spec/mountRef/name
+        kind: GroupAlias
+      - path: spec/authMountRef/name
+        kind: AccessGrant
+      - path: spec/authMounts
+        kind: AccessLayout
+      - path: spec/authMounts/mountRef/name
+        kind: MFALoginEnforcement
+      - path: spec/authMounts/mountPath
+        kind: MFALoginEnforcement
+  - kind: SecretsMount
+    fieldSpecs:
+      - path: spec/path
+        kind: SecretsMount
+      - path: spec/mountPath
+      - path: spec/path
+        kind: RateLimitQuota
+      - path: spec/signer/mountPath
+        kind: PKIIssuer
+      - path: spec/rules/mount
+        kind: AccessGrant
+      - path: spec/paths/mount
+        kind: AccessLayout
+  - kind: Plugin
+    fieldSpecs:
+      - path: spec/pluginRef/name
+  - kind: Policy
+    fieldSpecs:
+      - path: spec/name
+        kind: Policy
+      - path: spec/policyRefs/name
+      - path: spec/tokenPolicies
+      - path: spec/policies
+        kind: Entity
+      - path: spec/policies
+        kind: Group
+      - path: spec/allowedPolicies
+        kind: TokenRole
+      - path: spec/disallowedPolicies
+        kind: TokenRole
+  - kind: PasswordPolicy
+    fieldSpecs:
+      - path: spec/name
+        kind: PasswordPolicy
+      - path: spec/passwordPolicyName
+        kind: RandomSecret
+      - path: spec/passwordPolicy
+        kind: DatabaseConnection
+      - path: spec/passwordPolicy
+        kind: RabbitMQConfig
+  - kind: AppRole
+    fieldSpecs:
+      - path: spec/name
+        kind: AppRole
+      - path: spec/roleRef/name
+        kind: AppRoleSecretID
+      - path: spec/roleName
+        kind: AppRoleSecretID
+  - kind: Entity
+    fieldSpecs:
+      - path: spec/name
+        kind: Entity
+      - path: spec/entityRef/name
+        kind: EntityAlias
+      - path: spec/entityName
+        kind: EntityAlias
+      - path: spec/entityRef/name
+        kind: GroupMembership
+      - path: spec/entityName
+        kind: GroupMembership
+      - path: spec/entities/entityRef/name
+        kind: MFALoginEnforcement
+      - path: spec/entities/entityName
+        kind: MFALoginEnforcement
+      - path: spec/entities/entityRef/name
+        kind: OIDCAssignment
+      - path: spec/entities/entityName
+        kind: OIDCAssignment
+  - kind: Group
+    fieldSpecs:
+      - path: spec/name
+        kind: Group
+      - path: spec/groupRef/name
+        kind: GroupAlias
+      - path: spec/groupName
+        kind: GroupAlias
+      - path: spec/groupRef/name
+        kind: GroupMembership
+      - path: spec/groupName
+        kind: GroupMembership
+      - path: spec/groups/groupRef/name
+        kind: MFALoginEnforcement
+      - path: spec/groups/groupName
+        kind: MFALoginEnforcement
+      - path: spec/groups/groupRef/name
+        kind: OIDCAssignment
+      - path: spec/groups/groupName
+        kind: OIDCAssignment
+      - path: spec/memberGroupRef/name
+        kind: GroupMembership
+      - path: spec/memberGroupName
+        kind: GroupMembership
+  - kind: MFAMethod
+    fieldSpecs:
+      - path: spec/name
+        kind: MFAMethod
+      - path: spec/mfaMethods/methodRef/name
+        kind: MFALoginEnforcement
+      - path: spec/mfaMethods/methodName
+        kind: MFALoginEnforcement
+  - kind: OIDCKey
+    fieldSpecs:
+      - path: spec/name
+        kind: OIDCKey
+      - path: spec/key
+        kind: OIDCRole
+      - path: spec/key
+        kind: OIDCClient
+  - kind: OIDCClient
+    fieldSpecs:
+      - path: spec/name
+        kind: OIDCClient
+      - path: spec/writeSecretRef/name
+        kind: OIDCClient
+      - path: spec/allowedClients/clientRef/name
+        kind: OIDCProvider
+      - path: spec/allowedClients/clientName
+        kind: OIDCProvider
+  - kind: OIDCAssignment
+    fieldSpecs:
+      - path: spec/name
+        kind: OIDCAssignment
+      - path: spec/assignments
+        kind: OIDCClient
+  - kind: OIDCScope
+    fieldSpecs:
+      - path: spec/name
+        kind: OIDCScope
+      - path: spec/scopesSupported
+        kind: OIDCProvider
+  - kind: PKIIssuer
+    fieldSpecs:
+      - path: spec/manualChain
+        kind: PKIIssuer
+      - path: spec/name
+        kind: PKIIssuer
+      - path: spec/writeSecretRef/name
+        kind: PKIIssuer
+      - path: spec/signer/issuerRef/name
+        kind: PKIIssuer
+      - path: spec/signer/issuerName
+        kind: PKIIssuer
+      - path: spec/issuers/default/issuerRef/name
+        kind: PKIConfig
+      - path: spec/issuers/default/issuerName
+        kind: PKIConfig
+      - path: spec/issuer/issuerRef/name
+        kind: PKIRole
+      - path: spec/issuer/issuerName
+        kind: PKIRole
+      - path: spec/allowedIssuers
+        kind: PKIACMEConfig
+  - kind: PKIKey
+    fieldSpecs:
+      - path: spec/name
+        kind: PKIKey
+      - path: spec/writeSecretRef/name
+        kind: PKIKey
+      - path: spec/key/existing/keyRef/name
+        kind: PKIIssuer
+      - path: spec/key/existing/keyName
+        kind: PKIIssuer
+  - kind: PKIRole
+    fieldSpecs:
+      - path: spec/name
+        kind: PKIRole
+      - path: spec/allowedRoles
+        kind: PKIACMEConfig
+  - kind: JWTAuthRole
+    fieldSpecs:
+      - path: spec/name
+        kind: JWTAuthRole
+      - path: spec/defaultRole
+        kind: JWTAuthConfig
+  - kind: DatabaseConnection
+    fieldSpecs:
+      - path: spec/name
+        kind: DatabaseConnection
+      - path: spec/dbName
+        kind: DatabaseRole
+      - path: spec/dbName
+        kind: DatabaseStaticRole
+  - kind: DatabaseRole
+    fieldSpecs:
+      - path: spec/name
+        kind: DatabaseRole
+      - path: spec/allowedRoles
+        kind: DatabaseConnection
+  - kind: AccessLevel
+    fieldSpecs:
+      - path: spec/rules/level
+        kind: AccessGrant
+      - path: spec/roles/levels/level
+        kind: AccessLayout
+  - kind: AppRoleSecretID
+    fieldSpecs:
+      - path: spec/writeSecretRef/name
+        kind: AppRoleSecretID
+  - kind: RandomSecret
+    fieldSpecs:
+      - path: spec/writeSecretRef/name
+        kind: RandomSecret
+  - kind: TOTPKey
+    fieldSpecs:
+      - path: spec/name
+        kind: TOTPKey
+      - path: spec/generate/writeSecretRef/name
+        kind: TOTPKey
+  - kind: Workflow
+    fieldSpecs:
+      - path: spec/path
+        kind: Workflow
+  - kind: Audit
+    fieldSpecs:
+      - path: spec/path
+        kind: Audit
+  - kind: KubernetesAuthRole
+    fieldSpecs:
+      - path: spec/name
+        kind: KubernetesAuthRole
+  - kind: JWTCELRole
+    fieldSpecs:
+      - path: spec/name
+        kind: JWTCELRole
+  - kind: CertAuthRole
+    fieldSpecs:
+      - path: spec/name
+        kind: CertAuthRole
+  - kind: UserpassUser
+    fieldSpecs:
+      - path: spec/name
+        kind: UserpassUser
+  - kind: TokenRole
+    fieldSpecs:
+      - path: spec/name
+        kind: TokenRole
+  - kind: DatabaseStaticRole
+    fieldSpecs:
+      - path: spec/allowedRoles
+        kind: DatabaseConnection
+      - path: spec/name
+        kind: DatabaseStaticRole
+  - kind: TransitKey
+    fieldSpecs:
+      - path: spec/name
+        kind: TransitKey
+  - kind: SSHRole
+    fieldSpecs:
+      - path: spec/name
+        kind: SSHRole
+  - kind: KubernetesSecretsRole
+    fieldSpecs:
+      - path: spec/name
+        kind: KubernetesSecretsRole
+  - kind: RabbitMQRole
+    fieldSpecs:
+      - path: spec/name
+        kind: RabbitMQRole
+  - kind: OIDCProvider
+    fieldSpecs:
+      - path: spec/name
+        kind: OIDCProvider
+  - kind: OIDCRole
+    fieldSpecs:
+      - path: spec/name
+        kind: OIDCRole
+  - kind: RateLimitQuota
+    fieldSpecs:
+      - path: spec/name
+        kind: RateLimitQuota

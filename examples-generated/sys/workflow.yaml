@@ -1,0 +1,20 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Workflow
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  allowUnauthenticated: true
+  casRequired: true
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  description: example
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  namespace: example
+  path: example
+  workflow: example

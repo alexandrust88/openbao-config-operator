@@ -1,0 +1,49 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AWSAuthConfig
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  accessKeySecretRef:
+    key: value
+    name: awsauthconfig-access-key-secret-ref
+  allowedSTSHeaderValues:
+  - example
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  ec2Endpoint: https://openbao.example.com:8200
+  iamEndpoint: https://openbao.example.com:8200
+  iamServerIDHeaderValue: example
+  managementPolicy: Manage
+  maxRetries: 1
+  mountPath: aws
+  namespace: example
+  secretKeySecretRef:
+    key: value
+    name: awsauthconfig-secret-key-secret-ref
+  stsEndpoint: https://openbao.example.com:8200
+  stsRegion: example
+  useSTSRegionFromClient: true
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: awsauthconfig-access-key-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: awsauthconfig-secret-key-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

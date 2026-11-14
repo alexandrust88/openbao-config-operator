@@ -1,0 +1,35 @@
+# The operator logs in as itself with the token of the projected volume the chart mounts by default
+# (injectedIdentity.projectedToken). The OpenBao role must bind the operator's ServiceAccount and the audience
+# set in injectedIdentity.projectedToken.audience (default openbao-config-operator).
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: ClusterOpenBaoConnection
+metadata:
+  name: platform
+spec:
+  serverRef:
+    name: openbao
+  auth:
+    kubernetes:
+      role: openbao-config-operator
+      injectedIdentity:
+        tokenPath: /var/run/secrets/openbao/token
+  allowedNamespaces:
+    matchLabels:
+      openbaoconfig.io/platform: "true"
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: ClusterOpenBaoConnection
+metadata:
+  name: platform-jwt
+spec:
+  serverRef:
+    name: openbao
+  auth:
+    jwt:
+      mountPath: jwt-k8s
+      role: openbao-config-operator
+      injectedIdentity:
+        tokenPath: /var/run/secrets/openbao/token
+  allowedNamespaces:
+    matchLabels:
+      openbaoconfig.io/platform: "true"

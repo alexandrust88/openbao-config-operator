@@ -1,0 +1,82 @@
+name: Bug report
+description: Something does not work as documented.
+labels: ["kind/bug", "triage/needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems go through [SECURITY.md](https://github.com/alexandrust88/openbao-config-operator/security/policy), not public issues.
+        Remove tokens, secret values and OpenBao response bodies from everything you paste.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The smallest custom resource (and OpenBaoServer and connection, if relevant) that shows the problem.
+      render: yaml
+    validations:
+      required: true
+  - type: input
+    id: kind
+    attributes:
+      label: Kind
+      description: The kind or kinds involved, e.g. Policy, KubernetesAuthRole, OpenBaoEndpoint.
+    validations:
+      required: true
+  - type: textarea
+    id: status
+    attributes:
+      label: Resource status and events
+      description: Output of `kubectl get <kind> <name> -o yaml` (status section) and `kubectl describe` events.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Operator logs
+      description: The manager log lines around the problem.
+      render: text
+  - type: input
+    id: operator-version
+    attributes:
+      label: Operator version
+      description: Chart version or image digest, or the commit when built from source.
+    validations:
+      required: true
+  - type: input
+    id: server-version
+    attributes:
+      label: OpenBao version
+      description: "From `bao status` or the OpenBaoServer status, e.g. 2.7.2."
+    validations:
+      required: true
+  - type: input
+    id: kubernetes-version
+    attributes:
+      label: Kubernetes version and distribution
+      description: e.g. 1.35 on kind, RKE2, EKS.
+  - type: dropdown
+    id: install
+    attributes:
+      label: How the operator is installed
+      options:
+        - Helm chart
+        - install.yaml
+        - From source (make deploy or make run)
+        - Other
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I removed tokens, secret values and OpenBao response bodies from this report.
+          required: true
+        - label: I searched existing issues and the [troubleshooting guide](https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/operations/troubleshooting.md).
+          required: true

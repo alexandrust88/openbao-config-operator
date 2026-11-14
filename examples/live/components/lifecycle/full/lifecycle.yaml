@@ -1,0 +1,92 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: lc-kv
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30s
+  managementPolicy: Manage
+  path: lc-kv
+  type: kv-v2
+  description: Deleted with its data when the resource is deleted
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVConfig
+metadata:
+  name: lc-kv-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: lc-kv
+  maxVersions: 5
+  casRequired: false
+  metadataCASRequired: false
+  deleteVersionAfter: 0s
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVConfig
+metadata:
+  name: lc-kv-config-observed
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Adopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30s
+  managementPolicy: Observe
+  mountPath: lc-kv
+  maxVersions: 5
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: lc-no-drift
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Disabled
+  managementPolicy: Manage
+  name: lc-no-drift
+  policy: |
+    path "+/data/lifecycle/*" {
+      capabilities = ["read"]
+    }
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: lc-paused
+  annotations:
+    openbaoconfig.io/paused: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: lc-paused
+  policy: |
+    path "+/data/paused/*" {
+      capabilities = ["read"]
+    }

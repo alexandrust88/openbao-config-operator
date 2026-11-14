@@ -1,0 +1,37 @@
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoEndpoint
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  data:
+    key: value
+  dataSecretRef:
+    key: value
+    name: openbaoendpoint-data-secret-ref
+  deletePath: example
+  deletionPolicy: Orphan
+  disableDelete: true
+  disableRead: true
+  driftDetection: Enabled
+  driftInterval: 1h
+  ignoreAbsentFields: true
+  managementPolicy: Manage
+  namespace: example
+  path: example
+  readPath: example
+  writeOnlyFields:
+  - example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openbaoendpoint-data-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

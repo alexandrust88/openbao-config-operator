@@ -1,0 +1,14 @@
+# Manager permissions the chart always grants, merged with config/rbac/role.yaml by sync-rbac.sh.
+rules:
+  - apiGroups: [""]
+    resources: [secrets, configmaps, namespaces]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [serviceaccounts/token]
+    verbs: [create]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create, patch]
+  - apiGroups: [events.k8s.io]
+    resources: [events]
+    verbs: [create, patch]

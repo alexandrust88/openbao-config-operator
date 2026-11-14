@@ -1,0 +1,17 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupMembership
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  entityID: example
+  groupID: example
+  managementPolicy: Manage
+  namespace: example

@@ -1,0 +1,12 @@
+{
+  "path": "auth/okta/users/jane@example.org",
+  "payload": {
+    "groups": [
+      "Admins",
+      "Developers"
+    ],
+    "policies": [
+      "personal-jane"
+    ]
+  }
+}

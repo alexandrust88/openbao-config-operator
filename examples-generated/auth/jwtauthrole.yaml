@@ -1,0 +1,59 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthRole
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  allowedRedirectURIs:
+  - https://openbao.example.com:8200
+  boundAudiences:
+  - example
+  boundClaims:
+    example:
+    - example
+  boundClaimsType: string
+  boundSubject: example
+  callbackMode: client
+  claimMappings:
+    example: example
+  clockSkewLeeway: 1
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  expirationLeeway: 1
+  groupsClaim: example
+  managementPolicy: Manage
+  maxAge: 1h
+  mountPath: jwt
+  name: example
+  namespace: example
+  notBeforeLeeway: 1
+  oauth2Metadata:
+  - access_token
+  oidcDisableConfirmation: true
+  oidcScopes:
+  - example
+  policyRefs:
+  - name: example
+  pollInterval: 1
+  roleType: jwt
+  tokenBoundCIDRs:
+  - 10.0.0.0/8
+  tokenExplicitMaxTTL: 1h
+  tokenMaxTTL: 1h
+  tokenNoDefaultPolicy: true
+  tokenNumUses: 1
+  tokenPeriod: 1h
+  tokenPolicies:
+  - default
+  tokenPoliciesTemplateClaims: true
+  tokenStrictlyBindIP: true
+  tokenTTL: 1h
+  tokenType: default
+  userClaim: example
+  userClaimJSONPointer: true
+  verboseOIDCLogging: true

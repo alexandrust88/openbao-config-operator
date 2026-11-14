@@ -1,0 +1,69 @@
+# The Kubernetes auth method and the KV v2 engine that the templated policies in this directory use.
+# OpenBao calls the TokenReview API with the token of openbao-token-reviewer, which needs
+# system:auth-delegator.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openbao-token-reviewer
+  namespace: openbao-config
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openbao-token-reviewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: openbao-token-reviewer
+    namespace: openbao-config
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openbao-token-reviewer
+  namespace: openbao-config
+  annotations:
+    kubernetes.io/service-account.name: openbao-token-reviewer
+type: kubernetes.io/service-account-token
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: kubernetes
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  type: kubernetes
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: apps
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  type: kv-v2
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthConfig
+metadata:
+  name: kubernetes
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: kubernetes
+  kubernetesHost: https://kubernetes.default.svc
+  kubernetesCACert: |
+    -----BEGIN CERTIFICATE-----
+    REPLACE-WITH-THE-CLUSTER-CA
+    -----END CERTIFICATE-----
+  tokenReviewerJWTSecretRef:
+    name: openbao-token-reviewer
+    key: token
+  disableLocalCAJWT: true

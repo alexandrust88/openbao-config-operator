@@ -1,0 +1,316 @@
+suite: supporting resources
+templates:
+  - templates/service.yaml
+  - templates/servicemonitor.yaml
+  - templates/poddisruptionbudget.yaml
+  - templates/networkpolicy.yaml
+  - templates/ciliumnetworkpolicy.yaml
+  - templates/prometheusrule.yaml
+  - templates/NOTES.txt
+release:
+  name: obc
+  namespace: openbao-system
+tests:
+  - it: exposes metrics over https
+    template: templates/service.yaml
+    asserts:
+      - equal:
+          path: spec.ports[0]
+          value: {name: https, port: 8443, targetPort: metrics, protocol: TCP}
+
+  - it: renders no ServiceMonitor by default
+    template: templates/servicemonitor.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: scrapes with the bearer token when the ServiceMonitor is enabled
+    template: templates/servicemonitor.yaml
+    set:
+      serviceMonitor.enabled: true
+      serviceMonitor.labels:
+        release: prometheus
+    asserts:
+      - equal:
+          path: spec.endpoints[0].scheme
+          value: https
+      - equal:
+          path: spec.endpoints[0].bearerTokenFile
+          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+      - equal:
+          path: metadata.labels.release
+          value: prometheus
+
+  - it: exposes metrics only inside the cluster
+    template: templates/service.yaml
+    set:
+      metrics.service.type: NodePort
+    asserts:
+      - failedTemplate: {}
+
+  - it: refuses a metrics certificate the ServiceMonitor does not verify
+    template: templates/servicemonitor.yaml
+    set:
+      serviceMonitor.enabled: true
+      metrics.certSecret: metrics-tls
+    asserts:
+      - failedTemplate:
+          errorMessage: metrics.certSecret requires serviceMonitor.tlsConfig.ca (or caFile) and serverName, and insecureSkipVerify unset
+
+  - it: verifies the metrics certificate with the configured CA
+    template: templates/servicemonitor.yaml
+    set:
+      serviceMonitor.enabled: true
+      metrics.certSecret: metrics-tls
+      serviceMonitor.tlsConfig:
+        insecureSkipVerify: null
+        ca:
+          secret: {name: metrics-tls, key: ca.crt}
+        serverName: obc-openbao-config-operator-metrics.openbao-system.svc
+    asserts:
+      - equal:
+          path: spec.endpoints[0].tlsConfig
+          value:
+            ca:
+              secret: {name: metrics-tls, key: ca.crt}
+            serverName: obc-openbao-config-operator-metrics.openbao-system.svc
+
+  - it: protects availability when running more than one replica
+    template: templates/poddisruptionbudget.yaml
+    asserts:
+      - equal:
+          path: spec.minAvailable
+          value: 1
+      - equal:
+          path: spec.unhealthyPodEvictionPolicy
+          value: AlwaysAllow
+
+  - it: prefers maxUnavailable when set
+    template: templates/poddisruptionbudget.yaml
+    set:
+      podDisruptionBudget.maxUnavailable: 1
+    asserts:
+      - equal:
+          path: spec.maxUnavailable
+          value: 1
+      - notExists:
+          path: spec.minAvailable
+
+  - it: skips the PodDisruptionBudget for a single replica
+    template: templates/poddisruptionbudget.yaml
+    set:
+      replicas: 1
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders the NetworkPolicy by default, scraped from the release and monitoring namespaces
+    template: templates/networkpolicy.yaml
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - equal:
+          path: spec.ingress[0].from
+          value:
+            - namespaceSelector:
+                matchLabels: {kubernetes.io/metadata.name: openbao-system}
+            - namespaceSelector:
+                matchLabels: {kubernetes.io/metadata.name: monitoring}
+      - equal:
+          path: spec.egress[0].to[0].podSelector.matchLabels
+          value: {k8s-app: kube-dns}
+      - notExists:
+          path: spec.egress[1].to
+
+  - it: renders no CiliumNetworkPolicy with the kubernetes flavor
+    template: templates/ciliumnetworkpolicy.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: replaces the default scrapers with metrics.from
+    template: templates/networkpolicy.yaml
+    set:
+      networkPolicy.metrics.from:
+        - podSelector:
+            matchLabels: {app: prometheus}
+    asserts:
+      - equal:
+          path: spec.ingress[0].from
+          value:
+            - podSelector:
+                matchLabels: {app: prometheus}
+
+  - it: allows NodeLocal DNSCache when enabled
+    template: templates/networkpolicy.yaml
+    set:
+      networkPolicy.dns.nodeLocalDNS.enabled: true
+    asserts:
+      - contains:
+          path: spec.egress[0].to
+          content:
+            ipBlock: {cidr: 169.254.20.10/32}
+
+  - it: renders a CiliumNetworkPolicy with the API server entity and OpenBao host names
+    template: templates/ciliumnetworkpolicy.yaml
+    set:
+      networkPolicy.flavor: cilium
+      networkPolicy.openbao.fqdns: [bao.example.com]
+    asserts:
+      - isKind:
+          of: CiliumNetworkPolicy
+      - equal:
+          path: spec.egress[1].toEntities
+          value: [kube-apiserver]
+      - equal:
+          path: spec.egress[2].toFQDNs
+          value: [{matchName: bao.example.com}]
+      - equal:
+          path: spec.egress[0].toPorts[0].rules.dns
+          value: [{matchPattern: "*"}]
+      - equal:
+          path: spec.ingress[0].fromEndpoints[1].matchLabels
+          value: {"k8s:io.kubernetes.pod.namespace": monitoring}
+
+  - it: renders no NetworkPolicy with the cilium flavor
+    template: templates/networkpolicy.yaml
+    set:
+      networkPolicy.flavor: cilium
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: warns when the network policy allows egress to any destination
+    template: templates/NOTES.txt
+    asserts:
+      - matchRegexRaw:
+          pattern: "WARNING: the kubernetes network policy allows egress to any destination"
+
+  - it: does not warn when the network policy names its peers
+    template: templates/NOTES.txt
+    set:
+      networkPolicy.apiServer.cidrs: [10.0.0.10/32]
+      networkPolicy.openbao.to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: openbao}
+    asserts:
+      - notMatchRegexRaw:
+          pattern: network policy allows egress
+
+  - it: warns that crds.keep=false deletes the custom resources on uninstall
+    template: templates/NOTES.txt
+    set:
+      crds.keep: false
+    asserts:
+      - matchRegexRaw:
+          pattern: "WARNING: crds.keep=false"
+
+  - it: limits egress to DNS, the API server and OpenBao
+    template: templates/networkpolicy.yaml
+    set:
+      networkPolicy.enabled: true
+      networkPolicy.apiServer.cidrs: [10.43.0.1/32]
+      networkPolicy.openbao.to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openbao
+    asserts:
+      - equal:
+          path: spec.policyTypes
+          value: [Ingress, Egress]
+      - equal:
+          path: spec.egress[1].to[0].ipBlock.cidr
+          value: 10.43.0.1/32
+      - equal:
+          path: spec.egress[2].ports[0].port
+          value: 8200
+      - equal:
+          path: spec.egress[2].to[0].namespaceSelector.matchLabels
+          value: {kubernetes.io/metadata.name: openbao}
+      - equal:
+          path: spec.ingress[0].ports[0].port
+          value: 8443
+
+  - it: renders no PrometheusRule by default
+    template: templates/prometheusrule.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders no PrometheusRule without metrics
+    template: templates/prometheusrule.yaml
+    set:
+      metrics.enabled: false
+      prometheusRule.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: alerts on the operator's own metrics, scoped to the release
+    template: templates/prometheusrule.yaml
+    set:
+      prometheusRule.enabled: true
+      prometheusRule.labels:
+        release: prometheus
+    asserts:
+      - isKind:
+          of: PrometheusRule
+      - equal:
+          path: metadata.labels.release
+          value: prometheus
+      - lengthEqual:
+          path: spec.groups[0].rules
+          count: 5
+      - equal:
+          path: spec.groups[0].rules[0].alert
+          value: OpenBaoConfigOperatorDown
+      - equal:
+          path: spec.groups[0].rules[0].expr
+          value: absent(up{job="obc-openbao-config-operator-metrics", namespace="openbao-system"} == 1)
+      - matchRegex:
+          path: spec.groups[0].rules[1].expr
+          pattern: controller_runtime_reconcile_errors_total\{job="obc-openbao-config-operator-metrics".*> 0.1$
+      - equal:
+          path: spec.groups[0].rules[2].for
+          value: 30m
+      - matchRegex:
+          path: spec.groups[0].rules[4].expr
+          pattern: openbao_requests_total\{.*code="403"\}
+      - equal:
+          path: spec.groups[0].rules[4].annotations.runbook_url
+          value: https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/operations/runbooks.md#openbaoconfigoperatoropenbaodenied
+
+  - it: applies a custom selector, thresholds, alert labels and disabled alerts
+    template: templates/prometheusrule.yaml
+    set:
+      prometheusRule.enabled: true
+      prometheusRule.selector: service="obco"
+      prometheusRule.reconcileErrorRatio: 0.25
+      prometheusRule.steadyStateWritesFor: 1h
+      prometheusRule.alertLabels:
+        team: platform
+      prometheusRule.disabledAlerts: [OpenBaoConfigOperatorDown]
+    asserts:
+      - lengthEqual:
+          path: spec.groups[0].rules
+          count: 4
+      - equal:
+          path: spec.groups[0].rules[0].alert
+          value: OpenBaoConfigOperatorReconcileErrors
+      - matchRegex:
+          path: spec.groups[0].rules[0].expr
+          pattern: ^sum by \(controller\) \(rate\(controller_runtime_reconcile_errors_total\{service="obco"\}\[5m\]\)\).*> 0.25$
+      - equal:
+          path: spec.groups[0].rules[1].for
+          value: 1h
+      - equal:
+          path: spec.groups[0].rules[0].labels
+          value: {severity: warning, team: platform}
+
+  - it: rejects an unknown alert name
+    template: templates/prometheusrule.yaml
+    set:
+      prometheusRule.enabled: true
+      prometheusRule.disabledAlerts: [OperatorDown]
+    asserts:
+      - failedTemplate: {}

@@ -1,0 +1,16 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: GitHubAuthTeam
+metadata:
+  name: platform-team
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  mountPath: github
+  name: platform-team
+  policies:
+    - platform-admin
+    - readers

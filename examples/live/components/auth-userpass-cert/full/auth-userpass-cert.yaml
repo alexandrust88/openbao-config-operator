@@ -1,0 +1,281 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: userpass
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: userpass
+  type: userpass
+  description: Break-glass user logins
+  local: false
+  sealWrap: false
+  externalEntropyAccess: false
+  forceNoCache: false
+  pluginVersion: ""
+  options: {}
+  defaultLeaseTTL: 1h
+  maxLeaseTTL: 24h
+  listingVisibility: hidden
+  auditNonHMACRequestKeys:
+    - role
+  auditNonHMACResponseKeys:
+    - lease_duration
+  passthroughRequestHeaders:
+    - X-Request-Id
+  allowedResponseHeaders:
+    - X-Request-Id
+  tokenType: default-service
+  userLockout:
+    threshold: 5
+    duration: 15m
+    counterResetDuration: 10m
+    disable: false
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: cert
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: cert
+  type: cert
+  description: TLS client certificate logins of devices
+  local: false
+  sealWrap: false
+  externalEntropyAccess: false
+  forceNoCache: false
+  pluginVersion: ""
+  options: {}
+  defaultLeaseTTL: 1h
+  maxLeaseTTL: 24h
+  listingVisibility: hidden
+  auditNonHMACRequestKeys:
+    - role
+  auditNonHMACResponseKeys:
+    - lease_duration
+  passthroughRequestHeaders:
+    - X-Request-Id
+  allowedResponseHeaders:
+    - X-Request-Id
+  tokenType: default-service
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: userpass-read
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: userpass-read
+  policy: |
+    path "+/data/breakglass/*" {
+      capabilities = ["read"]
+    }
+  casRequired: false
+  allowWildcardsInIdentityTemplates: false
+  allowSlashesInIdentityTemplates: false
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: cert-device-read
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: cert-device-read
+  policy: |
+    path "+/data/devices/*" {
+      capabilities = ["read"]
+    }
+  casRequired: false
+  allowWildcardsInIdentityTemplates: false
+  allowSlashesInIdentityTemplates: false
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: UserpassUser
+metadata:
+  name: userpass-alice
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: userpass
+  name: userpass-alice
+  passwordSecretRef:
+    name: live-auth-userpass
+    key: password
+  policyRefs:
+    - name: userpass-read
+  tokenPolicies:
+    - default
+  tokenTTL: 30m
+  tokenMaxTTL: 4h
+  tokenExplicitMaxTTL: 8h
+  tokenPeriod: 0s
+  tokenNumUses: 0
+  tokenNoDefaultPolicy: false
+  tokenStrictlyBindIP: false
+  tokenBoundCIDRs:
+    - 10.0.0.0/8
+    - 127.0.0.1/32
+  tokenType: service
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: UserpassUser
+metadata:
+  name: userpass-bob
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: userpass
+  name: userpass-bob
+  passwordHashSecretRef:
+    name: live-auth-userpass
+    key: password-hash
+  tokenPolicies:
+    - userpass-read
+  tokenTTL: 15m
+  tokenMaxTTL: 1h
+  tokenType: batch
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: CertAuthConfig
+metadata:
+  name: cert-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: cert
+  disableBinding: false
+  enableIdentityAliasMetadata: true
+  ocspCacheSize: 1000
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: CertAuthRole
+metadata:
+  name: cert-device
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: cert
+  name: cert-device
+  displayName: devices
+  certificate: |
+    -----BEGIN CERTIFICATE-----
+    MIIDFjCCAf6gAwIBAgIJAOMO4RrHZCFrMA0GCSqGSIb3DQEBCwUAMDgxGzAZBgNV
+    BAMMEmxpdmUga2l0IGRldmljZSBDQTEZMBcGA1UECgwQb3BlbmJhbyBsaXZlIGtp
+    dDAeFw0yNjExMTQwOTQxMTVaFw0zNjExMTEwOTQxMTVaMDgxGzAZBgNVBAMMEmxp
+    dmUga2l0IGRldmljZSBDQTEZMBcGA1UECgwQb3BlbmJhbyBsaXZlIGtpdDCCASIw
+    DQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALaBbUVMzqf++N7q9STQPQRMn5US
+    7EgP0VKI+HgyBmG0Ia21TKx87sA59OxL0epv0WNxzrqocJUsudlvLiEh0lbHC01i
+    GJvkRayJvAenCkjX65OvYBL6hRqg0naL/gkXYc3MCWcewx/UqkivUaBGnclDqub8
+    xQScq1+ju0xqx+IttmMtTnD6FsaDt+u6/4wVs3LCojYe1u6KglvpOByCBA//9j6T
+    9PBS0r41Qy1Fy8j6CHu4nwvn07NiU9P2183ILSytRqPNNckB61IrggTxa9jjfi1A
+    vMVoEIdvTK3lxI7c0GK7sEWhVovxzW0Ny+Z+sMkfPoAJnq9FvgyK6/EA2isCAwEA
+    AaMjMCEwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwDQYJKoZIhvcN
+    AQELBQADggEBAHwDcnI5khRbXtL0og28P0C4ulotHGg8YOB6PqC71wTlr0yhjrK6
+    PxasOT+j/C5VpSEZ5n0hfmmovcBE1QwUaagNcFQla5fqd08+eHhed59UvCUHE6Cg
+    U9s5uLCXzxM6Rlf/cvnPwN7L3lxmCpRjCNifxP1b1cqSTyURtgLV1tbTMrD+KnO/
+    bSkB+7Rh7taNPZq0/adl6+TJdYd8zn19Btte8LNREiDW6Wxpvuo4n+OT87J30+xZ
+    Xn3NfatUvfMJGpB0dl0Aa4RxxD38iwGgn7pi7cmbUtgTPyn0wMUPVi0MvUZ0O8+n
+    ModOYnbADY29hA+8H6UPgzDtxzn6kHeNZbE=
+    -----END CERTIFICATE-----
+  allowedCommonNames:
+    - "*.devices.example.com"
+  allowedDNSSANs:
+    - "*.devices.example.com"
+  allowedEmailSANs:
+    - "*@devices.example.com"
+  allowedURISANs:
+    - spiffe://example.com/devices/*
+  allowedOrganizationalUnits:
+    - devices
+  allowedMetadataExtensions:
+    - 1.3.6.1.4.1.55555.1.1
+  requiredExtensions:
+    - "1.3.6.1.4.1.55555.1.2:fleet-*"
+  ocspEnabled: true
+  ocspCACertificates: |
+    -----BEGIN CERTIFICATE-----
+    MIIBhTCCASqgAwIBAgIJAOQljLXsiNReMAoGCCqGSM49BAMCMDUxGDAWBgNVBAMM
+    D2xpdmUga2l0IFRMUyBDQTEZMBcGA1UECgwQb3BlbmJhbyBsaXZlIGtpdDAeFw0y
+    NjExMTQwOTQyMjVaFw0zNjExMTEwOTQyMjVaMDUxGDAWBgNVBAMMD2xpdmUga2l0
+    IFRMUyBDQTEZMBcGA1UECgwQb3BlbmJhbyBsaXZlIGtpdDBZMBMGByqGSM49AgEG
+    CCqGSM49AwEHA0IABA8rM2hh5PZmeyvUvkYeuAlDQq/gU1M0v0CiW41QoP/UKHc+
+    ZxDa1mCQR5PRSsethpagIveH8ebpPqwIens3Vh2jIzAhMA8GA1UdEwEB/wQFMAMB
+    Af8wDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMCA0kAMEYCIQDIOC+VfDcGyiga
+    yRz1DaItADfmeXNcV1L8PNH8wXBPzQIhAObjv9jMzlb0dYt4hpsLH+4a6f7hpgad
+    v1q4Vtq6ZO61
+    -----END CERTIFICATE-----
+  ocspServersOverride:
+    - http://ocsp.example.com
+  ocspFailOpen: true
+  ocspQueryAllServers: false
+  policyRefs:
+    - name: cert-device-read
+  tokenPolicies:
+    - default
+  tokenTTL: 30m
+  tokenMaxTTL: 4h
+  tokenExplicitMaxTTL: 8h
+  tokenPeriod: 0s
+  tokenNumUses: 0
+  tokenNoDefaultPolicy: false
+  tokenStrictlyBindIP: false
+  tokenBoundCIDRs:
+    - 10.0.0.0/8
+    - 127.0.0.1/32
+  tokenType: service

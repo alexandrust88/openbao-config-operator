@@ -1,0 +1,46 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: jwt
+spec:
+  connectionRef:
+    name: openbao
+  type: jwt
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: jwt-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: jwt
+  jwtValidationPubkeys:
+    - |
+      -----BEGIN PUBLIC KEY-----
+      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE4VR71Vwoy6PGpPAqj0Gsl5zfhx/O
+      ypmt/55X4LSKYghscKyiXopP0hUMJSdEknOumXTEkCPrJsy+yRGchptgJQ==
+      -----END PUBLIC KEY-----
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthRole
+metadata:
+  name: jwt-ci
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: jwt
+  userClaim: sub
+  boundAudiences:
+    - openbao
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTCELRole
+metadata:
+  name: jwt-cel
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: jwt
+  celProgram:
+    expression: 'has(claims.sub) && claims.sub.startsWith("project_path:platform/")'

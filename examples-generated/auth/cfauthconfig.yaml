@@ -1,0 +1,58 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: CFAuthConfig
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  cfAPIAddr: https://openbao.example.com:8200
+  cfAPIMutualTLSCertificate: |
+    -----BEGIN CERTIFICATE-----
+    ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
+    -----END CERTIFICATE-----
+  cfAPIMutualTLSKeySecretRef:
+    key: value
+    name: cfauthconfig-cf-api-mutual-tls-key-secret-ref
+  cfAPITrustedCertificates:
+  - |
+    -----BEGIN CERTIFICATE-----
+    ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
+    -----END CERTIFICATE-----
+  cfPasswordSecretRef:
+    key: value
+    name: cfauthconfig-cf-password-secret-ref
+  cfUsername: example
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  identityCACertificates:
+  - |
+    -----BEGIN CERTIFICATE-----
+    ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
+    -----END CERTIFICATE-----
+  loginMaxSecondsNotAfter: 1
+  loginMaxSecondsNotBefore: 1
+  managementPolicy: Manage
+  mountPath: cf
+  namespace: example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cfauthconfig-cf-api-mutual-tls-key-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cfauthconfig-cf-password-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

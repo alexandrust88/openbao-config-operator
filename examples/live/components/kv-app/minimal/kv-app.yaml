@@ -1,0 +1,66 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: kv
+spec:
+  connectionRef:
+    name: openbao
+  type: kv-v2
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVConfig
+metadata:
+  name: kv-config
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  mountPath: kv
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: PasswordPolicy
+metadata:
+  name: app-passwords
+spec:
+  connectionRef:
+    name: openbao
+  policy: |
+    length = 20
+    rule "charset" {
+      charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+    }
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVSecret
+metadata:
+  name: app-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: kv
+  path: app/config
+  dataFrom:
+    - secretRef:
+        name: live-kv-app
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: app-password
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: kv
+  path: app/password
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: app-reader
+spec:
+  connectionRef:
+    name: openbao
+  policy: |
+    path "+/data/app/*" {
+      capabilities = ["read"]
+    }

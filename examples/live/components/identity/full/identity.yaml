@@ -1,0 +1,678 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: id-userpass
+  labels:
+    livekit-select: id-userpass
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: id-userpass
+  type: userpass
+  description: Identity scenario userpass logins
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: id-jwt
+  labels:
+    livekit-select: id-jwt
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: id-jwt
+  type: jwt
+  description: Identity scenario jwt logins
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: id-approle
+  labels:
+    livekit-select: id-approle
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: id-approle
+  type: approle
+  description: Identity scenario approle logins
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: id-reader
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-reader
+  policy: |
+    path "+/data/identity/*" {
+      capabilities = ["read"]
+    }
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Entity
+metadata:
+  name: id-alice
+  labels:
+    livekit-select: id-alice
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-alice
+  disabled: false
+  policies:
+    - id-reader
+  metadata:
+    team: payments
+    email: alice@example.com
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Entity
+metadata:
+  name: id-bob
+  labels:
+    livekit-select: id-bob
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-bob
+  disabled: false
+  policies:
+    - id-reader
+  metadata:
+    team: payments
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Entity
+metadata:
+  name: id-carol
+  labels:
+    livekit-select: id-carol
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-carol
+  disabled: false
+  policies:
+    - id-reader
+  metadata:
+    team: payments
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: EntityAlias
+metadata:
+  name: id-alice-userpass
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  aliasName: alice
+  entityRef:
+    name: id-alice
+  mountRef:
+    name: id-userpass
+  customMetadata:
+    department: payments
+    source: userpass
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: EntityAlias
+metadata:
+  name: id-bob-userpass
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  aliasName: bob
+  entityName: id-bob
+  mountPath: id-userpass
+  customMetadata:
+    department: payments
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: EntityAlias
+metadata:
+  name: id-carol-jwt
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  aliasName: carol@example.com
+  entitySelector:
+    matchLabels:
+      livekit-select: id-carol
+  mountSelector:
+    matchLabels:
+      livekit-select: id-jwt
+  customMetadata:
+    department: payments
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: id-devs
+  labels:
+    livekit-select: id-devs
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-devs
+  type: internal
+  policies:
+    - id-reader
+  metadata:
+    team: payments
+    owner: alice@example.com
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: id-oncall
+  labels:
+    livekit-select: id-oncall
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-oncall
+  type: internal
+  policies:
+    - id-reader
+  metadata:
+    team: platform
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: id-sre
+  labels:
+    livekit-select: id-sre
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-sre
+  type: internal
+  policies:
+    - id-reader
+  metadata:
+    team: platform
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: id-sec
+  labels:
+    livekit-select: id-sec
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-sec
+  type: internal
+  policies:
+    - id-reader
+  metadata:
+    team: platform
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: id-ext-admins
+  labels:
+    livekit-select: id-ext-admins
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-ext-admins
+  type: external
+  policies:
+    - id-reader
+  metadata:
+    source: jwt groups claim admins
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: id-ext-ops
+  labels:
+    livekit-select: id-ext-ops
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-ext-ops
+  type: external
+  policies:
+    - id-reader
+  metadata:
+    source: jwt groups claim ops
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Group
+metadata:
+  name: id-ext-audit
+  labels:
+    livekit-select: id-ext-audit
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-ext-audit
+  type: external
+  policies:
+    - id-reader
+  metadata:
+    source: jwt groups claim audit
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupAlias
+metadata:
+  name: id-ext-admins-jwt
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  aliasName: admins
+  groupRef:
+    name: id-ext-admins
+  mountRef:
+    name: id-jwt
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupAlias
+metadata:
+  name: id-ext-ops-jwt
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  aliasName: ops
+  groupName: id-ext-ops
+  mountPath: id-jwt
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupAlias
+metadata:
+  name: id-ext-audit-jwt
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  aliasName: audit
+  groupSelector:
+    matchLabels:
+      livekit-select: id-ext-audit
+  mountSelector:
+    matchLabels:
+      livekit-select: id-jwt
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupMembership
+metadata:
+  name: id-devs-alice
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  groupRef:
+    name: id-devs
+  entityRef:
+    name: id-alice
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupMembership
+metadata:
+  name: id-devs-bob
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  groupName: id-devs
+  entityName: id-bob
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupMembership
+metadata:
+  name: id-devs-carol
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  groupSelector:
+    matchLabels:
+      livekit-select: id-devs
+  entitySelector:
+    matchLabels:
+      livekit-select: id-carol
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupMembership
+metadata:
+  name: id-devs-oncall
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  groupRef:
+    name: id-devs
+  memberGroupRef:
+    name: id-oncall
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupMembership
+metadata:
+  name: id-devs-sec
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  groupRef:
+    name: id-devs
+  memberGroupName: id-sec
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: GroupMembership
+metadata:
+  name: id-devs-sre
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  groupRef:
+    name: id-devs
+  memberGroupSelector:
+    matchLabels:
+      livekit-select: id-sre
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: MFAMethod
+metadata:
+  name: id-totp
+  labels:
+    livekit-select: id-totp
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-totp
+  totp:
+    issuer: OpenBao live kit
+    period: 30s
+    digits: 6
+    algorithm: SHA256
+    keySize: 20
+    skew: 1
+    qrSize: 200
+    maxValidationAttempts: 5
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: MFAMethod
+metadata:
+  name: id-duo
+  labels:
+    livekit-select: id-duo
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-duo
+  duo:
+    apiHostname: api-1a2b3c4d.duosecurity.com
+    integrationKeySecretRef:
+      name: live-identity-duo
+      key: integration-key
+    secretKeySecretRef:
+      name: live-identity-duo
+      key: secret-key
+    pushInfo: from=openbao&env=live-kit
+    usePasscode: true
+    usernameFormat: "{{alias.name}}@example.com"
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: MFAMethod
+metadata:
+  name: id-okta
+  labels:
+    livekit-select: id-okta
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-okta
+  okta:
+    orgName: example
+    apiTokenSecretRef:
+      name: live-identity-okta
+      key: api-token
+    baseURL: okta.com
+    primaryEmail: true
+    usernameFormat: "{{entity.name}}@example.com"
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: MFAMethod
+metadata:
+  name: id-pingid
+  labels:
+    livekit-select: id-pingid
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-pingid
+  pingID:
+    settingsFileSecretRef:
+      name: live-identity-pingid
+      key: pingid.properties
+    usernameFormat: "{{alias.name}}"
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: MFALoginEnforcement
+metadata:
+  name: id-login-mfa
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: id-login-mfa
+  mfaMethods:
+    - methodRef:
+        name: id-totp
+    - methodName: id-duo
+    - methodSelector:
+        matchLabels:
+          livekit-select: id-okta
+  authMounts:
+    - mountRef:
+        name: id-userpass
+    - mountPath: id-jwt
+    - mountSelector:
+        matchLabels:
+          livekit-select: id-approle
+  authMethodTypes:
+    - userpass
+  entities:
+    - entityRef:
+        name: id-alice
+    - entityName: id-bob
+    - entitySelector:
+        matchLabels:
+          livekit-select: id-carol
+  groups:
+    - groupRef:
+        name: id-devs
+    - groupName: id-oncall
+    - groupSelector:
+        matchLabels:
+          livekit-select: id-sre

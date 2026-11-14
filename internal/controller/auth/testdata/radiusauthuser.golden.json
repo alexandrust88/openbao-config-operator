@@ -1,0 +1,8 @@
+{
+  "path": "auth/radius/users/alice",
+  "payload": {
+    "policies": [
+      "vpn-users"
+    ]
+  }
+}

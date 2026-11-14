@@ -1,0 +1,9 @@
+{
+  "data": {
+    "groups": "auditors,Ops Team",
+    "policies": [
+      "personal-jdoe"
+    ]
+  },
+  "tamper": "groups"
+}

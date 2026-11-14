@@ -1,0 +1,28 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: OIDCClient
+metadata:
+  name: obco-portal
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  deletionPolicy: Delete
+  name: obco-portal
+  key: obco-signing-key
+  clientType: confidential
+  redirectURIs:
+    - https://portal.obco.example.com/oidc/callback
+    - http://localhost:8250/oidc/callback
+  assignments:
+    - obco-portal-users
+  idTokenTTL: 30m
+  accessTokenTTL: 1h
+  authorizationCode: true
+  clientCredentials: true
+  writeSecretRef:
+    name: obco-portal-oidc-credentials

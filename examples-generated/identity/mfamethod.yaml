@@ -1,0 +1,25 @@
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: MFAMethod
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  name: example
+  namespace: example
+  totp:
+    algorithm: SHA1
+    digits: 6
+    issuer: https://openbao.example.com:8200
+    keySize: 1
+    maxValidationAttempts: 1
+    period: 1h
+    qrSize: 1
+    skew: 1

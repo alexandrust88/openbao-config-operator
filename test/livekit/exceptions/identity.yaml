@@ -1,0 +1,17 @@
+fullFields:
+  EntityAlias:
+    entityID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
+    mountAccessor: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
+  GroupAlias:
+    groupID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
+    mountAccessor: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
+  GroupMembership:
+    entityID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
+    groupID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
+    memberGroupID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
+  MFALoginEnforcement:
+    authMounts[].mountAccessor: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
+    entities[].entityID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
+    groups[].groupID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
+    mfaMethods[].methodID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
+notReady: []

@@ -1,0 +1,70 @@
+{{- if and .Values.metrics.enabled .Values.prometheusRule.enabled }}
+{{- $pr := .Values.prometheusRule }}
+{{- $sel := $pr.selector | default (printf "job=%q, namespace=%q" (printf "%s-metrics" (include "openbao-config-operator.fullname" .)) .Release.Namespace) }}
+{{- $alerts := list }}
+{{- $alerts = append $alerts (dict
+  "alert" "OpenBaoConfigOperatorDown"
+  "expr" (printf "absent(up{%s} == 1)" $sel)
+  "for" "5m"
+  "severity" "critical"
+  "summary" "No openbao-config-operator replica is scraped as up."
+  "description" "OpenBao configuration is not reconciled: drift is not repaired and new resources stay pending.") }}
+{{- $alerts = append $alerts (dict
+  "alert" "OpenBaoConfigOperatorReconcileErrors"
+  "expr" (printf "sum by (controller) (rate(controller_runtime_reconcile_errors_total{%s}[5m])) / sum by (controller) (rate(controller_runtime_reconcile_total{%s}[5m])) > %v" $sel $sel $pr.reconcileErrorRatio)
+  "for" "15m"
+  "severity" "warning"
+  "summary" "Controller {{ $labels.controller }} fails more than {{ $value | humanizePercentage }} of its reconciles."
+  "description" "Resources of this kind are not converging. Check their Synced condition and the manager logs.") }}
+{{- $alerts = append $alerts (dict
+  "alert" "OpenBaoConfigOperatorSteadyStateWrites"
+  "expr" (printf "sum by (kind) (increase(openbao_writes_total{%s}[15m])) > 0" $sel)
+  "for" $pr.steadyStateWritesFor
+  "severity" "warning"
+  "summary" "The operator keeps writing {{ $labels.kind }} objects to OpenBao."
+  "description" "Writes that never stop usually mean another tool or a person changes the same OpenBao objects, or a field never compares equal.") }}
+{{- $alerts = append $alerts (dict
+  "alert" "OpenBaoConfigOperatorOpenBaoServerErrors"
+  "expr" (printf "sum by (connection) (rate(openbao_requests_total{%s, code=~\"5..|error\"}[5m])) / sum by (connection) (rate(openbao_requests_total{%s}[5m])) > %v" $sel $sel $pr.openbaoErrorRatio)
+  "for" "10m"
+  "severity" "warning"
+  "summary" "OpenBao requests of connection {{ $labels.connection }} fail with 5xx or transport errors."
+  "description" "The connection label is the connection UID. OpenBao is unreachable, sealed, standby without forwarding or overloaded.") }}
+{{- $alerts = append $alerts (dict
+  "alert" "OpenBaoConfigOperatorOpenBaoDenied"
+  "expr" (printf "sum by (connection) (rate(openbao_requests_total{%s, code=\"403\"}[5m])) > 0" $sel)
+  "for" "15m"
+  "severity" "warning"
+  "summary" "OpenBao keeps denying requests of connection {{ $labels.connection }}."
+  "description" "The OpenBao policy of the connection identity does not cover a path that a resource manages, or the login fails.") }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "openbao-config-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openbao-config-operator.labels" . | nindent 4 }}
+    {{- with $pr.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: openbao-config-operator
+      rules:
+        {{- range $alerts }}
+        {{- if not (has .alert $pr.disabledAlerts) }}
+        - alert: {{ .alert }}
+          expr: {{ .expr | quote }}
+          for: {{ .for }}
+          labels:
+            severity: {{ .severity }}
+            {{- with $pr.alertLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: {{ .summary | quote }}
+            description: {{ .description | quote }}
+            runbook_url: {{ printf "%s#%s" $pr.runbookBaseURL (lower .alert) | quote }}
+        {{- end }}
+        {{- end }}
+{{- end }}

@@ -1,0 +1,153 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: tacl-kubernetes
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: tacl-kubernetes
+  type: kubernetes
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: tacl-approle
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: tacl-approle
+  type: approle
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: tacl-userpass
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: tacl-userpass
+  type: userpass
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: tacl-kv
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: tacl-kv
+  type: kv-v2
+---
+apiVersion: identity.openbaoconfig.io/v1alpha1
+kind: Entity
+metadata:
+  name: tacl-billing
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: tacl-billing
+  policies:
+    - tacl-entity-folder
+  metadata:
+    app: billing
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: tacl-sa-folder
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: tacl-sa-folder
+  policy: |
+    path "+/data/sa/{{identity.entity.aliases.${accessor:kubernetes}.metadata.service_account_namespace}}/{{identity.entity.aliases.${accessor:kubernetes}.metadata.service_account_name}}/*" {
+      capabilities = ["create", "read", "update"]
+    }
+    path "+/data/ci/{{identity.entity.aliases.${accessor:approle}.metadata.role_name}}/*" {
+      capabilities = ["read"]
+    }
+    path "+/data/users/{{identity.entity.aliases.${accessor:userpass}.name}}/*" {
+      capabilities = ["create", "read", "update", "delete"]
+    }
+  accessorRefs:
+    kubernetes:
+      authMountRef:
+        name: tacl-kubernetes
+    approle:
+      authMountRef:
+        name: tacl-approle
+    userpass:
+      authMountRef:
+        name: tacl-userpass
+  allowSlashesInIdentityTemplates: true
+  allowWildcardsInIdentityTemplates: false
+  casRequired: true
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: tacl-entity-folder
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: tacl-entity-folder
+  policy: |
+    path "+/data/apps/{{identity.entity.metadata.app}}/*" {
+      capabilities = ["read", "list"]
+    }
+    path "+/data/entities/{{identity.entity.name}}/*" {
+      capabilities = ["read"]
+    }
+  allowSlashesInIdentityTemplates: false
+  allowWildcardsInIdentityTemplates: true
+  casRequired: false

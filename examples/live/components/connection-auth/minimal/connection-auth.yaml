@@ -1,0 +1,27 @@
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoConnection
+metadata:
+  name: conn-approle
+spec:
+  serverRef:
+    name: openbao-server
+  auth:
+    appRole:
+      roleIDSecretRef:
+        name: live-connection-auth-approle
+        key: role-id
+      secretIDSecretRef:
+        name: live-connection-auth-approle
+        key: secret-id
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: conn-approle-reader
+spec:
+  connectionRef:
+    name: conn-approle
+  policy: |
+    path "+/data/connection-auth/*" {
+      capabilities = ["read"]
+    }

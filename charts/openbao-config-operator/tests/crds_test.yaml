@@ -1,0 +1,33 @@
+suite: crds
+templates:
+  - templates/crds/sys.openbaoconfig.io_policies.yaml
+release:
+  name: obc
+  namespace: openbao-system
+tests:
+  - it: installs CRDs and keeps them on uninstall by default
+    asserts:
+      - isKind:
+          of: CustomResourceDefinition
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: obc
+
+  - it: lets helm delete CRDs when crds.keep is false
+    set:
+      crds.keep: false
+    asserts:
+      - notExists:
+          path: metadata.annotations["helm.sh/resource-policy"]
+
+  - it: skips CRDs when crds.install is false
+    set:
+      crds.install: false
+      crds.keep: true
+    asserts:
+      - hasDocuments:
+          count: 0
+

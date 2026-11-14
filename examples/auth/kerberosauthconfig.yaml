@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kerberos-keytab
+type: Opaque
+stringData:
+  keytab: fake-keytab-bytes-replace-with-kubectl-create-secret-from-file
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KerberosAuthConfig
+metadata:
+  name: kerberos
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  mountPath: kerberos
+  serviceAccount: openbao_svc
+  keytabSecretRef:
+    name: kerberos-keytab
+    key: keytab
+  removeInstanceName: true
+  addGroupAliases: true
