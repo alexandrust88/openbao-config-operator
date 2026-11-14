@@ -53,7 +53,7 @@ warn() { echo "WARNING: $1: skipped, needs a public repository or GitHub Pro/Tea
 
 # unsupported matches the answer GitHub gives for a feature the repository's plan lacks.
 unsupported() {
-  grep -qiE 'upgrade to github pro|make this repository public|plan does not support|advanced security' <<<"$1"
+  grep -qiE 'upgrade to github pro|make this repository public|plan does not support|advanced security|not available for this repository' <<<"$1"
 }
 
 # try runs an API call; a plan error becomes a warning naming the setting, any other error fails the script, so it
