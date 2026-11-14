@@ -38,10 +38,22 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          cache: false
+      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
+            go-${{ runner.os }}-
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: bin
           key: tools-conformance-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
+          restore-keys: tools-conformance-${{ runner.os }}-
       - run: make bao
       - run: make test-conformance
         env:
@@ -73,10 +85,22 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          cache: false
+      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
+            go-${{ runner.os }}-
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: bin
           key: tools-integration-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
+          restore-keys: tools-integration-${{ runner.os }}-
       - run: make bao
       - run: docker pull "$POSTGRES_IMAGE"
       - run: make test-integration

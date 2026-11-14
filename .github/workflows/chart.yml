@@ -33,10 +33,22 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          cache: false
+      # One Go cache per job: a shared setup-go key is saved once by whichever job finishes first, often nearly empty.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
+            go-${{ runner.os }}-
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: bin
           key: tools-chart-${{ runner.os }}-${{ hashFiles('Makefile') }}
+          restore-keys: tools-chart-${{ runner.os }}-
       - run: make helm kind
       - uses: helm/chart-testing-action@720270857a28afd41e2426521a7801db09e9b510 # v2.9.0
         with:

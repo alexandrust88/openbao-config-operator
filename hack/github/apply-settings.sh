@@ -62,7 +62,8 @@ try() {
   local setting=$1 out
   shift
   if out=$("$@" 2>&1); then return 0; fi
-  if unsupported "$out"; then warn "$setting"; return 1; fi
+  # On a private repository of the free plan GitHub answers some missing features with a plain 404.
+  if unsupported "$out" || { [ "$limited" = true ] && grep -q "HTTP 404" <<<"$out"; }; then warn "$setting"; return 1; fi
   echo "$out" >&2
   exit 1
 }
