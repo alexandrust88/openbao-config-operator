@@ -48,7 +48,7 @@ jobs:
       - name: Run e2e tests
         env:
           E2E_SKIP_IMAGE_BUILD: "true"
-        run: make test-e2e
+        run: make test-e2e-run
 
       # Runs after the suite, which removes its chart and OpenBao; the script installs both again.
       - name: Apply the live kit root overlay
@@ -65,3 +65,7 @@ jobs:
           for ns in openbao-config-operator openbao-config-operator-system openbao openbao-live; do
             kubectl -n "$ns" logs --all-containers --prefix --tail=200 -l app.kubernetes.io/name || true
           done
+
+      - name: Delete kind cluster
+        if: always()
+        run: make cleanup-test-e2e

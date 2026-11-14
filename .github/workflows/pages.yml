@@ -45,7 +45,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           build=true
-          if [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = push ]; then
+          if { [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = push ]; } && git rev-parse -q --verify HEAD^1 >/dev/null; then
             changed=$(git diff --name-only HEAD^1 HEAD)
             grep -qE '^(\.github/artifacthub-repo\.yml|\.github/workflows/pages\.yml|README\.md|config/crd/bases/|docs/|hack/docs/|hack/release/check-version\.sh|mkdocs\.yml)' <<<"$changed" ||
               build=false

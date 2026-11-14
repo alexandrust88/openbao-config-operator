@@ -467,12 +467,19 @@ func TestWriteOnlyHashDiffersAcrossResources(t *testing.T) {
 }
 
 func TestReconcileWriteOnlyHashForcesWrite(t *testing.T) {
+	for _, drift := range []commonv1alpha1.DriftDetection{commonv1alpha1.DriftDetectionEnabled, commonv1alpha1.DriftDetectionDisabled} {
+		t.Run(string(drift), func(t *testing.T) { testWriteOnlyHashForcesWrite(t, drift) })
+	}
+}
+
+func testWriteOnlyHashForcesWrite(t *testing.T, drift commonv1alpha1.DriftDetection) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: credsSecret, Namespace: testNamespace},
 		Data:       map[string][]byte{keyPassword: []byte("one")},
 	}
 	obj := newResource(testName)
 	obj.Spec.PasswordSecretRef = &commonv1alpha1.SecretKeySelector{Name: credsSecret, Key: keyPassword}
+	obj.Spec.DriftDetection = drift
 	h := newHarness(t, testAdapter{}, obj, secret)
 
 	h.mustReconcile()
@@ -499,6 +506,11 @@ func TestReconcileWriteOnlyHashForcesWrite(t *testing.T) {
 	}
 	if h.get().Status.WriteOnlyHash == hash {
 		t.Fatal("writeOnlyHash unchanged after rotation")
+	}
+	h.mustReconcile()
+	h.mustReconcile()
+	if _, writes := h.store.counts(); writes != 2 {
+		t.Fatalf("writes = %d at rest after rotation, want 2", writes)
 	}
 	for _, e := range h.drainEvents() {
 		if strings.Contains(e, "two") || strings.Contains(e, "one") {

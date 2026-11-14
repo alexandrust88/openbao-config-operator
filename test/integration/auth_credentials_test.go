@@ -398,11 +398,27 @@ func testAuthCredUserpass(ctx context.Context, t *testing.T, e env) {
 	waitFor(t, "login with the first password", login("first-fake-password"))
 	expectNoWrites(t, "UserpassUser")
 
+	if err := e.k8s.Get(ctx, client.ObjectKeyFromObject(user), user); err != nil {
+		t.Fatal(err)
+	}
+	hash := user.Status.WriteOnlyHash
 	secret.Data[authITPassword] = []byte("second-fake-password")
 	if err := e.k8s.Update(ctx, secret); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, "login with the rotated password", login("second-fake-password"))
+	// Polling the login before the rewrite would trip OpenBao's lockout after 5 failures.
+	waitFor(t, "rotated password written", func() error {
+		if err := e.k8s.Get(ctx, client.ObjectKeyFromObject(user), user); err != nil {
+			return err
+		}
+		if user.Status.WriteOnlyHash == hash {
+			return errors.New("writeOnlyHash unchanged")
+		}
+		return nil
+	})
+	if err := login("second-fake-password")(); err != nil {
+		t.Fatalf("login with the rotated password: %v", err)
+	}
 
 	if err := e.k8s.Delete(ctx, user); err != nil {
 		t.Fatal(err)

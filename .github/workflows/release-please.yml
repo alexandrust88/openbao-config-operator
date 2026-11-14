@@ -31,8 +31,11 @@ jobs:
       contents: write # push the release-please branch
       pull-requests: write # open, update and label the release pull request
     steps:
-      # Pull requests opened with GITHUB_TOKEN start no workflows, so required checks never report on the release
-      # pull request. A GitHub App token avoids that; without the app the job falls back to GITHUB_TOKEN.
+      # Workflows may not open pull requests (repository setting kept off), and pull requests opened with GITHUB_TOKEN
+      # start no workflows, so release pull requests need the GitHub App; without it the job only reports that.
+      - if: vars.RELEASE_APP_CLIENT_ID == ''
+        run: |
+          echo "::notice::release-please skipped, set up the release-please GitHub App (docs/maintainers/github-settings.md)"
       - id: app-token
         if: vars.RELEASE_APP_CLIENT_ID != ''
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -41,9 +44,10 @@ jobs:
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+      - if: vars.RELEASE_APP_CLIENT_ID != ''
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
-          token: ${{ steps.app-token.outputs.token || github.token }}
+          token: ${{ steps.app-token.outputs.token }}
           target-branch: ${{ github.ref_name }}
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
