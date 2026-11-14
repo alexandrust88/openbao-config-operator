@@ -53,13 +53,7 @@ examples/live/create-secrets.sh --namespace "$namespace"
 rendered=$(mktemp)
 trap 'rm -f -- "$rendered"' EXIT
 "$kustomize" build test/livekit/kind >"$rendered"
-kubectl apply -f "$rendered" >/dev/null
-names=()
-while IFS= read -r ref; do names+=("$ref"); done < <("$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "." + (.apiVersion | split("/") | .[0]) + "/" + .metadata.name' "$rendered")
 prefix=$("$yq" -N 'select(.kind == "OpenBaoServer") | .metadata.labels["live.openbaoconfig.io/overlay"]' "$rendered")-
-echo "waiting up to $timeout for ${#names[@]} objects"
-kubectl wait --for=condition=Ready --timeout="$timeout" -n "$namespace" "${names[@]}" >/dev/null 2>&1 || true
-
 excuses=("${kind_excuses[@]}")
 while IFS= read -r line; do excuses+=("$line"); done < <(
   for f in test/livekit/exceptions/*.yaml; do
@@ -71,6 +65,51 @@ while IFS= read -r line; do excuses+=("$line"); done < <(
     done
 )
 
+excused_ref() {
+  local kind=$1 name=$2 e ekind ename ereason
+  for e in "${excuses[@]}"; do
+    IFS='|' read -r ekind ename ereason <<<"$e"
+    # shellcheck disable=SC2053 # globs from the exceptions files
+    if [ "$ekind" = "$kind" ] && [[ ${name#"$prefix"} == $ename ]]; then printf '%s' "$ereason"; return 0; fi
+  done
+  return 1
+}
+
+# Objects that cannot work on kind (the exceptions above) are not applied, so every applied object must get Ready.
+skipped=()
+while IFS='|' read -r kind name; do
+  if reason=$(excused_ref "$kind" "$name"); then skipped+=("$kind|$name|$reason"); fi
+done < <("$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "|" + .metadata.name' "$rendered")
+drop=$(for e in "${skipped[@]}"; do IFS='|' read -r kind name _ <<<"$e"; printf '%s/%s\n' "$kind" "$name"; done)
+# shellcheck disable=SC2016 # $k is a yq variable
+DROP=$drop "$yq" -N 'select((.kind + "/" + .metadata.name) as $k | (strenv(DROP) | split("\n") | any_c(. == $k)) | not)' "$rendered" >"$rendered.apply"
+mv "$rendered.apply" "$rendered"
+echo "not applied on kind: ${#skipped[@]} objects"
+kubectl apply -f "$rendered" >/dev/null
+names=()
+while IFS= read -r ref; do names+=("$ref"); done < <("$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "." + (.apiVersion | split("/") | .[0]) + "/" + .metadata.name' "$rendered")
+
+# Done as soon as every applied object is Ready; LIVEKIT_TIMEOUT is only the upper bound.
+case $timeout in *m) limit=$((${timeout%m} * 60)) ;; *s) limit=${timeout%s} ;; *) limit=$timeout ;; esac
+deadline=$(($(date +%s) + limit))
+echo "waiting for ${#names[@]} objects (at most $timeout, or until 2m pass without progress)"
+best=-1 progress=$(date +%s)
+while :; do
+  pending=0
+  while IFS='|' read -r kind name status; do
+    [ "$status" = True ] && continue
+    excused_ref "$kind" "$name" >/dev/null || pending=$((pending + 1))
+  done < <(kubectl -n "$namespace" get "${names[@]}" --ignore-not-found \
+    -o 'jsonpath={range .items[*]}{.kind}{"|"}{.metadata.name}{"|"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}')
+  [ "$pending" -eq 0 ] && break
+  now=$(date +%s)
+  if [ "$best" -lt 0 ] || [ "$pending" -lt "$best" ]; then best=$pending progress=$now; fi
+  if [ "$now" -ge "$deadline" ]; then echo "timed out with $pending objects not Ready"; break; fi
+  if [ $((now - progress)) -ge 120 ]; then echo "no progress for 2m, $pending objects not Ready"; break; fi
+  echo "$pending objects not Ready yet"
+  sleep 5
+done
+
 failed=0 ready=0 excused=0
 printf '\n%-26s %-44s %-22s %s\n' KIND NAME REASON NOTE
 for ref in "${names[@]}"; do
@@ -81,13 +120,13 @@ for ref in "${names[@]}"; do
     continue
   fi
   note=""
-  for e in "${excuses[@]}"; do
-    IFS='|' read -r ekind ename ereason <<<"$e"
-    # shellcheck disable=SC2053
-    if [ "$ekind" = "$kind" ] && [[ ${name#"$prefix"} == $ename ]]; then note="excused: $ereason"; break; fi
-  done
+  if reason=$(excused_ref "$kind" "$name"); then note="excused: $reason"; fi
   if [ -n "$note" ]; then excused=$((excused + 1)); else failed=$((failed + 1)); note=$(cut -d'|' -f3 <<<"$state"); fi
   printf '%-26s %-44s %-22s %.140s\n' "$kind" "$name" "$(cut -d'|' -f2 <<<"$state")" "$note"
 done
-printf '\n%s on kind: %d objects, %d Ready, %d excused, %d failed\n' "$overlay" "${#names[@]}" "$ready" "$excused" "$failed"
+for e in "${skipped[@]}"; do
+  IFS='|' read -r kind name reason <<<"$e"
+  printf '%-26s %-44s %-22s %.140s\n' "$kind" "$name" "not applied" "$reason"
+done
+printf '\n%s on kind: %d applied, %d Ready, %d failed; %d not applied (cannot work on kind)\n' "$overlay" "${#names[@]}" "$ready" "$failed" "${#skipped[@]}"
 [ "$failed" -eq 0 ]

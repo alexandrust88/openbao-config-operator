@@ -311,8 +311,12 @@ CONTROLLER_TOOLS_VERSION ?= v0.20.1
 KIND_VERSION ?= v0.33.0
 # renovate: datasource=go depName=golang.org/x/vuln
 GOVULNCHECK_VERSION ?= v1.9.0
-# renovate: datasource=go depName=helm.sh/helm/v4
+# renovate: datasource=github-releases depName=helm/helm
 HELM_VERSION ?= v4.3.1
+# helm publishes its archives on get.helm.sh; refresh these from helm-<version>-<os>-<arch>.tar.gz.sha256sum with the bump.
+HELM_SHA256_linux_amd64 ?= 0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b
+HELM_SHA256_linux_arm64 ?= 8cf8f66ecbc252ac8f7f06cca68aba88508ddfde3a6a34feb1678ad1694b4f88
+HELM_SHA256_darwin_arm64 ?= 6b4e61c8cd27d99e5a801e63ff25dd5c70b36875c2cd659d3e9ce6b76fc23198
 # renovate: datasource=go depName=github.com/yannh/kubeconform
 KUBECONFORM_VERSION ?= v0.8.0
 # renovate: datasource=go depName=github.com/mikefarah/yq/v4
@@ -326,12 +330,30 @@ BAO_SHA256_linux_amd64 ?= 582b1f3c2fdc5afd443b2d57a225ef654de75adea609fdb66731fd
 BAO_SHA256_linux_arm64 ?= 5b97bf816fa820e5e521abec1db19c6161fcca2f666cf4a84e335089c0e83edd
 # renovate: datasource=github-release-attachments depName=openbao/openbao version=v2.7.2
 BAO_SHA256_darwin_arm64 ?= 2b4fc131910f4b075b2e1c9a9de67c461489491a8f03fbdc73387294d67d9547
-# renovate: datasource=go depName=github.com/anchore/syft
+# renovate: datasource=github-releases depName=anchore/syft
 SYFT_VERSION ?= v1.57.1
-# renovate: datasource=go depName=github.com/anchore/grype
+# renovate: datasource=github-release-attachments depName=anchore/syft version=v1.57.1
+SYFT_SHA256_linux_amd64 ?= bf52519eb57f675d47c07d43213cb6dff6449f3d6d1147ff6701ed91f44eef0c
+# renovate: datasource=github-release-attachments depName=anchore/syft version=v1.57.1
+SYFT_SHA256_linux_arm64 ?= aa3d3e07344f590bcce8d31043b752daa76c8a56c2aa34ceeee63c6168152582
+# renovate: datasource=github-release-attachments depName=anchore/syft version=v1.57.1
+SYFT_SHA256_darwin_arm64 ?= e0a74a5d2688d1254b4e17b71f068a83215e3625f846265bf6614c7ba06f3a96
+# renovate: datasource=github-releases depName=anchore/grype
 GRYPE_VERSION ?= v0.121.3
-# renovate: datasource=go depName=oras.land/oras
+# renovate: datasource=github-release-attachments depName=anchore/grype version=v0.121.3
+GRYPE_SHA256_linux_amd64 ?= e9da18cc1429e786722e32161288103600efffd8e483c90761f90485bd1bec85
+# renovate: datasource=github-release-attachments depName=anchore/grype version=v0.121.3
+GRYPE_SHA256_linux_arm64 ?= b7815598d48da78bfd16f5b98ef28e1bb09c03d34fc8c3e350f99b6ccb3c7cba
+# renovate: datasource=github-release-attachments depName=anchore/grype version=v0.121.3
+GRYPE_SHA256_darwin_arm64 ?= 54336f2cd8cdee8b3d8ea83462561ff7fa9293498054c7c53a193db44bfea4c8
+# renovate: datasource=github-releases depName=oras-project/oras
 ORAS_VERSION ?= v1.3.6
+# renovate: datasource=github-release-attachments depName=oras-project/oras version=v1.3.6
+ORAS_SHA256_linux_amd64 ?= 66fb0ad7206f3f6fa77ed5b552049d364ccf4b50b1684554f731f76302b52ca0
+# renovate: datasource=github-release-attachments depName=oras-project/oras version=v1.3.6
+ORAS_SHA256_linux_arm64 ?= b84269e78dfc2d5329a4aab373da3200de95e6c138338cf6c66c10c0a3f248c1
+# renovate: datasource=github-release-attachments depName=oras-project/oras version=v1.3.6
+ORAS_SHA256_darwin_arm64 ?= e2b25a53234e2471c5fc81936f957fa612065ab559c21834c02d8bfbc2f62b30
 # renovate: datasource=github-releases depName=rhysd/actionlint
 ACTIONLINT_VERSION ?= v1.7.12
 # renovate: datasource=github-release-attachments depName=rhysd/actionlint version=v1.7.12
@@ -421,7 +443,7 @@ $(YQ): $(LOCALBIN)
 .PHONY: helm
 helm: $(HELM) ## Download helm locally if necessary.
 $(HELM): $(LOCALBIN)
-	$(call go-install-tool,$(HELM),helm.sh/helm/v4/cmd/helm,$(HELM_VERSION),-X helm.sh/helm/v4/internal/version.version=$(HELM_VERSION))
+	$(call download-tool,$(HELM),$(HELM_VERSION),https://get.helm.sh,helm-$(HELM_VERSION)-$(HOST_OS)-$(HOST_ARCH).tar.gz,$(HELM_SHA256_$(HOST_OS)_$(HOST_ARCH)),$(HOST_OS)-$(HOST_ARCH)/helm)
 
 .PHONY: bao
 bao: $(BAO) ## Download the pinned OpenBao release binary locally if necessary.
@@ -431,17 +453,17 @@ $(BAO): $(LOCALBIN)
 .PHONY: syft
 syft: $(SYFT) ## Download syft locally if necessary.
 $(SYFT): $(LOCALBIN)
-	$(call go-install-tool,$(SYFT),github.com/anchore/syft/cmd/syft,$(SYFT_VERSION),-X main.version=$(SYFT_VERSION:v%=%))
+	$(call download-tool,$(SYFT),$(SYFT_VERSION),https://github.com/anchore/syft/releases/download/$(SYFT_VERSION),syft_$(SYFT_VERSION:v%=%)_$(HOST_OS)_$(HOST_ARCH).tar.gz,$(SYFT_SHA256_$(HOST_OS)_$(HOST_ARCH)),syft)
 
 .PHONY: grype
 grype: $(GRYPE) ## Download grype locally if necessary.
 $(GRYPE): $(LOCALBIN)
-	$(call go-install-tool,$(GRYPE),github.com/anchore/grype/cmd/grype,$(GRYPE_VERSION),-X main.version=$(GRYPE_VERSION:v%=%))
+	$(call download-tool,$(GRYPE),$(GRYPE_VERSION),https://github.com/anchore/grype/releases/download/$(GRYPE_VERSION),grype_$(GRYPE_VERSION:v%=%)_$(HOST_OS)_$(HOST_ARCH).tar.gz,$(GRYPE_SHA256_$(HOST_OS)_$(HOST_ARCH)),grype)
 
 .PHONY: oras
 oras: $(ORAS) ## Download oras locally if necessary.
 $(ORAS): $(LOCALBIN)
-	$(call go-install-tool,$(ORAS),oras.land/oras/cmd/oras,$(ORAS_VERSION))
+	$(call download-tool,$(ORAS),$(ORAS_VERSION),https://github.com/oras-project/oras/releases/download/$(ORAS_VERSION),oras_$(ORAS_VERSION:v%=%)_$(HOST_OS)_$(HOST_ARCH).tar.gz,$(ORAS_SHA256_$(HOST_OS)_$(HOST_ARCH)),oras)
 
 .PHONY: actionlint
 actionlint: $(ACTIONLINT) ## Download actionlint locally if necessary.
