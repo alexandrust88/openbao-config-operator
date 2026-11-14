@@ -82,7 +82,7 @@ while IFS='|' read -r kind name; do
 done < <("$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "|" + .metadata.name' "$rendered")
 drop=$(for e in "${skipped[@]}"; do IFS='|' read -r kind name _ <<<"$e"; printf '%s/%s\n' "$kind" "$name"; done)
 # shellcheck disable=SC2016 # $k is a yq variable
-DROP=$drop "$yq" -N 'select((.kind + "/" + .metadata.name) as $k | (strenv(DROP) | split("\n") | any_c(. == $k)) | not)' "$rendered" >"$rendered.apply"
+DROP=$drop "$yq" 'select((.kind + "/" + .metadata.name) as $k | (strenv(DROP) | split("\n") | any_c(. == $k)) | not)' "$rendered" >"$rendered.apply"
 mv "$rendered.apply" "$rendered"
 echo "not applied on kind: ${#skipped[@]} objects"
 kubectl apply -f "$rendered" >/dev/null
