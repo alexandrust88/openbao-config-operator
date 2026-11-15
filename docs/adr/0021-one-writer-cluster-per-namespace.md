@@ -19,4 +19,5 @@ One OpenBao namespace has one writer cluster. The server-side marker carries a c
   rule.
 - A cluster migration moves ownership explicitly: `Observe` on the new cluster, `Orphan` and
   delete on the old one, then `Adopt`.
-- Status: planned with the marker (phase 3).
+- Status: implemented for objects with server-side ownership markers; other kinds still rely on
+  Kubernetes status and the local path index.

@@ -21,4 +21,4 @@ Kinds whose delete destroys data report `Destructive() == true`: `SecretsMount`,
 
 - Destroying data needs two explicit choices: `Delete` and the annotation.
 - A guarded CR stays in `Terminating` until someone adds the annotation or switches to `Orphan`.
-- Status: annotation and reason defined; engine enforcement in progress.
+- Status: implemented in the engine and covered by reconciler and envtest cases.

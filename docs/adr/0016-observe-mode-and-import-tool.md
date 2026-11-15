@@ -19,4 +19,5 @@ YAML with `managementPolicy: Observe` and `creationPolicy: Adopt`.
 
 - Adoption is incremental: import, observe until no drift, then switch objects to `Manage`.
 - The import tool must cover every typed kind's read shape; gaps fall back to `OpenBaoEndpoint`.
-- Status: field and reasons defined in `api/common/v1alpha1`; engine support and CLI in progress.
+- Status: implemented in the engine and `cmd/obc-import`; Observe and import behaviour have unit
+  and integration coverage.
