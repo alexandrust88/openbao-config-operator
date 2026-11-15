@@ -115,7 +115,7 @@ func assertDelivered(t *testing.T, k8s client.Client, s *secretsv1alpha1.RandomS
 // removes the path with its history once its key was the last one.
 func TestRandomSecretDeletePurgesOwnedPath(t *testing.T) {
 	s := newRandomSecret()
-	s.Status.Acquired = commonv1alpha1.AcquiredCreated
+	s.Status.Acquired, s.Status.PathCreated = commonv1alpha1.AcquiredCreated, true
 	s.Annotations = map[string]string{commonv1alpha1.AnnotationAllowDestructiveDelete: "true"}
 	bao := &kvStoreBao{data: map[string]map[string]any{"kv/data/team/db": {"password": "x"}}}
 	if err := (RandomSecretAdapter{}).Delete(context.Background(), bao, s); err != nil {

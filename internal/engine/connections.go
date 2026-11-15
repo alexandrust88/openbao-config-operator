@@ -28,9 +28,9 @@ func ConnectionIndexFunc(o client.Object) []string {
 	return []string{ConnectionKey(o.GetNamespace(), managed.GetResourceSpec().ConnectionRef)}
 }
 
-// watchConnections re-queues the resources of a connection as soon as its Ready condition changes, instead of
-// waiting for the ConnectionNotReady retry. Connection kinds that the scheme or the API server do not serve are
-// skipped.
+// watchConnections re-queues the resources of a connection as soon as it changes (see connectionReadyChanged),
+// instead of waiting for the ConnectionNotReady retry. Connection kinds that the scheme or the API server do not
+// serve are skipped.
 func (r *Reconciler[T]) watchConnections(mgr ctrl.Manager, b *builder.Builder) error {
 	for _, conn := range []client.Object{&corev1alpha1.OpenBaoConnection{}, &corev1alpha1.ClusterOpenBaoConnection{}} {
 		served, err := r.served(mgr, conn)
@@ -74,18 +74,32 @@ type connectionStatusHolder interface {
 	GetConnectionStatus() *corev1alpha1.ConnectionStatus
 }
 
-// connectionReadyChanged passes connection updates that change the status of the Ready condition.
+// connectionReadyChanged passes connection deletions and the updates that change the status of the Ready condition,
+// the spec (generation), the generation the status describes, or the deletion timestamp: a connection can stay Ready
+// while it starts to reach another namespace or server.
 func connectionReadyChanged() predicate.Funcs {
 	ready := func(o client.Object) bool {
 		holder, ok := o.(connectionStatusHolder)
 		return ok && meta.IsStatusConditionTrue(holder.GetConnectionStatus().Conditions, commonv1alpha1.ConditionReady)
 	}
+	observedGeneration := func(o client.Object) int64 {
+		if holder, ok := o.(connectionStatusHolder); ok {
+			return holder.GetConnectionStatus().ObservedGeneration
+		}
+		return 0
+	}
 	return predicate.Funcs{
 		CreateFunc:  func(event.CreateEvent) bool { return false },
-		DeleteFunc:  func(event.DeleteEvent) bool { return false },
+		DeleteFunc:  func(event.DeleteEvent) bool { return true },
 		GenericFunc: func(event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			return e.ObjectOld != nil && e.ObjectNew != nil && ready(e.ObjectOld) != ready(e.ObjectNew)
+			if e.ObjectOld == nil || e.ObjectNew == nil {
+				return false
+			}
+			return ready(e.ObjectOld) != ready(e.ObjectNew) ||
+				e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration() ||
+				observedGeneration(e.ObjectOld) != observedGeneration(e.ObjectNew) ||
+				e.ObjectOld.GetDeletionTimestamp().IsZero() != e.ObjectNew.GetDeletionTimestamp().IsZero()
 		},
 	}
 }

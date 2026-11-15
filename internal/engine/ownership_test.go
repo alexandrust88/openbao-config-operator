@@ -446,6 +446,39 @@ func TestCreateOrAdoptRaceRereadsClaims(t *testing.T) {
 	assertCondition(t, got, commonv1alpha1.ConditionSynced, "False", commonv1alpha1.ReasonConflict)
 }
 
+// TestAdoptRereadsClaimsOfExistingObject: the object already exists, the cache does not show the older resource's
+// claim yet, and the API server does; the newer resource must not adopt it.
+func TestAdoptRereadsClaimsOfExistingObject(t *testing.T) {
+	for _, policy := range []commonv1alpha1.CreationPolicy{commonv1alpha1.CreationPolicyAdopt,
+		commonv1alpha1.CreationPolicyCreateOrAdopt} {
+		t.Run(string(policy), func(t *testing.T) {
+			now := time.Now()
+			newer := v2At(testName, now, "u-new")
+			newer.Spec.CreationPolicy = policy
+			h := newHarness(t, v2SharedAdapter{}, v2Owned(v2At(v2Older, now.Add(-time.Hour), "u-old"), v2SharedAbs), newer)
+			h.store.objects[v2SharedAbs] = Payload{keyPolicy: foreignTxt}
+			h.r.client = interceptor.NewClient(h.k8s.(client.WithWatch), interceptor.Funcs{
+				List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+					listOpts := &client.ListOptions{}
+					listOpts.ApplyOptions(opts)
+					if listOpts.FieldSelector != nil {
+						return nil
+					}
+					return c.List(ctx, list, opts...)
+				},
+			})
+			if _, err := h.reconcile(); err != nil {
+				t.Fatal(err)
+			}
+			got := h.get()
+			if got.Status.Acquired != "" || h.writes() != 0 {
+				t.Fatalf("adopted the object an older resource owns: %+v, %d writes", got.Status, h.writes())
+			}
+			assertCondition(t, got, commonv1alpha1.ConditionSynced, "False", commonv1alpha1.ReasonConflict)
+		})
+	}
+}
+
 func TestFailedUpdateIsRetriedWithDriftDetectionDisabled(t *testing.T) {
 	refusals := 0
 	obj := newResource(testName)
@@ -598,4 +631,37 @@ func TestLiveOwnerCheckListsOnlyClaimingKinds(t *testing.T) {
 		t.Errorf("live LISTs = %v, want %v", live, want)
 	}
 	assertCondition(t, h.get(), commonv1alpha1.ConditionSynced, "False", commonv1alpha1.ReasonConflict)
+}
+
+// TestOtherChildOwner: a child path another resource owns blocks a resource that has not created it, whatever their
+// age; once created, only an older owner does.
+func TestOtherChildOwner(t *testing.T) {
+	now := time.Now()
+	for name, tc := range map[string]struct {
+		selfCreated, otherOlder, want bool
+	}{
+		"not created, newer owner": {otherOlder: false, want: true},
+		"not created, older owner": {otherOlder: true, want: true},
+		"created, newer owner":     {selfCreated: true, otherOlder: false, want: false},
+		"created, older owner":     {selfCreated: true, otherOlder: true, want: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			self := v2At(testName, now, "u-self")
+			if tc.selfCreated {
+				self = v2Owned(self, v2SharedAbs)
+			}
+			created := now.Add(time.Hour)
+			if tc.otherOlder {
+				created = now.Add(-time.Hour)
+			}
+			h := newHarness(t, testAdapter{}, self, v2Owned(v2At(v2Older, created, "u-other"), v2SharedAbs))
+			other, owned, err := OtherChildOwner(context.Background(), h.k8s, h.r.scheme, h.get(), v2SharedAbs, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if owned != tc.want {
+				t.Fatalf("owned = %v (%q), want %v", owned, other, tc.want)
+			}
+		})
+	}
 }

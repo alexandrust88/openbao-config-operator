@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -212,7 +213,7 @@ func TestReconcileNotReady(t *testing.T) {
 		{
 			name: "base namespace missing", server: testServer(),
 			client:     lookupSelfClient{readErr: &openbao.ResponseError{StatusCode: 404, Errors: []string{"namespace not found"}}},
-			wantReason: commonv1alpha1.ReasonInvalidSpec,
+			wantReason: commonv1alpha1.ReasonReferenceNotReady,
 		},
 		{name: "missing secret", server: testServer(), noSecret: true, wantReason: corev1alpha1.ReasonCredentialsNotFound},
 	}
@@ -236,6 +237,9 @@ func TestReconcileNotReady(t *testing.T) {
 			res, got := reconcileAndGet(t, r)
 			if res.RequeueAfter == 0 {
 				t.Error("want a requeue")
+			}
+			if tc.wantReason == commonv1alpha1.ReasonReferenceNotReady && res.RequeueAfter > 5*time.Second {
+				t.Errorf("requeue after %v, want a short retry while the namespace is missing", res.RequeueAfter)
 			}
 			cond := meta.FindStatusCondition(got.Status.Conditions, commonv1alpha1.ConditionReady)
 			if cond == nil || cond.Status != metav1.ConditionFalse || cond.Reason != tc.wantReason ||

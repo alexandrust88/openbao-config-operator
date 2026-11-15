@@ -325,7 +325,8 @@ Resources wait while their connection is not `Ready` for the current generation.
 |--------|---------|
 | `Available` | connected and authenticated |
 | `CredentialsNotFound` | a referenced Secret, ConfigMap, key or token file is missing |
-| `InvalidSpec` | the spec cannot be used, or the connection's OpenBao namespace does not exist |
+| `InvalidSpec` | the spec cannot be used |
+| `ReferenceNotReady` | the connection's OpenBao namespace does not exist yet; retried after 2 seconds, backing off to 30 |
 | `ServerNotReady` | the `OpenBaoServer` is missing or not `Ready` (unreachable, sealed, CA bundle missing) |
 | `ConnectionDenied` | the server does not select this namespace or allow one of the audiences |
 | `AuthenticationFailed` | the login or the token lookup failed |

@@ -157,6 +157,11 @@ func (l *AccessLayout) GetResourceStatus() *commonv1alpha1.ResourceStatus {
 	return &l.Status.ResourceStatus
 }
 
+// OwnedChildPaths returns the absolute OpenBao paths of the children the layout created.
+func (l *AccessLayout) OwnedChildPaths() []string {
+	return childPaths(l.Status.Namespace, l.Status.Children)
+}
+
 // +kubebuilder:object:root=true
 
 // AccessLayoutList contains a list of AccessLayout.

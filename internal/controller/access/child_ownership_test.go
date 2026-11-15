@@ -130,3 +130,19 @@ func TestAccessLayoutRefusesForeignChild(t *testing.T) {
 		t.Error("deleting the layout left the policy it created")
 	}
 }
+
+// TestChildPathsAreIndexed: the children a grant created are in the ownership index with their absolute paths.
+func TestChildPathsAreIndexed(t *testing.T) {
+	g := newGrant()
+	g.Status.Path = "team/sys/policies/acl/grant_team_app"
+	g.Status.Namespace = "team"
+	g.Status.Children = []accessv1alpha1.AccessChild{
+		policyChild("", "grant_team_app"),
+		grantRoleChild("kubernetes", "grant_team_app_0"),
+	}
+	want := []string{"team/sys/policies/acl/grant_team_app", "team/sys/policies/acl/grant_team_app",
+		"team/auth/kubernetes/role/grant_team_app_0"}
+	if got := engine.PathIndexFunc(g); !slices.Equal(got, want) {
+		t.Fatalf("PathIndexFunc = %v, want %v", got, want)
+	}
+}

@@ -310,3 +310,65 @@ func TestSecretIDDelete(t *testing.T) {
 		t.Errorf("deleted role: err=%v writes=%v", err, noRole.writes)
 	}
 }
+
+// TestSecretIDWriteRetiresOldRoleFirst: when the role path changes, the secret IDs recorded under the old role are
+// destroyed there before a secret ID is generated under the new role, and a failed destroy generates nothing.
+func TestSecretIDWriteRetiresOldRoleFirst(t *testing.T) {
+	const oldRole = "auth/approle-old/role/demo"
+	ctx := context.Background()
+	newState := func() *authv1alpha1.AppRoleSecretID {
+		s := newSecretID()
+		s.Status.ID, s.Status.RolePath = secretIDAccessor, oldRole
+		s.Status.RetiredAccessors = []string{"older"}
+		return s
+	}
+	bao := func(destroyErr error) *credBao {
+		b := secretIDBao(t)
+		b.reads[oldRole] = map[string]any{authKeyBindSecretID: true}
+		newRole := b.write
+		b.write = func(path string, data map[string]any) (map[string]any, error) {
+			switch path {
+			case oldRole + "/secret-id-accessor/lookup":
+				if slices.Contains([]string{secretIDAccessor, "older", "delivered"}, data[secretIDAccessorKey].(string)) {
+					return credJSON(t, secretIDLookup), nil
+				}
+				return nil, &openbao.ResponseError{StatusCode: 404}
+			case oldRole + "/secret-id-accessor/destroy":
+				return nil, destroyErr
+			}
+			return newRole(path, data)
+		}
+		return b
+	}
+	adapter := AppRoleSecretIDAdapter{}
+
+	s := newState()
+	b := bao(nil)
+	desired, _ := adapter.Desired(ctx, delivered("delivered"), s)
+	if _, err := adapter.Write(ctx, b, s, desired, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := adapter.OutputsDelivered(ctx, b, s); err != nil {
+		t.Fatal(err)
+	}
+	destroys := b.wrote(oldRole + "/secret-id-accessor/destroy")
+	destroyed := make([]string, 0, len(destroys))
+	for _, d := range destroys {
+		destroyed = append(destroyed, d[secretIDAccessorKey].(string))
+	}
+	if want := []string{"older", secretIDAccessor, "delivered"}; !slices.Equal(destroyed, want) {
+		t.Errorf("destroyed under the old role %v, want %v", destroyed, want)
+	}
+	if s.Status.RolePath != secretIDRole || s.Status.ID != authLitNewAccessor || len(s.Status.RetiredAccessors) != 0 {
+		t.Errorf("status = %+v", s.Status)
+	}
+
+	s = newState()
+	b = bao(&openbao.ResponseError{StatusCode: 403})
+	if _, err := adapter.Write(ctx, b, s, desired, false); err == nil {
+		t.Error("a failed destroy under the old role must fail the write")
+	}
+	if len(b.wrote(secretIDRole+"/secret-id")) != 0 || s.Status.RolePath != oldRole || s.Status.ID != secretIDAccessor {
+		t.Errorf("generated a secret ID or changed the status before the old ones were destroyed: %+v", s.Status)
+	}
+}

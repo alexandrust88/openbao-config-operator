@@ -323,25 +323,22 @@ func TestAuthMountWrite(t *testing.T) {
 	}
 	wantEnable := map[string]any{
 		keyType: litUserpass, litDescription: "d", "local": false, "seal_wrap": false, "external_entropy_access": false,
-		"config": map[string]any{"plugin_version": litV100, keyForceNoCache: false}, "options": map[string]string{},
+		"config": map[string]any{
+			"plugin_version": litV100, keyForceNoCache: false, "default_lease_ttl": int64(3600), "max_lease_ttl": int64(7200),
+			keyListingVisibility: "unauth", "token_type": "batch", "audit_non_hmac_request_keys": []string{"b", "a"},
+			"audit_non_hmac_response_keys": []string{}, "passthrough_request_headers": []string{"X-A"},
+			"allowed_response_headers": []string{"X-B"},
+		},
+		"options": map[string]string{},
 	}
 	if !reflect.DeepEqual(c.writes[0].data, wantEnable) {
 		t.Errorf("enable = %v, want %v", c.writes[0].data, wantEnable)
 	}
-	tune := c.writes[1].data
-	wantLockout := map[string]any{
+	wantTune := map[string]any{"user_lockout_config": map[string]any{
 		"lockout_threshold": "5", "lockout_duration": "900", "lockout_counter_reset_duration": "600", "lockout_disable": false,
-	}
-	if !reflect.DeepEqual(tune["user_lockout_config"], wantLockout) {
-		t.Errorf("user_lockout_config = %v, want %v", tune["user_lockout_config"], wantLockout)
-	}
-	for _, key := range []string{keyType, litDescription, "plugin_version", keyForceNoCache, litUserLockoutDuration} {
-		if _, ok := tune[key]; ok {
-			t.Errorf("create tune must not contain %s", key)
-		}
-	}
-	if tune["token_type"] != "batch" || tune["default_lease_ttl"] != int64(3600) {
-		t.Errorf("tune = %v", tune)
+	}}
+	if !reflect.DeepEqual(c.writes[1].data, wantTune) {
+		t.Errorf("create tune = %v, want only user_lockout_config %v", c.writes[1].data, wantTune)
 	}
 
 	c = &recordingBao{}
@@ -440,14 +437,12 @@ func TestSecretsMountWriteCreate(t *testing.T) {
 	if _, err := a.Write(context.Background(), c, m, desired, true); err != nil {
 		t.Fatal(err)
 	}
-	if len(c.writes) != 2 || c.writes[0].path != "sys/mounts/pki" || c.writes[1].path != "sys/mounts/pki/tune" {
-		t.Fatalf("writes = %v", c.writes)
+	if len(c.writes) != 1 || c.writes[0].path != "sys/mounts/pki" {
+		t.Fatalf("writes = %v, want one enable carrying the config", c.writes)
 	}
-	if c.writes[1].data["max_lease_ttl"] != int64(315360000) || c.writes[1].data[keyListingVisibility] != "" {
-		t.Errorf("tune = %v", c.writes[1].data)
-	}
-	if !reflect.DeepEqual(c.writes[0].data["config"], map[string]any{keyForceNoCache: false}) {
-		t.Errorf("enable config = %v, want force_no_cache only", c.writes[0].data["config"])
+	config, _ := c.writes[0].data["config"].(map[string]any)
+	if config["max_lease_ttl"] != int64(315360000) || config[keyListingVisibility] != "" || config[keyForceNoCache] != false {
+		t.Errorf("enable config = %v", config)
 	}
 }
 

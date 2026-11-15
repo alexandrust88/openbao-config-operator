@@ -16,6 +16,8 @@ limitations under the License.
 
 package v1alpha1
 
+import "path"
+
 const (
 	// InUseFinalizer keeps an AccessLevel while an AccessGrant or AccessLayout cites it.
 	InUseFinalizer = "openbaoconfig.io/in-use"
@@ -78,4 +80,12 @@ type AccessChild struct {
 	// OpenBao API path of the object in its namespace. Example: sys/policies/acl/grant_apps_reader
 	// +required
 	Path string `json:"path"`
+}
+
+func childPaths(namespace string, children []AccessChild) []string {
+	paths := make([]string, 0, len(children))
+	for _, child := range children {
+		paths = append(paths, path.Join(namespace, child.Namespace, child.Path))
+	}
+	return paths
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/http"
 	"slices"
 	"strings"
 	"sync"
@@ -1115,6 +1116,37 @@ func TestReconcileUnsupported(t *testing.T) {
 	obj := h.get()
 	assertCondition(t, obj, commonv1alpha1.ConditionReady, metav1.ConditionFalse, commonv1alpha1.ReasonUnsupported)
 	assertCondition(t, obj, commonv1alpha1.ConditionSynced, metav1.ConditionFalse, commonv1alpha1.ReasonUnsupported)
+}
+
+// noRouteAdapter fails writes the way OpenBao answers a path whose mount, or whose namespace's mounts, do not
+// exist yet; status is the HTTP status it answers with.
+type noRouteAdapter struct {
+	testAdapter
+	status int
+}
+
+func (a noRouteAdapter) Write(context.Context, openbao.Client, *testResource, Payload, bool) (Payload, error) {
+	return nil, fmt.Errorf("write auth/up/role/x: %w", &openbao.ResponseError{StatusCode: a.status,
+		Errors: []string{`no handler for route "auth/up/role/x". route entry not found.`}})
+}
+
+func TestReconcileWriteNoRoute(t *testing.T) {
+	h := newHarness(t, noRouteAdapter{status: http.StatusNotFound}, newResource(testName))
+	res, err := h.reconcile()
+	if err != nil {
+		t.Fatalf("err = %v, want nil so the controller logs no error and does not back off", err)
+	}
+	if res.RequeueAfter <= 0 || res.RequeueAfter > minReferenceRetry*6/5 {
+		t.Fatalf("RequeueAfter = %v, want the first reference retry", res.RequeueAfter)
+	}
+	obj := h.get()
+	assertCondition(t, obj, commonv1alpha1.ConditionReady, metav1.ConditionFalse, commonv1alpha1.ReasonReferenceNotReady)
+	assertCondition(t, obj, commonv1alpha1.ConditionSynced, metav1.ConditionFalse, commonv1alpha1.ReasonReferenceNotReady)
+
+	h = newHarness(t, noRouteAdapter{status: http.StatusBadRequest}, newResource(testName))
+	if _, err := h.reconcile(); err == nil {
+		t.Fatal("a 400 must stay an error")
+	}
 }
 
 func TestUnsupportedIfMountMissing(t *testing.T) {

@@ -89,6 +89,10 @@ type KVSecretStatus struct {
 	// +listType=set
 	// +optional
 	ManagedKeys []string `json:"managedKeys,omitempty"`
+
+	// pathCreated is true when this resource created the KV secret rather than writing its keys to an existing one; only then does a destructive delete also remove the secret's version history.
+	// +optional
+	PathCreated bool `json:"pathCreated,omitempty"`
 }
 
 // +kubebuilder:object:root=true

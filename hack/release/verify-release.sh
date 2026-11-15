@@ -59,12 +59,16 @@ provenance_ref() {
     jq -rs '[.[].payload | @base64d | fromjson | .predicate.buildDefinition.externalParameters.workflow.ref] | unique | join(",")'
 }
 check test "$(provenance_ref)" = "refs/tags/$tag"
+index=$(crane manifest "$image@$image_digest")
+platforms=$(jq -r '.manifests[] | select(.platform.os != "unknown") | "\(.platform.os)/\(.platform.architecture) \(.digest)"' <<<"$index")
+# The platforms release.yml builds; a missing one would otherwise go unverified.
+for want in linux/amd64 linux/arm64; do
+  grep -q "^$want sha256:" <<<"$platforms" || { echo "image index $image@$image_digest has no $want image" >&2; exit 1; }
+done
 while read -r platform digest; do
-  [ -n "$digest" ] || continue
   echo "platform $platform"
   verify_subject "$image@$digest" spdxjson cyclonedx slsaprovenance1
-done < <(crane manifest "$image@$image_digest" |
-  jq -r '.manifests[]? | select(.platform.os != "unknown") | "\(.platform.os)/\(.platform.architecture) \(.digest)"')
+done <<<"$platforms"
 
 verify_subject "$chart@$chart_digest" spdxjson cyclonedx slsaprovenance1
 step "  legacy signature (sha256-<digest>.sig, Artifact Hub)"

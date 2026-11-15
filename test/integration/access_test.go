@@ -25,8 +25,10 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	accessv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/access/v1alpha1"
+	authv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1"
 	commonv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/common/v1alpha1"
 	"github.com/alexandrust88/openbao-config-operator/internal/controller/access"
+	"github.com/alexandrust88/openbao-config-operator/internal/controller/auth"
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 	"github.com/alexandrust88/openbao-config-operator/test/testenv"
@@ -69,6 +71,76 @@ func TestAccess(t *testing.T) {
 
 	t.Run("accessgrant", func(t *testing.T) { testAccessGrant(ctx, t, e, read) })
 	t.Run("accesslayout", func(t *testing.T) { testAccessLayout(ctx, t, e) })
+	t.Run("child ownership", func(t *testing.T) { testChildOwnership(ctx, t, e) })
+}
+
+// testChildOwnership: a grant never adopts a role that a standalone KubernetesAuthRole owns, and a newer standalone
+// role never adopts a role that a grant created.
+func testChildOwnership(ctx context.Context, t *testing.T, e env) {
+	const (
+		ownedName = "grant_default_itest-owned_0"
+		ownedRole = "auth/kubernetes/role/" + ownedName
+		grantRole = "auth/kubernetes/role/grant_default_itest-first_0"
+	)
+	standaloneRole := func(name, roleName string, policy commonv1alpha1.CreationPolicy) *authv1alpha1.KubernetesAuthRole {
+		return &authv1alpha1.KubernetesAuthRole{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Spec: authv1alpha1.KubernetesAuthRoleSpec{
+				ResourceSpec: commonv1alpha1.ResourceSpec{ConnectionRef: commonv1alpha1.ConnectionReference{Name: "dev"},
+					CreationPolicy: policy},
+				Name:                          roleName,
+				BoundServiceAccountNames:      []string{"other"},
+				BoundServiceAccountNamespaces: []string{"other"},
+				TokenFields:                   authv1alpha1.TokenFields{TokenPolicies: []string{"standalone"}},
+			},
+		}
+	}
+	accessGrant := func(name string, policy commonv1alpha1.CreationPolicy) *accessv1alpha1.AccessGrant {
+		return &accessv1alpha1.AccessGrant{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Spec: accessv1alpha1.AccessGrantSpec{
+				ResourceSpec: commonv1alpha1.ResourceSpec{ConnectionRef: commonv1alpha1.ConnectionReference{Name: "dev"},
+					CreationPolicy: policy},
+				MountPath: "kubernetes",
+				Subjects:  []accessv1alpha1.AccessSubject{{Name: "app", Namespace: "apps"}},
+				Rules: []accessv1alpha1.AccessRule{{
+					AccessPath: accessv1alpha1.AccessPath{Mount: "secret", Path: "apps/*"}, Level: "write",
+				}},
+			},
+		}
+	}
+	conflicted := func(obj engine.Object) func() error {
+		return func() error {
+			if err := e.k8s.Get(ctx, client.ObjectKeyFromObject(obj), obj); err != nil {
+				return err
+			}
+			synced := meta.FindStatusCondition(obj.GetResourceStatus().Conditions, commonv1alpha1.ConditionSynced)
+			if synced == nil || synced.Reason != commonv1alpha1.ReasonConflict {
+				return fmt.Errorf("synced = %+v, want reason Conflict", synced)
+			}
+			return nil
+		}
+	}
+
+	standalone := standaloneRole("itest-standalone", ownedName, "")
+	mustCreate(ctx, t, e.k8s, standalone)
+	waitFor(t, "standalone role ready", func() error { return expectReady(ctx, e.k8s, standalone) })
+	adopter := accessGrant("itest-owned", commonv1alpha1.CreationPolicyAdopt)
+	mustCreate(ctx, t, e.k8s, adopter)
+	waitFor(t, "adopting grant conflicts", conflicted(adopter))
+	stayFor(t, "standalone role kept", 3*driftInterval, func() error {
+		return expectRolePolicy(ctx, e.bao, ownedRole, "standalone")
+	})
+
+	first := accessGrant("itest-first", "")
+	mustCreate(ctx, t, e.k8s, first)
+	waitFor(t, "grant ready", func() error { return expectReady(ctx, e.k8s, first) })
+	takeover := standaloneRole("itest-takeover", "grant_default_itest-first_0", commonv1alpha1.CreationPolicyCreateOrAdopt)
+	mustCreate(ctx, t, e.k8s, takeover)
+	waitFor(t, "newer standalone role conflicts", conflicted(takeover))
+	stayFor(t, "grant role kept", 3*driftInterval, func() error {
+		return expectRolePolicy(ctx, e.bao, grantRole, "grant_default_itest-first")
+	})
 }
 
 func testAccessGrant(ctx context.Context, t *testing.T, e env, read *accessv1alpha1.AccessLevel) {
@@ -321,10 +393,11 @@ func setupAccess(ctx context.Context, t *testing.T) env {
 		t.Fatalf("openbao client: %v", err)
 	}
 
-	crds := make([]string, 0, 3)
+	crds := make([]string, 0, 4)
 	for _, plural := range []string{"accesslevels", "accessgrants", "accesslayouts"} {
 		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "access.openbaoconfig.io_"+plural+".yaml"))
 	}
+	crds = append(crds, filepath.Join(root, "config", "crd", "bases", "auth.openbaoconfig.io_kubernetesauthroles.yaml"))
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,
 		CRDInstallOptions:     envtest.CRDInstallOptions{Paths: crds, ErrorIfPathMissing: true},
@@ -340,7 +413,8 @@ func setupAccess(ctx context.Context, t *testing.T) env {
 	})
 
 	scheme := runtime.NewScheme()
-	for _, add := range []func(*runtime.Scheme) error{clientgoscheme.AddToScheme, accessv1alpha1.AddToScheme} {
+	for _, add := range []func(*runtime.Scheme) error{clientgoscheme.AddToScheme, accessv1alpha1.AddToScheme,
+		authv1alpha1.AddToScheme} {
 		if err := add(scheme); err != nil {
 			t.Fatal(err)
 		}
@@ -358,7 +432,7 @@ func setupAccess(ctx context.Context, t *testing.T) env {
 	conns := staticConnections{client: bao}
 	opts := itestEngineOptions()
 	for _, setup := range []func(ctrl.Manager, engine.Connections, engine.Options) error{
-		access.SetupAccessLevel, access.SetupAccessGrant, access.SetupAccessLayout,
+		access.SetupAccessLevel, access.SetupAccessGrant, access.SetupAccessLayout, auth.SetupKubernetesAuthRole,
 	} {
 		if err := setup(mgr, conns, opts); err != nil {
 			t.Fatal(err)

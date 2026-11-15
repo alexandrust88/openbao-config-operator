@@ -13,6 +13,7 @@ import (
 	accessv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/access/v1alpha1"
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
+	"github.com/alexandrust88/openbao-config-operator/internal/refs"
 )
 
 // +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accesslayouts,verbs=get;list;watch;update;patch
@@ -27,7 +28,7 @@ func SetupAccessLayout(mgr ctrl.Manager, conns engine.Connections, opts engine.O
 		mgr.GetScheme(),
 		mgr.GetEventRecorder("accesslayout-controller"),
 		conns,
-		AccessLayoutAdapter{},
+		AccessLayoutAdapter{Reader: mgr.GetClient()},
 		func() *accessv1alpha1.AccessLayout { return &accessv1alpha1.AccessLayout{} },
 		opts,
 	)
@@ -40,7 +41,10 @@ func SetupAccessLayout(mgr ctrl.Manager, conns engine.Connections, opts engine.O
 }
 
 // AccessLayoutAdapter maps an AccessLayout onto ACL policies and external groups with group aliases.
-type AccessLayoutAdapter struct{}
+type AccessLayoutAdapter struct {
+	// Reader finds the other resources that own a planned child; nil skips that check.
+	Reader refs.Reader
+}
 
 var (
 	_ engine.Adapter[*accessv1alpha1.AccessLayout]      = AccessLayoutAdapter{}
@@ -109,8 +113,8 @@ func (AccessLayoutAdapter) Fields() engine.FieldSpec { return engine.FieldSpec{}
 func (AccessLayoutAdapter) DriftTier() engine.Tier { return engine.TierAccessCritical }
 
 // Observe implements engine.Observer.
-func (AccessLayoutAdapter) Observe(ctx context.Context, c openbao.Client, l *accessv1alpha1.AccessLayout) (engine.Payload, bool, error) {
-	obs, err := observeLayout(ctx, c, l)
+func (a AccessLayoutAdapter) Observe(ctx context.Context, c openbao.Client, l *accessv1alpha1.AccessLayout) (engine.Payload, bool, error) {
+	obs, err := observeLayout(ctx, a.Reader, c, l)
 	if err != nil {
 		return nil, false, err
 	}
@@ -119,9 +123,9 @@ func (AccessLayoutAdapter) Observe(ctx context.Context, c openbao.Client, l *acc
 
 // Write implements engine.Writer. It resolves every auth accessor first, writes policies before groups
 // and groups before aliases, deletes the children the spec dropped, and records children as it goes.
-func (AccessLayoutAdapter) Write(ctx context.Context, c openbao.Client, l *accessv1alpha1.AccessLayout, desired engine.Payload,
+func (a AccessLayoutAdapter) Write(ctx context.Context, c openbao.Client, l *accessv1alpha1.AccessLayout, desired engine.Payload,
 	_ bool) (engine.Payload, error) {
-	obs, err := observeLayout(ctx, c, l)
+	obs, err := observeLayout(ctx, a.Reader, c, l)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +241,7 @@ type layoutObservation struct {
 	aliasIDs map[string]string
 }
 
-func observeLayout(ctx context.Context, c openbao.Client, l *accessv1alpha1.AccessLayout) (layoutObservation, error) {
+func observeLayout(ctx context.Context, reader refs.Reader, c openbao.Client, l *accessv1alpha1.AccessLayout) (layoutObservation, error) {
 	obs := layoutObservation{
 		payload:  engine.Payload{},
 		found:    len(l.Status.Children) > 0,
@@ -274,6 +278,9 @@ func observeLayout(ctx context.Context, c openbao.Client, l *accessv1alpha1.Acce
 			}
 		}
 		obs.payload[key] = view
+	}
+	if err := checkChildOwners(ctx, reader, c, l, planned); err != nil {
+		return obs, err
 	}
 	if err := checkChildren(l, l.Status.Children, existing); err != nil {
 		return obs, err

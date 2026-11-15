@@ -106,9 +106,12 @@ func (RandomSecretAdapter) Observe(ctx context.Context, c openbao.Client, s *sec
 // RefreshOutputs. The response carries a generated value only for Outputs.
 func (RandomSecretAdapter) Write(ctx context.Context, c openbao.Client, s *secretsv1alpha1.RandomSecret, _ engine.Payload,
 	_ bool) (engine.Payload, error) {
-	current, version, _, err := readKV(ctx, c, s.Spec.MountPath, s.Spec.Path, s.Spec.KVVersion)
+	current, version, found, err := readKV(ctx, c, s.Spec.MountPath, s.Spec.Path, s.Spec.KVVersion)
 	if err != nil {
 		return nil, err
+	}
+	if s.Status.Acquired == "" {
+		s.Status.PathCreated = !found && version == 0
 	}
 	_, ok := randomValue(current, s)
 	if ok && (s.Status.Acquired == "" || s.Spec.RefreshNonce == s.Status.RefreshNonce) {
@@ -173,13 +176,13 @@ func (RandomSecretAdapter) OutputSecretName(s *secretsv1alpha1.RandomSecret) str
 }
 
 // Delete implements engine.Deleter. It removes only the generated key and keeps the rest of the secret; when no other
-// key remains and the resource created the path and allows destructive deletes, it also deletes the history on KV
-// version 2.
+// key remains and the resource created the path itself (status.pathCreated) and allows destructive deletes, it also
+// deletes the history on KV version 2.
 func (RandomSecretAdapter) Delete(ctx context.Context, c openbao.Client, s *secretsv1alpha1.RandomSecret) error {
 	if err := kvRemoveKeys(ctx, c, s.Spec.MountPath, s.Spec.Path, s.Spec.KVVersion, []string{randomKey(s)}); err != nil {
 		return err
 	}
-	if !kvOwnsPath(s) {
+	if !kvOwnsPath(s) || !s.Status.PathCreated {
 		return nil
 	}
 	return kvPurge(ctx, c, s.Spec.MountPath, s.Spec.Path, s.Spec.KVVersion)

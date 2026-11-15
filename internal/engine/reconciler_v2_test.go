@@ -1070,6 +1070,39 @@ func TestConnectionIndexAndReadyPredicate(t *testing.T) {
 	}
 }
 
+// TestConnectionPredicatePassesReadyToReadyChanges: a connection that stays Ready but points somewhere else, has been
+// re-probed for a new spec, or is being deleted re-queues its resources.
+func TestConnectionPredicatePassesReadyToReadyChanges(t *testing.T) {
+	p := connectionReadyChanged()
+	ready := &corev1alpha1.OpenBaoConnection{}
+	ready.Generation = 1
+	ready.Status.ObservedGeneration = 1
+	meta.SetStatusCondition(&ready.Status.Conditions, metav1.Condition{
+		Type: commonv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Ready", ObservedGeneration: 1})
+	for name, edit := range map[string]func(*corev1alpha1.OpenBaoConnection){
+		"spec change": func(c *corev1alpha1.OpenBaoConnection) {
+			c.Spec.Namespace = "team-b"
+			c.Generation = 2
+		},
+		"new spec probed": func(c *corev1alpha1.OpenBaoConnection) { c.Status.ObservedGeneration = 2 },
+		"deletion":        func(c *corev1alpha1.OpenBaoConnection) { c.DeletionTimestamp = &metav1.Time{Time: time.Now()} },
+	} {
+		changed := ready.DeepCopy()
+		edit(changed)
+		if !p.Update(event.UpdateEvent{ObjectOld: ready, ObjectNew: changed}) {
+			t.Errorf("%s filtered", name)
+		}
+	}
+	if !p.Delete(event.DeleteEvent{Object: ready}) {
+		t.Error("delete filtered")
+	}
+	probed := ready.DeepCopy()
+	probed.Status.LastProbeTime = &metav1.Time{Time: time.Now()}
+	if p.Update(event.UpdateEvent{ObjectOld: ready, ObjectNew: probed}) {
+		t.Error("a probe that changed nothing passed")
+	}
+}
+
 type v2MissingPluginWriter struct{ testAdapter }
 
 func (v2MissingPluginWriter) Write(context.Context, openbao.Client, *testResource, Payload, bool) (Payload, error) {

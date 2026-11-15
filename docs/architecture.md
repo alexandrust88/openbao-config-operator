@@ -345,13 +345,17 @@ In order ([ADR 0012](adr/0012-ownership-path-index-and-marker.md)):
 
 An existing object that passes neither check: `Create` reports `Conflict`; `Adopt` and
 `CreateOrAdopt` take it over. After status loss, kinds without a marker need a one-time `Adopt`.
+The children that `AccessGrant` and `AccessLayout` created are in the path index too, and a planned child that
+another resource owns is never written, whatever the `creationPolicy`: before acquisition the resource reports
+`Conflict`, afterwards a reconcile error that keeps its own claim.
 
 Before a create the engine records the path and server in the status (a claim) and the path index
 shows it to every other resource; within the operator, creates of one path on one server run one at
 a time and read the object again first, so of two `Create` resources only the first creates it and
 the second gets `Conflict`. When that second read finds the object, the claims are read again from
 the API server rather than the cache, so a `CreateOrAdopt` resource never adopts what an older
-resource has just created. That live read lists the resource's own kind and only the other kinds
+resource has just created; an object found on the first read is checked the same way before a resource that does
+not hold it yet adopts it. That live read lists the resource's own kind and only the other kinds
 whose cached path index shows a claim, page by page, and only in the watched namespaces
 (`--watch-namespaces`), so a create costs one paginated LIST per watched namespace, not one per kind. A create that wrote nothing leaves no claim unless the object exists
 afterwards, so a failed create never lets the resource take over an object somebody else creates

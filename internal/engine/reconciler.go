@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -437,14 +438,16 @@ func (r *Reconciler[T]) locate(ctx, opCtx context.Context, p *pass[T]) (ctrl.Res
 // when allowed, writes the difference and records the result.
 func (r *Reconciler[T]) converge(ctx, opCtx context.Context, p *pass[T], observed Payload, found bool) (ctrl.Result, error) {
 	obj := p.obj
-	if !found && !r.sharedPath() && !r.idInPath(obj) {
-		unlock, err := r.shared.creates.lock(opCtx, p.serverID+"\x00"+p.absPath)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		defer unlock()
-		if observed, found, err = r.observe(opCtx, p.bao, obj, p.path); err != nil {
-			return r.fail(ctx, obj, p.before, commonv1alpha1.ReasonReconcileError, err)
+	if r.recheckOwner(obj, p.absPath, found) {
+		if !found {
+			unlock, err := r.shared.creates.lock(opCtx, p.serverID+"\x00"+p.absPath)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			defer unlock()
+			if observed, found, err = r.observe(opCtx, p.bao, obj, p.path); err != nil {
+				return r.fail(ctx, obj, p.before, commonv1alpha1.ReasonReconcileError, err)
+			}
 		}
 		if res, done, err := r.checkLiveOwner(ctx, p, found); done {
 			return res, err
@@ -643,8 +646,17 @@ func (r *Reconciler[T]) claim(ctx context.Context, p *pass[T]) error {
 	return nil
 }
 
-// checkLiveOwner stops with Conflict when an object read as absent was created meanwhile and an older resource
-// claims its path. The claims are read from the API server, since the cache may not show that claim yet.
+// recheckOwner reports that the claims on absPath must be read live before acquire: before a create, and before
+// obj adopts an existing object it has not acquired.
+func (r *Reconciler[T]) recheckOwner(obj T, absPath string, found bool) bool {
+	status := obj.GetResourceStatus()
+	acquired := status.Acquired != "" && openbao.CanonicalPath(status.Path) == absPath
+	return !r.sharedPath() && !r.idInPath(obj) && (!found || !acquired)
+}
+
+// checkLiveOwner stops with Conflict when an existing object, or one read as absent and created meanwhile, has its
+// path claimed by an older resource. The claims are read from the API server, since the cache may not show that
+// claim yet.
 func (r *Reconciler[T]) checkLiveOwner(ctx context.Context, p *pass[T], found bool) (ctrl.Result, bool, error) {
 	if !found {
 		return ctrl.Result{}, false, nil
@@ -1244,10 +1256,25 @@ func (r *Reconciler[T]) observe(ctx context.Context, bao openbao.Client, obj T, 
 
 func (r *Reconciler[T]) write(ctx context.Context, bao openbao.Client, obj T, path string, payload Payload,
 	create bool) (Payload, error) {
+	var response Payload
+	var err error
 	if writer, ok := any(r.adapter).(Writer[T]); ok {
-		return writer.Write(ctx, bao, obj, payload, create)
+		response, err = writer.Write(ctx, bao, obj, payload, create)
+	} else {
+		response, err = bao.Write(ctx, path, payload)
 	}
-	return bao.Write(ctx, path, payload)
+	if noRoute(err) {
+		return nil, fmt.Errorf("%w: %w", ErrReferenceNotReady, err)
+	}
+	return response, err
+}
+
+// noRoute reports a 404 "no handler for route" on a write: the mount the path is under, or the mounts of a new
+// namespace, do not exist yet.
+func noRoute(err error) bool {
+	re, ok := errors.AsType[*openbao.ResponseError](err)
+	return ok && re.StatusCode == http.StatusNotFound &&
+		slices.ContainsFunc(re.Errors, func(e string) bool { return strings.Contains(e, "no handler for route") })
 }
 
 // checkOutputSecret refuses, before anything is written to OpenBao, an output Secret this resource does not control.
@@ -1377,7 +1404,9 @@ func (r *Reconciler[T]) fail(ctx context.Context, obj T, before client.Object, r
 			backoff(obj, commonv1alpha1.ReasonOutputNotDelivered, retryInterval))
 	}
 	if errors.Is(cause, ErrReferenceNotReady) || errors.Is(cause, openbao.ErrNamespaceNotFound) {
-		return r.stall(ctx, obj, before, commonv1alpha1.ReasonReferenceNotReady, cause, referenceRetry(obj))
+		after := referenceRetry(obj)
+		log.FromContext(ctx).Info("Requeued until a dependency is ready", "after", after, "message", cause.Error())
+		return r.stall(ctx, obj, before, commonv1alpha1.ReasonReferenceNotReady, cause, after)
 	}
 	if permissionDenied(cause) {
 		reason = commonv1alpha1.ReasonPermissionDenied

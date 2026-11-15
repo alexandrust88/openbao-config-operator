@@ -57,8 +57,10 @@ func TestIntegrationSecrets(t *testing.T) {
 	t.Run("kvsecret", func(t *testing.T) { testKVSecret(ctx, t, e) })
 	t.Run("kvsecret-v1", func(t *testing.T) { testKVSecretV1(ctx, t, e) })
 	t.Run("kvsecret-soft-deleted", func(t *testing.T) { testKVSecretSoftDeleted(ctx, t, e) })
+	t.Run("kvsecret-path-history", func(t *testing.T) { testKVSecretPathHistory(ctx, t, e) })
 	t.Run("randomsecret", func(t *testing.T) { testRandomSecret(ctx, t, e) })
 	t.Run("randomsecret-policy-and-adoption", func(t *testing.T) { testRandomSecretPolicyAndAdoption(ctx, t, e) })
+	t.Run("randomsecret-path-history", func(t *testing.T) { testRandomSecretPathHistory(ctx, t, e) })
 }
 
 // testKVConfig also turns on cas_required for the later subtests, which proves the check-and-set writes.
@@ -221,6 +223,44 @@ func testKVSecretSoftDeleted(ctx context.Context, t *testing.T, e env) {
 	})
 }
 
+// testKVSecretPathHistory: a destructive delete removes the history only of a KV path the KVSecret created; on a
+// path whose earlier versions predate it (latest version soft-deleted) it removes only its keys.
+func testKVSecretPathHistory(ctx context.Context, t *testing.T, e env) {
+	mustCreate(ctx, t, e.k8s, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "kv-path-history", Namespace: namespace},
+		Data:       map[string][]byte{"username": []byte("app")},
+	})
+	secretsPut(ctx, t, e.bao, "team/kv-history", map[string]any{"old": "o"})
+	if err := e.bao.Delete(ctx, secretsKV2+"/data/team/kv-history"); err != nil {
+		t.Fatal(err)
+	}
+	for path, purged := range map[string]bool{"team/kv-history": false, "team/kv-new": true} {
+		kv := &secretsv1alpha1.KVSecret{
+			ObjectMeta: metav1.ObjectMeta{Name: "itest-" + strings.ReplaceAll(path, "/", "-"), Namespace: namespace,
+				Annotations: secretsAllowDestructiveDelete},
+			Spec: secretsv1alpha1.KVSecretSpec{
+				ResourceSpec: secretsResourceSpec(commonv1alpha1.DeletionPolicyDelete),
+				MountPath:    secretsKV2,
+				Path:         path,
+				DataFrom:     []secretsv1alpha1.KVSecretDataFrom{{SecretRef: commonv1alpha1.LocalObjectReference{Name: "kv-path-history"}}},
+			},
+		}
+		mustCreate(ctx, t, e.k8s, kv)
+		waitFor(t, path+" kv secret ready", func() error { return expectReady(ctx, e.k8s, kv) })
+		if kv.Status.PathCreated != purged {
+			t.Errorf("%s: pathCreated = %v, want %v", path, kv.Status.PathCreated, purged)
+		}
+		if err := e.k8s.Delete(ctx, kv); err != nil {
+			t.Fatal(err)
+		}
+		waitFor(t, path+" kv secret resource gone", func() error { return expectGone(ctx, e.k8s, kv) })
+		err := expectAbsent(ctx, e.bao, secretsKV2+"/metadata/"+path)
+		if purged && err != nil || !purged && err == nil {
+			t.Errorf("%s: metadata absent = %v, want %v", path, err == nil, purged)
+		}
+	}
+}
+
 func testKVSecretV1(ctx context.Context, t *testing.T, e env) {
 	const path = "team/legacy"
 	mustCreate(ctx, t, e.k8s, &corev1.Secret{
@@ -371,6 +411,39 @@ func testRandomSecretPolicyAndAdoption(ctx context.Context, t *testing.T, e env)
 		return err
 	})
 	waitFor(t, "adopted random secret ready", func() error { return expectReady(ctx, e.k8s, adopt) })
+}
+
+// testRandomSecretPathHistory: a destructive delete removes the history only of a KV path the RandomSecret created;
+// on a path whose earlier versions predate it (latest version soft-deleted) it removes only its key.
+func testRandomSecretPathHistory(ctx context.Context, t *testing.T, e env) {
+	secretsPut(ctx, t, e.bao, "team/random-history", map[string]any{"old": "o"})
+	if err := e.bao.Delete(ctx, secretsKV2+"/data/team/random-history"); err != nil {
+		t.Fatal(err)
+	}
+	for path, purged := range map[string]bool{"team/random-history": false, "team/random-new": true} {
+		rs := &secretsv1alpha1.RandomSecret{
+			ObjectMeta: metav1.ObjectMeta{Name: "itest-" + strings.ReplaceAll(path, "/", "-"), Namespace: namespace,
+				Annotations: secretsAllowDestructiveDelete},
+			Spec: secretsv1alpha1.RandomSecretSpec{
+				ResourceSpec: secretsResourceSpec(commonv1alpha1.DeletionPolicyDelete),
+				MountPath:    secretsKV2,
+				Path:         path,
+			},
+		}
+		mustCreate(ctx, t, e.k8s, rs)
+		waitFor(t, path+" random secret ready", func() error { return expectReady(ctx, e.k8s, rs) })
+		if rs.Status.PathCreated != purged {
+			t.Errorf("%s: pathCreated = %v, want %v", path, rs.Status.PathCreated, purged)
+		}
+		if err := e.k8s.Delete(ctx, rs); err != nil {
+			t.Fatal(err)
+		}
+		waitFor(t, path+" random secret resource gone", func() error { return expectGone(ctx, e.k8s, rs) })
+		err := expectAbsent(ctx, e.bao, secretsKV2+"/metadata/"+path)
+		if purged && err != nil || !purged && err == nil {
+			t.Errorf("%s: metadata absent = %v, want %v", path, err == nil, purged)
+		}
+	}
 }
 
 // secretsRandomValue returns the password stored in OpenBao after checking the output Secret holds the same.

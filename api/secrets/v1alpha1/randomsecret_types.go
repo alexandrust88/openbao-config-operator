@@ -106,6 +106,10 @@ type RandomSecretStatus struct {
 	// refreshNonce is the spec.refreshNonce the current value was generated or adopted with.
 	// +optional
 	RefreshNonce string `json:"refreshNonce,omitempty"`
+
+	// pathCreated is true when this resource created the KV secret rather than adding its key to an existing one; only then does a destructive delete also remove the secret's version history.
+	// +optional
+	PathCreated bool `json:"pathCreated,omitempty"`
 }
 
 // +kubebuilder:object:root=true

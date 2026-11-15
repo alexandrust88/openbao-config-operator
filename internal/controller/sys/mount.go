@@ -45,8 +45,12 @@ var mountFieldSpec = engine.FieldSpec{
 // enableKeys are sent when the mount is enabled; every other key is set through tune.
 var enableKeys = []string{keyType, "description", "local", "seal_wrap", "external_entropy_access", "options"}
 
-// enableConfigKeys are sent in the config block when the mount is enabled.
-var enableConfigKeys = []string{"plugin_version", keyForceNoCache}
+// enableConfigKeys are sent in the config block when the mount is enabled, so a create needs no tune: enable and
+// tune each take the server-wide mount table lock. Enable ignores user_lockout_config, which stays on tune.
+var enableConfigKeys = []string{
+	"plugin_version", keyForceNoCache, "default_lease_ttl", "max_lease_ttl", keyListingVisibility, "token_type",
+	"audit_non_hmac_request_keys", "audit_non_hmac_response_keys", "passthrough_request_headers", "allowed_response_headers",
+}
 
 // lockoutKeys maps the flat read names of user_lockout_config to the names tune accepts.
 var lockoutKeys = map[string]string{
@@ -134,7 +138,7 @@ func observeMount(ctx context.Context, c openbao.Client, table, path string) (en
 	return observed, true, nil
 }
 
-// writeMount enables the mount on create and tunes the remaining keys; an update only tunes.
+// writeMount enables the mount with its config on create and tunes what enable cannot set; an update only tunes.
 func writeMount(ctx context.Context, c openbao.Client, table, path string, desired engine.Payload, create bool) error {
 	base := "sys/" + table + "/" + path
 	tune := engine.Payload{}

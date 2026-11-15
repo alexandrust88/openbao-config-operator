@@ -175,6 +175,11 @@ func (g *AccessGrant) GetResourceStatus() *commonv1alpha1.ResourceStatus {
 	return &g.Status.ResourceStatus
 }
 
+// OwnedChildPaths returns the absolute OpenBao paths of the children the grant created.
+func (g *AccessGrant) OwnedChildPaths() []string {
+	return childPaths(g.Status.Namespace, g.Status.Children)
+}
+
 // +kubebuilder:object:root=true
 
 // AccessGrantList contains a list of AccessGrant.

@@ -3,6 +3,7 @@ package importer
 import (
 	"net/url"
 	"reflect"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,7 +22,13 @@ const (
 var (
 	credentialParams   = []string{"auth", "key", "pwd", "sig", "accesstoken", "authtoken", "clientsecret"}
 	credentialSuffixes = []string{"token", keyPassword, "passwd", "secret", "signature", "apikey"}
+
+	dsnKey     = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+	pairKey    = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9 _.:-]*$`)
+	assignment = regexp.MustCompile(`([A-Za-z0-9_]+)\s*=\s*`)
 )
+
+const spaces = " \t\r\n"
 
 // redactURL returns value with the credentials of a URL replaced by REDACTED: a userinfo password, a userinfo that
 // is only a user name (a token), and the values of credential query parameters. OpenBao templates such as
@@ -97,6 +104,194 @@ func redactQuery(tail string) (string, bool) {
 	return tail, changed
 }
 
+// redactConnectionString is redactURL for a field that holds a database connection string, which may also be a
+// PostgreSQL keyword/value string or a semicolon-separated (ADO.NET, ODBC) one. A value that still assigns a literal
+// credential after parsing, or whose user info cannot be delimited, is replaced whole.
+func redactConnectionString(value string) (string, bool) {
+	out, parsed := "", false
+	if strings.Contains(value, ";") {
+		out, parsed = redactPairs(value)
+	}
+	if !parsed {
+		out, parsed = redactKeywordDSN(value)
+	}
+	if !parsed {
+		if ambiguousUserinfo(value) {
+			return redacted, true
+		}
+		out, _ = redactURL(value)
+	}
+	if literalCredential(out) {
+		return redacted, true
+	}
+	return out, out != value
+}
+
+// connectionStringField reports whether path names a field that holds a connection string: connectionURL,
+// connectionURI, or connection_url and url in pluginConfig.
+func connectionStringField(path string) bool {
+	name := norm(path[strings.LastIndex(path, ".")+1:])
+	return strings.HasPrefix(name, "connection") || name == "url"
+}
+
+// ambiguousUserinfo reports a connection string whose user info redactURL cannot delimit: MySQL DSNs leave @, /, ?
+// and # unescaped in a password, and redactURL skips a value with whitespace.
+func ambiguousUserinfo(value string) bool {
+	_, rest, ok := strings.Cut(value, "://")
+	if !ok {
+		rest = value
+	}
+	at := strings.LastIndex(rest, "@")
+	if at < 0 {
+		return false
+	}
+	if strings.ContainsAny(value, spaces) {
+		return true
+	}
+	end := strings.IndexAny(rest, "/?#")
+	return end >= 0 && end < at && strings.Contains(rest[:at], ":")
+}
+
+// redactKeywordDSN redacts a PostgreSQL keyword/value connection string such as host=db password='a b': key = value
+// pairs separated by whitespace, each value single-quoted or not, with backslash escapes. ok is false when value is
+// not one.
+func redactKeywordDSN(value string) (string, bool) {
+	var b strings.Builder
+	rest := strings.TrimLeft(value, spaces)
+	b.WriteString(value[:len(value)-len(rest)])
+	for rest != "" {
+		eq := strings.IndexByte(rest, '=')
+		if eq < 0 || !dsnKey.MatchString(strings.TrimRight(rest[:eq], spaces)) {
+			return "", false
+		}
+		v := strings.TrimLeft(rest[eq+1:], spaces)
+		n := keywordValueLen(v)
+		if n < 0 {
+			return "", false
+		}
+		b.WriteString(rest[:len(rest)-len(v)])
+		writeValue(&b, rest[:eq], v[:n])
+		next := strings.TrimLeft(v[n:], spaces)
+		b.WriteString(v[n : len(v)-len(next)])
+		rest = next
+	}
+	return b.String(), true
+}
+
+func keywordValueLen(v string) int {
+	quoted := strings.HasPrefix(v, "'")
+	i := 0
+	if quoted {
+		i = 1
+	}
+	for ; i < len(v); i++ {
+		switch c := v[i]; {
+		case c == '\\':
+			i++
+		case quoted && c == '\'':
+			return i + 1
+		case !quoted && strings.IndexByte(spaces, c) >= 0:
+			return i
+		}
+	}
+	if quoted {
+		return -1
+	}
+	return len(v)
+}
+
+// redactPairs redacts a semicolon-separated connection string such as server=db;Password="a;b", as mssql accepts in
+// ADO.NET and ODBC form: a value may be quoted with ' or " (doubled to escape) or with {} (}} to escape). ok is false
+// when value is not one.
+func redactPairs(value string) (string, bool) {
+	var b strings.Builder
+	rest := value
+	for {
+		next := strings.TrimLeft(rest, spaces+";")
+		b.WriteString(rest[:len(rest)-len(next)])
+		if rest = next; rest == "" {
+			return b.String(), true
+		}
+		eq := strings.IndexByte(rest, '=')
+		if eq < 0 || !pairKey.MatchString(strings.TrimSpace(rest[:eq])) {
+			return "", false
+		}
+		v := rest[eq+1:]
+		n := pairValueLen(v)
+		if n < 0 {
+			return "", false
+		}
+		b.WriteString(rest[:eq+1])
+		writeValue(&b, rest[:eq], v[:n])
+		rest = v[n:]
+	}
+}
+
+func pairValueLen(v string) int {
+	i := len(v) - len(strings.TrimLeft(v, spaces))
+	if i == len(v) {
+		return i
+	}
+	var closing byte
+	switch v[i] {
+	case '\'', '"':
+		closing = v[i]
+	case '{':
+		closing = '}'
+	default:
+		if end := strings.IndexByte(v, ';'); end >= 0 {
+			return end
+		}
+		return len(v)
+	}
+	for j := i + 1; j < len(v); j++ {
+		if v[j] != closing {
+			continue
+		}
+		if j+1 < len(v) && v[j+1] == closing {
+			j++
+			continue
+		}
+		after := strings.TrimLeft(v[j+1:], spaces)
+		if after != "" && after[0] != ';' {
+			return -1
+		}
+		return len(v) - len(after)
+	}
+	return -1
+}
+
+func writeValue(b *strings.Builder, key, value string) {
+	if credentialParam(strings.TrimSpace(key)) && !kept(strings.Trim(value, spaces+`'"`)) {
+		b.WriteString(redacted)
+		return
+	}
+	b.WriteString(value)
+}
+
+// literalCredential reports a credential assignment left in s whose value is not kept.
+func literalCredential(s string) bool {
+	for _, m := range assignment.FindAllStringSubmatchIndex(s, -1) {
+		if !credentialParam(s[m[2]:m[3]]) {
+			continue
+		}
+		value := s[m[1]:]
+		if end := strings.IndexAny(value, spaces+";&#"); end >= 0 {
+			value = value[:end]
+		}
+		if !kept(strings.Trim(value, `'"`)) {
+			return true
+		}
+	}
+	return false
+}
+
+// kept reports a credential value the import may emit: empty, already redacted, the xxxxx OpenBao returns in place
+// of a password, or a template.
+func kept(value string) bool {
+	return value == "" || value == redacted || value == "xxxxx" || template(value)
+}
+
 func credentialParam(name string) bool {
 	folded := norm(name)
 	return slices.Contains(credentialParams, folded) ||
@@ -111,7 +306,11 @@ func template(s string) bool {
 // and notes each field, so the emitted YAML never holds them.
 func (s *scope) redactURLs(obj engine.Object) {
 	walkStrings(specValue(obj), "spec", func(path, value string) (string, bool) {
-		out, ok := redactURL(value)
+		redact := redactURL
+		if connectionStringField(path) {
+			redact = redactConnectionString
+		}
+		out, ok := redact(value)
 		if ok {
 			s.note("%s: %s held credentials in a URL, emitted as %s: set the real value before managementPolicy Manage",
 				s.label(obj), path, redacted)

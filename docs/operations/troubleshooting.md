@@ -126,7 +126,8 @@ Then look for `Updated` events on that kind; each one names the keys that differ
 | `role "<role>" could not be found` (status 400) | connection `AuthenticationFailed` | the same for a JWT auth role |
 | `service account name not authorized`, `namespace not authorized` | connection `AuthenticationFailed` | the role's `bound_service_account_names` or `bound_service_account_namespaces` do not include the connection's ServiceAccount |
 | an audience error | connection `AuthenticationFailed` | the connection's `audiences` (or the projected token's audience) do not match the role's `audience` or `bound_audiences` |
-| `namespace not found` (status 404) | connection `InvalidSpec`; resource `ReferenceNotReady` | the OpenBao namespace does not exist yet; create it, or wait for its `OpenBaoNamespace` to be `Ready` |
+| `namespace not found` (status 404) | connection and resource `ReferenceNotReady` | the OpenBao namespace does not exist yet; create it, or wait for its `OpenBaoNamespace` to be `Ready` |
+| `no handler for route` (status 404) on a write | resource `ReferenceNotReady` | the mount the path is under does not exist yet, or a new namespace's mounts are still being created; create the mount, or wait for its `AuthMount` or `SecretsMount` to be `Ready` |
 | `x509: certificate signed by unknown authority` | server `Unreachable` | set the server's `caBundle` to the CA that signed the OpenBao listener certificate |
 | `ca bundle contains no valid PEM certificate` | server `Unreachable` | the referenced key does not hold PEM certificates |
 | `OpenBao answered with a redirect, which the operator never follows` | resource `ReconcileError`; connection `AuthenticationFailed` | a proxy or a standby node without request forwarding answered with 3xx; point the server's `address` at the active node or a service that forwards |

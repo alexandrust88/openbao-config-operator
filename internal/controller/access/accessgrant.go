@@ -48,7 +48,8 @@ func SetupAccessGrant(mgr ctrl.Manager, conns engine.Connections, opts engine.Op
 
 // AccessGrantAdapter maps an AccessGrant onto one ACL policy and one Kubernetes auth role per subject.
 type AccessGrantAdapter struct {
-	// Reader reads the AuthMount named by spec.authMountRef.
+	// Reader reads the AuthMount named by spec.authMountRef and finds the other resources that own a planned child; nil
+	// skips that check.
 	Reader refs.Reader
 }
 
@@ -124,6 +125,9 @@ func (a AccessGrantAdapter) Observe(ctx context.Context, c openbao.Client, g *ac
 			continue
 		}
 		observed[childKey(child)] = data
+	}
+	if err := checkChildOwners(ctx, a.Reader, c, g, planned); err != nil {
+		return nil, false, err
 	}
 	if err := checkChildren(g, g.Status.Children, existing); err != nil {
 		return nil, false, err

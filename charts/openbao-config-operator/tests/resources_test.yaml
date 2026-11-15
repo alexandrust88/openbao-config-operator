@@ -172,6 +172,23 @@ tests:
           path: spec.ingress[0].fromEndpoints[1].matchLabels
           value: {"k8s:io.kubernetes.pod.namespace": monitoring}
 
+  - it: lets the Cilium DNS proxy see NodeLocal DNSCache answers for the OpenBao host names
+    template: templates/ciliumnetworkpolicy.yaml
+    set:
+      networkPolicy.flavor: cilium
+      networkPolicy.openbao.fqdns: [bao.example.com]
+      networkPolicy.dns.nodeLocalDNS.enabled: true
+    asserts:
+      - equal:
+          path: spec.egress[1].toCIDR
+          value: [169.254.20.10/32]
+      - equal:
+          path: spec.egress[1].toPorts[0]
+          value:
+            ports: [{port: "53", protocol: ANY}]
+            rules:
+              dns: [{matchPattern: "*"}]
+
   - it: renders no NetworkPolicy with the cilium flavor
     template: templates/networkpolicy.yaml
     set:

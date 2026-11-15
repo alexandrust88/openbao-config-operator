@@ -26,6 +26,9 @@ const revokeTimeout = 5 * time.Second
 // one cancelled reconcile does not fail the others.
 const sharedLoginTimeout = time.Minute
 
+// errLoginInvalidated is returned to the callers of a login that Invalidate overtook.
+var errLoginInvalidated = errors.New("connection invalidated during login, retry")
+
 // Pool caches one authenticated client per connection. Tokens are refreshed lazily on the request path, so apart
 // from a login in flight the pool runs no goroutines, and it needs no shutdown.
 type Pool struct {
@@ -35,6 +38,13 @@ type Pool struct {
 	limiters limiters
 	// logins lets concurrent cache misses of one connection and fingerprint share a single login.
 	logins singleflight.Group
+	// inflight tracks the running logins per key, so one that Invalidate overtook is retired instead of cached.
+	inflight map[string]*inflightLogins
+}
+
+type inflightLogins struct {
+	count         int
+	invalidations uint64
 }
 
 type poolEntry struct {
@@ -44,7 +54,7 @@ type poolEntry struct {
 
 // NewPool returns an empty Pool.
 func NewPool() *Pool {
-	return &Pool{entries: map[string]*poolEntry{}, now: time.Now}
+	return &Pool{entries: map[string]*poolEntry{}, inflight: map[string]*inflightLogins{}, now: time.Now}
 }
 
 // Client returns the cached client for key, or builds one and logs in. key identifies the connection, for
@@ -64,18 +74,18 @@ func (p *Pool) Client(ctx context.Context, key string, cfg Config) (Client, erro
 		if s := p.cached(key, fp); s != nil {
 			return s, nil
 		}
-		s, err := newSession(cfg, key, p.now, limit)
+		since := p.beginLogin(key)
+		s, err := loggedInSession(ctx, cfg, key, p.now, limit)
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		invalidated := p.endLoginLocked(key, since)
 		if err != nil {
 			return nil, err
 		}
-		loginCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), sharedLoginTimeout)
-		defer cancel()
-		if _, err := s.token(loginCtx); err != nil {
-			s.close()
-			return nil, err
+		if invalidated {
+			s.retire()
+			return nil, errLoginInvalidated
 		}
-		p.mu.Lock()
-		defer p.mu.Unlock()
 		if cur, ok := p.entries[key]; ok {
 			cur.s.retire()
 		}
@@ -93,6 +103,45 @@ func (p *Pool) Client(ctx context.Context, key string, cfg Config) (Client, erro
 	}
 }
 
+// loggedInSession builds a session and logs it in, detached from the caller's cancellation.
+func loggedInSession(ctx context.Context, cfg Config, key string, now func() time.Time, limit *serverLimiter) (*session, error) {
+	s, err := newSession(cfg, key, now, limit)
+	if err != nil {
+		return nil, err
+	}
+	loginCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), sharedLoginTimeout)
+	defer cancel()
+	if _, err := s.token(loginCtx); err != nil {
+		s.close()
+		return nil, err
+	}
+	return s, nil
+}
+
+// beginLogin records a login of key and returns the invalidation count it started at.
+func (p *Pool) beginLogin(key string) uint64 {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	in := p.inflight[key]
+	if in == nil {
+		in = &inflightLogins{}
+		p.inflight[key] = in
+	}
+	in.count++
+	return in.invalidations
+}
+
+// endLoginLocked records the end of a login of key begun at invalidation count since and reports whether key was
+// invalidated meanwhile. p.mu must be held.
+func (p *Pool) endLoginLocked(key string, since uint64) bool {
+	in := p.inflight[key]
+	in.count--
+	if in.count == 0 {
+		delete(p.inflight, key)
+	}
+	return in.invalidations != since
+}
+
 func (p *Pool) cached(key, fp string) *session {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -108,6 +157,9 @@ func (p *Pool) Invalidate(key string) {
 	p.mu.Lock()
 	e, ok := p.entries[key]
 	delete(p.entries, key)
+	if in := p.inflight[key]; in != nil {
+		in.invalidations++
+	}
 	p.mu.Unlock()
 	if ok {
 		e.s.retire()
@@ -205,7 +257,7 @@ func (s *session) retire() {
 		defer s.close()
 		ctx, cancel := context.WithTimeout(context.Background(), revokeTimeout)
 		defer cancel()
-		_ = s.derive(s.authNS, token).Auth().Token().RevokeSelfWithContext(WithPriority(ctx), "")
+		_ = s.derive(s.authNS, token).Auth().Token().RevokeSelfWithContext(WithPriority(withoutMetrics(ctx)), "")
 	}()
 }
 

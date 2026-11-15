@@ -16,6 +16,7 @@ import (
 	commonv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/common/v1alpha1"
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
+	"github.com/alexandrust88/openbao-config-operator/internal/refs"
 )
 
 // staleKey holds the owned objects that the spec no longer plans; desired is always empty.
@@ -88,6 +89,36 @@ func checkChildren(m commonv1alpha1.Managed, recorded, existing []accessv1alpha1
 		return nil
 	}
 	return fmt.Errorf("%s %w", strings.Join(foreign, ", "), errChildNotOwned)
+}
+
+// checkChildOwners refuses a planned child that another resource owns, whatever the creationPolicy.
+func checkChildOwners(ctx context.Context, reader refs.Reader, c openbao.Client, m engine.Object,
+	planned []accessv1alpha1.AccessChild) error {
+	if reader == nil || observing(m) {
+		return nil
+	}
+	serverID, _, err := engine.ClusterIDOf(ctx, c)
+	if err != nil {
+		return err
+	}
+	base := strings.Trim(c.Namespace(), "/")
+	for _, child := range planned {
+		absPath := openbao.CanonicalPath(path.Join(base, child.Namespace, child.Path))
+		other, owned, err := engine.OtherChildOwner(ctx, reader, reader.Scheme(), m, absPath, serverID)
+		if err != nil {
+			return err
+		}
+		if !owned {
+			continue
+		}
+		err = fmt.Errorf("%s is managed by %s", absPath, other)
+		// ErrConflict drops the resource's claim, which would lock a Create resource out of the children it created.
+		if m.GetResourceStatus().Acquired != "" {
+			return err
+		}
+		return fmt.Errorf("%w: %w", engine.ErrConflict, err)
+	}
+	return nil
 }
 
 func recordChild(children *[]accessv1alpha1.AccessChild, child accessv1alpha1.AccessChild) {

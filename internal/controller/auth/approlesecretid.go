@@ -180,10 +180,20 @@ func (AppRoleSecretIDAdapter) Write(ctx context.Context, c openbao.Client, s *au
 		return nil, err
 	}
 	retired := slices.Clone(s.Status.RetiredAccessors)
-	if s.Status.RolePath == rolePath {
-		retired = append(retired, s.Status.ID)
-	}
 	delivered, _ := desired[secretIDAccessorKey].(string)
+	switch s.Status.RolePath {
+	case rolePath:
+		retired = append(retired, s.Status.ID)
+	case "":
+	default:
+		// The status holds the accessors of one role only, so those of a replaced role are destroyed under it first.
+		for _, accessor := range uniqueAccessors(append(retired, s.Status.ID, delivered)) {
+			if err := destroySecretID(ctx, c, s.Status.RolePath, accessor); err != nil {
+				return nil, err
+			}
+		}
+		retired, delivered = nil, ""
+	}
 	retired, err = destroyUndeliveredOverflow(ctx, c, rolePath, uniqueAccessors(append(retired, delivered)), delivered)
 	if err != nil {
 		return nil, err

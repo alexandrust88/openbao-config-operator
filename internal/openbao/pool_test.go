@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	dto "github.com/prometheus/client_model/go"
 )
 
 func TestReloginOnRevokedToken(t *testing.T) {
@@ -397,4 +399,119 @@ func TestInvalidateRevokesLoginToken(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestInvalidateForgetsMetrics: the revocation that retire sends after Invalidate must not bring back the metric
+// series Invalidate dropped.
+func TestInvalidateForgetsMetrics(t *testing.T) {
+	f := newFakeServer(t)
+	revoked := make(chan struct{})
+	f.resource = func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/auth/token/revoke-self" {
+			defer close(revoked)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+	key := t.Name()
+	p := NewPool()
+	c, err := p.Client(t.Context(), key, appRoleConfig(f.srv.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Write(t.Context(), "kv/x", map[string]any{}); err != nil {
+		t.Fatal(err)
+	}
+	if connectionSeries(t, key) == 0 {
+		t.Fatal("no series recorded before Invalidate")
+	}
+	p.Invalidate(key)
+	select {
+	case <-revoked:
+	case <-time.After(5 * time.Second):
+		t.Fatal("no revoke-self after Invalidate")
+	}
+	for deadline := time.Now().Add(500 * time.Millisecond); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+		if n := connectionSeries(t, key); n != 0 {
+			t.Fatalf("%d series of the invalidated connection after its token was revoked, want none", n)
+		}
+	}
+}
+
+// connectionSeries counts the series of the pool's metrics that carry connection as their connection label.
+func connectionSeries(t *testing.T, connection string) int {
+	t.Helper()
+	ch := make(chan prometheus.Metric)
+	go func() {
+		for _, c := range []prometheus.Collector{requestsTotal, requestDuration, loginsTotal, tokenRenewalsTotal} {
+			c.Collect(ch)
+		}
+		close(ch)
+	}()
+	n := 0
+	for m := range ch {
+		var pb dto.Metric
+		if err := m.Write(&pb); err != nil {
+			t.Fatal(err)
+		}
+		for _, l := range pb.GetLabel() {
+			if l.GetName() == connectionLabel && l.GetValue() == connection {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// TestInvalidateDuringLoginRetiresTheLogin: a login that finishes after Invalidate must not bring the dropped client
+// back into the pool, and the token it logged in for is revoked like any retired session's.
+func TestInvalidateDuringLoginRetiresTheLogin(t *testing.T) {
+	f := newFakeServer(t)
+	revoked := make(chan string, 1)
+	f.resource = func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/auth/token/revoke-self" {
+			revoked <- r.Header.Get("X-Vault-Token")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+	started, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	gated := func(ctx context.Context) (string, error) {
+		once.Do(func() { close(started) })
+		select {
+		case <-release:
+			return "role", nil
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}
+	p := NewPool()
+	cfg := Config{Address: f.srv.URL, Auth: AppRoleAuth{CredentialKey: "k1", RoleID: gated}}
+
+	clientErr := make(chan error, 1)
+	go func() { _, err := p.Client(t.Context(), "conn", cfg); clientErr <- err }()
+	<-started
+	p.Invalidate("conn")
+	close(release)
+	if err := <-clientErr; err == nil {
+		t.Error("Client returned the client of a login that Invalidate overtook")
+	}
+	if p.cached("conn", fingerprint(cfg)) != nil {
+		t.Error("the overtaken login is cached after Invalidate")
+	}
+	select {
+	case token := <-revoked:
+		if token != "t1" {
+			t.Errorf("revoke-self with token %q, want the overtaken login token", token)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("the overtaken login token was not revoked")
+	}
+
+	if _, err := p.Client(t.Context(), "conn", cfg); err != nil {
+		t.Fatal(err)
+	}
+	if logins, _ := f.counts(); logins != 2 {
+		t.Errorf("logins = %d, want a fresh login after the overtaken one", logins)
+	}
+	p.Invalidate("conn")
 }

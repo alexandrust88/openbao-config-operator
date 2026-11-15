@@ -22,8 +22,15 @@ import (
 // path (status.path) it owns.
 const PathIndex = ".status.ownedPath"
 
+// ChildOwner is implemented by composite resources that also own the child objects they created.
+type ChildOwner interface {
+	// OwnedChildPaths returns the absolute OpenBao paths of the created children.
+	OwnedChildPaths() []string
+}
+
 // PathIndexFunc extracts the PathIndex value: status.path of a resource that manages its object, whether acquired or
-// only claimed before its create. It is exported for fake clients in tests.
+// only claimed before its create, and the paths of the children a ChildOwner created. It is exported for fake clients
+// in tests.
 func PathIndexFunc(o client.Object) []string {
 	managed, ok := o.(commonv1alpha1.Managed)
 	if !ok {
@@ -33,7 +40,58 @@ func PathIndexFunc(o client.Object) []string {
 	if status.Path == "" || observeOnly(managed) {
 		return nil
 	}
-	return []string{openbao.CanonicalPath(status.Path)}
+	paths := []string{openbao.CanonicalPath(status.Path)}
+	if children, ok := o.(ChildOwner); ok {
+		for _, p := range children.OwnedChildPaths() {
+			paths = append(paths, openbao.CanonicalPath(p))
+		}
+	}
+	return paths
+}
+
+// OtherChildOwner returns a resource of a managed kind, other than self, that owns absPath, a child object of self, on
+// the server with cluster id serverID: any such resource while self has not created absPath, and one that precedes
+// self once it has. ok=false when self may write absPath. It reads reader through PathIndex.
+func OtherChildOwner(ctx context.Context, reader client.Reader, scheme *runtime.Scheme, self Object, absPath,
+	serverID string) (string, bool, error) {
+	sharedMu.Lock()
+	s := sharedByScheme[scheme]
+	sharedMu.Unlock()
+	if s == nil {
+		return "", false, nil
+	}
+	selfGVK, err := apiutil.GVKForObject(self, scheme)
+	if err != nil {
+		return "", false, err
+	}
+	created := slices.Contains(PathIndexFunc(self), absPath)
+	for _, gvk := range s.ownerKinds() {
+		list, err := scheme.New(gvk.GroupVersion().WithKind(gvk.Kind + "List"))
+		if err != nil {
+			return "", false, fmt.Errorf("list type for %s: %w", gvk.Kind, err)
+		}
+		if err := reader.List(ctx, list.(client.ObjectList), client.MatchingFields{PathIndex: absPath}); err != nil {
+			return "", false, fmt.Errorf("list %s by path: %w", gvk.Kind, err)
+		}
+		items, err := meta.ExtractList(list.(client.ObjectList))
+		if err != nil {
+			return "", false, err
+		}
+		for _, item := range items {
+			other, ok := item.(Object)
+			if !ok || other.GetUID() == self.GetUID() || !slices.Contains(PathIndexFunc(other), absPath) {
+				continue
+			}
+			if recorded := other.GetResourceStatus().ServerID; recorded != "" && serverID != "" && recorded != serverID {
+				continue
+			}
+			candidate := owner{kind: gvk.Kind, obj: other}
+			if !created || precedes(candidate, owner{kind: selfGVK.Kind, obj: self}, absPath) {
+				return candidate.String(), true, nil
+			}
+		}
+	}
+	return "", false, nil
 }
 
 func observeOnly(m commonv1alpha1.Managed) bool {

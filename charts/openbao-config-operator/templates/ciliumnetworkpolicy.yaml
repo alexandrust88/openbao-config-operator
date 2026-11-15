@@ -47,6 +47,11 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
+          {{- if $np.openbao.fqdns }}
+          rules:
+            dns:
+              - matchPattern: "*"
+          {{- end }}
     {{- end }}
     - toEntities:
         - kube-apiserver

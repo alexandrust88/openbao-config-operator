@@ -1,6 +1,7 @@
 package openbao
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -51,7 +52,18 @@ type instrumentedTransport struct {
 	connection string
 }
 
+type unmeteredKey struct{}
+
+// withoutMetrics marks the requests that instrumentedTransport does not record, such as the revocation of a retired
+// session, which runs after Invalidate dropped the connection's series.
+func withoutMetrics(ctx context.Context) context.Context {
+	return context.WithValue(ctx, unmeteredKey{}, true)
+}
+
 func (t *instrumentedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Context().Value(unmeteredKey{}) != nil {
+		return t.next.RoundTrip(req)
+	}
 	method := req.Method
 	if method == http.MethodGet && req.URL.Query().Get("list") == queryTrue {
 		method = "LIST"

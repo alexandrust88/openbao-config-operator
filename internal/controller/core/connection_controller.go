@@ -39,6 +39,13 @@ const (
 	lookupSelfPath = "auth/token/lookup-self"
 )
 
+// The retry bounds while the connection's OpenBao namespace does not exist yet, which is usual when the connection
+// and its OpenBaoNamespace are applied together.
+const (
+	minNamespaceRetry = 2 * time.Second
+	maxNamespaceRetry = 30 * time.Second
+)
+
 type connectionObject interface {
 	client.Object
 	GetConnectionSpec() *corev1alpha1.ConnectionSpec
@@ -180,6 +187,10 @@ func (r *connectionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 	connectionReady.WithLabelValues(string(r.kind), req.Namespace, req.Name).Set(ready)
 	requeue := ctrl.Result{RequeueAfter: wait.Jitter(probeInterval, 0.2)}
+	if cond := meta.FindStatusCondition(status.Conditions, commonv1alpha1.ConditionReady); cond != nil &&
+		cond.Reason == commonv1alpha1.ReasonReferenceNotReady {
+		requeue.RequeueAfter = namespaceRetry(cond)
+	}
 	// A check that changes nothing writes nothing, so idle connections cost no API server writes.
 	if equality.Semantic.DeepEqual(base, client.Object(obj)) {
 		return requeue, nil
@@ -272,7 +283,7 @@ func (r *connectionReconciler) observe(ctx context.Context, obj connectionObject
 	if err := r.authenticate(ctx, key, cfg); err != nil {
 		reason := corev1alpha1.ReasonAuthenticationFailed
 		if errors.Is(err, openbao.ErrNamespaceNotFound) {
-			reason = commonv1alpha1.ReasonInvalidSpec
+			reason = commonv1alpha1.ReasonReferenceNotReady
 		}
 		fail(reason, err.Error())
 		return
@@ -280,6 +291,13 @@ func (r *connectionReconciler) observe(ctx context.Context, obj connectionObject
 	status.Authenticated = true
 	setReady(&status.Conditions, generation, metav1.ConditionTrue, commonv1alpha1.ReasonAvailable,
 		"connected and authenticated")
+}
+
+// namespaceRetry grows with the time the connection has been waiting for its namespace, from minNamespaceRetry
+// up to maxNamespaceRetry.
+func namespaceRetry(ready *metav1.Condition) time.Duration {
+	waited := time.Since(ready.LastTransitionTime.Time)
+	return wait.Jitter(min(max(waited, minNamespaceRetry), maxNamespaceRetry), 0.2)
 }
 
 func (r *connectionReconciler) authenticate(ctx context.Context, key string, cfg openbao.Config) error {
