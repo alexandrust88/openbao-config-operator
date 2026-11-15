@@ -464,7 +464,6 @@ metadata:
 spec:
   serverRef:
     name: openbao
-  namespace: ""
   allowedNamespaces:
     matchLabels:
       kubernetes.io/metadata.name: openbao-platform

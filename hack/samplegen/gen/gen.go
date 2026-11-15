@@ -188,7 +188,7 @@ func Header(s Sample, links Links, curated string) string {
 
 func writeWrapped(b *strings.Builder, text string) {
 	line := "#"
-	for _, word := range strings.Fields(text) {
+	for word := range strings.FieldsSeq(text) {
 		if len(line)+1+len(word) > headerWidth && line != "#" {
 			b.WriteString(line + "\n")
 			line = "#"

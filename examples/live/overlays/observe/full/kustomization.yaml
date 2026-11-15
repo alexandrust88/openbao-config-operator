@@ -5,7 +5,11 @@ resources:
 patches:
   - path: observe.yaml
     target:
-      group: ^(sys|auth|secrets|identity|access)\.openbaoconfig\.io$
+      group: ^(sys|auth|secrets|identity)\.openbaoconfig\.io$
+  - path: observe.yaml
+    target:
+      group: ^access\.openbaoconfig\.io$
+      kind: ^(AccessGrant|AccessLayout)$
   - path: observe.yaml
     target:
       kind: OpenBaoEndpoint
