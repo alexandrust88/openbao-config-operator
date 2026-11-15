@@ -365,14 +365,17 @@ cosign verify-blob "${PIN[@]}" --bundle assets/sha256sums.txt.sigstore.json asse
 `helm pull oci://$CHART --version $VERSION` prints the digest it pulled; compare it with
 `$CHART_DIGEST` before you install. The classic Helm repository on GitHub Pages
 (`/charts/index.yaml`) lists only release tags, and only charts that match their release's signed
-`sha256sums.txt` (`hack/docs/chart-index.sh`); `helm install` from it still checks no signature.
+`sha256sums.txt` (`hack/docs/chart-index.sh`); `helm install` from it checks no signature unless you
+pass `--verify`.
 
-The chart has no Helm provenance (`.prov`) file: the cosign signature on the OCI artifact replaces
-it. Artifact Hub detects the legacy `sha256-<digest>.sig` signature; this has not been checked
-against a live Artifact Hub listing yet, so rely on the commands above, not the badge. If you need `helm install --verify` from a classic chart
-repository, the maintainers can add a GPG key: `helm package --sign --key <name> --keyring
-<secring.gpg>` writes the `.prov` file next to the `.tgz`, and the `artifacthub.io/signKey`
-annotation (fingerprint and key URL) advertises it.
+From the first release after v0.2.0, the chart is also signed with the project's GPG chart signing key
+(Helm provenance): `openbao-config-operator-<version>.tgz.prov` sits next to the chart in the
+GitHub release and is a layer of the OCI chart, the public key is served at
+`https://alexandrust88.github.io/openbao-config-operator/charts/pgp-public-key.asc`, and the
+`artifacthub.io/signKey` annotation names its fingerprint. Artifact Hub shows the chart as signed
+because of that `.prov` file. `helm install --verify` with that key is in
+[Install: verify the chart signature](../get-started/install.md#verify-the-chart-signature); it
+proves who packaged the chart, while the cosign commands above also prove which workflow run built it.
 
 #### Verify and transfer the OCM component
 

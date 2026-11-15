@@ -59,7 +59,8 @@ Set these once when the repository is created:
   branches.
 - Release immutability on: a published release cannot be changed.
 - A tag ruleset on `v*`: only maintainers may create tags; tags cannot be updated or deleted.
-- Environment `release`, with the owner as required reviewer, for every publishing job.
+- Environment `release`, with the owner as required reviewer, for every publishing job, and the environment
+  secrets `HELM_SIGNING_KEY` and `HELM_SIGNING_PASSPHRASE` ([chart signing key](#chart-signing-key)).
 - Environment `release-please`, limited to `main` and `release-X.Y`. Optional, recommended: a GitHub App with
   contents and pull-requests write, its client id in the environment variable `RELEASE_APP_CLIENT_ID` and its key
   in the environment secret `RELEASE_APP_PRIVATE_KEY`. Without the app, the release pull request is opened with
@@ -83,6 +84,37 @@ Do these once, before `v0.1.0`:
    `charts/openbao-config-operator` chart package to public (Package settings > Change visibility), and connect
    both to this repository. Then run `hack/release/verify-release.sh v0.1.0` from a machine that is not logged in to
    `ghcr.io`.
+
+## Chart signing key
+
+The `chart` job signs the Helm chart with a dedicated GPG key: `helm package --sign` writes
+`openbao-config-operator-<version>.tgz.prov`, which the release uploads next to the chart and pushes as a layer of
+the OCI chart, and `artifacthub.io/signKey` names the key's fingerprint and its public key on GitHub Pages
+(`/charts/pgp-public-key.asc`, served from `.github/pgp-public-key.asc`). Artifact Hub shows the chart as signed
+when that `.prov` file exists. The job fails when either secret is missing or when the signature does not verify
+with the committed public key, so set the key up before the next tag:
+
+```sh
+gpg --quick-gen-key "openbao-config-operator chart signing key" rsa4096 sign never
+FPR=$(gpg --with-colons --list-secret-keys "openbao-config-operator chart signing key" | awk -F: '$1 == "fpr" {print $10; exit}')
+echo "$FPR"
+gpg --armor --export-secret-keys "$FPR" | gh secret set HELM_SIGNING_KEY --env release --repo alexandrust88/openbao-config-operator
+gh secret set HELM_SIGNING_PASSPHRASE --env release --repo alexandrust88/openbao-config-operator
+gpg --armor --export "$FPR" > .github/pgp-public-key.asc
+```
+
+`gpg` asks for a passphrase when it creates the key and again when it exports it; `gh secret set
+HELM_SIGNING_PASSPHRASE` prompts for the same passphrase, so it stays out of the shell history. Merge
+`.github/pgp-public-key.asc` through a pull request before you tag: the release checks out the tagged commit and
+verifies against that file, and `pages.yml` publishes it. Keep an offline backup of the private key and of the
+revocation certificate that `gpg` writes to `~/.gnupg/openpgp-revocs.d/`.
+
+The key has no expiry on purpose: Helm rejects a signature whose key has expired by the time it verifies, so an
+expiry date would break `helm install --verify` for every published chart. To rotate, generate a new key the same
+way, set both secrets again, and write both public keys into the committed file
+(`gpg --armor --export "$OLD_FPR" "$FPR" > .github/pgp-public-key.asc`), so charts signed with the old key still
+verify. If the old key leaked, revoke it, drop it from the file and say in the release notes which versions it
+signed; their cosign signatures still verify.
 
 ## Cutting a release
 
@@ -112,7 +144,7 @@ Do these once, before `v0.1.0`:
    convention: nothing checks the tag signature (see [github-settings.md](github-settings.md#release-tags-signed-tag-ruleset-optional)).
 7. **Watch the release workflow and approve its jobs.** It runs CI and e2e, checks the version, refuses to
    overwrite an existing release (and stops when it cannot tell), builds the multi-arch image, scans it, signs the
-   image, chart and checksums with keyless cosign, attests the SBOMs and the provenance (GitHub artifact
+   image, chart and checksums with keyless cosign, signs the chart with the GPG chart signing key, attests the SBOMs and the provenance (GitHub artifact
    attestations, SLSA Build L2, and a cosign `slsaprovenance1` statement written by the release job, which has no
    SLSA level; nothing reaches Build L3), and creates the GitHub release with the generated notes. The `image`,
    `chart`, `ocm` and `assets` jobs each wait for an approval in the `release` environment; before the first

@@ -20,9 +20,10 @@ keywords:
   - configuration-as-code
   - multi-tenancy
 # The release rewrites version, appVersion, artifacthub.io/images (image pinned by digest), artifacthub.io/changes and
-# artifacthub.io/prerelease (hack/release/package-chart.sh). The chart OCI artifact is signed with keyless cosign as a
-# Sigstore bundle and also as a legacy sha256-<digest>.sig tag, the layout Artifact Hub detects, so there is no
-# artifacthub.io/signKey.
+# artifacthub.io/prerelease (hack/release/package-chart.sh). It also signs the package with the GPG chart signing key
+# (Helm provenance, <tgz>.prov next to the release asset and as a layer of the OCI chart) and sets
+# artifacthub.io/signKey to its fingerprint and /charts/pgp-public-key.asc on GitHub Pages. The chart OCI artifact is
+# also signed with keyless cosign, as a Sigstore bundle and as a legacy sha256-<digest>.sig tag.
 annotations:
   artifacthub.io/license: Apache-2.0
   artifacthub.io/operator: "true"

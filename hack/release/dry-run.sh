@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs every release step locally and pushes nothing: builds the multi-arch image into an OCI layout, generates SPDX
 # and CycloneDX SBOMs per platform, gates on vulnerabilities, writes SLSA provenance, packages the chart with the
-# image digest pinned and pushes it by digest into an OCI layout, builds install.yaml/crds.yaml and the examples
+# image digest pinned and signed with a throwaway GPG key (Helm provenance, checked with helm verify) and pushes it
+# by digest into an OCI layout, builds install.yaml/crds.yaml and the examples
 # bundle (twice, to prove it is reproducible), signs and attests
 # every subject with a throwaway cosign key (no Rekor, no Fulcio, no TUF), then verifies all of it, and last builds,
 # verifies and transfers the OCM component against local registries (hack/ocm/dry-run.sh). Outputs land in
@@ -10,7 +11,7 @@
 # Environment: RELEASE_TAG (default v0.0.0-dryrun), PLATFORMS, BUILDKIT_IMAGE, BUILDER (an existing buildx builder),
 # BUILDX (default "docker buildx"), REPRO_CHECK=1 (rebuild without cache and require the same digest),
 # IMAGE_OCI_TAR (skip the build and use this multi-arch OCI layout tar, e.g. from an earlier run),
-# HELM, YQ, KUSTOMIZE, SYFT, GRYPE, ORAS, COSIGN, OCM, CRANE.
+# HELM, YQ, KUSTOMIZE, SYFT, GRYPE, ORAS, COSIGN, OCM, CRANE. Needs gpg.
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -25,12 +26,20 @@ cosign=${COSIGN:-cosign}
 export HELM=${HELM:-helm} YQ=${YQ:-yq} KUSTOMIZE=${KUSTOMIZE:-kustomize} GRYPE=${GRYPE:-grype} ORAS=${ORAS:-oras}
 
 "$repo_root/hack/release/check-version.sh" "$tag" || exit 2
-for tool in "${buildx[0]}" "$syft" "$cosign" "$HELM" "$YQ" "$KUSTOMIZE" "$GRYPE" "$ORAS" jq; do
+for tool in "${buildx[0]}" "$syft" "$cosign" "$HELM" "$YQ" "$KUSTOMIZE" "$GRYPE" "$ORAS" jq gpg gpgconf; do
   command -v "$tool" >/dev/null || { echo "dry-run: $tool not found" >&2; exit 1; }
 done
 
 rm -rf -- "${out:?}"
 mkdir -p "$out/oci" "$out/dist" "$out/sig" "$out/keys"
+# The throwaway GnuPG home lives in mktemp, not $out: gpg-agent fails when its socket path is too long.
+gnupg=$(mktemp -d)
+cleanup() {
+  gpgconf --homedir "$gnupg" --kill gpg-agent >/dev/null 2>&1 || true
+  rm -rf -- "$gnupg"
+  [ -z "${remove_builder:-}" ] || "${buildx[@]}" rm "$builder" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
 
 export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(git -C "$repo_root" log -1 --format=%ct 2>/dev/null || echo 0)}
 commit=$(git -C "$repo_root" rev-parse --verify -q HEAD || echo unknown)
@@ -42,7 +51,7 @@ if [ -z "$builder" ] && [ -z "${IMAGE_OCI_TAR:-}" ]; then
   builder=openbao-config-operator-dryrun
   if ! "${buildx[@]}" inspect "$builder" >/dev/null 2>&1; then
     "${buildx[@]}" create --name "$builder" --driver docker-container --driver-opt "image=$BUILDKIT_IMAGE" >/dev/null
-    [ "${KEEP_BUILDER:-0}" = 1 ] || trap '"${buildx[@]}" rm "$builder" >/dev/null 2>&1 || true' EXIT
+    [ "${KEEP_BUILDER:-0}" = 1 ] || remove_builder=1
   fi
 fi
 
@@ -111,19 +120,33 @@ echo "== vulnerability gate"
 echo "== provenance"
 "$repo_root/hack/release/provenance.sh" >"$out/provenance.json"
 
-echo "== chart"
-tgz=$("$repo_root/hack/release/package-chart.sh" "$tag" "$image" "$index_digest" "$out/dist")
+echo "== chart, signed with a throwaway GPG key"
+printf 'dryrun\n' >"$gnupg/passphrase"
+gpg_batch=(gpg --homedir "$gnupg" --batch --pinentry-mode loopback --passphrase-file "$gnupg/passphrase")
+"${gpg_batch[@]}" --quick-gen-key "openbao-config-operator dry-run <dryrun@example.invalid>" rsa4096 sign 1d >/dev/null 2>&1
+"${gpg_batch[@]}" --export-secret-keys >"$out/keys/dryrun-helm.key"
+"${gpg_batch[@]}" --armor --export >"$out/keys/dryrun-helm.asc"
+tgz=$(GNUPGHOME=$gnupg SIGN_KEYRING=$out/keys/dryrun-helm.key SIGN_PASSPHRASE_FILE=$gnupg/passphrase \
+  SIGN_KEY_URL=https://alexandrust88.github.io/openbao-config-operator/charts/pgp-public-key.asc \
+  "$repo_root/hack/release/package-chart.sh" "$tag" "$image" "$index_digest" "$out/dist")
+"$HELM" verify --keyring "$out/keys/dryrun-helm.asc" "$tgz" >/dev/null || { echo "dry-run: helm verify failed for $tgz" >&2; exit 1; }
+fingerprint=$("${gpg_batch[@]}" --with-colons --show-keys "$out/keys/dryrun-helm.asc" | awk -F: '$1 == "fpr" {print $10; exit}')
+sign_key=$("$HELM" show chart "$tgz" | "$YQ" '.annotations["artifacthub.io/signKey"] | from_yaml | .fingerprint')
+[ "$sign_key" = "$fingerprint" ] || { echo "dry-run: artifacthub.io/signKey names $sign_key, not $fingerprint" >&2; exit 1; }
+echo "ok $(basename "$tgz").prov, signKey $fingerprint"
 "$repo_root/hack/release/chart-sbom.sh" "$tgz" "$out/dist/chart.cdx.json" "$out/dist/chart.spdx.json"
 pinned=$("$HELM" show values "$tgz" | "$YQ" '.image.digest')
 [ "$pinned" = "$index_digest" ] || { echo "dry-run: chart pins $pinned, not $index_digest" >&2; exit 1; }
 
 echo "== chart push by digest, into an OCI layout"
 chart_digest=$(ORAS_FLAGS=--oci-layout "$repo_root/hack/release/push-chart.sh" "$tgz" "$out/chart-oci" 2>/dev/null)
-jq -e --arg layer "sha256:$(shasum -a 256 "$tgz" | awk '{print $1}')" '.config.mediaType == "application/vnd.cncf.helm.config.v1+json"
-  and (.layers | length) == 1 and .layers[0].digest == $layer
-  and .layers[0].mediaType == "application/vnd.cncf.helm.chart.content.v1.tar+gzip"' \
+jq -e --arg layer "sha256:$(shasum -a 256 "$tgz" | awk '{print $1}')" \
+  --arg prov "sha256:$(shasum -a 256 "$tgz.prov" | awk '{print $1}')" '.config.mediaType == "application/vnd.cncf.helm.config.v1+json"
+  and ([.layers[] | {digest, mediaType}] | sort_by(.mediaType)) == [
+    {digest: $layer, mediaType: "application/vnd.cncf.helm.chart.content.v1.tar+gzip"},
+    {digest: $prov, mediaType: "application/vnd.cncf.helm.chart.provenance.v1.prov"}]' \
   "$out/chart-oci/blobs/sha256/${chart_digest#sha256:}" >/dev/null ||
-  { echo "dry-run: the chart manifest $chart_digest is not a helm chart of $tgz" >&2; exit 1; }
+  { echo "dry-run: the chart manifest $chart_digest is not a signed helm chart of $tgz" >&2; exit 1; }
 echo "chart $chart_digest"
 
 echo "== install.yaml and crds.yaml"

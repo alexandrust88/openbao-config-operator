@@ -21,6 +21,27 @@ verified chart pulls the verified image. Verify before you install:
 [Hardening: verify the release](../security/hardening.md#verify-the-release) has the `cosign` and
 `gh attestation` commands, and `hack/release/verify-release.sh @TAG@` runs all of them.
 
+### Verify the chart signature
+
+The chart is also signed with the project's GPG key (Helm provenance). Releases up to v0.2.0 have
+no signature file. Download the public key, check that its fingerprint matches the one Artifact Hub
+shows for the chart, and convert it to the binary keyring Helm reads:
+
+```bash
+curl -fsSLo openbao-config-operator.asc https://alexandrust88.github.io/openbao-config-operator/charts/pgp-public-key.asc
+gpg --show-keys openbao-config-operator.asc
+gpg --dearmor < openbao-config-operator.asc > openbao-config-operator.gpg
+```
+
+Then add `--verify --keyring openbao-config-operator.gpg` to the `helm install` command in step 2,
+with either Helm method. Helm stops before it installs anything when the signature does not verify.
+To check without installing:
+
+```bash
+helm pull oci://ghcr.io/alexandrust88/charts/openbao-config-operator --version @VERSION@ \
+  --verify --keyring openbao-config-operator.gpg
+```
+
 ## 2. Install
 
 Choose one method. The chart is the full installation; `install.yaml` is a fixed, single-replica
@@ -42,8 +63,8 @@ manifest without values.
 
     The same chart is served from a classic Helm repository on this site, for tools without OCI
     support. The repository lists only charts that match their release's signed checksums, but
-    `helm install` from it checks no signature, so verify the OCI chart or the release assets
-    first.
+    `helm install` from it checks no signature unless you add `--verify` (see
+    [Verify the chart signature](#verify-the-chart-signature)), so verify the chart first.
 
     ```bash
     helm repo add openbao-config-operator https://alexandrust88.github.io/openbao-config-operator/charts

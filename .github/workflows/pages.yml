@@ -1,7 +1,8 @@
 name: pages
 
 # Builds the docs site (MkDocs) and the classic Helm repository index (/charts/index.yaml, pointing at the signed chart
-# .tgz of every release tag) and deploys both to GitHub Pages. Repository settings: Pages source "GitHub Actions".
+# .tgz of every release tag, plus the chart signing public key /charts/pgp-public-key.asc) and deploys both to GitHub
+# Pages. Repository settings: Pages source "GitHub Actions".
 # It runs on every pull request so the `pages` check can be required; the build steps only run when a docs path changed.
 on:
   push:
@@ -47,7 +48,7 @@ jobs:
           build=true
           if { [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = push ]; } && git rev-parse -q --verify HEAD^1 >/dev/null; then
             changed=$(git diff --name-only HEAD^1 HEAD)
-            grep -qE '^(\.github/artifacthub-repo\.yml|\.github/workflows/pages\.yml|README\.md|charts/openbao-config-operator/values|config/crd/bases/|docs/|examples/|examples-generated/|hack/docs/|hack/release/check-version\.sh|mkdocs\.yml)' <<<"$changed" ||
+            grep -qE '^(\.github/artifacthub-repo\.yml|\.github/pgp-public-key\.asc|\.github/workflows/pages\.yml|README\.md|charts/openbao-config-operator/values|config/crd/bases/|docs/|examples/|examples-generated/|hack/docs/|hack/release/check-version\.sh|mkdocs\.yml)' <<<"$changed" ||
               build=false
           fi
           echo "build=$build" >> "$GITHUB_OUTPUT"
@@ -114,6 +115,11 @@ jobs:
           REPOSITORY=$GITHUB_REPOSITORY HELM=bin/helm YQ=bin/yq hack/docs/chart-index.sh assets _site/charts \
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download"
           cp .github/artifacthub-repo.yml _site/charts/artifacthub-repo.yml
+          if grep -q 'BEGIN PGP PUBLIC KEY BLOCK' .github/pgp-public-key.asc; then
+            cp .github/pgp-public-key.asc _site/charts/pgp-public-key.asc
+          else
+            echo "::warning::.github/pgp-public-key.asc holds no public key yet; the chart signing key is not published"
+          fi
       - if: github.event_name != 'pull_request' && !github.event.repository.private && steps.changes.outputs.build == 'true'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
