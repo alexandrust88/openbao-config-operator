@@ -61,7 +61,7 @@ work=$(mktemp -d)
 
 diagnostics() {
   local ns
-  h list -A --all || true
+  h list -A || true
   for ns in "$NAMESPACE" "$nokeep_namespace"; do
     echo "--- namespace $ns"
     h -n "$ns" history "$release" || true
@@ -214,7 +214,7 @@ assert_cr() {
 
 assert_no_release() {
   local ns=$1 rel=$2 releases
-  releases=$(h -n "$ns" list --all -q)
+  releases=$(h -n "$ns" list -q)
   ! grep -qxF "$rel" <<<"$releases" || fail "release $rel still listed in $ns"
   [ -z "$(k -n "$ns" get deploy -l "app.kubernetes.io/instance=$rel" -o name)" ] || fail "Deployment of $rel still in $ns"
   ok "release $rel and its Deployment are gone from $ns"
