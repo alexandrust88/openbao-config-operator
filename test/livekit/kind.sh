@@ -15,6 +15,8 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 helm=${HELM:-$repo_root/bin/helm}
 kustomize=${KUSTOMIZE:-$repo_root/bin/kustomize}
 yq=${YQ:-$repo_root/bin/yq}
+out_dir=${LIVEKIT_OUT:-$repo_root/.tmp/livekit-kind}
+mkdir -p "$out_dir"
 operator_ns=openbao-config-operator
 sibling_ns=team-b
 param() { sed -n "s/^ *- $1=//p" "$repo_root/examples/live/params/kustomization.yaml"; }
@@ -51,20 +53,22 @@ overlay_dir() {
   esac
 }
 
-# Waits until every OpenBao pod is ready and exactly one is the raft leader, and sets active to that pod.
+# Waits until every OpenBao pod is ready, exactly one is the raft leader and only that pod carries the openbao-active
+# label of the openbao-active Service, and sets active to that pod.
 wait_openbao() {
-  local deadline=$(($(date +%s) + 300)) i ready
+  local deadline=$(($(date +%s) + 300)) i ready labelled
   while :; do
     ready=$(kubectl -n openbao get statefulset openbao -o 'jsonpath={.status.readyReplicas}')
+    labelled=$(kubectl -n openbao get pods -l openbao-active=true -o 'jsonpath={.items[*].metadata.name}')
     active=()
     for i in 0 1 2; do
-      if [ "$(kubectl -n openbao exec "openbao-$i" -- env BAO_ADDR=http://127.0.0.1:8200 bao read -field=is_self sys/leader 2>/dev/null)" = true ]; then
+      if [ "$(kubectl -n openbao exec "openbao-$i" -- bao read -field=is_self sys/leader 2>/dev/null)" = true ]; then
         active+=("openbao-$i")
       fi
     done
-    if [ "$ready" = 3 ] && [ "${#active[@]}" -eq 1 ]; then return 0; fi
+    if [ "$ready" = 3 ] && [ "${#active[@]}" -eq 1 ] && [ "$labelled" = "${active[0]}" ]; then return 0; fi
     if [ "$(date +%s)" -ge "$deadline" ]; then
-      err "OpenBao has ${ready:-0} of 3 pods ready and ${#active[@]} active"
+      err "OpenBao has ${ready:-0} of 3 pods ready, ${#active[@]} active and '$labelled' labelled active"
       return 1
     fi
     sleep 3
@@ -80,6 +84,7 @@ writes_before=$(mktemp)
 writes_after=$(mktemp)
 trap 'rm -f -- "$rendered" "$observed" "$helm_log" "$writes_before" "$writes_after"' EXIT
 
+hack/e2e/tls.sh
 kubectl apply -f hack/e2e/openbao.yaml -f test/e2e/testdata/openbao-auth.yaml
 kubectl create namespace "$operator_ns" --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n "$operator_ns" create secret generic livekit-token-file --from-file=token=<(fixture token) \
@@ -106,6 +111,11 @@ kubectl -n "$namespace" create secret generic live-connection-auth-approle --fro
   --from-file=secret-id=<(fixture secret-id) --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n "$namespace" create secret generic live-connection-auth-token --from-file=token=<(fixture token) \
   --dry-run=client -o yaml | kubectl apply -f -
+# The kit's servers trust the OpenBao CA through the ConfigMap and Secret that they reference.
+ca=$(kubectl -n openbao get configmap openbao-ca -o 'jsonpath={.data.ca\.crt}')
+kubectl -n "$namespace" create configmap openbao-ca --from-literal=ca.crt="$ca" --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "$namespace" create secret generic live-connection-auth-ca --from-literal=ca.crt="$ca" \
+  --dry-run=client -o yaml | kubectl apply -f -
 examples/live/create-secrets.sh --namespace "$namespace"
 helm_status=0
 wait "$helm_pid" || helm_status=$?
@@ -116,11 +126,10 @@ if [ "$helm_status" -ne 0 ]; then
 fi
 
 exceptions=()
-while IFS= read -r line; do exceptions+=("$line"); done < <(
-  for f in test/livekit/exceptions/*.yaml; do
-    "$yq" -N '.notReady[] | .kind + "|" + (.name // "*") + "|" + ((.overlays // ["*"]) | join(",")) + "|" + (.reason | sub("\n"; " "))' "$f"
-  done
-)
+for f in test/livekit/exceptions/*.yaml; do
+  "$yq" -N '.notReady[] | .kind + "|" + (.name // "*") + "|" + ((.overlays // ["*"]) | join(",")) + "|" + (.reason | sub("\n"; " "))' "$f"
+done >"$out_dir/exceptions.txt"
+while IFS= read -r line; do exceptions+=("$line"); done <"$out_dir/exceptions.txt"
 
 # Prints the reason when an exception excuses an object, given its kind, its name without the overlay prefix and
 # its kit overlay.
@@ -142,12 +151,14 @@ excuse() {
 }
 
 "$kustomize" build test/livekit/kind >"$rendered"
+"$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "|" + .metadata.name + "|" + .metadata.labels["live.openbaoconfig.io/overlay"]' "$rendered" >"$out_dir/inventory.txt"
+[ -s "$out_dir/inventory.txt" ] || { err "empty live kit inventory"; exit 1; }
 
 # Objects that cannot work on kind (the exceptions above) are not applied, so every applied object must get Ready.
 skipped=()
 while IFS='|' read -r kind name label; do
   if reason=$(excuse "$kind" "${name#"$label"-}" "$(overlay_dir "$label")"); then skipped+=("$label|$kind|$name|$reason"); fi
-done < <("$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "|" + .metadata.name + "|" + .metadata.labels["live.openbaoconfig.io/overlay"]' "$rendered")
+done <"$out_dir/inventory.txt"
 
 drop_skipped() {
   local drop kind name e
@@ -158,10 +169,16 @@ drop_skipped() {
 }
 
 drop_skipped "$rendered"
+printf '%s\n' "${skipped[@]}" >"$out_dir/exclusions.txt"
 echo "not applied on kind: ${#skipped[@]} objects"
+"$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "." + (.apiVersion | split("/") | .[0]) + "/" + .metadata.name' "$rendered" >"$out_dir/applied.txt"
+[ -s "$out_dir/applied.txt" ] || { err "no executable live kit objects"; exit 1; }
+for label in "${labels[@]}"; do
+  grep -q "/$label-" "$out_dir/applied.txt" || { err "no executable objects for $label"; exit 1; }
+done
 kubectl apply -f "$rendered" >/dev/null
 names=()
-while IFS= read -r ref; do names+=("$ref"); done < <("$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "." + (.apiVersion | split("/") | .[0]) + "/" + .metadata.name' "$rendered")
+while IFS= read -r ref; do names+=("$ref"); done <"$out_dir/applied.txt"
 
 # Prints the applied objects that are not Ready for their current generation, one kind.group/name per line, in one
 # API call.
@@ -169,8 +186,13 @@ not_ready() {
   {
     printf 'want %s\n' "${names[@]}"
     kubectl -n "$namespace" get "${names[@]}" --ignore-not-found \
-      -o 'jsonpath={range .items[*]}{.status.conditions[?(@.type=="Ready")].status} {.metadata.generation}/{.status.observedGeneration} {.kind}.{.apiVersion}/{.metadata.name}{"\n"}{end}' |
-      awk '$1 == "True" { split($2, g, "/"); if (g[1] == g[2]) { ref = $3; sub(/\/[^\/]*\//, "/", ref); print "ready " ref } }' || true
+      -o 'jsonpath={range .items[*]}{.status.conditions[?(@.type=="Ready")].status}|{.metadata.generation}/{.status.observedGeneration}/{.status.conditions[?(@.type=="Ready")].observedGeneration}|{.spec.connectionRef.name}|{.spec.managementPolicy}|{.status.conditions[?(@.type=="Synced")].status}|{.status.conditions[?(@.type=="Synced")].observedGeneration}|{.kind}.{.apiVersion}/{.metadata.name}{"\n"}{end}' |
+      awk -F'|' '$1 == "True" {
+        split($2, g, "/")
+        if (g[1] == g[2] && g[1] == g[3] && ($3 == "" || $4 == "Observe" || ($5 == "True" && $6 == g[1]))) {
+          ref = $7; sub(/\/[^\/]*\//, "/", ref); print "ready " ref
+        }
+      }' || true
   } | awk '$1 == "want" { want[++n] = $2; next } { ok[$2] } END { for (i = 1; i <= n; i++) if (!(want[i] in ok)) print want[i] }'
 }
 
@@ -178,6 +200,8 @@ not_ready() {
 # the job summary. LIVEKIT_TIMEOUT is only the upper bound; observe names the mode of the root/full objects.
 settle() {
   local title=$1 observe=$2 deadline best=-1 progress pending now ref kind name state label mode applied failed_n skipped_n
+  local report=apply
+  if $observe; then report=failover-observe; fi
   local -a waiting
   case $timeout in *m) deadline=$((${timeout%m} * 60)) ;; *s) deadline=${timeout%s} ;; *) deadline=$timeout ;; esac
   deadline=$(($(date +%s) + deadline))
@@ -197,13 +221,18 @@ settle() {
   done
 
   failed=()
+  printf 'kind/name\tresult\n' >"$out_dir/${report}-results.tsv"
   printf '\n%-26s %-52s %-22s %s\n' KIND NAME REASON NOTE
   for ref in "${waiting[@]}"; do
     kind=${ref%%.*} name=${ref##*/}
-    state=$(kubectl -n "$namespace" get "$ref" -o 'jsonpath={.status.conditions[?(@.type=="Ready")].status}|{.status.conditions[?(@.type=="Ready")].reason}|{.status.conditions[?(@.type=="Ready")].message}')
-    [ "${state%%|*}" = True ] && continue
+    state=$(kubectl -n "$namespace" get "$ref" -o 'jsonpath={.status.conditions[?(@.type=="Ready")].status}|{.status.conditions[?(@.type=="Ready")].reason}|{.status.conditions[?(@.type=="Ready")].message}' 2>/dev/null) || state="False|ReadFailed|object absent or API unavailable"
     failed+=("$ref")
     printf '%-26s %-52s %-22s %.140s\n' "$kind" "$name" "$(cut -d'|' -f2 <<<"$state")" "$(cut -d'|' -f3 <<<"$state")"
+  done
+  for ref in "${names[@]}"; do
+    state=Ready
+    for pending in "${failed[@]}"; do [ "$pending" != "$ref" ] || state=Failed; done
+    printf '%s\t%s\n' "$ref" "$state" >>"$out_dir/${report}-results.tsv"
   done
   for e in "${skipped[@]}"; do
     IFS='|' read -r _ kind name reason <<<"$e"
@@ -233,7 +262,8 @@ for login in "$tenant_ns|$child_role|$child_sa" "root|$tenant_role|$tenant_sa"; 
   IFS='|' read -r login_ns role sa <<<"$login"
   # shellcheck disable=SC2016 # expanded by the shell in the OpenBao pod
   got=$(kubectl -n "$namespace" create token "$sa" --audience "$audience" |
-    kubectl -n openbao exec -i openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 sh -c '
+    kubectl -n openbao exec -i openbao-0 -- env BAO_ADDR=https://openbao-active.openbao.svc:8200 \
+      BAO_CACERT=/openbao/tls/ca.crt BAO_SKIP_VERIFY=false sh -c '
       read -r jwt
       ns() { if [ "$1" = root ]; then echo ""; else echo "$1"; fi; }
       BAO_TOKEN=$(bao write -namespace="$(ns "$1")" -field=token auth/kubernetes/login role="$2" jwt="$jwt") || exit 1
@@ -282,7 +312,12 @@ echo "deleting the active OpenBao node ${active[0]} and switching root/full to O
 kubectl -n openbao delete pod "${active[0]}" --wait=false
 "$kustomize" build examples/live/overlays/observe/full | "$yq" 'select(.spec.managementPolicy == "Observe")' >"$observed"
 drop_skipped "$observed"
+# Change a harmless managed-spec field in every mode so pre-failover Ready conditions cannot satisfy this gate.
+"$yq" -i '(select(.spec.connectionRef != null) | .spec.driftInterval) = "31s"' "$rendered"
+kubectl apply -f "$rendered" >/dev/null
+"$yq" -i '(select(.spec.connectionRef != null) | .spec.driftInterval) = "31s"' "$observed"
 kubectl apply -f "$observed" >/dev/null
+wait_openbao
 settle "after the failover and Observe" true
 wait_openbao
 echo "OpenBao ready again, active node ${active[0]}"

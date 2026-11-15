@@ -227,7 +227,7 @@ func confLoadCatalog(t *testing.T, root, crdDir string) *confCatalog {
 			Availability: avail[crd.Spec.Names.Kind],
 		}
 		if k.Availability == "" {
-			k.Availability = "builtin"
+			t.Fatalf("%s: no availability in docs/kinds.md", k.Kind)
 		}
 		name := strings.ToLower(k.Kind) + ".yaml"
 		k.ExampleFile = filepath.Join(root, "examples", k.Short, name)

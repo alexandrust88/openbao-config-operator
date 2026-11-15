@@ -17,7 +17,7 @@ concurrency:
 jobs:
   conformance:
     runs-on: ubuntu-24.04
-    timeout-minutes: 100
+    timeout-minutes: 120
     permissions:
       contents: read
     steps:
@@ -25,18 +25,28 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
-      - run: make bao
-      - run: make test-conformance
+      - run: make bao setup-envtest
+      - name: Run the complete conformance matrix
         env:
-          CONF_OUT: ${{ runner.temp }}/conformance.md
+          CONF_OUT: ${{ runner.temp }}/conformance/matrix.md
+          CONF_LOG_DIR: ${{ runner.temp }}/conformance/logs
+        run: |
+          mkdir -p "$RUNNER_TEMP/conformance"
+          make test-conformance 2>&1 | tee "$RUNNER_TEMP/conformance/tests.log"
+          test -s "$CONF_OUT"
+          if grep -qE '^--- SKIP: TestConformance([ /]|$)' "$RUNNER_TEMP/conformance/tests.log"; then
+            echo "::error::conformance suite skipped instead of measuring the live matrix"
+            exit 1
+          fi
       - name: Matrix summary
         if: always()
-        run: cat "$RUNNER_TEMP/conformance.md" >> "$GITHUB_STEP_SUMMARY" || true
+        run: cat "$RUNNER_TEMP/conformance/matrix.md" >> "$GITHUB_STEP_SUMMARY" || true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: conformance
-          path: ${{ runner.temp }}/conformance.md
+          path: ${{ runner.temp }}/conformance
+          if-no-files-found: error
           retention-days: 14
 
   # The whole integration suite under the race detector, unsharded: too slow for the pull request gate.

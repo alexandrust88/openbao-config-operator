@@ -57,6 +57,7 @@ type row struct {
 // flips the objects of root/<variant> to Observe once they are settled. LIVEKIT_COMPONENTS limits the scenarios.
 func TestEndToEnd(t *testing.T) {
 	ctrllog.SetLogger(logr.Discard())
+	inventory := liveInventory(t)
 	root := repoRoot(t)
 	kit := kitDir(root)
 	kustomize := kustomizeBin(t, root)
@@ -146,6 +147,7 @@ func TestEndToEnd(t *testing.T) {
 	settle(ctx, c.k8s, runs, exc, timeout)
 	for _, r := range runs {
 		evaluate(ctx, c.k8s, r, r.overlay, exc)
+		verifyOutputSecrets(ctx, t, c.k8s, r)
 	}
 
 	observed := make([]*run, 0, len(observe))
@@ -175,6 +177,7 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	report(t, out, runs)
+	reportLiveInventory(t, out, inventory, runs, requested)
 	for _, r := range runs {
 		for _, row := range r.rows {
 			if !row.state.ready && row.excuse == "" {

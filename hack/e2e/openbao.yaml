@@ -1,5 +1,7 @@
 # Three-node OpenBao on raft storage for the kind e2e tests only, auto-unsealed with a static key and initialized
-# declaratively by the first pod. The seal key, AppRole ids and token in the Secret are fixed test values.
+# declaratively by the first pod. The seal key, AppRole ids and token in the Secret are fixed test values. Clients use
+# the openbao-active Service over TLS: run hack/e2e/tls.sh first, it creates the openbao-tls Secret and openbao-ca
+# ConfigMap.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -31,21 +33,29 @@ data:
     listener "tcp" {
       address         = "0.0.0.0:8200"
       cluster_address = "0.0.0.0:8201"
-      tls_disable     = true
+      tls_cert_file   = "/openbao/tls/tls.crt"
+      tls_key_file    = "/openbao/tls/tls.key"
     }
 
     storage "raft" {
       path = "/openbao/data"
       retry_join {
-        leader_api_addr = "http://openbao-0.openbao-internal:8200"
+        leader_api_addr     = "https://openbao-0.openbao-internal:8200"
+        leader_ca_cert_file = "/openbao/tls/ca.crt"
       }
       retry_join {
-        leader_api_addr = "http://openbao-1.openbao-internal:8200"
+        leader_api_addr     = "https://openbao-1.openbao-internal:8200"
+        leader_ca_cert_file = "/openbao/tls/ca.crt"
       }
       retry_join {
-        leader_api_addr = "http://openbao-2.openbao-internal:8200"
+        leader_api_addr     = "https://openbao-2.openbao-internal:8200"
+        leader_ca_cert_file = "/openbao/tls/ca.crt"
       }
     }
+
+    # Labels the pods openbao-active, which the openbao-active Service selects: a standby answers an audit enable
+    # with 400 instead of forwarding it, so writes must reach the active node.
+    service_registration "kubernetes" {}
 
     seal "static" {
       current_key_id = "e2e-1"
@@ -266,6 +276,41 @@ data:
       }
     }
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openbao
+  namespace: openbao
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: openbao-service-registration
+  namespace: openbao
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - update
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openbao-service-registration
+  namespace: openbao
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: openbao-service-registration
+subjects:
+  - kind: ServiceAccount
+    name: openbao
+    namespace: openbao
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -285,6 +330,16 @@ spec:
       labels:
         app.kubernetes.io/name: openbao
     spec:
+      serviceAccountName: openbao
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: openbao
       securityContext:
         runAsNonRoot: true
         runAsUser: 100
@@ -305,12 +360,16 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-            - name: POD_IP
+            - name: BAO_K8S_POD_NAME
               valueFrom:
                 fieldRef:
-                  fieldPath: status.podIP
+                  fieldPath: metadata.name
+            - name: BAO_K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: BAO_API_ADDR
-              value: http://$(POD_IP):8200
+              value: https://$(BAO_RAFT_NODE_ID).openbao-internal:8200
             - name: BAO_CLUSTER_ADDR
               value: https://$(BAO_RAFT_NODE_ID).openbao-internal:8201
             - name: BAO_SEAL_KEY
@@ -318,6 +377,10 @@ spec:
                 secretKeyRef:
                   name: openbao-e2e
                   key: seal-key
+            - name: BAO_ADDR
+              value: https://127.0.0.1:8200
+            - name: BAO_CACERT
+              value: /openbao/tls/ca.crt
             - name: E2E_ROLE_ID
               valueFrom:
                 secretKeyRef:
@@ -334,15 +397,23 @@ spec:
                   name: openbao-e2e
                   key: token
           ports:
-            - name: http
+            - name: https
               containerPort: 8200
             - name: cluster
               containerPort: 8201
           readinessProbe:
             httpGet:
               path: /v1/sys/health?standbyok=true
-              port: http
+              port: https
+              scheme: HTTPS
             periodSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 60
+            periodSeconds: 10
           resources:
             requests:
               cpu: 50m
@@ -358,21 +429,40 @@ spec:
             - name: config
               mountPath: /openbao/config
               readOnly: true
+            - name: tls
+              mountPath: /openbao/tls
+              readOnly: true
             - name: data
               mountPath: /openbao/data
       volumes:
         - name: config
           configMap:
             name: openbao
+        - name: tls
+          secret:
+            secretName: openbao-tls
   volumeClaimTemplates:
     - metadata:
         name: data
       spec:
         accessModes:
           - ReadWriteOnce
+        # The local-path class that kind ships.
+        storageClassName: standard
         resources:
           requests:
-            storage: 256Mi
+            storage: 1Gi
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: openbao
+  namespace: openbao
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openbao
 ---
 apiVersion: v1
 kind: Service
@@ -385,9 +475,9 @@ spec:
   selector:
     app.kubernetes.io/name: openbao
   ports:
-    - name: http
+    - name: https
       port: 8200
-      targetPort: http
+      targetPort: https
     - name: cluster
       port: 8201
       targetPort: cluster
@@ -395,12 +485,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: openbao
+  name: openbao-active
   namespace: openbao
 spec:
   selector:
     app.kubernetes.io/name: openbao
+    openbao-active: "true"
   ports:
-    - name: http
+    - name: https
       port: 8200
-      targetPort: http
+      targetPort: https
