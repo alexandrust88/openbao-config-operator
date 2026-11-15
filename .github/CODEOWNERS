@@ -1,4 +1,6 @@
-# Enforced by the main ruleset (require review from code owners). List each maintainer by user name.
+# Solo mode (hack/github/apply-settings.sh default): ownership is recorded, not enforced, because GitHub never lets a
+# pull request's author approve it. Strict mode (SOLO_MAINTAINER=false) requires code owner review. List each
+# maintainer by user name.
 # Paths that change the build, the release, the API contract or the security posture.
 
 /.github/                 @alexandrust88
@@ -21,5 +23,6 @@
 /go.mod                   @alexandrust88
 /go.sum                   @alexandrust88
 /.custom-gcl.yml          @alexandrust88
+/.golangci.yml            @alexandrust88
 /.dockerignore            @alexandrust88
 /mkdocs.yml               @alexandrust88

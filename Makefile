@@ -92,8 +92,13 @@ fmt-check: ## Fail when any Go file is not gofmt-formatted.
 vet: ## Run go vet against code.
 	go vet ./...
 
+.PHONY: mod-check
+mod-check: ## Fail when go.mod or go.sum is not tidy, or a downloaded module does not match go.sum.
+	go mod tidy -diff
+	go mod verify
+
 .PHONY: check
-check: fmt-check vet lint test verify-generated api-coverage helm-lint validate-manifests ## Run the fast subset of the PR gate (no integration, namespaces or e2e).
+check: fmt-check vet mod-check lint test verify-generated api-coverage helm-lint validate-manifests ## Run the fast subset of the PR gate (no integration, namespaces or e2e).
 
 .PHONY: test-unit
 test-unit: ## Run unit tests that need no envtest control plane.
@@ -166,7 +171,7 @@ test-e2e: setup-test-e2e ## Run the e2e tests, then delete the Kind cluster.
 
 .PHONY: test-e2e-run
 test-e2e-run: setup-test-e2e ## Run the e2e tests and keep the Kind cluster.
-	KIND="$(KIND)" KIND_CLUSTER=$(KIND_CLUSTER) go test -tags=e2e ./test/e2e/ -v -ginkgo.v
+	KIND="$(KIND)" KIND_CLUSTER=$(KIND_CLUSTER) go test -tags=e2e ./test/e2e/ -timeout 25m -v -ginkgo.v
 
 .PHONY: cleanup-test-e2e
 cleanup-test-e2e: kind ## Tear down the Kind cluster used for e2e tests

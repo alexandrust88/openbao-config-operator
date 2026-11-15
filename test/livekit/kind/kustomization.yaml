@@ -1,6 +1,6 @@
 # The overlays of every connection mode (root, root-to-child and optional through all/full, child and
-# child-connection-root-login) against the in-cluster OpenBao of the kind e2e job (hack/e2e/openbao.yaml), which
-# listens on plain HTTP.
+# child-connection-root-login) against the active node of the in-cluster OpenBao of the kind e2e job
+# (hack/e2e/openbao.yaml). kind.sh copies its CA into the kit's openbao-ca ConfigMap and live-connection-auth-ca Secret.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -10,13 +10,21 @@ resources:
 patches:
   - target:
       kind: OpenBaoServer
-      name: .*-(openbao-server|conn-server-secret-ca)
+      name: .*-(openbao-server|conn-server-secret-ca|conn-server-dev)
     patch: |-
       - op: replace
         path: /spec/address
-        value: http://openbao.openbao.svc:8200
-      - op: add
-        path: /spec/allowInsecureHTTP
-        value: true
+        value: https://openbao-active.openbao.svc:8200
+  - target:
+      kind: OpenBaoServer
+      name: .*-conn-server-dev
+    patch: |-
       - op: remove
+        path: /spec/allowInsecureHTTP
+      - op: add
         path: /spec/caBundle
+        value:
+          configMapRef:
+            name: openbao-ca
+            namespace: openbao-live
+            key: ca.crt

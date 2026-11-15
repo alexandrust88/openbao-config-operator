@@ -45,10 +45,11 @@ func runStdin(stdin, name string, args ...string) (string, error) {
 	if stdin != "" {
 		cmd.Stdin = strings.NewReader(stdin)
 	}
-	_, _ = fmt.Fprintf(GinkgoWriter, "running: %s %s\n", name, strings.Join(args, " "))
+	loggedArgs := strings.Join(redactArgs(args), " ")
+	_, _ = fmt.Fprintf(GinkgoWriter, "running: %s %s\n", name, loggedArgs)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return string(out), fmt.Errorf("%s %s: %w: %s", name, strings.Join(args, " "), err, out)
+		return string(out), fmt.Errorf("%s %s: %w: %s", name, loggedArgs, err, out)
 	}
 	return string(out), nil
 }
@@ -65,7 +66,18 @@ var baoToken string
 // baoArgs runs the bao CLI inside an OpenBao pod with the admin token.
 func baoArgs(args ...string) []string {
 	return append([]string{"-n", openbaoNamespace, "exec", "-i", "statefulset/openbao", "--",
-		"env", "BAO_ADDR=http://127.0.0.1:8200", "BAO_TOKEN=" + baoToken, "bao"}, args...)
+		"env", "BAO_ADDR=" + baoActiveAddress, "BAO_CACERT=" + baoCAFile,
+		"BAO_SKIP_VERIFY=false", "BAO_TOKEN=" + baoToken, "bao"}, args...)
+}
+
+func redactArgs(args []string) []string {
+	out := append([]string(nil), args...)
+	for i, arg := range out {
+		if strings.HasPrefix(arg, "BAO_TOKEN=") {
+			out[i] = "BAO_TOKEN=[REDACTED]"
+		}
+	}
+	return out
 }
 
 // activeNodes counts the OpenBao pods that report themselves as the raft leader.
@@ -73,7 +85,7 @@ func activeNodes() (int, error) {
 	active := 0
 	for i := range openbaoReplicas {
 		out, err := run("kubectl", "-n", openbaoNamespace, "exec", fmt.Sprintf("openbao-%d", i), "--",
-			"env", "BAO_ADDR=http://127.0.0.1:8200", "bao", "read", "-field=is_self", "sys/leader")
+			"bao", "read", "-field=is_self", "sys/leader")
 		if err != nil {
 			return 0, err
 		}
@@ -82,6 +94,15 @@ func activeNodes() (int, error) {
 		}
 	}
 	return active, nil
+}
+
+// activeLabels counts the OpenBao pods labelled openbao-active=true, which the openbao-active Service routes to.
+func activeLabels() (int, error) {
+	out, err := run("kubectl", "-n", openbaoNamespace, "get", "pods", "-l", "openbao-active=true", "-o", "name")
+	if err != nil {
+		return 0, err
+	}
+	return len(strings.Fields(out)), nil
 }
 
 func baoRun(args ...string) (string, error) {

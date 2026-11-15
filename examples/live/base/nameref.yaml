@@ -267,6 +267,10 @@ nameReference:
     fieldSpecs:
       - path: spec/path
         kind: Audit
+  - kind: MFALoginEnforcement
+    fieldSpecs:
+      - path: spec/name
+        kind: MFALoginEnforcement
   - kind: KubernetesAuthRole
     fieldSpecs:
       - path: spec/name

@@ -50,14 +50,16 @@ var _ = BeforeSuite(func() {
 		mustRun(kindBinary, "load", "docker-image", managerImage, "--name", kindCluster)
 	}
 
-	By("deploying OpenBao, which initializes kubernetes auth and the tenant policy itself")
+	By("deploying OpenBao with TLS, which initializes kubernetes auth and the tenant policy itself")
+	mustRun(projectPath("hack/e2e/tls.sh"))
 	mustRun("kubectl", "apply", "-f", "hack/e2e/openbao.yaml", "-f", "test/e2e/testdata/openbao-auth.yaml")
 	mustRun("kubectl", "-n", openbaoNamespace, "rollout", "status", "statefulset/openbao", "--timeout=300s")
 	Eventually(activeNodes).Should(Equal(1))
+	Eventually(activeLabels).Should(Equal(1))
 
 	By("logging in to OpenBao with the admin AppRole")
 	baoToken = strings.TrimSpace(mustRun("kubectl", "-n", openbaoNamespace, "exec", "statefulset/openbao", "--",
-		"sh", "-c", `BAO_ADDR=http://127.0.0.1:8200 bao write -field=token auth/approle/login role_id="$E2E_ROLE_ID" secret_id="$E2E_SECRET_ID"`))
+		"sh", "-c", `bao write -field=token auth/approle/login role_id="$E2E_ROLE_ID" secret_id="$E2E_SECRET_ID"`))
 
 	By("installing the Helm chart")
 	repo, tag := splitImage(managerImage)
