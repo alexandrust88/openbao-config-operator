@@ -3,8 +3,9 @@
 # `git diff -z --name-only` prints them) and prints mode=all|kinds|none, conf_kinds=<CONF_KINDS regex> and
 # reason=<text>, ready for $GITHUB_OUTPUT.
 # Shared code (engine, OpenBao client, connections, the suite, the build, docs/kinds.md, this selection) selects every
-# kind, and so does any other operator code that is not one kind's files; a group's shared adapter or API file selects
-# the group's kinds. A hand-written example selects every kind: the suite resolves references and applies examples
+# kind, and so does any other operator code outside a group package. Any Go file of a group, a kind's own adapter or
+# types included, selects the group's kinds: a package shares unexported helpers and types between its kinds. A CRD,
+# fixture or generated example selects its own kind. A hand-written example selects every kind: the suite resolves references and applies examples
 # across all of them. The output never echoes a path: paths come from the pull request and could carry workflow
 # commands.
 # Usage: hack/ci/conformance-kinds.sh <changed-files
@@ -80,16 +81,10 @@ while IFS= read -r -d '' path || [ -n "$path" ]; do
     elif has_crd "$group" "$kind" && ! is_plugin "$kind"; then
       all "generated example changed"
     fi
-  elif [[ $path =~ ^(api/([a-z0-9]+)/v1alpha1|internal/controller/([a-z0-9]+))/([a-z0-9_]+)\.go$ ]]; then
-    group=${BASH_REMATCH[2]:-${BASH_REMATCH[3]}}
-    name=${BASH_REMATCH[4]%_types}
-    if is_kind "$group" "$name"; then
-      selected+="$name"$'\n'
-    else
-      kinds=$(group_kinds "$group")
-      [ -n "$kinds" ] || all "operator code outside a kind changed"
-      selected+="$kinds"$'\n'
-    fi
+  elif [[ $path =~ ^(api/([a-z0-9]+)/v1alpha1|internal/controller/([a-z0-9]+))/[a-z0-9_]+\.go$ ]]; then
+    kinds=$(group_kinds "${BASH_REMATCH[2]:-${BASH_REMATCH[3]}}")
+    [ -n "$kinds" ] || all "operator code outside a kind changed"
+    selected+="$kinds"$'\n'
   elif [[ $path == api/* || $path == internal/* ]]; then
     all "operator code outside a kind changed"
   fi

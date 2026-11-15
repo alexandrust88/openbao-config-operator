@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -184,6 +185,13 @@ func (r *Reconciler[T]) SetupWithManager(mgr ctrl.Manager, opts ...SetupOption) 
 		WithOptions(controller.Options{MaxConcurrentReconciles: r.opts.MaxConcurrentReconciles})
 	if err := r.watchConnections(mgr, b); err != nil {
 		return err
+	}
+	if r.destructive() {
+		// A guarded delete gets no event of its own when its Namespace starts terminating, and must orphan then.
+		b = b.Watches(&corev1.Namespace{}, handler.EnqueueRequestsFromMapFunc(r.deletingInNamespace),
+			builder.WithPredicates(predicate.NewPredicateFuncs(func(o client.Object) bool {
+				return !o.GetDeletionTimestamp().IsZero()
+			})))
 	}
 	if _, ok := any(r.adapter).(OutputWriter[T]); ok {
 		// A deleted or edited output Secret re-queues its owner, which writes it again or reports it undelivered.
@@ -973,6 +981,36 @@ func (r *Reconciler[T]) namespaceTerminating(ctx context.Context, obj T) bool {
 		return false
 	}
 	return !ns.DeletionTimestamp.IsZero()
+}
+
+// deletingInNamespace returns the resources of this kind that are being deleted in the Namespace ns.
+func (r *Reconciler[T]) deletingInNamespace(ctx context.Context, ns client.Object) []reconcile.Request {
+	if len(r.opts.Namespaces) > 0 && !slices.Contains(r.opts.Namespaces, ns.GetName()) {
+		return nil
+	}
+	var items []runtime.Object
+	gvk, err := apiutil.GVKForObject(r.newObj(), r.scheme)
+	var list client.ObjectList
+	if err == nil {
+		list, err = r.newList(gvk)
+	}
+	if err == nil {
+		err = r.client.List(ctx, list, client.InNamespace(ns.GetName()))
+	}
+	if err == nil {
+		items, err = meta.ExtractList(list)
+	}
+	if err != nil {
+		log.FromContext(ctx).Error(err, "Listing resources in a terminating Namespace failed", "namespace", ns.GetName())
+		return nil
+	}
+	var requests []reconcile.Request
+	for _, item := range items {
+		if o, ok := item.(client.Object); ok && !o.GetDeletionTimestamp().IsZero() {
+			requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(o)})
+		}
+	}
+	return requests
 }
 
 func (r *Reconciler[T]) cleanupBlocked(ctx context.Context, obj T, before client.Object, cause error) (ctrl.Result, error) {

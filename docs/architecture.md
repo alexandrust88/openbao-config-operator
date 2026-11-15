@@ -27,7 +27,7 @@ cite them.
 - **1. Steady-state reconcile reads and does not write.** `openbao_writes_total` is zero at rest.
   Proven on a live OpenBao 2.7.2 cluster (81 objects of 55 kinds, zero rewrites across drift
   intervals and a manager restart). The per-kind no-write conformance test runs on every pull request (for
-  the kinds it touches, or every kind when shared code changes), on pushes to `main`, weekly and on demand,
+  the kinds it touches, every kind of a group whose Go code changes, or every kind when shared code changes), on pushes to `main`, weekly and on demand,
   except for cases documented in `test/conformance/exceptions.yaml`.
 - **2. One cached client per connection.** The operator logs in once and renews. Logging in on every
   reconcile would grow entities, aliases and leases without bound; `openbao_logins_total` makes

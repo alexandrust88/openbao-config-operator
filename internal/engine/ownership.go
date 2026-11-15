@@ -34,12 +34,21 @@ type ChildOwner interface {
 // only claimed before its create, and the paths of the children a ChildOwner created. It is exported for fake clients
 // in tests.
 func PathIndexFunc(o client.Object) []string {
+	if managed, ok := o.(commonv1alpha1.Managed); !ok || observeOnly(managed) {
+		return nil
+	}
+	return recordedPaths(o)
+}
+
+// recordedPaths is PathIndexFunc whatever the management policy: a resource that only observes its object claims
+// these paths as soon as it is switched to Manage.
+func recordedPaths(o client.Object) []string {
 	managed, ok := o.(commonv1alpha1.Managed)
 	if !ok {
 		return nil
 	}
 	status := managed.GetResourceStatus()
-	if status.Path == "" || observeOnly(managed) {
+	if status.Path == "" {
 		return nil
 	}
 	paths := []string{openbao.CanonicalPath(status.Path)}
@@ -241,11 +250,9 @@ func (r *Reconciler[T]) olderOwnerLive(ctx context.Context, obj T, absPath, serv
 // listLiveClaims lists the resources of a kind that claim absPath on the API server. One live LIST of the kind serves
 // every path for liveSnapshotTTL, so that adopting many objects does not list the kind once per object. A claim
 // written after that LIST is missing from it and maybe from the cache too: a path whose claims this process changed
-// since then is listed again. The claimants the reused LIST shows are read again, so a released claim does not stand.
-// A claim made after that LIST without a status write of this process (another writer, or an older resource switched
-// from Observe to Manage) is missed while the LIST is younger than liveSnapshotTTL and can allow one adoption; the next
-// pass finds it in the cache and the newer resource stops with Conflict. l.mu is held across the LIST by design, so
-// the concurrent rechecks of one kind wait for and share a single LIST.
+// since then is listed again. The reused LIST keeps every resource that records the path, observing ones included,
+// and they are read again, so a released claim does not stand and a switch from Observe to Manage is seen. l.mu is
+// held across the LIST by design, so the concurrent rechecks of one kind wait for and share a single LIST.
 func (r *Reconciler[T]) listLiveClaims(absPath string) listFunc {
 	return func(ctx context.Context, gvk schema.GroupVersionKind) ([]runtime.Object, error) {
 		l := r.shared.snapshot(gvk)
@@ -262,7 +269,7 @@ func (r *Reconciler[T]) listLiveClaims(absPath string) listFunc {
 		l.start, l.claims = start, map[string][]client.ObjectKey{}
 		for _, item := range items {
 			if o, ok := item.(client.Object); ok {
-				for _, path := range PathIndexFunc(o) {
+				for _, path := range recordedPaths(o) {
 					l.claims[path] = append(l.claims[path], client.ObjectKeyFromObject(o))
 				}
 			}

@@ -1,7 +1,7 @@
 name: conformance
 
-# A pull request measures only the kinds it touches (hack/ci/conformance-kinds.sh), or every kind when shared code
-# changes; the job always runs and passes with "no kinds affected" otherwise, so `conformance` can be a required check.
+# A pull request measures the kinds it touches (hack/ci/conformance-kinds.sh): every kind of a group whose Go code
+# changes, or every kind when shared code changes; the job always runs and passes with "no kinds affected" otherwise, so `conformance` can be a required check.
 on:
   pull_request:
   push:

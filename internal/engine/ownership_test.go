@@ -790,3 +790,30 @@ func TestReusedLiveListRereadsClaimants(t *testing.T) {
 		t.Fatalf("acquired = %q after %d live LISTs, want Adopted after 1", got, *lists)
 	}
 }
+
+// TestReusedLiveListSeesObserveSwitchedToManage: an older resource that only observed the shared path when the live
+// LIST was sent, and manages it now, keeps the path, although neither the reused LIST nor the cache shows its claim.
+func TestReusedLiveListSeesObserveSwitchedToManage(t *testing.T) {
+	now := time.Now()
+	primer := adopting(v2At("primer", now, "u-primer"))
+	older := v2Owned(v2At(v2Older, now.Add(-time.Hour), "u-old"), v2SharedAbs)
+	older.Spec.ManagementPolicy = commonv1alpha1.ManagementPolicyObserve
+	h := newHarness(t, sharedPairAdapter{}, primer, older, adopting(v2At(testName, now, "u-new")))
+	h.store.objects[litAdmin+"/"+testAdapter{}.Path(primer)] = Payload{keyPolicy: foreignTxt}
+	h.store.objects[v2SharedAbs] = Payload{keyPolicy: foreignTxt}
+	lists := h.countLiveLists(true)
+	h.mustReconcileName(primer.Name)
+	managed := h.getName(v2Older)
+	managed.Spec.ManagementPolicy = commonv1alpha1.ManagementPolicyManage
+	h.update(managed)
+	writes := h.writes()
+	h.mustReconcile()
+	got := h.get()
+	if got.Status.Acquired != "" || h.writes() != writes {
+		t.Fatalf("adopted the object the older resource manages now: %+v, %d writes", got.Status, h.writes()-writes)
+	}
+	assertCondition(t, got, commonv1alpha1.ConditionSynced, "False", commonv1alpha1.ReasonConflict)
+	if *lists != 1 {
+		t.Fatalf("live LISTs = %d, want 1", *lists)
+	}
+}

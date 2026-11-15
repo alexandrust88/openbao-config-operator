@@ -19,7 +19,7 @@ entry leaves this page when its source is closed.
 | Only OpenBao 2.7.2 runs in CI; 2.6 is covered by its OpenAPI snapshot | a behaviour difference on 2.6 is not caught | [BL-014](../project/backlog.md#bl-014-detect-openbao-api-changes-automatically), [compatibility](compatibility.md) |
 | Field-level API coverage is not checked | a request field added or renamed upstream on a typed path is noticed only by hand; use `OpenBaoEndpoint` for it meanwhile | [TD-003](../project/tech-debt.md#td-003-no-openapi-field-coverage-check) |
 | External-plugin kinds are not run against a server | they are verified by golden payload tests only, and paths marked `(u)` in the [kind catalogue](../kinds.md) come from documentation, not OpenBao source; they are disabled by default | [TD-004](../project/tech-debt.md#td-004-unconfirmed-paths-and-external-plugin-kinds) |
-| The default conformance test and the full no-write run over every kind run on pushes to `main`, weekly and on demand; a pull request runs the no-write test only for the kinds it touches, or every kind when shared code changes | a change that breaks the default test of a kind can merge and is caught afterwards | [architecture](../architecture.md#ci-gates) |
+| The default conformance test and the full no-write run over every kind run on pushes to `main`, weekly and on demand; a pull request runs the no-write test only for the kinds it touches, every kind of a group whose Go code changes, or every kind when shared code changes | a change that breaks the default test of a kind can merge and is caught afterwards | [architecture](../architecture.md#ci-gates) |
 
 ## Drift detection and comparison
 

@@ -13,15 +13,15 @@ constant name when a line does not match. The design behind these values is in t
 | `DefaultDriftIntervalStandard` | 1 h | `internal/engine/drift.go:14` | drift interval of every other kind; flag `--drift-interval-standard` (`cmd/main.go:106`) |
 | `MinDriftInterval` | 30 s | `internal/engine/drift.go:42` | a shorter `spec.driftInterval` is raised to 30 s |
 | `mountTableTTL` | 2 s | `internal/controller/sys/mounttable.go:17` | one read of `sys/mounts` or `sys/auth` serves every mount resource of the same connection and OpenBao namespace; a mount write or delete clears it, so an out-of-band mount change shows up to 2 s later |
-| `liveSnapshotTTL` | 10 s | `internal/engine/ownership.go:148` | one live LIST of a kind serves the ownership rechecks before adoption; a path this process claimed after that LIST gets a fresh LIST |
-| jitter | × 0.8 to × 1.2 | `internal/engine/reconciler.go:1525-1526` | applied to the drift requeue, to every backoff and to the pause recheck |
-| `minReferenceRetry` | 2 s | `internal/engine/reconciler.go:54` | first delay of every backoff below |
-| backoff growth | time since `Synced` turned `False` with the same reason, at least 2 s | `internal/engine/reconciler.go:1516-1523` | each retry waits about as long as the condition has lasted, so the delay roughly doubles |
-| `retryInterval` | 30 s | `internal/engine/reconciler.go:51` | backoff cap for `ReferenceNotReady` and `OutputNotDelivered` |
-| `maxConnectionRetry` | 1 min | `internal/engine/reconciler.go:53` | backoff cap for `ConnectionNotReady`; the connection watch re-queues sooner |
-| `OutOfSync` cap | the resource's drift interval | `internal/engine/reconciler.go:878` | backoff cap after a write that did not read back as written |
-| `inProgressInterval` | 10 s | `internal/engine/reconciler.go:55` | fixed requeue while OpenBao completes an asynchronous operation (`ReconcileInProgress`) |
-| `pausedRecheck` | 1 min | `internal/engine/reconciler.go:58` | recheck of a resource paused through its Namespace or its `OpenBaoServer`; a pause on the resource itself waits for the annotation change |
+| `liveSnapshotTTL` | 10 s | `internal/engine/ownership.go:157` | one live LIST of a kind serves the ownership rechecks before adoption; a path this process claimed after that LIST gets a fresh LIST |
+| jitter | × 0.8 to × 1.2 | `internal/engine/reconciler.go:1563-1564` | applied to the drift requeue, to every backoff and to the pause recheck |
+| `minReferenceRetry` | 2 s | `internal/engine/reconciler.go:55` | first delay of every backoff below |
+| backoff growth | time since `Synced` turned `False` with the same reason, at least 2 s | `internal/engine/reconciler.go:1554-1561` | each retry waits about as long as the condition has lasted, so the delay roughly doubles |
+| `retryInterval` | 30 s | `internal/engine/reconciler.go:52` | backoff cap for `ReferenceNotReady` and `OutputNotDelivered` |
+| `maxConnectionRetry` | 1 min | `internal/engine/reconciler.go:54` | backoff cap for `ConnectionNotReady`; the connection watch re-queues sooner |
+| `OutOfSync` cap | the resource's drift interval | `internal/engine/reconciler.go:886` | backoff cap after a write that did not read back as written |
+| `inProgressInterval` | 10 s | `internal/engine/reconciler.go:56` | fixed requeue while OpenBao completes an asynchronous operation (`ReconcileInProgress`) |
+| `pausedRecheck` | 1 min | `internal/engine/reconciler.go:59` | recheck of a resource paused through its Namespace or its `OpenBaoServer`; a pause on the resource itself waits for the annotation change |
 
 ## Request rate and recovery
 
@@ -81,7 +81,7 @@ Creates, adoptions, spec changes and changed input Secrets are not charged; the
 | value | default | source | effect |
 |-------|---------|--------|--------|
 | `hashKeySize` | 32 bytes | `internal/engine/hashkey.go:17` | size of the key in the hash-key Secret (`--hash-key-secret`, default `openbao-config-operator-hash-key`, `cmd/main.go:123`) |
-| `minRedactLength` | 4 characters | `internal/engine/reconciler.go:1544` | write-only string values shorter than this are not redacted from OpenBao error messages |
+| `minRedactLength` | 4 characters | `internal/engine/reconciler.go:1582` | write-only string values shorter than this are not redacted from OpenBao error messages |
 
 ## Concurrency and leader election
 

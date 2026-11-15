@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/common/v1alpha1"
 	corev1alpha1 "github.com/alexandrust88/openbao-config-operator/api/core/v1alpha1"
@@ -413,6 +414,14 @@ func TestV2DestructiveDeleteTerminatingNamespace(t *testing.T) {
 
 	if err := h.k8s.Delete(context.Background(), ns); err != nil {
 		t.Fatal(err)
+	}
+	terminating := &corev1.Namespace{}
+	if err := h.k8s.Get(context.Background(), client.ObjectKey{Name: testNamespace}, terminating); err != nil {
+		t.Fatal(err)
+	}
+	want := []reconcile.Request{{NamespacedName: client.ObjectKey{Namespace: testNamespace, Name: testName}}}
+	if got := h.r.deletingInNamespace(context.Background(), terminating); !slices.Equal(got, want) {
+		t.Fatalf("the terminating Namespace queued %v, want the guarded resource %v", got, want)
 	}
 	h.drainEvents()
 	h.mustReconcile()

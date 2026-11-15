@@ -91,7 +91,7 @@ Required status checks (the job names, or the job `name:` where one is set):
 |----------|-------|
 | `ci.yml` | `lint`, `test`, `integration`, `namespaces`, `livekit`, `verify-generated`, `api-coverage`, `govulncheck`, `manifests`, `docs-examples` |
 | `e2e.yml` | `e2e` |
-| `conformance.yml` | `conformance` (runs on every pull request and measures only the kinds it touches, every kind when shared code changes, or reports "no kinds affected") |
+| `conformance.yml` | `conformance` (runs on every pull request and measures only the kinds it touches, every kind of a group whose Go code changes, every kind when shared code changes, or reports "no kinds affected") |
 | `codeql.yml` | `analyze (go)`, `analyze (actions)` |
 | `dependency-review.yml` | `dependency-review` |
 | `secret-scan.yml` | `gitleaks` |

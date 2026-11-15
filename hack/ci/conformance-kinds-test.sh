@@ -45,20 +45,23 @@ expect "generated deepcopy only" '^mode=none conf_kinds=$' api/secrets/v1alpha1/
 expect "example of no kind" '^mode=none conf_kinds=$' examples/live/kustomization.yaml \
   examples/sys/auditrequestheader-attribution.yaml
 expect "example of an external-plugin kind" '^mode=none conf_kinds=$' examples/auth/ldapauthconfig.yaml
-expect "external-plugin kind only" '^mode=none conf_kinds=$' internal/controller/auth/ldapauthconfig.go
-expect "one kind from its types" '^mode=kinds conf_kinds=\(\?i\)\^\(kvsecret\)\$$' api/secrets/v1alpha1/kvsecret_types.go
-expect "one kind from all its files" '^mode=kinds conf_kinds=\(\?i\)\^\(kvsecret\)\$$' \
-  api/secrets/v1alpha1/kvsecret_types.go internal/controller/secrets/kvsecret.go \
+expect "external-plugin kind only" '^mode=none conf_kinds=$' config/crd/bases/auth.openbaoconfig.io_ldapauthconfigs.yaml
+expect "one kind from its data files" '^mode=kinds conf_kinds=\(\?i\)\^\(kvsecret\)\$$' \
   examples-generated/secrets/kvsecret.yaml config/crd/bases/secrets.openbaoconfig.io_kvsecrets.yaml
+for f in api/secrets/v1alpha1/kvsecret_types.go internal/controller/secrets/kvsecret.go; do
+  expect "a kind's Go file selects its group: $f" '^mode=kinds conf_kinds=\(\?i\)\^\(.*kvsecret\|.*transitkey.*\)\$$' "$f"
+done
+expect "a kind's adapter selects the kinds sharing its helpers" \
+  '^mode=kinds conf_kinds=\(\?i\)\^\(.*entity\|.*group\|.*\)\$$' internal/controller/identity/entity.go
 expect "CRD of a kind" '^mode=kinds conf_kinds=\(\?i\)\^\(passwordpolicy\)\$$' \
   config/crd/bases/sys.openbaoconfig.io_passwordpolicies.yaml
 expect "CRD of a connection kind" '^mode=all conf_kinds=$' config/crd/bases/core.openbaoconfig.io_openbaoconnections.yaml
 expect "deleted CRD" '^mode=all conf_kinds=$' config/crd/bases/secrets.openbaoconfig.io_removeds.yaml
 expect "hand-written example" '^mode=all conf_kinds=$' examples/secrets/kvsecret.yaml
 expect "two kinds, sorted" '^mode=kinds conf_kinds=\(\?i\)\^\(kvsecret\|pkirole\)\$$' \
-  test/conformance/fixtures/secrets/pkirole.yaml internal/controller/secrets/kvsecret.go
+  test/conformance/fixtures/secrets/pkirole.yaml config/crd/bases/secrets.openbaoconfig.io_kvsecrets.yaml
 expect "external-plugin kind dropped" '^mode=kinds conf_kinds=\(\?i\)\^\(kvsecret\)\$$' \
-  internal/controller/auth/ldapauthconfig.go internal/controller/secrets/kvsecret.go
+  config/crd/bases/auth.openbaoconfig.io_ldapauthconfigs.yaml config/crd/bases/secrets.openbaoconfig.io_kvsecrets.yaml
 expect "shared group file selects the group" '^mode=kinds conf_kinds=\(\?i\)\^\(.*\|tokenrole\|.*\)\$$' \
   internal/controller/auth/helpers.go
 for f in internal/controller/sys/mount.go api/sys/v1alpha1/mount_types.go; do

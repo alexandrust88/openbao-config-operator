@@ -68,7 +68,7 @@ managed kind with its `status` and `finalizers`, into a Role per listed namespac
 namespace (`templates/rbac/manager.yaml:30-58`). The ClusterRole keeps only the cluster-scoped
 kinds (`openbaoservers`, `clusteropenbaoconnections`), Namespace reads and the OIDC discovery URL.
 The manager caches only those namespaces and lists live only inside them (`cmd/main.go:228-240`,
-`internal/engine/ownership.go:319-326`). Resources in other namespaces are not reconciled, and the
+`internal/engine/ownership.go:326-333`). Resources in other namespaces are not reconciled, and the
 manager cannot read or patch them. Adding a tenant means a chart upgrade, which is the point:
 enrolment becomes a reviewed change.
 
@@ -749,7 +749,7 @@ Follow [upgrade.md](../operate/upgrade.md), and in addition:
    writes nothing.
 4. To stop the operator touching a server while you investigate, annotate the server; nothing is
    read, written or deleted for resources that use it, and deletions keep their finalizers
-   (`internal/engine/reconciler.go:250-256,1077-1097`):
+   (`internal/engine/reconciler.go:258-264,1077-1097`):
 
    ```sh
    kubectl annotate openbaoservers.core.openbaoconfig.io openbao openbaoconfig.io/paused=true
@@ -764,7 +764,7 @@ The tools, from narrow to wide:
 
 | scope | tool | effect |
 |-------|------|--------|
-| one resource | `managementPolicy: Observe` in Git | reads and reports drift (`Drifted` with the differing keys), never writes or deletes, and removes the finalizer (`internal/engine/reconciler.go:287-289,1053`) |
+| one resource | `managementPolicy: Observe` in Git | reads and reports drift (`Drifted` with the differing keys), never writes or deletes, and removes the finalizer (`internal/engine/reconciler.go:295-297,1053`) |
 | one resource | `openbaoconfig.io/paused: "true"` on it | no reads, writes or deletes |
 | one tenant | the annotation on its Namespace | the same for every resource in it |
 | one server | the annotation on the `OpenBaoServer` | the same for every resource that uses it |
