@@ -1,3 +1,13 @@
+# KerberosAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# KerberosAuthConfig manages the configuration of an OpenBao Kerberos auth method at auth/<mountPath>/config.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef,
+# keytabSecretRef, serviceAccount.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#kerberosauthconfig
+# Curated example: examples/auth/kerberosauthconfig.yaml
 apiVersion: auth.openbaoconfig.io/v1alpha1
 kind: KerberosAuthConfig
 metadata:

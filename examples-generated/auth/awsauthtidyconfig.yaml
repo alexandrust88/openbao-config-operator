@@ -1,3 +1,13 @@
+# AWSAuthTidyConfig (auth.openbaoconfig.io/v1alpha1)
+# AWSAuthTidyConfig manages the periodic tidy settings of an OpenBao AWS auth method, at
+# auth/<mountPath>/config/tidy/identity-accesslist and auth/<mountPath>/config/tidy/roletag-denylist.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: connectionRef.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#awsauthtidyconfig
+# Curated example: examples/auth/awsauthtidyconfig.yaml
 apiVersion: auth.openbaoconfig.io/v1alpha1
 kind: AWSAuthTidyConfig
 metadata:

@@ -1,3 +1,4 @@
+# Reusable capability sets on KV data and metadata (read, write, owner) that AccessGrant and AccessLayout rules name.
 apiVersion: access.openbaoconfig.io/v1alpha1
 kind: AccessLevel
 metadata:

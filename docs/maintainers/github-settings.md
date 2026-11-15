@@ -89,7 +89,7 @@ Required status checks (the job names, or the job `name:` where one is set):
 
 | Workflow | Check |
 |----------|-------|
-| `ci.yml` | `lint`, `test`, `integration`, `namespaces`, `livekit`, `verify-generated`, `api-coverage`, `govulncheck`, `manifests` |
+| `ci.yml` | `lint`, `test`, `integration`, `namespaces`, `livekit`, `verify-generated`, `api-coverage`, `govulncheck`, `manifests`, `docs-examples` |
 | `e2e.yml` | `e2e` |
 | `codeql.yml` | `analyze (go)`, `analyze (actions)` |
 | `dependency-review.yml` | `dependency-review` |
@@ -99,8 +99,9 @@ Required status checks (the job names, or the job `name:` where one is set):
 | `pr-title.yml` | `Conventional commit title` |
 | `pages.yml` | `pages` (runs on every pull request and builds the site only when a docs path changed) |
 
-Not required, on purpose: `labels` runs only when its paths change, and a required check that never starts
-blocks the merge. `conformance` and `govulncheck-nightly` do not run on pull
+Not required, on purpose: `labels` and `helm.yml` (`unittest`, and `lifecycle`, which packages the chart and
+installs, upgrades from the last release, rolls back and uninstalls it on kind) run only when their paths change, and
+a required check that never starts blocks the merge. `conformance` and `govulncheck-nightly` do not run on pull
 requests.
 
 ### `release-branches` (branch ruleset)

@@ -1,3 +1,13 @@
+# RADIUSAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# RADIUSAuthConfig manages the configuration of an OpenBao RADIUS auth method at auth/<mountPath>/config.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef, host,
+# secretSecretRef.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#radiusauthconfig
+# Curated example: examples/auth/radiusauthconfig.yaml
 apiVersion: auth.openbaoconfig.io/v1alpha1
 kind: RADIUSAuthConfig
 metadata:

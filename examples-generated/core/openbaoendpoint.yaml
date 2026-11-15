@@ -1,3 +1,13 @@
+# OpenBaoEndpoint (core.openbaoconfig.io/v1alpha1)
+# OpenBaoEndpoint writes any JSON payload to any OpenBao API path and keeps it in sync: the escape hatch for settings
+# without a typed kind.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef, path.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/core/#openbaoendpoint
+# Curated example: examples/core/openbaoendpoint.yaml
 apiVersion: core.openbaoconfig.io/v1alpha1
 kind: OpenBaoEndpoint
 metadata:

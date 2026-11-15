@@ -1,0 +1,300 @@
+suite: values schema
+templates:
+  - templates/deployment.yaml
+release:
+  name: obc
+  namespace: openbao-system
+tests:
+  - it: accepts the defaults
+    asserts:
+      - isKind:
+          of: Deployment
+
+  - it: accepts any global object, as set by parent charts
+    set:
+      global:
+        imageRegistry: registry.example.com
+    asserts:
+      - isKind:
+          of: Deployment
+
+  - it: rejects an unknown top-level key
+    set:
+      replica: 3
+    asserts:
+      - failedTemplate:
+          errorPattern: additional properties 'replica' not allowed
+
+  - it: rejects an unknown crds key
+    set:
+      crds.upgrade: true
+    asserts:
+      - failedTemplate:
+          errorPattern: additional properties 'upgrade' not allowed
+
+  - it: rejects a non-boolean crds.install
+    set:
+      crds.install: "yes"
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/crds/install': got string, want boolean"
+
+  - it: rejects a non-boolean crds.keep
+    set:
+      crds.keep: "yes"
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/crds/keep': got string, want boolean"
+
+  - it: rejects a non-string crds label value
+    set:
+      crds.labels:
+        tier: 1
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/crds/labels/tier': got number, want string"
+
+  - it: rejects a non-boolean pluginKinds.enabled
+    set:
+      pluginKinds.enabled: "true"
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/pluginKinds/enabled': got string, want boolean"
+
+  - it: rejects an image digest that is not sha256
+    set:
+      image.digest: sha256:abc
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/image/digest'"
+
+  - it: rejects an empty image repository
+    set:
+      image.repository: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/image/repository'"
+
+  - it: rejects an unknown pull policy
+    set:
+      image.pullPolicy: Sometimes
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/image/pullPolicy'"
+
+  - it: rejects an image pull secret without a name
+    set:
+      imagePullSecrets:
+        - secret: regcred
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/imagePullSecrets/0': missing property 'name'"
+
+  - it: rejects negative replicas
+    set:
+      replicas: -1
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/replicas': minimum: got -1, want 0"
+
+  - it: rejects an invalid namespace name in watchNamespaces
+    set:
+      watchNamespaces: [Team_A]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/watchNamespaces/0'"
+
+  - it: rejects an API server audience with a comma
+    set:
+      apiServerAudiences: ["a,b"]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/apiServerAudiences/0'"
+
+  - it: rejects an empty projected token audience
+    set:
+      injectedIdentity.projectedToken.audience: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/injectedIdentity/projectedToken/audience'"
+
+  - it: rejects a projected token path with a single segment
+    set:
+      injectedIdentity.projectedToken.path: /token
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/injectedIdentity/projectedToken/path'"
+
+  - it: rejects a non-string ServiceAccount annotation
+    set:
+      serviceAccount.annotations:
+        example.com/flag: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/serviceAccount/annotations/example.com~1flag': got boolean, want string"
+
+  - it: rejects an empty ServiceAccount name when the chart does not create it
+    set:
+      serviceAccount.create: false
+      serviceAccount.name: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/serviceAccount/name'"
+
+  - it: rejects a metrics port out of range
+    set:
+      metrics.port: 70000
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/metrics/port': maximum: got 70,000, want 65,535"
+
+  - it: rejects a health port of 0
+    set:
+      health.port: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/health/port': minimum: got 0, want 1"
+
+  - it: rejects a pprof port out of range
+    set:
+      pprof.port: 65536
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/pprof/port'"
+
+  - it: rejects an extra volume without a name
+    set:
+      extraVolumes:
+        - emptyDir: {}
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/extraVolumes/0': missing property 'name'"
+
+  - it: rejects a relative extra volume mount path
+    set:
+      extraVolumeMounts:
+        - name: corp-ca
+          mountPath: etc/ssl
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/extraVolumeMounts/0/mountPath'"
+
+  - it: rejects a boolean PodDisruptionBudget minAvailable
+    set:
+      podDisruptionBudget.minAvailable: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/podDisruptionBudget/minAvailable'"
+
+  - it: rejects a negative terminationGracePeriodSeconds
+    set:
+      terminationGracePeriodSeconds: -1
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/terminationGracePeriodSeconds'"
+
+  - it: rejects a negative revisionHistoryLimit
+    set:
+      revisionHistoryLimit: -1
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/revisionHistoryLimit'"
+
+  - it: rejects a non-string nodeSelector value
+    set:
+      nodeSelector:
+        example.com/gpu: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/nodeSelector/example.com~1gpu': got boolean, want string"
+
+  - it: rejects a toleration that is not an object
+    set:
+      tolerations: [dedicated]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/tolerations/0': got string, want object"
+
+  - it: rejects affinity that is not an object
+    set:
+      affinity: [zone]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/affinity': got array, want object"
+
+  - it: rejects resources that are not an object
+    set:
+      resources: small
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/resources': got string, want object"
+
+  - it: rejects a securityContext that is not an object
+    set:
+      securityContext: restricted
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/securityContext': got string, want object"
+
+  - it: rejects an unknown network policy flavor
+    set:
+      networkPolicy.flavor: calico
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/networkPolicy/flavor'"
+
+  - it: rejects a NodeLocal DNSCache address that is not IPv4
+    set:
+      networkPolicy.dns.nodeLocalDNS.address: not-an-ip
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/networkPolicy/dns/nodeLocalDNS/address'"
+
+  - it: rejects an invalid monitoring namespace
+    set:
+      networkPolicy.metrics.monitoringNamespace: Monitoring
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/networkPolicy/metrics/monitoringNamespace'"
+
+  - it: rejects an OpenBao port out of range
+    set:
+      networkPolicy.openbao.ports: [0]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/networkPolicy/openbao/ports/0'"
+
+  - it: rejects a reconcile error ratio above 1
+    set:
+      prometheusRule.reconcileErrorRatio: 1.5
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/prometheusRule/reconcileErrorRatio'"
+
+  - it: rejects an OpenBao error ratio of 0
+    set:
+      prometheusRule.openbaoErrorRatio: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/prometheusRule/openbaoErrorRatio'"
+
+  - it: rejects a steady-state duration without a unit
+    set:
+      prometheusRule.steadyStateWritesFor: "30"
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/prometheusRule/steadyStateWritesFor'"
+
+  - it: rejects a runbook base URL without a scheme
+    set:
+      prometheusRule.runbookBaseURL: github.com/runbooks
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/prometheusRule/runbookBaseURL'"
+
+  - it: rejects a non-object relabeling
+    set:
+      serviceMonitor.relabelings: [drop]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/serviceMonitor/relabelings/0': got string, want object"

@@ -1,3 +1,6 @@
+# Configures the oidc mount for browser logins through a Keycloak realm found by OIDC discovery, with the client
+# secret read from a Secret. The other resources verify CI job JWTs with a JWKS URL, Kubernetes ServiceAccount
+# tokens with a static public key, and Google Workspace logins with a provider configuration from a Secret.
 apiVersion: v1
 kind: Secret
 metadata:

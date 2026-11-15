@@ -1,3 +1,4 @@
+# A break-glass user whose password is read from a Secret, with short tokens bound to a CIDR, plus an auditor user.
 apiVersion: v1
 kind: Secret
 metadata:

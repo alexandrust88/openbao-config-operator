@@ -6,11 +6,17 @@ site_description: Manage the configuration of an existing OpenBao server through
 site_url: !ENV [SITE_URL, "https://alexandrust88.github.io/openbao-config-operator/"]
 repo_url: !ENV [REPO_URL, "https://github.com/alexandrust88/openbao-config-operator"]
 repo_name: openbao-config-operator
+edit_uri: edit/main/docs/
 copyright: Apache License 2.0
 
 docs_dir: docs
 site_dir: .tmp/site
 strict: true
+
+# overrides/ is the theme custom_dir; operations/runbooks.md is a GitHub-only stub for released alert links.
+exclude_docs: |
+  overrides/
+  operations/runbooks.md
 
 hooks:
   - hack/docs/hooks.py
@@ -24,77 +30,166 @@ validation:
 
 theme:
   name: material
+  custom_dir: docs/overrides
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
   features:
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
     - content.code.copy
+    - content.code.select
+    - content.tabs.link
+    - navigation.footer
     - navigation.indexes
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.path
     - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.top
+    - navigation.tracking
     - search.highlight
+    - search.share
+    - search.suggest
     - toc.follow
   palette:
+    - media: "(prefers-color-scheme)"
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
+      primary: teal
+      accent: amber
       toggle:
         icon: material/brightness-7
-        name: Dark mode
+        name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
+      primary: teal
+      accent: amber
       toggle:
         icon: material/brightness-4
-        name: Light mode
+        name: Switch to system preference
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: !ENV [REPO_URL, "https://github.com/alexandrust88/openbao-config-operator"]
+      name: Source code on GitHub
 
 extra_css:
   - stylesheets/extra.css
 
 markdown_extensions:
+  - abbr
   - admonition
   - attr_list
+  - def_list
+  - footnotes
   - md_in_html
   - tables
   - toc:
       permalink: true
   - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.highlight:
       anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
-  - pymdownx.superfences
+  - pymdownx.keys
+  - pymdownx.mark
+  # Manifests and quickstart steps are included from the files CI tests; a wrong path fails the strict build.
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+      dedent_subsections: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
 
 nav:
   - Home: index.md
-  - Getting started: getting-started.md
-  - Concepts:
-      - concepts.md
-      - Architecture v2: architecture.md
-  - Kinds:
-      - Kind catalogue: kinds.md
-      - API coverage: api-coverage.md
-      - Templated policies: templated-policies.md
-  - API reference: reference/api/
-  - Operations:
-      - operations/README.md
-      - operations/install.md
-      - operations/connections.md
-      - operations/openbao-policy.md
-      - operations/self-init.md
-      - operations/tenant-quotas.md
-      - operations/backup-restore.md
-      - operations/migration.md
-      - operations/argocd.md
-      - operations/troubleshooting.md
-      - operations/runbooks.md
-      - Upgrade: upgrade.md
-      - Import CLI: import.md
-      - Load testing: load-testing.md
-      - Live testing: live-testing.md
+  - Get started:
+      - get-started/index.md
+      - Quickstart on kind: get-started/quickstart.md
+      - Install: get-started/install.md
+      - Connect to OpenBao: get-started/connect.md
+  - Guides:
+      - guides/index.md
+      - Authentication:
+          - Kubernetes auth: guides/kubernetes-auth.md
+          - JWT and OIDC auth: guides/jwt-oidc-auth.md
+          - AppRole: guides/approle.md
+      - Secrets engines:
+          - KV secrets: guides/kv-secrets.md
+          - Database secrets: guides/database-secrets.md
+          - PKI: guides/pki.md
+          - Transit: guides/transit.md
+      - Identity and access:
+          - Identity: guides/identity.md
+          - Access model: guides/access-model.md
+          - Templated policies: guides/templated-policies.md
+          - Namespaces and tenants: guides/namespaces-and-tenants.md
+      - Adopt and deliver:
+          - Import existing configuration: guides/import.md
+          - Migrate to the operator: guides/migration.md
+          - Argo CD: guides/argocd.md
+          - OpenBao self-init: guides/self-init.md
+  - Operate:
+      - operate/index.md
+      - Upgrade: operate/upgrade.md
+      - Observability: operate/observability.md
+      - Troubleshooting: operate/troubleshooting.md
+      - Runbooks: operate/runbooks.md
+      - OpenBao policy for the operator: operate/openbao-policy.md
+      - Tenant quotas: operate/tenant-quotas.md
+      - Backup and restore: operate/backup-restore.md
+      - Load testing: operate/load-testing.md
+      - Live testing: operate/live-testing.md
   - Security:
       - security.md
       - Threat model: security/threat-model.md
       - Hardening: security/hardening.md
       - CI security: security/ci-security.md
-  - Decisions (ADRs): adr/
+  - Reference:
+      - reference/index.md
+      - Kind catalogue: kinds.md
+      - API reference: reference/api/
+      - Examples: reference/examples/
+      - Connections: reference/connections.md
+      - Status and events: reference/status-and-events.md
+      - Helm values: reference/helm-values.md
+      - Compatibility: reference/compatibility.md
+      - API coverage: api-coverage.md
+      - Known limitations: reference/limitations.md
+  - Concepts:
+      - concepts/index.md
+      - Architecture: architecture.md
+      - Decisions (ADRs): adr/
   - Project:
-      - Backlog and roadmap: backlog.md
-      - Tech debt: tech-debt.md
-      - Verification guide: verification.md
-      - Maintainers: maintainers/
+      - Roadmap: maintainers/roadmap.md
+      - Backlog: project/backlog.md
+      - Tech debt: project/tech-debt.md
+      - Verification guide: project/verification.md
+      - Maintainers:
+          - Release process: maintainers/release-process.md
+          - GitHub settings: maintainers/github-settings.md
       - Community: community/

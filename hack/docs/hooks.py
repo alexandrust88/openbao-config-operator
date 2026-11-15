@@ -1,23 +1,72 @@
-"""MkDocs hooks: build the home page from README.md, the ADR index and the API reference, expand directory nav
-entries, and point relative links that leave docs/ at the repository on GitHub."""
+"""MkDocs hooks: build the home page from README.md when docs/index.md is absent, the ADR index, the API reference
+and the examples gallery, expand directory nav entries, point relative links that leave docs/ at the repository on
+GitHub, replace the @VERSION@ and @TAG@ tokens with the current release, and write redirect pages for moved pages."""
 
+import html
+import logging
+import os
 import posixpath
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 from mkdocs.structure.files import File
+from mkdocs.utils import get_relative_url
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import apiref  # noqa: E402
+import examplesref  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 BRANCH = "main"
 LINK = re.compile(r"(\]\()([^)\s]+)((?:\s+\"[^\"]*\")?\))")
 FENCE = re.compile(r"^\s*(```|~~~)")
+TAG_PATTERN = re.compile(r"^v\d+\.\d+\.\d+$")
+# Pygments may wrap the "@" of a token in its own span inside a code block; keep those tags around the value.
+TOKEN = re.compile(r"@((?:</?span[^>]*>)*)(VERSION|TAG)((?:</?span[^>]*>)*)@")
 
+# Old docs path -> new docs path. Every moved page keeps its old URL as a redirect page.
+REDIRECTS = {
+    "getting-started.md": "get-started/index.md",
+    "operations/install.md": "get-started/install.md",
+    "operations/connections.md": "get-started/connect.md",
+    "operations/README.md": "operate/index.md",
+    "operations/backup-restore.md": "operate/backup-restore.md",
+    "operations/tenant-quotas.md": "operate/tenant-quotas.md",
+    "operations/openbao-policy.md": "operate/openbao-policy.md",
+    "operations/troubleshooting.md": "operate/troubleshooting.md",
+    "operations/runbooks.md": "operate/runbooks.md",
+    "operations/self-init.md": "guides/self-init.md",
+    "operations/argocd.md": "guides/argocd.md",
+    "operations/migration.md": "guides/migration.md",
+    "upgrade.md": "operate/upgrade.md",
+    "load-testing.md": "operate/load-testing.md",
+    "live-testing.md": "operate/live-testing.md",
+    "import.md": "guides/import.md",
+    "templated-policies.md": "guides/templated-policies.md",
+    "backlog.md": "project/backlog.md",
+    "tech-debt.md": "project/tech-debt.md",
+    "verification.md": "project/verification.md",
+}
+
+log = logging.getLogger("mkdocs.hooks")
 generated = {}
 sources = {}
+state = {}
+
+
+def release_tag():
+    tag = os.environ.get("RELEASE_TAG", "").strip()
+    if tag:
+        return tag
+    try:
+        out = subprocess.run(
+            ["git", "tag", "-l", "v*", "--sort=-v:refname"], cwd=ROOT, capture_output=True, text=True, check=True
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        out = ""
+    return next((t for t in out.split() if TAG_PATTERN.match(t)), "")
 
 
 def adr_index(docs):
@@ -35,12 +84,17 @@ def on_config(config):
     docs = Path(config["docs_dir"])
     generated.clear()
     sources.clear()
+    tag = release_tag()
+    config["extra"]["release_tag"] = tag
+    tag = tag or "vX.Y.Z"
+    state["tokens"] = {"TAG": tag, "VERSION": tag.removeprefix("v")}
     if not (docs / "index.md").exists():
         generated["index.md"] = (ROOT / "README.md").read_text()
         sources["index.md"] = "README.md"
     if not (docs / "adr/index.md").exists():
         generated["adr/index.md"] = adr_index(docs)
     generated.update(apiref.render(ROOT / "config/crd/bases"))
+    generated.update(examplesref.pages(ROOT))
     config["nav"] = expand(config["nav"], docs)
     return config
 
@@ -63,6 +117,7 @@ def on_files(files, config):
     for src_uri, content in generated.items():
         if files.get_file_from_path(src_uri) is None:
             files.append(File.generated(config, src_uri, content=content))
+    state["files"] = files
     return files
 
 
@@ -110,3 +165,62 @@ def on_page_markdown(markdown, page, config, files):
             )
         out.append(line)
     return "\n".join(out)
+
+
+def replace_tokens(text):
+    return TOKEN.sub(lambda m: m.group(1) + state["tokens"][m.group(2)] + m.group(3), text)
+
+
+def on_page_content(content, page, config, files):
+    return replace_tokens(content)
+
+
+def on_post_page(output, page, config):
+    return replace_tokens(output)
+
+
+REDIRECT_PAGE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Moved to {title}</title>
+<link rel="canonical" href="{canonical}">
+<meta name="robots" content="noindex">
+<meta http-equiv="refresh" content="0; url={target}">
+<script>location.replace("{target}" + location.hash);</script>
+</head>
+<body>
+<p>This page moved to <a href="{target}">{title}</a>.</p>
+</body>
+</html>
+"""
+
+
+def on_post_template(output, template_name, config):
+    return replace_tokens(output)
+
+
+def on_post_build(config):
+    files = state["files"]
+    for old, new in REDIRECTS.items():
+        existing = files.get_file_from_path(old)
+        if existing is not None and existing.inclusion.is_included():
+            log.info("redirect %s skipped: the page still exists", old)
+            continue
+        target = files.get_file_from_path(new)
+        if target is None:
+            log.warning("redirect %s: target %s is not a page", old, new)
+            continue
+        source = File(old, config["docs_dir"], config["site_dir"], config["use_directory_urls"])
+        if source.url == target.url:
+            continue
+        rel = get_relative_url(target.url or ".", source.url or ".")
+        dest = Path(source.abs_dest_path)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(
+            REDIRECT_PAGE.format(
+                title=html.escape(new),
+                canonical=html.escape(config["site_url"].rstrip("/") + "/" + target.url),
+                target=html.escape(rel),
+            )
+        )

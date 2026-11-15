@@ -40,7 +40,7 @@ OpenBao's OpenAPI document: generated types leak wire names and churn on every u
 | field removed upstream | kept while any supported minor has it, then deprecated and removed per policy | support window |
 | new endpoint or engine | `OpenBaoEndpoint` at once; a typed kind later as a new CRD | additive |
 | endpoint removed | the kind reports `Unsupported` on newer servers; removed after the window | support window |
-| new capability needed in a policy | none | the least-privilege integration run fails (section 4); update `docs/operations/openbao-policy.md` |
+| new capability needed in a policy | none | the least-privilege integration run fails (section 4); update `docs/operate/openbao-policy.md` |
 
 OpenBao's schedule never forces a CRD version bump. Only our own breaking changes do, and ADR 0020 keeps those
 additive with a deprecation period.

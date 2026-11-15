@@ -1,7 +1,7 @@
 # OpenBao self-initialization for openbao-config-operator. Pass this file as an extra -config next to the server
 # configuration (storage, listener and an auto-unseal seal; self-init does not work with Shamir). At first boot
 # OpenBao enables kubernetes auth, writes the operator policy and binds it to the operator ServiceAccount, then
-# revokes the transient root token, so no root token is ever handed out. docs/operations/self-init.md has details.
+# revokes the transient root token, so no root token is ever handed out. docs/guides/self-init.md has details.
 
 initialize "kubernetes-auth" {
   request "enable-kubernetes-auth" {

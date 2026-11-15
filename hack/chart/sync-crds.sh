@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Copies the generated CRDs into the chart as templates guarded by crds.install and crds.keep (plugin kinds listed in
-# hack/chart/plugin-crds.txt also by pluginKinds.enabled), and writes
+# Copies the generated CRDs into the chart as templates guarded by crds.install, with the crds.keep, crds.annotations and
+# crds.labels metadata (plugin kinds listed in hack/chart/plugin-crds.txt also guarded by pluginKinds.enabled), and writes
 # templates/_crd-resources.tpl, the resource index used by the user-facing ClusterRoles.
 # Usage: hack/chart/sync-crds.sh [crd_dir]   (default: config/crd/bases)
 set -euo pipefail
@@ -39,10 +39,18 @@ for src in "$src_dir"/*.yaml; do
       awk '
         /^---$/ { next }
         /^    helm\.sh\/resource-policy: keep$/ {
-          print "    {{- if .Values.crds.keep }}"; print; print "    {{- end }}"; next
+          print "    {{- with include \"openbao-config-operator.crdAnnotations\" . }}"
+          print "    {{- . | nindent 4 }}"
+          print "    {{- end }}"
+          next
         }
         /^  labels: __chart_labels__$/ {
-          print "  labels:"; print "    {{- include \"openbao-config-operator.labels\" . | nindent 4 }}"; next
+          print "  labels:"
+          print "    {{- include \"openbao-config-operator.labels\" . | nindent 4 }}"
+          print "    {{- with .Values.crds.labels }}"
+          print "    {{- toYaml . | nindent 4 }}"
+          print "    {{- end }}"
+          next
         }
         { gsub(/[{][{]/, "{{ \"{{\" }}"); print }
       '

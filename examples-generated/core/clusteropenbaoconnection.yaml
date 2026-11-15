@@ -1,3 +1,13 @@
+# ClusterOpenBaoConnection (core.openbaoconfig.io/v1alpha1)
+# ClusterOpenBaoConnection is a cluster-scoped login to an OpenBaoServer owned by the platform team, usable by
+# resources in every namespace its allowedNamespaces selects (spec.connectionRef.kind: ClusterOpenBaoConnection).
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: auth, serverRef.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/core/#clusteropenbaoconnection
+# Curated example: examples/core/clusteropenbaoconnection.yaml
 apiVersion: core.openbaoconfig.io/v1alpha1
 kind: ClusterOpenBaoConnection
 metadata:

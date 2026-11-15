@@ -31,6 +31,19 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
+{{/*
+Extra CRD annotations. crds.keep=true wins over a helm.sh/resource-policy in crds.annotations, so the key appears once.
+*/}}
+{{- define "openbao-config-operator.crdAnnotations" -}}
+{{- $annotations := deepCopy .Values.crds.annotations }}
+{{- if .Values.crds.keep }}
+{{- $_ := set $annotations "helm.sh/resource-policy" "keep" }}
+{{- end }}
+{{- with $annotations }}
+{{- toYaml . }}
+{{- end }}
+{{- end }}
+
 {{- define "openbao-config-operator.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
 {{- default (include "openbao-config-operator.fullname" .) .Values.serviceAccount.name }}

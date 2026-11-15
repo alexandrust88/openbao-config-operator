@@ -1,3 +1,4 @@
+# Identity entities for two people, with policies and metadata; logins are linked to them by EntityAlias resources.
 apiVersion: identity.openbaoconfig.io/v1alpha1
 kind: Entity
 metadata:

@@ -1,3 +1,13 @@
+# AzureAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# AzureAuthConfig manages the configuration of an OpenBao Azure auth method at auth/<mountPath>/config.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef, resource,
+# tenantID.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#azureauthconfig
+# Curated example: examples/auth/azureauthconfig.yaml
 apiVersion: auth.openbaoconfig.io/v1alpha1
 kind: AzureAuthConfig
 metadata:

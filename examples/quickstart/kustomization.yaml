@@ -1,0 +1,12 @@
+# The operator resources of the quickstart, in apply order: kubectl apply -k examples/quickstart.
+# openbao-dev.yaml (the OpenBao dev server) is applied on its own first and is not part of this list.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - openbaoserver.yaml
+  - openbaoconnection.yaml
+  - policy.yaml
+  - secretsmount.yaml
+  - kubernetesauthrole.yaml
+  - randomsecret.yaml

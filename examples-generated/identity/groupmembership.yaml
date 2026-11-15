@@ -1,3 +1,13 @@
+# GroupMembership (identity.openbaoconfig.io/v1alpha1)
+# GroupMembership adds entities or subgroups to an internal OpenBao group (`member_entity_ids`, `member_group_ids` of
+# `identity/group/id/<id>`).
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: connectionRef.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/identity/#groupmembership
+# Curated example: examples/identity/groupmembership.yaml
 apiVersion: identity.openbaoconfig.io/v1alpha1
 kind: GroupMembership
 metadata:

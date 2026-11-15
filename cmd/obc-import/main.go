@@ -1,5 +1,5 @@
 // Command obc-import reads a live OpenBao server and writes the openbao-config-operator resources that describe
-// it, with managementPolicy Observe and creationPolicy Adopt. See docs/import.md.
+// it, with managementPolicy Observe and creationPolicy Adopt. See docs/guides/import.md.
 package main
 
 import (

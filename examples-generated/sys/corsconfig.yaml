@@ -1,3 +1,13 @@
+# CORSConfig (sys.openbaoconfig.io/v1alpha1)
+# CORSConfig enables cross-origin (CORS) requests to OpenBao at sys/config/cors, a server-wide singleton in the root
+# namespace.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: allowedOrigins, connectionRef.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/sys/#corsconfig
+# Curated example: examples/sys/corsconfig.yaml
 apiVersion: sys.openbaoconfig.io/v1alpha1
 kind: CORSConfig
 metadata:

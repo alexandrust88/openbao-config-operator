@@ -1,3 +1,5 @@
+# An AppRole role for a CI deployer outside Kubernetes: a fixed role ID, secret IDs bound to a CIDR and valid for a
+# day, and short-lived tokens with the ci-deployer policy.
 apiVersion: auth.openbaoconfig.io/v1alpha1
 kind: AppRole
 metadata:

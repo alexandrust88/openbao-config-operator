@@ -1,3 +1,13 @@
+# Logger (sys.openbaoconfig.io/v1alpha1)
+# Logger sets the runtime log level of one named OpenBao logger at sys/loggers/<name>, for example to debug one
+# subsystem without restarting the server.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: connectionRef, level.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/sys/#logger
+# Curated example: examples/sys/logger.yaml
 apiVersion: sys.openbaoconfig.io/v1alpha1
 kind: Logger
 metadata:

@@ -1,0 +1,39 @@
+suite: every crd
+templates:
+  - templates/crds/*.yaml
+release:
+  name: obc
+  namespace: openbao-system
+set:
+  pluginKinds.enabled: true
+tests:
+  - it: renders every CRD with the extra metadata and the keep policy
+    set:
+      crds.annotations:
+        argocd.argoproj.io/sync-options: ServerSideApply=true
+      crds.labels:
+        team: platform
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: CustomResourceDefinition
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-options"]
+          value: ServerSideApply=true
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep
+      - equal:
+          path: metadata.labels.team
+          value: platform
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: obc
+
+  - it: renders no CRD when crds.install is false
+    set:
+      crds.install: false
+    asserts:
+      - hasDocuments:
+          count: 0

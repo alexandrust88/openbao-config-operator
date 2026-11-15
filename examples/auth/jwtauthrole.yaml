@@ -1,3 +1,5 @@
+# Lets CI jobs of the protected main branch of platform/app log in on the jwt-ci mount with their job JWT: the
+# subject, audience and claims are bound, and the project path and ref become token metadata.
 apiVersion: auth.openbaoconfig.io/v1alpha1
 kind: JWTAuthRole
 metadata:

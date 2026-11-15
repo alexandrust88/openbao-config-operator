@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{#- hack/docs/hooks.py sets release_tag only when a published release exists and replaces @TAG@ in the output. -#}
+{% block announce -%}
+  {%- if config.extra.release_tag -%}
+    Latest release: <strong>@TAG@</strong>.
+    <a href="{{ config.repo_url }}/releases/tag/@TAG@">Release notes</a>,
+    <a href="{{ 'get-started/install/' | url }}">install it</a>.
+  {%- endif -%}
+{%- endblock %}

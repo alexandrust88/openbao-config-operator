@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="openbao-config-operator">
+  <path d="M128 12 L228 70 V186 L128 244 L28 186 V70 Z" fill="#13254d" stroke="#5fd6c4" stroke-width="10" stroke-linejoin="round"/>
+  <g fill="none" stroke="#e5a64e" stroke-width="8" stroke-linecap="round">
+    <path d="M56.5 108.8 A74 74 0 0 1 199.5 108.8"/>
+    <path d="M199.5 147.2 A74 74 0 0 1 56.5 147.2"/>
+  </g>
+  <g fill="#e5a64e">
+    <path d="M208.2 106.5 L190.8 111.1 L202.6 120.4 Z"/>
+    <path d="M65.2 144.9 L47.8 149.5 L53.4 135.6 Z"/>
+  </g>
+  <g fill="none" stroke="#5fd6c4" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M100 176 V108 L128 90 L156 108 V176"/>
+    <circle cx="128" cy="123" r="9"/>
+    <path d="M124 131 L121 152 H135 L132 131"/>
+  </g>
+  <g fill="#5fd6c4">
+    <rect x="105" y="112" width="3" height="60" rx="1.5"/>
+    <circle cx="144" cy="132" r="3.5"/>
+    <rect x="142" y="140" width="4" height="6" rx="1"/>
+  </g>
+</svg>

@@ -1,0 +1,106 @@
+suite: servicemonitor
+templates:
+  - templates/servicemonitor.yaml
+release:
+  name: obc
+  namespace: openbao-system
+set:
+  serviceMonitor.enabled: true
+tests:
+  - it: scrapes the metrics Service in the release namespace with the defaults
+    asserts:
+      - isKind:
+          of: ServiceMonitor
+      - equal:
+          path: spec.endpoints[0].interval
+          value: 30s
+      - equal:
+          path: spec.endpoints[0].scrapeTimeout
+          value: 10s
+      - equal:
+          path: spec.endpoints[0].tlsConfig
+          value: {insecureSkipVerify: true}
+      - equal:
+          path: spec.namespaceSelector.matchNames
+          value: [openbao-system]
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: openbao-config-operator
+            app.kubernetes.io/instance: obc
+      - notExists:
+          path: spec.endpoints[0].relabelings
+      - notExists:
+          path: spec.endpoints[0].metricRelabelings
+
+  - it: renders no ServiceMonitor without metrics
+    set:
+      metrics.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: applies interval, timeout and relabelings
+    set:
+      serviceMonitor.interval: 1m
+      serviceMonitor.scrapeTimeout: 20s
+      serviceMonitor.relabelings:
+        - targetLabel: cluster
+          replacement: prod
+      serviceMonitor.metricRelabelings:
+        - action: drop
+          sourceLabels: [__name__]
+          regex: go_.*
+    asserts:
+      - equal:
+          path: spec.endpoints[0].interval
+          value: 1m
+      - equal:
+          path: spec.endpoints[0].scrapeTimeout
+          value: 20s
+      - equal:
+          path: spec.endpoints[0].relabelings
+          value: [{targetLabel: cluster, replacement: prod}]
+      - equal:
+          path: spec.endpoints[0].metricRelabelings[0].action
+          value: drop
+
+  - it: renders no tlsConfig when it is removed
+    set:
+      serviceMonitor.tlsConfig: null
+    asserts:
+      - notExists:
+          path: spec.endpoints[0].tlsConfig
+
+  - it: accepts caFile with a metrics certificate
+    set:
+      metrics.certSecret: metrics-tls
+      serviceMonitor.tlsConfig:
+        insecureSkipVerify: null
+        caFile: /etc/prometheus/ca.crt
+        serverName: obc-openbao-config-operator-metrics.openbao-system.svc
+    asserts:
+      - equal:
+          path: spec.endpoints[0].tlsConfig.caFile
+          value: /etc/prometheus/ca.crt
+
+  - it: refuses insecureSkipVerify with a metrics certificate even when a CA is set
+    set:
+      metrics.certSecret: metrics-tls
+      serviceMonitor.tlsConfig:
+        ca:
+          secret: {name: metrics-tls, key: ca.crt}
+        serverName: obc-openbao-config-operator-metrics.openbao-system.svc
+    asserts:
+      - failedTemplate:
+          errorMessage: metrics.certSecret requires serviceMonitor.tlsConfig.ca (or caFile) and serverName, and insecureSkipVerify unset
+
+  - it: refuses a metrics certificate without serverName
+    set:
+      metrics.certSecret: metrics-tls
+      serviceMonitor.tlsConfig:
+        insecureSkipVerify: null
+        caFile: /etc/prometheus/ca.crt
+    asserts:
+      - failedTemplate:
+          errorMessage: metrics.certSecret requires serviceMonitor.tlsConfig.ca (or caFile) and serverName, and insecureSkipVerify unset

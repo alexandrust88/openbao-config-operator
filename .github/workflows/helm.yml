@@ -1,0 +1,103 @@
+name: helm
+
+on:
+  pull_request:
+    paths:
+      - charts/**
+      - config/crd/**
+      - hack/chart/**
+      - hack/release/package-chart.sh
+      - .github/workflows/helm.yml
+      - Makefile
+  push:
+    branches:
+      - main
+    paths:
+      - charts/**
+      - config/crd/**
+      - hack/chart/**
+      - hack/release/package-chart.sh
+      - .github/workflows/helm.yml
+      - Makefile
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: helm-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  unittest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
+      - run: make helm-lint
+      - name: Install helm-unittest
+        env:
+          # renovate: datasource=github-release-attachments depName=helm-unittest/helm-unittest
+          HELM_UNITTEST_VERSION: v1.0.3
+          HELM_UNITTEST_SHA256: 9761f23d9509c98770c026e019e743b524b57010f4bc29175f78d2582ace0633
+        run: |
+          archive="$RUNNER_TEMP/helm-unittest.tgz"
+          curl -fsSLo "$archive" "https://github.com/helm-unittest/helm-unittest/releases/download/${HELM_UNITTEST_VERSION}/helm-unittest-linux-amd64-${HELM_UNITTEST_VERSION#v}.tgz"
+          echo "${HELM_UNITTEST_SHA256}  ${archive}" | sha256sum -c -
+          plugin_dir="$(bin/helm env HELM_PLUGINS)/unittest"
+          mkdir -p "$plugin_dir"
+          tar -xzf "$archive" -C "$plugin_dir" untt plugin.yaml
+      - run: bin/helm unittest charts/openbao-config-operator
+
+  lifecycle:
+    needs: unittest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    env:
+      KIND_CLUSTER: obco-helm
+      IMAGE: example.com/openbao-config-operator:helm-lifecycle
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
+
+      - name: Create kind cluster and build the operator image
+        env:
+          ARTIFACTS_DIR: ${{ runner.temp }}/helm-lifecycle
+        run: |
+          mkdir -p "$ARTIFACTS_DIR"
+          { make setup-test-e2e && make helm yq; } >"$ARTIFACTS_DIR/setup.log" 2>&1 &
+          setup_pid=$!
+          make docker-build-host IMG="$IMAGE"
+          setup_status=0
+          wait "$setup_pid" || setup_status=$?
+          cat "$ARTIFACTS_DIR/setup.log"
+          [ "$setup_status" -eq 0 ]
+          bin/kind load docker-image "$IMAGE" --name "$KIND_CLUSTER"
+
+      # Package, install, upgrade from the newest released chart, roll back, uninstall; diagnostics land in ARTIFACTS_DIR.
+      - name: Run the chart lifecycle
+        env:
+          ARTIFACTS_DIR: ${{ runner.temp }}/helm-lifecycle
+        run: |
+          set -o pipefail
+          make helm-lifecycle 2>&1 | tee "$ARTIFACTS_DIR/lifecycle.log"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: helm-lifecycle
+          path: ${{ runner.temp }}/helm-lifecycle
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Delete kind cluster
+        if: always()
+        run: make cleanup-test-e2e

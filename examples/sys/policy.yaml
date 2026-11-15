@@ -1,3 +1,5 @@
+# An ACL policy for team a that reads KV secrets by identity: paths are templated with entity metadata and with the
+# alias of a login on a named auth mount, whose accessor the operator resolves from the AuthMount resources.
 apiVersion: sys.openbaoconfig.io/v1alpha1
 kind: Policy
 metadata:

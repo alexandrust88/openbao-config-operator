@@ -13,3 +13,24 @@
 .md-typeset table:not([class]) td pre {
   margin: 0.4em 0;
 }
+
+.obco-hero {
+  margin: 1.5rem 0 2rem;
+  padding: 2rem 1.5rem;
+  border-radius: 0.4rem;
+  background: var(--md-code-bg-color);
+}
+
+.obco-hero h1 {
+  margin-bottom: 0.6rem;
+  font-weight: 700;
+}
+
+.md-typeset .obco-hero__pitch {
+  max-width: 42rem;
+  font-size: 1.05rem;
+}
+
+.md-typeset .obco-hero .md-button {
+  margin: 0.4rem 0.6rem 0 0;
+}

@@ -1,3 +1,12 @@
+# UserpassUser (auth.openbaoconfig.io/v1alpha1)
+# UserpassUser manages a user of an OpenBao userpass auth method at auth/<mountPath>/users/<name>.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#userpassuser
+# Curated example: examples/auth/userpassuser.yaml
 apiVersion: auth.openbaoconfig.io/v1alpha1
 kind: UserpassUser
 metadata:

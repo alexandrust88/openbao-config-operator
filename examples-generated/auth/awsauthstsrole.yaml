@@ -1,3 +1,13 @@
+# AWSAuthSTSRole (auth.openbaoconfig.io/v1alpha1)
+# AWSAuthSTSRole manages the STS role an OpenBao AWS auth method assumes for one AWS account, at
+# auth/<mountPath>/config/sts/<accountID>.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: accountID, connectionRef, stsRole.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#awsauthstsrole
+# Curated example: examples/auth/awsauthstsrole.yaml
 apiVersion: auth.openbaoconfig.io/v1alpha1
 kind: AWSAuthSTSRole
 metadata:

@@ -1,0 +1,263 @@
+suite: deployment pod settings
+templates:
+  - templates/deployment.yaml
+release:
+  name: obc
+  namespace: openbao-system
+tests:
+  - it: renders the default pod settings and omits optional ones
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources
+          value:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 512Mi}
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: IfNotPresent
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 10
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 10
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe
+          value: {httpGet: {path: /healthz, port: health}, initialDelaySeconds: 15, periodSeconds: 20}
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe
+          value: {httpGet: {path: /readyz, port: health}, initialDelaySeconds: 5, periodSeconds: 10}
+      - equal:
+          path: spec.template.metadata.annotations
+          value: {kubectl.kubernetes.io/default-container: manager}
+      - notExists:
+          path: metadata.annotations
+      - notExists:
+          path: spec.template.spec.priorityClassName
+      - notExists:
+          path: spec.template.spec.imagePullSecrets
+      - notExists:
+          path: spec.template.spec.nodeSelector
+      - notExists:
+          path: spec.template.spec.tolerations
+      - notExists:
+          path: spec.template.spec.affinity
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: obc-openbao-config-operator
+      - lengthEqual:
+          path: spec.template.spec.containers[0].env
+          count: 1
+
+  - it: applies resources, probes, pull policy and lifecycle settings
+    set:
+      resources:
+        requests: {cpu: 200m, memory: 256Mi}
+      image.pullPolicy: Always
+      terminationGracePeriodSeconds: 30
+      revisionHistoryLimit: 3
+      livenessProbe:
+        periodSeconds: 60
+      readinessProbe:
+        failureThreshold: 6
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources
+          value:
+            requests: {cpu: 200m, memory: 256Mi}
+            limits: {memory: 512Mi}
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 30
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 3
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.periodSeconds
+          value: 60
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.failureThreshold
+          value: 6
+
+  - it: removes the memory limit when resources.limits is null
+    set:
+      resources.limits: null
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].resources.limits
+
+  - it: applies affinity
+    set:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/infra
+                    operator: Exists
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
+          value: node-role.kubernetes.io/infra
+
+  - it: renders no topology spread constraints when the list is empty
+    set:
+      topologySpreadConstraints: []
+    asserts:
+      - notExists:
+          path: spec.template.spec.topologySpreadConstraints
+
+  - it: adds the pod selector to each constraint without a labelSelector
+    set:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+    asserts:
+      - equal:
+          path: spec.template.spec.topologySpreadConstraints[1].labelSelector.matchLabels
+          value:
+            app.kubernetes.io/name: openbao-config-operator
+            app.kubernetes.io/instance: obc
+
+  - it: applies pod and container security contexts
+    set:
+      podSecurityContext:
+        runAsUser: 1000
+        fsGroup: 1000
+      securityContext:
+        runAsUser: 1000
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 1000
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 1000
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsUser
+          value: 1000
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+
+  - it: adds Deployment annotations and pod annotations and labels
+    set:
+      annotations:
+        example.com/owner: platform
+      podAnnotations:
+        example.com/scrape: "false"
+      podLabels:
+        team: platform
+    asserts:
+      - equal:
+          path: metadata.annotations
+          value: {example.com/owner: platform}
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            kubectl.kubernetes.io/default-container: manager
+            example.com/scrape: "false"
+      - equal:
+          path: spec.template.metadata.labels.team
+          value: platform
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: obc
+      - notExists:
+          path: spec.selector.matchLabels.team
+
+  - it: uses custom health, metrics and pprof ports
+    set:
+      health.port: 9081
+      metrics.port: 9443
+      pprof.enabled: true
+      pprof.port: 9082
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --health-probe-bind-address=:9081
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --metrics-bind-address=:9443
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --pprof-bind-address=127.0.0.1:9082
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content: {name: health, containerPort: 9081, protocol: TCP}
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content: {name: metrics, containerPort: 9443, protocol: TCP}
+
+  - it: does not mount the metrics certificate when metrics are disabled
+    set:
+      metrics.enabled: false
+      metrics.certSecret: metrics-tls
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --metrics-cert-path=/etc/openbao-config-operator/metrics-certs
+      - notContains:
+          path: spec.template.spec.volumes
+          content: {name: metrics-certs, secret: {secretName: metrics-tls}}
+
+  - it: uses no metrics certificate path without metrics.certSecret
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --metrics-cert-path=/etc/openbao-config-operator/metrics-certs
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --metrics-secure=true
+
+  - it: prefers the digest over the tag
+    set:
+      image.tag: 0.2.0
+      image.digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/alexandrust88/openbao-config-operator@sha256:1111111111111111111111111111111111111111111111111111111111111111
+
+  - it: allows zero replicas
+    set:
+      replicas: 0
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 0
+
+  - it: renders no volumes when nothing is mounted
+    set:
+      injectedIdentity.projectedToken.enabled: false
+      extraVolumes: []
+      extraVolumeMounts: []
+    asserts:
+      - notExists:
+          path: spec.template.spec.volumes
+
+  - it: mounts the metrics certificate next to the projected token
+    set:
+      metrics.certSecret: metrics-tls
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.volumes
+          count: 2
+      - lengthEqual:
+          path: spec.template.spec.containers[0].volumeMounts
+          count: 2
+
+  - it: renders with crds.install false when the CRDs are kept
+    set:
+      crds.install: false
+      crds.keep: true
+    asserts:
+      - isKind:
+          of: Deployment

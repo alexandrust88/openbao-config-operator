@@ -1,0 +1,66 @@
+# Argo CD health check for every openbao-config-operator kind. Merge the data key into argocd-cm.
+# docs/guides/argocd.md explains the mapping.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  resource.customizations.health.*.openbaoconfig.io_*: |
+    local hs = {status = "Progressing", message = "Waiting for the operator to reconcile"}
+    if obj.status == nil or obj.status.conditions == nil then
+      return hs
+    end
+    local generation = obj.metadata.generation
+    local observed = obj.status.observedGeneration
+    local ready, synced
+    for _, c in ipairs(obj.status.conditions) do
+      if c.type == "Ready" then
+        ready = c
+      elseif c.type == "Synced" then
+        synced = c
+      end
+      if observed == nil and c.type == "Ready" then
+        observed = c.observedGeneration
+      end
+    end
+    if generation ~= nil and observed ~= nil and observed < generation then
+      hs.message = "Waiting for the operator to observe generation " .. generation
+      return hs
+    end
+    for _, c in pairs({ready = ready, synced = synced}) do
+      if c.reason == "Paused" then
+        hs.status = "Suspended"
+        hs.message = c.message or "Paused"
+        return hs
+      end
+    end
+    if ready == nil then
+      return hs
+    end
+    local waiting = {
+      ReconcileInProgress = true,
+      ReferenceNotReady = true,
+      ConnectionNotReady = true,
+      PluginNotRegistered = true,
+      ServerNotReady = true,
+      WriteBudgetExceeded = true,
+    }
+    local message = ready.message or ""
+    if ready.status == "True" then
+      if synced ~= nil and synced.status == "False" and not waiting[synced.reason] then
+        hs.status = "Degraded"
+        hs.message = (synced.reason or "") .. ": " .. (synced.message or "")
+        return hs
+      end
+      hs.status = "Healthy"
+      hs.message = message
+      return hs
+    end
+    if ready.status == "False" and not waiting[ready.reason] then
+      hs.status = "Degraded"
+      hs.message = (ready.reason or "") .. ": " .. message
+      return hs
+    end
+    hs.message = (ready.reason or "") .. ": " .. message
+    return hs

@@ -1,3 +1,12 @@
+# OpenBaoServer (core.openbaoconfig.io/v1alpha1)
+# OpenBaoServer is a cluster-scoped OpenBao server that the platform team makes available to connections.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: address.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/core/#openbaoserver
+# Curated example: examples/core/openbaoserver.yaml
 apiVersion: core.openbaoconfig.io/v1alpha1
 kind: OpenBaoServer
 metadata:

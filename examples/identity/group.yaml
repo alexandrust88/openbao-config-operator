@@ -1,3 +1,5 @@
+# Internal identity groups that grant policies to their members (added with GroupMembership), plus an external
+# group for an identity provider group.
 apiVersion: identity.openbaoconfig.io/v1alpha1
 kind: Group
 metadata:

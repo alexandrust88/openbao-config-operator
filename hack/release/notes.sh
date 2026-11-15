@@ -32,6 +32,7 @@ helm install openbao-config-operator oci://$CHART --version $version \\
 Every artifact is signed with keyless cosign by this repository's release workflow on a \`v*\` tag, and carries
 SPDX and CycloneDX SBOMs plus SLSA build provenance. Release assets are listed in \`sha256sums.txt\`, signed in
 \`sha256sums.txt.sigstore.json\`, with their SLSA provenance in \`openbao-config-operator.intoto.jsonl\`.
+\`examples-$version.tar.gz\` holds the curated examples and generated samples of this release.
 
 \`\`\`sh
 hack/release/verify-release.sh $TAG

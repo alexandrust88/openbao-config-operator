@@ -1,7 +1,7 @@
 name: load
 
 # The namespace-hierarchy load test (test/load, kind set tree) against envtest and a local OpenBao on raft.
-# Not a required check; see docs/load-testing.md for the numbers and how to read them.
+# Not a required check; see docs/operate/load-testing.md for the numbers and how to read them.
 on:
   schedule:
     - cron: "17 3 * * 0"

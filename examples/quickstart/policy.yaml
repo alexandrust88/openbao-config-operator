@@ -1,0 +1,16 @@
+# The ACL policy that the application's tokens get. driftInterval is short so the quickstart can show the
+# operator repairing a change made in OpenBao; the default for policies is 15 minutes.
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: quickstart-app-read
+  namespace: quickstart
+spec:
+  connectionRef:
+    name: openbao
+  deletionPolicy: Delete
+  driftInterval: 30s
+  policy: |
+    path "quickstart-kv/data/app" {
+      capabilities = ["read"]
+    }

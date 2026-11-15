@@ -1,0 +1,17 @@
+# Logs in to the kubernetes auth method of OpenBao as the ServiceAccount openbao-config, with a short-lived token
+# for the openbao audience. The OpenBao role operator-quickstart limits what the connection may configure.
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoConnection
+metadata:
+  name: openbao
+  namespace: quickstart
+spec:
+  serverRef:
+    name: quickstart
+  auth:
+    kubernetes:
+      role: operator-quickstart
+      serviceAccountRef:
+        name: openbao-config
+      audiences:
+        - openbao
