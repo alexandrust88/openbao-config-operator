@@ -81,6 +81,8 @@ type window struct {
 	PeakGoroutines      float64            `json:"peakGoroutines"`
 	EndGoroutines       float64            `json:"endGoroutines"`
 	PeakHeapInuseMiB    float64            `json:"peakHeapInuseMiB"`
+	PeakOpenBaoRSSMiB   float64            `json:"peakOpenBaoRssMiB"`
+	EndOpenBaoRSSMiB    float64            `json:"endOpenBaoRssMiB"`
 	ManagerErrorLogLine int                `json:"managerErrorLogLines"`
 }
 
@@ -120,8 +122,10 @@ func newWindow(samples []sample, errorLines int) window {
 		w.PeakRSSMiB = max(w.PeakRSSMiB, round(s.rssKB/1024))
 		w.PeakGoroutines = max(w.PeakGoroutines, s.metrics["go_goroutines"])
 		w.PeakHeapInuseMiB = max(w.PeakHeapInuseMiB, round(s.metrics["go_memstats_heap_inuse_bytes"]/(1<<20)))
+		w.PeakOpenBaoRSSMiB = max(w.PeakOpenBaoRSSMiB, round(s.baoKB/1024))
 	}
 	w.EndRSSMiB = round(last.rssKB / 1024)
+	w.EndOpenBaoRSSMiB = round(last.baoKB / 1024)
 	w.EndGoroutines = last.metrics["go_goroutines"]
 	return w
 }
@@ -185,15 +189,15 @@ func writeJSON(path string, v any) error {
 func writeTimeseries(path string, start time.Time, samples []sample) error {
 	var b strings.Builder
 	b.WriteString("t_s,rss_mib,cpu_s,goroutines,heap_inuse_mib,openbao_requests,openbao_errors,writes," +
-		"reconciles,reconcile_errors,workqueue_depth,workqueue_retries,kube_requests\n")
+		"reconciles,reconcile_errors,workqueue_depth,workqueue_retries,kube_requests,bao_rss_mib\n")
 	for _, s := range samples {
 		m := s.metrics
-		fmt.Fprintf(&b, "%.1f,%.1f,%.2f,%.0f,%.1f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n",
+		fmt.Fprintf(&b, "%.1f,%.1f,%.2f,%.0f,%.1f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.1f\n",
 			s.at.Sub(start).Seconds(), s.rssKB/1024, s.cpuSec, m["go_goroutines"],
 			m["go_memstats_heap_inuse_bytes"]/(1<<20), m["openbao_requests_total"],
 			m["openbao_requests_total:code=error"], m["openbao_writes_total"], m["controller_runtime_reconcile_total"],
 			m["controller_runtime_reconcile_errors_total"], m["workqueue_depth"], m["workqueue_retries_total"],
-			m["rest_client_requests_total"])
+			m["rest_client_requests_total"], s.baoKB/1024)
 	}
 	return os.WriteFile(path, []byte(b.String()), 0o600)
 }

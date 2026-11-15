@@ -1,0 +1,99 @@
+name: load
+
+# The namespace-hierarchy load test (test/load, kind set tree) against envtest and a local OpenBao on raft.
+# Not a required check; see docs/load-testing.md for the numbers and how to read them.
+on:
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      shape:
+        description: "Tree shape: parents x children per parent x kv mounts per namespace [x k8s auth roles x policies]"
+        default: "20x10x20"
+        type: string
+      scenarios:
+        description: "Comma-separated scenarios: ramp, steady, drift, outage, delete"
+        default: "ramp,steady,drift,delete"
+        type: string
+      drift-interval:
+        description: "Drift interval of the manager (Go duration)"
+        default: "1m"
+        type: string
+      max-concurrent-reconciles:
+        description: "--max-concurrent-reconciles of the manager"
+        default: "4"
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  load:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      SHAPE: ${{ inputs.shape || '20x10x20' }}
+      SCENARIOS: ${{ inputs.scenarios || 'ramp,steady,drift,delete' }}
+      DRIFT_INTERVAL: ${{ inputs.drift-interval || '1m' }}
+      MAX_CONCURRENT: ${{ inputs.max-concurrent-reconciles || '4' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
+      - name: Check inputs
+        run: |
+          [[ "$SHAPE" =~ ^[0-9]+x[0-9]+x[0-9]+(x[0-9]+x[0-9]+)?$ ]] || { echo "invalid shape: $SHAPE" >&2; exit 1; }
+          [[ "$SCENARIOS" =~ ^[a-z]+(,[a-z]+)*$ ]] || { echo "invalid scenarios: $SCENARIOS" >&2; exit 1; }
+          for scenario in ${SCENARIOS//,/ }; do
+            case "$scenario" in
+              ramp | steady | drift | outage | delete) ;;
+              *) echo "unknown scenario: $scenario (want ramp, steady, drift, outage or delete)" >&2; exit 1 ;;
+            esac
+          done
+          [[ "$DRIFT_INTERVAL" =~ ^[0-9]+(s|m|h)$ ]] || { echo "invalid drift interval: $DRIFT_INTERVAL" >&2; exit 1; }
+          [[ "$MAX_CONCURRENT" =~ ^[0-9]+$ ]] || { echo "invalid max concurrent reconciles: $MAX_CONCURRENT" >&2; exit 1; }
+      - run: make bao setup-envtest
+      - name: Run the load test
+        run: |
+          BAO_BIN="$PWD/bin/bao" hack/load/run.sh -k tree -t "$SHAPE" -s "$SCENARIOS" -d "$DRIFT_INTERVAL" \
+            -c "$MAX_CONCURRENT" -o "$RUNNER_TEMP/load"
+      - name: Summary
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP"/load/*/results.json; do
+            [ -f "$f" ] || continue
+            jq -r --arg run "$(basename "$(dirname "$f")")" '
+              def n(x): if x == null then "n/a" else x end;
+              "### \($run)", "",
+              "| Phase | Result |", "| --- | --- |",
+              "| Objects | \(n(.tree.objects)) (\(n(.tree.connections)) connections) on \(.machine) |",
+              "| Ramp | all ready in \(n(.ramp.allReadySeconds)) s, \(n(.ramp.readyObjectsPerSecond)) objects/s, p50 / p95 / max \(n(.ramp.readyLatencyMs.p50)) / \(n(.ramp.readyLatencyMs.p95)) / \(n(.ramp.readyLatencyMs.max)) ms, not ready \(n(.ramp.notReady)) |",
+              "| Steady | OpenBao writes \(n(.steady.window.writes)), Kubernetes writes \(if .steady then (.steady.window.kubeByMethod // {} | (.PATCH // 0) + (.PUT // 0) + (.POST // 0)) else "n/a" end), \(n(.steady.window.openbaoRequestsPerSecond)) OpenBao req/s |",
+              "| Drift | \(n(.drift.tampered)) tampered, repair p95 \(n(.drift.repairMs.p95)) ms, not repaired \(n(.drift.notRepaired)) |",
+              "| Delete | all gone in \(n(.delete.allGoneSeconds)) s, not gone \(n(.delete.notGone)) |",
+              "| Manager | peak RSS \(n(.ramp.window.peakRssMiB)) MiB, peak goroutines \(n(.ramp.window.peakGoroutines)), CPU \(n(.ramp.window.meanCpuPercent)) % during ramp |",
+              "| OpenBao | peak RSS \(n(.ramp.window.peakOpenBaoRssMiB)) MiB during ramp |",
+              (.tree.openbaoCounts // [] | .[] | "| OpenBao after \(.phase) | \(.namespaces) namespaces, \(.kvMounts) kv mounts, \(.kubernetesAuthMounts) kubernetes auth mounts, \(.policies) policies |"),
+              (.failures // [] | .[] | "| Failure | \(.) |"),
+              ""' "$f" >>"$GITHUB_STEP_SUMMARY"
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: load-tree
+          path: ${{ runner.temp }}/load
+          retention-days: 14
+
+  report-failure:
+    needs:
+      - load
+    if: failure() && github.event_name == 'schedule'
+    uses: ./.github/workflows/report-failure.yml # zizmor: ignore[self-repository]
+    permissions:
+      issues: write # open or comment on the scheduled-failure issue

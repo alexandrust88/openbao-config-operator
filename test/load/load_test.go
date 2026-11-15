@@ -29,11 +29,15 @@ const (
 	rateBucket    = 10 * time.Second
 	probeKeyCount = 5
 	refsDelay     = 5 * time.Second
+	// treeDriftSample stays below the default write budget of 60 rewrites per minute, so every repair lands
+	// within one drift interval.
+	treeDriftSample = 50
 )
 
 type config struct {
 	n               int
 	kinds           string
+	tree            treeShape
 	scenarios       []string
 	driftInterval   time.Duration
 	maxConcurrent   int
@@ -58,7 +62,6 @@ func loadConfig(t *testing.T) config {
 	cfg := config{
 		n:               envInt(t, "LOAD_N", 200),
 		kinds:           envString("LOAD_KINDS", "simple"),
-		scenarios:       strings.Split(envString("LOAD_SCENARIOS", "ramp,steady,drift,outage,delete"), ","),
 		driftInterval:   envDuration(t, "LOAD_DRIFT_INTERVAL", time.Minute),
 		maxConcurrent:   envInt(t, "LOAD_MAX_CONCURRENT", 4),
 		writeBudget:     envBudget(t),
@@ -71,6 +74,14 @@ func loadConfig(t *testing.T) config {
 		assets:          testenv.RequireAssets(t, root),
 		root:            root,
 	}
+	if cfg.scenarios, err = parseScenarios(envString("LOAD_SCENARIOS", strings.Join(knownScenarios, ","))); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.kinds == kindSetTree {
+		if cfg.tree, err = parseTreeShape(envString("LOAD_TREE", "100x10x20x3x3")); err != nil {
+			t.Fatal(err)
+		}
+	}
 	cfg.out = envString("LOAD_OUT", filepath.Join(root, ".tmp", "night", "loadtest",
 		fmt.Sprintf("%s-n%d-mcr%d", cfg.kinds, cfg.n, cfg.maxConcurrent)))
 	if cfg.managerBin == "" {
@@ -82,6 +93,20 @@ func loadConfig(t *testing.T) config {
 		}
 	}
 	return cfg
+}
+
+var knownScenarios = []string{"ramp", "steady", "drift", "outage", "delete"}
+
+// parseScenarios rejects an unknown scenario, so a typo cannot leave a run without any phase.
+func parseScenarios(list string) ([]string, error) {
+	scenarios := strings.Split(list, ",")
+	for _, s := range scenarios {
+		if !slices.Contains(knownScenarios, s) {
+			return nil, fmt.Errorf("unknown scenario %q in %q, want a comma-separated list of %s", s, list,
+				strings.Join(knownScenarios, ", "))
+		}
+	}
+	return scenarios, nil
 }
 
 func envString(key, def string) string {
@@ -148,6 +173,7 @@ type results struct {
 	Drift         *driftResult   `json:"drift,omitempty"`
 	Outage        *outageResult  `json:"outage,omitempty"`
 	Delete        *deleteResult  `json:"delete,omitempty"`
+	Tree          *treeResult    `json:"tree,omitempty"`
 	Identity      []identityMark `json:"identityCounts"`
 	Failures      []string       `json:"failures,omitempty"`
 	Phases        map[string]any `json:"phaseOffsetsSeconds"`
@@ -164,6 +190,9 @@ type rampResult struct {
 	AllReadySec   float64         `json:"allReadySeconds"`
 	ReadyMs       dist            `json:"readyLatencyMs"`
 	ReadyMsByKind map[string]dist `json:"readyLatencyMsByKind"`
+	// ReadyMsByLevel groups the tree set by its levels, from the parent namespaces down to the child objects.
+	ReadyMsByLevel map[string]dist `json:"readyLatencyMsByLevel,omitempty"`
+	ObjectsPerSec  float64         `json:"readyObjectsPerSecond"`
 	// ReferrerMs is the time from applying the referents until each referrer was ready.
 	ReferrerMs dist   `json:"referrerReadyAfterReferentsMs"`
 	NotReady   int    `json:"notReady"`
@@ -313,17 +342,24 @@ func setupRun(ctx context.Context, t *testing.T, cfg config, kinds []kind) *load
 		t.Fatal(err)
 	}
 
+	objects := plan(kinds, cfg.n)
+	var tree *treeResult
+	if cfg.kinds == kindSetTree {
+		objects = planTree(cfg.tree, c.caPEM)
+		tree = &treeResult{Shape: cfg.tree, Objects: len(objects), Connections: cfg.tree.Parents}
+		cfg.n = len(objects) - cfg.tree.Parents
+	}
 	r := &loadRun{
 		t: t, cfg: cfg, ctx: ctx, c: c, bao: bao, mgr: mgr, tr: tr, managerLog: managerLog,
-		objects: plan(kinds, cfg.n), start: time.Now(),
+		objects: objects, start: time.Now(),
 		res: &results{N: cfg.n, Kinds: cfg.kinds, KindNames: kindNames, DriftInterval: cfg.driftInterval.String(),
 			MaxConcurrent: cfg.maxConcurrent, WriteBudget: cfg.writeBudget, Machine: fmt.Sprintf("%s/%s, %d CPUs", runtime.GOOS, runtime.GOARCH,
-				runtime.NumCPU()), Phases: map[string]any{}},
+				runtime.NumCPU()), Phases: map[string]any{}, Tree: tree},
 	}
 	for _, o := range r.objects {
 		r.keys = append(r.keys, o.key())
 	}
-	r.s = startSampler(mgr.metricsURL, mgr.cmd.Process.Pid, samplePeriod)
+	r.s = startSampler(mgr.metricsURL, mgr.cmd.Process.Pid, func() int { return int(bao.pid.Load()) }, samplePeriod)
 	t.Cleanup(r.s.close)
 	baseStart := time.Now()
 	time.Sleep(10 * time.Second)
@@ -348,28 +384,43 @@ func (r *loadRun) mark(phase string, at time.Time) {
 }
 
 // markIdentity records the identity counts after phase. Design rule 1: only the managed Entity and EntityAlias
-// objects may change them; token accessors stay flat because the operator logs in once per connection.
+// objects may change them; token accessors grow by one per generated connection, because the operator logs in
+// once per connection, and shrink back when the connections are deleted.
 func (r *loadRun) markIdentity(phase string) {
 	c, err := countIdentity(r.bao)
 	if err != nil {
 		r.t.Errorf("count identity after %s: %v", phase, err)
 		return
 	}
-	r.res.Identity = append(r.res.Identity, identityMark{Phase: phase, identityCounts: c})
+	if phase == "baseline" {
+		r.res.Identity = append(r.res.Identity, identityMark{Phase: phase, identityCounts: c})
+		return
+	}
 	base := r.res.Identity[0]
-	entities, aliases := 0, 0
-	if phase != "baseline" && phase != "delete" {
+	entities, aliases, connections := 0, 0, 0
+	if phase != "delete" {
 		for _, o := range r.objects {
 			switch o.kind.gvk.Kind {
 			case "Entity":
 				entities++
 			case "EntityAlias":
 				aliases++
+			case kindConnection:
+				connections++
 			}
 		}
 	}
-	want := identityCounts{TokenAccessors: base.TokenAccessors, Entities: base.Entities + entities,
+	want := identityCounts{TokenAccessors: base.TokenAccessors + connections, Entities: base.Entities + entities,
 		EntityAliases: base.EntityAliases + aliases}
+	// A deleted connection revokes its token in the background.
+	for deadline := time.Now().Add(30 * time.Second); c != want && time.Now().Before(deadline); {
+		time.Sleep(time.Second)
+		if c, err = countIdentity(r.bao); err != nil {
+			r.t.Errorf("count identity after %s: %v", phase, err)
+			return
+		}
+	}
+	r.res.Identity = append(r.res.Identity, identityMark{Phase: phase, identityCounts: c})
 	if c != want {
 		r.fail("identity after %s: got %+v, want %+v", phase, c, want)
 	}
@@ -387,9 +438,13 @@ func (r *loadRun) fail(format string, args ...any) {
 
 // waitAll polls until every key satisfies fn or timeout passes, and returns how many do not.
 func (r *loadRun) waitAll(timeout time.Duration, fn func(objectState) bool) int {
+	return r.waitKeys(r.keys, timeout, fn)
+}
+
+func (r *loadRun) waitKeys(keys []string, timeout time.Duration, fn func(objectState) bool) int {
 	deadline := time.Now().Add(timeout)
 	for {
-		missing := len(r.keys) - r.tr.count(r.keys, fn)
+		missing := len(keys) - r.tr.count(keys, fn)
 		if missing == 0 || time.Now().After(deadline) {
 			return missing
 		}
@@ -411,7 +466,7 @@ func (r *loadRun) ramp() {
 	created := time.Now()
 	notReady := r.waitAll(r.readyTimeout(), func(s objectState) bool { return !s.firstHealthy.IsZero() })
 	var latencies, afterReferents []float64
-	byKind := map[string][]float64{}
+	byKind, byLevel := map[string][]float64{}, map[string][]float64{}
 	var last time.Time
 	for _, o := range r.objects {
 		st := r.tr.get(o.key())
@@ -421,6 +476,9 @@ func (r *loadRun) ramp() {
 		ms := float64(st.firstHealthy.Sub(st.created).Milliseconds())
 		latencies = append(latencies, ms)
 		byKind[o.kind.gvk.Kind] = append(byKind[o.kind.gvk.Kind], ms)
+		if o.level != "" {
+			byLevel[o.level] = append(byLevel[o.level], ms)
+		}
 		if o.kind.referrer {
 			afterReferents = append(afterReferents, float64(st.firstHealthy.Sub(referents).Milliseconds()))
 		}
@@ -441,13 +499,25 @@ func (r *loadRun) ramp() {
 	for k, v := range byKind {
 		r.res.Ramp.ReadyMsByKind[k] = summarize(v)
 	}
+	if len(byLevel) > 0 {
+		r.res.Ramp.ReadyMsByLevel = map[string]dist{}
+		for k, v := range byLevel {
+			r.res.Ramp.ReadyMsByLevel[k] = summarize(v)
+		}
+	}
+	if r.res.Ramp.AllReadySec > 0 {
+		r.res.Ramp.ObjectsPerSec = round(float64(len(latencies)) / r.res.Ramp.AllReadySec)
+	}
 	if notReady > 0 {
 		r.fail("ramp: %d objects never became ready", notReady)
 	}
 	r.markIdentity("ramp")
-	r.t.Logf("ramp: created in %.1fs, all ready in %.1fs, p50 %.0fms p95 %.0fms p99 %.0fms",
-		r.res.Ramp.CreateSeconds, r.res.Ramp.AllReadySec, r.res.Ramp.ReadyMs.P50, r.res.Ramp.ReadyMs.P95,
-		r.res.Ramp.ReadyMs.P99)
+	if r.res.Tree != nil {
+		r.markTree("ramp", r.cfg.tree.counts())
+	}
+	r.t.Logf("ramp: created in %.1fs, all ready in %.1fs (%.1f objects/s), p50 %.0fms p95 %.0fms p99 %.0fms",
+		r.res.Ramp.CreateSeconds, r.res.Ramp.AllReadySec, r.res.Ramp.ObjectsPerSec, r.res.Ramp.ReadyMs.P50,
+		r.res.Ramp.ReadyMs.P95, r.res.Ramp.ReadyMs.P99)
 }
 
 func (r *loadRun) steady() {
@@ -486,8 +556,9 @@ func (r *loadRun) steady() {
 		res.ObservedReconcilesPerS, res.ExpectedReconcilesPerS, w.OpenBaoPerSecond, w.Writes)
 }
 
-// drift tampers with a tenth of the Policy and KVSecret objects and times their repair. A few other KVSecrets get
-// an unmanaged key; their KV version counts the operator's writes to them exactly.
+// drift tampers with a tenth of the Policy and KVSecret objects (at most treeDriftSample in the tree set) and times
+// their repair. A few other KVSecrets get an unmanaged key; their KV version counts the operator's writes to them
+// exactly.
 func (r *loadRun) drift() {
 	var candidates []object
 	for _, o := range r.objects {
@@ -497,6 +568,9 @@ func (r *loadRun) drift() {
 	}
 	rand.Shuffle(len(candidates), func(i, j int) { candidates[i], candidates[j] = candidates[j], candidates[i] })
 	count := min(max(r.cfg.n/10, 1), len(candidates))
+	if r.res.Tree != nil {
+		count = min(count, treeDriftSample)
+	}
 	targets := candidates[:count]
 	var probes []object
 	for _, o := range candidates[count:] {
@@ -657,10 +731,17 @@ func (r *loadRun) outage() {
 func (r *loadRun) deleteAll() {
 	start := time.Now()
 	r.mark("deleteStart", start)
-	if err := deleteObjects(r.ctx, r.c.k8s, r.tr, r.objects, r.cfg.workers); err != nil {
-		r.t.Fatal(err)
+	notGone := 0
+	for _, stage := range r.deleteStages() {
+		if err := deleteObjects(r.ctx, r.c.k8s, r.tr, stage, r.cfg.workers); err != nil {
+			r.t.Fatal(err)
+		}
+		keys := make([]string, 0, len(stage))
+		for _, o := range stage {
+			keys = append(keys, o.key())
+		}
+		notGone += r.waitKeys(keys, r.readyTimeout(), func(s objectState) bool { return !s.gone.IsZero() })
 	}
-	notGone := r.waitAll(r.readyTimeout(), func(s objectState) bool { return !s.gone.IsZero() })
 	var latencies []float64
 	var last time.Time
 	for _, k := range r.keys {
@@ -689,8 +770,30 @@ func (r *loadRun) deleteAll() {
 		r.fail("delete: %d resources not finalized, Policy/KVSecret objects left in OpenBao: %v", notGone, left)
 	}
 	r.markIdentity("delete")
+	if r.res.Tree != nil {
+		// Namespaces and the kubernetes auth configs keep the default deletionPolicy Orphan; the namespaces stay
+		// and the configs go with their auth mounts.
+		r.markTree("delete", treeCounts{Namespaces: r.cfg.tree.namespaces()})
+	}
 	r.t.Logf("delete: all gone in %.1fs, finalize p50 %.0fms p95 %.0fms", r.res.Delete.AllGoneSeconds,
 		r.res.Delete.FinalizeMs.P50, r.res.Delete.FinalizeMs.P95)
+}
+
+// deleteStages returns the objects in the order they are deleted: the tree set level by level, children before
+// their parents and each connection after everything that uses it; the other sets all at once.
+func (r *loadRun) deleteStages() [][]object {
+	if r.res.Tree == nil {
+		return [][]object{r.objects}
+	}
+	byLevel := map[string][]object{}
+	for _, o := range r.objects {
+		byLevel[o.level] = append(byLevel[o.level], o)
+	}
+	var stages [][]object
+	for _, level := range slices.Backward(treeLevels) {
+		stages = append(stages, byLevel[level])
+	}
+	return stages
 }
 
 func (r *loadRun) finish() {

@@ -11,13 +11,14 @@ count and kind set. Each run starts a fresh environment:
 - envtest: a real kube-apiserver and etcd with every CRD from `config/crd/bases`.
 - OpenBao: one `bao server` on raft storage with a single unseal key, so its data survives the restart in the
   outage scenario. `bao server -dev` keeps data in memory and would come back empty.
-- The manager binary from `./cmd/`, run against envtest with `--watch-namespaces=load`,
-  both drift intervals at 1 minute, `--max-concurrent-reconciles=4` and the default
+- The manager binary from `./cmd/`, run against envtest with `--watch-namespaces=load`, `--leader-elect=false`
+  (one replica; lease renewals would count as Kubernetes writes in the steady window), both drift intervals at 1 minute, `--max-concurrent-reconciles=4` and the default
   `--max-concurrent-reconciles-high-volume=8` unless a run says otherwise. It authenticates with
   its own AppRole (design rule 6), not a root token.
 
 The harness creates the objects with 16 parallel workers, follows their `Ready` and `Synced` conditions through
-informers, scrapes the manager's `/metrics` every 2 s and reads the process RSS and CPU time with `ps`. Goroutine
+informers, scrapes the manager's `/metrics` every 2 s and reads the manager's RSS and CPU time and OpenBao's RSS
+with `ps`. Goroutine
 counts come from `go_goroutines`; `cmd/main.go` has no pprof flag.
 
 Kind sets:
@@ -28,6 +29,7 @@ Kind sets:
 | `mixed` | `Policy`, `KVSecret`, `PasswordPolicy`, `AuditRequestHeader`, `TokenRole`, `UserpassUser`, `AppRole`, `Entity`, `Group`, `TransitKey` |
 | `refs` | `EntityAlias` with `entityRef` to an `Entity`; aliases are applied 5 s before their entities |
 | `members` | `GroupMembership` with `entityRef` and `groupRef`; memberships are applied first. Use a multiple of 3 for N |
+| `tree` | an OpenBao namespace hierarchy, sized by a shape instead of N; see [Namespace tree](#namespace-tree) |
 
 Scenarios, in order:
 
@@ -48,12 +50,19 @@ Only the managed `Entity` and `EntityAlias` objects may change them (design rule
 hack/load/run.sh -n "200 1000" -k "simple mixed"
 hack/load/run.sh -n 1000 -k simple -b -1          # write budget off
 hack/load/run.sh -n 201 -k members -s ramp,steady,delete
+hack/load/run.sh -k tree -t "5x3x4 20x10x20" -s ramp,steady,drift,delete
 ```
 
-Flags: `-n` object counts, `-k` kind sets, `-c` `--max-concurrent-reconciles`, `-s` scenarios, `-d` drift
+Flags: `-n` object counts, `-k` kind sets, `-t` tree shapes, `-c` `--max-concurrent-reconciles`, `-s` scenarios
+(an unknown name fails the run before anything starts), `-d` drift
 interval, `-b` `--write-budget-per-minute` (`-1` disables it), `-o` output directory (default
 `.tmp/night/loadtest`). `LOAD_MANAGER_BIN` and `LOAD_CRD_DIR` reuse a prebuilt binary and its CRDs. Each run
 writes `results.json`, `timeseries.csv`, `objects.csv`, `events.txt`, `manager.log` and `bao.log`.
+
+`.github/workflows/load.yml` runs the tree set every Sunday and on demand (`workflow_dispatch` takes the shape,
+scenarios, drift interval and `--max-concurrent-reconciles`). It defaults to `20x10x20` with
+`ramp,steady,drift,delete`, uploads the run directory as the `load-tree` artifact and writes the main numbers to
+the job summary. A scheduled failure opens an issue through `report-failure.yml`.
 
 ### Limits of these numbers
 
@@ -155,6 +164,102 @@ leaks. RSS was about 55 MiB idle, 125 to
 160 MiB with 1,000 objects and 232 MiB with 5,000. CPU peaked at 70 % of one core during the mixed N=1000 ramp;
 in steady state it was 7.5 % at N=1000 and 31 % at N=5000 with the 1 minute interval (81 drift checks/s).
 
+## Namespace tree
+
+The `tree` set builds the OpenBao namespace hierarchy of a multi-tenant server. `-t` takes the shape
+`PARENTSxCHILDRENxKV[xROLESxPOLICIES]` (roles and policies default to 3); the default `100x10x20` is 100 parent
+namespaces with 10 children each: 1,100 namespaces, 32,000 objects and 23,100 mounts.
+
+- Each parent namespace and the objects in it go through the root connection, with `spec.namespace` set to the
+  parent (the `root-to-child` mode of `examples/live`).
+- Each parent gets its own `OpenBaoConnection` with `namespace: <parent>` and `authNamespace: ""` (the
+  `child-connection-root-login` mode). It creates the child namespaces and the objects in them, so a run with 100
+  parents has 101 connections and 101 operator tokens.
+- Every namespace holds one `kubernetes` `AuthMount` with its `KubernetesAuthConfig` (pinned to the envtest CA),
+  KV `SecretsMount`s of type `kv-v2`, ROLES `KubernetesAuthRole`s and POLICIES `Policy` objects.
+- The harness applies everything at once, in the order of the Argo CD sync waves but without waiting between
+  them: parent namespaces, connections, parent mounts and policies, parent auth configs and roles, child
+  namespaces, child mounts and policies, child auth configs and roles. The ramp reports latency per level.
+- Drift tampers with 50 `Policy` objects, which stays under the default write budget of 60 rewrites a minute.
+- Delete goes level by level in reverse, each level after the one before is gone. Mounts, policies and roles use
+  `deletionPolicy: Delete` with the destructive-delete annotation. Namespaces keep the default `Orphan`, and
+  `KubernetesAuthConfig` can only be `Orphan`.
+- After the ramp and after delete, the harness walks every namespace with the root token and counts the KV mounts,
+  the kubernetes auth mounts and the policies. Token accessors must grow by one per connection and drop back after
+  the connections are deleted.
+
+### Results
+
+Apple M1 Max (darwin/arm64, 10 CPUs, 32 GB), load average 2 to 6, other envtest and OpenBao processes running
+next to the harness. OpenBao 2.7.2 on raft, drift intervals 1 minute (30 s for 5x3x4), default write budget.
+`-c` is `--max-concurrent-reconciles`; `Policy` and `KubernetesAuthRole` use the high-volume default of 8.
+
+| Shape | Objects | `-c` | All ready | Objects/s | Ready p50 / p95 / max | Manager peak RSS / goroutines / CPU | OpenBao peak RSS |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 5x3x4 | 265 | 4 | 68.1 s | 3.9 | 3.5 / 67.0 / 68.0 s | 131 MiB / 3,982 / 11 % | 114 MiB |
+| 20x10x20 | 6,400 | 4 | 393.2 s | 16.3 | 132.5 / 364.4 / 392.8 s | 206 MiB / 4,272 / 24 % | 457 MiB |
+| 20x10x20 | 6,400 | 8 | 365.8 s | 17.5 | 123.4 / 338.7 / 365.8 s | 248 MiB / 4,538 / 24 % | 465 MiB |
+
+Ready latency by level, 20x10x20 with `-c 4` (mounts include the policies of the same namespace):
+
+| Level | Objects | p50 | p95 | max |
+| --- | --- | --- | --- | --- |
+| parent namespaces | 20 | 2.1 s | 3.6 s | 3.6 s |
+| connections | 20 | 6.4 s | 71.8 s | 72.0 s |
+| parent mounts | 480 | 37.8 s | 58.4 s | 375.8 s |
+| parent auth | 80 | 8.1 s | 19.5 s | 20.7 s |
+| child namespaces | 200 | 25.2 s | 76.0 s | 79.1 s |
+| child mounts | 4,800 | 190.2 s | 369.4 s | 392.8 s |
+| child auth | 800 | 37.9 s | 101.7 s | 118.0 s |
+
+The other phases of 20x10x20 with `-c 4`:
+
+- Steady: 104.7 reconciles/s (expected 106.3), 105.4 OpenBao requests/s, no OpenBao write and no Kubernetes
+  write over three intervals. The manager used 29 % of a core and 228 MiB.
+- Drift: 50 policies tampered, repaired after 24.4 s (p50), 58.3 s (p95), 64.8 s (max), each written once and
+  none again in the two intervals after.
+- Delete: all 6,400 objects gone after 330.7 s (370.1 s with `-c 8`); finalize p50 64.5 s, p95 273.8 s. OpenBao
+  then held the 220 orphaned namespaces with no KV mount, no kubernetes auth mount and no policy left in them;
+  the auth configs went with their mounts.
+- Token accessors went from 2 to 22 after the ramp (one per connection) and back to 2 after delete. Entities and
+  entity aliases did not change, and the goroutine count went back to its idle level of about 3,900.
+
+OpenBao grew from 76 MiB idle to about 460 MiB for 220 namespaces and 4,620 mounts, about 1.7 MiB per namespace,
+and kept that memory after delete because the namespaces stay. The harness's OpenBao has no telemetry stanza.
+
+The full 100x10x20 shape was not run on this laptop. Its ramp and delete are bound by OpenBao's mount writes
+(below) at about 12 to 14 mounts per second, so 23,100 mounts would take about 30 minutes to create and as long to
+delete, and OpenBao would need about 2 GiB by the same per-namespace growth.
+
+### Bottlenecks
+
+The numbers above predate the fixes below.
+
+1. **OpenBao serialises mount changes.** Every enable, tune and disable takes the server-wide mount table lock
+   (`Core.mountsLock`, `internal/vault/mount.go` in OpenBao), whatever the namespace, so mount creation is the
+   ramp's ceiling and doubling the workers gained 7 %. Fixed in the operator's share: a mount create now sends its
+   config with the enable, one locked write instead of an enable and a tune (a tune follows only for user lockout,
+   which enable does not accept).
+2. **A tenant connection created before its namespace waited for the next probe** (1 minute ±20 %), and every
+   child object behind it waited too. Fixed: namespace-not-found now reports `ReferenceNotReady` and retries after
+   2 to 30 s.
+3. **Objects created before their mount failed with errors.** A write that gets 404 "no handler for route" (a role
+   before its auth mount, objects in a namespace whose `sys/` is still mounting) logged an error with a stack trace
+   on each retry, about 3,000 lines in the 20x10x20 ramp. Fixed: it is now a `ReferenceNotReady` wait with one
+   Info line per retry. Reads are unchanged: a 404 on read still means absent.
+
+10x5x10 tree (1,150 objects, 660 mounts), `-s ramp,delete`, same laptop, before (main at `a0a0b5b`) and after:
+
+| | Before | After |
+| --- | --- | --- |
+| Ramp, all ready | 75.7 s (15.2 objects/s) | 40.2 s (28.6 objects/s) |
+| Mounts per second | 8.7 | 19.1 |
+| Connection ready p95 | 71.3 s | 3.6 s |
+| OpenBao PUTs in the ramp | 3,403 | 1,857 |
+| Failed reconciles | 1,121 | 0 |
+| Manager error lines | 998 | 3 (startup cache warnings for kube-system namespaces) |
+| Delete, all gone | 45.8 s | 46.1 s |
+
 ## Before and after the engine fixes
 
 The build of ~04:00 fixes the three bottlenecks below. Same harness and host, N=1000, default write budget (60),
@@ -233,3 +338,6 @@ cache is scoped to `--watch-namespaces`, the client reads Secrets live and the S
 - OpenBao availability: after an outage, resources wait for the next connection probe (1 minute ±20 %). Then
   the connection watch re-queues them and each server takes them back at 100 per second, so expect up to about
   72 s plus N/100 s before every object is ready again.
+- Namespace trees: OpenBao creates and removes mounts one at a time, so 1,000 mounts take a little over a minute
+  on storage like this laptop's, whatever `--max-concurrent-reconciles` says. A tenant connection created before
+  its OpenBao namespace exists starts working only at its next probe, up to 72 s later.

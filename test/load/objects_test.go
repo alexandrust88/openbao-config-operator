@@ -3,6 +3,7 @@
 package load
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"maps"
@@ -119,8 +120,10 @@ func kindSet(name string) ([]kind, error) {
 		return []kind{entityAliasKind, entityKind}, nil
 	case "members":
 		return []kind{groupMembershipKind, entityKind, groupKind}, nil
+	case kindSetTree:
+		return treeKinds, nil
 	default:
-		return nil, fmt.Errorf("unknown kind set %q, want simple, mixed, refs or members", name)
+		return nil, fmt.Errorf("unknown kind set %q, want simple, mixed, refs, members or tree", name)
 	}
 }
 
@@ -129,6 +132,14 @@ type object struct {
 	kind  kind
 	name  string
 	index int
+	// The tree set fills these: spec replaces kind.spec, conn replaces the root connection, baoNS is the absolute
+	// OpenBao namespace the object lives in, orphan keeps the default deletionPolicy and level groups the ramp
+	// latencies and the delete order.
+	spec   map[string]any
+	conn   string
+	baoNS  string
+	orphan bool
+	level  string
 }
 
 func (o object) key() string { return o.kind.gvk.Kind + "/" + o.name }
@@ -144,15 +155,20 @@ func plan(kinds []kind, n int) []object {
 }
 
 func (o object) unstructured() *unstructured.Unstructured {
-	spec := o.kind.spec(o.name, o.index)
-	spec["connectionRef"] = map[string]any{litName: connectionName}
-	spec["deletionPolicy"] = "Delete"
-	// The harness deletes everything it creates, including kinds whose delete destroys data.
-	u := &unstructured.Unstructured{Object: map[string]any{
-		litMetadata: map[string]any{litName: o.name, "namespace": objectNamespace,
-			"annotations": map[string]any{"openbaoconfig.io/allow-destructive-delete": "true"}},
-		"spec": spec,
-	}}
+	spec := maps.Clone(o.spec)
+	if spec == nil {
+		spec = o.kind.spec(o.name, o.index)
+	}
+	meta := map[string]any{litName: o.name, "namespace": objectNamespace}
+	if o.kind.gvk.Kind != kindConnection {
+		spec["connectionRef"] = map[string]any{litName: cmp.Or(o.conn, connectionName)}
+		if !o.orphan {
+			spec["deletionPolicy"] = "Delete"
+		}
+		// The harness deletes everything it creates, including kinds whose delete destroys data.
+		meta["annotations"] = map[string]any{"openbaoconfig.io/allow-destructive-delete": "true"}
+	}
+	u := &unstructured.Unstructured{Object: map[string]any{litMetadata: meta, "spec": spec}}
 	u.SetGroupVersionKind(o.kind.gvk)
 	return u
 }
@@ -240,7 +256,7 @@ func tamper(bao *baoServer, o object) error {
 	switch o.kind.gvk.Kind {
 	case kindPolicy:
 		changed := strings.Replace(policyText(o.name), `["read"]`, `["read", "list"]`, 1)
-		_, _, err := bao.do(http.MethodPut, "sys/policies/acl/"+o.name, map[string]any{litPolicy: changed})
+		_, _, err := bao.doIn(o.baoNS, http.MethodPut, "sys/policies/acl/"+o.name, map[string]any{litPolicy: changed})
 		return err
 	case kindKVSecret:
 		_, _, err := bao.do(http.MethodPut, "secret/data/"+kvPath(o.name), map[string]any{"data": map[string]any{}})
@@ -254,7 +270,7 @@ func tamper(bao *baoServer, o object) error {
 func repaired(bao *baoServer, o object) (bool, error) {
 	switch o.kind.gvk.Kind {
 	case kindPolicy:
-		resp, _, err := bao.do(http.MethodGet, "sys/policies/acl/"+o.name, nil)
+		resp, _, err := bao.doIn(o.baoNS, http.MethodGet, "sys/policies/acl/"+o.name, nil)
 		if err != nil {
 			return false, err
 		}

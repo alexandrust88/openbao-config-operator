@@ -6,9 +6,11 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"maps"
 	"math"
 	"net/http"
 	"os/exec"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,9 +27,8 @@ import (
 // snapshot holds aggregated manager metrics, keyed as "<metric>" or "<metric>:<label>=<value>".
 type snapshot map[string]float64
 
-// scrape reads the manager's Prometheus text endpoint and keeps the series the report needs, summed over
-// controllers and connections.
-func scrape(url string) (snapshot, error) {
+// scrape reads the manager's Prometheus text endpoint and returns every series with its value.
+func scrape(url string) (map[string]float64, error) {
 	resp, err := http.Get(url) //nolint:gosec // local test endpoint
 	if err != nil {
 		return nil, err
@@ -36,7 +37,7 @@ func scrape(url string) (snapshot, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("metrics: status %d", resp.StatusCode)
 	}
-	s := snapshot{}
+	series := map[string]float64{}
 	sc := bufio.NewScanner(resp.Body)
 	sc.Buffer(make([]byte, 1<<20), 1<<20)
 	for sc.Scan() {
@@ -52,10 +53,34 @@ func scrape(url string) (snapshot, error) {
 		if err != nil {
 			continue
 		}
-		name, labels := parseSeries(line[:cut])
+		series[line[:cut]] = value
+	}
+	return series, sc.Err()
+}
+
+// aggregate keeps the series the report needs, summed over controllers and connections.
+func aggregate(series map[string]float64) snapshot {
+	s := snapshot{}
+	for line, value := range series {
+		name, labels := parseSeries(line)
 		s.add(name, labels, value)
 	}
-	return s, sc.Err()
+	return s
+}
+
+// perConnectionCounters lose their series when a connection is deleted, and the token revoke that follows can
+// start them again from zero; carry keeps their highest value so the sums stay monotonic.
+var perConnectionCounters = []string{"openbao_requests_total{", "openbao_request_duration_seconds_bucket{",
+	"openbao_logins_total{"}
+
+// carry adds to series the per-connection counters seen before and missing or lower now, and remembers them.
+func carry(seen, series map[string]float64) {
+	for line, value := range series {
+		if slices.ContainsFunc(perConnectionCounters, func(p string) bool { return strings.HasPrefix(line, p) }) {
+			seen[line] = max(value, seen[line])
+		}
+	}
+	maps.Copy(series, seen)
 }
 
 func parseSeries(series string) (string, map[string]string) {
@@ -167,24 +192,26 @@ type sample struct {
 	metrics snapshot
 	rssKB   float64
 	cpuSec  float64
+	baoKB   float64
 }
 
-// sampler scrapes the manager and ps every period until stopped.
+// sampler scrapes the manager, and reads the manager's and OpenBao's ps stats, every period until stopped.
 type sampler struct {
 	mu      sync.Mutex
 	samples []sample
+	seen    map[string]float64
 	stop    chan struct{}
 	done    chan struct{}
 }
 
-func startSampler(url string, pid int, period time.Duration) *sampler {
-	s := &sampler{stop: make(chan struct{}), done: make(chan struct{})}
+func startSampler(url string, pid int, baoPID func() int, period time.Duration) *sampler {
+	s := &sampler{stop: make(chan struct{}), done: make(chan struct{}), seen: map[string]float64{}}
 	go func() {
 		defer close(s.done)
 		ticker := time.NewTicker(period)
 		defer ticker.Stop()
 		for {
-			s.take(url, pid)
+			s.take(url, pid, baoPID())
 			select {
 			case <-s.stop:
 				return
@@ -195,15 +222,21 @@ func startSampler(url string, pid int, period time.Duration) *sampler {
 	return s
 }
 
-func (s *sampler) take(url string, pid int) {
+func (s *sampler) take(url string, pid, baoPID int) {
 	at := time.Now()
-	m, err := scrape(url)
+	series, err := scrape(url)
 	if err != nil {
 		return
 	}
+	carry(s.seen, series)
+	m := aggregate(series)
 	rss, cpu := psStats(pid)
+	var baoRSS float64
+	if baoPID != 0 {
+		baoRSS, _ = psStats(baoPID)
+	}
 	s.mu.Lock()
-	s.samples = append(s.samples, sample{at: at, metrics: m, rssKB: rss, cpuSec: cpu})
+	s.samples = append(s.samples, sample{at: at, metrics: m, rssKB: rss, cpuSec: cpu, baoKB: baoRSS})
 	s.mu.Unlock()
 }
 

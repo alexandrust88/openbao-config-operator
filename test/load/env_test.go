@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -47,6 +48,8 @@ type baoServer struct {
 	unsealKey      string
 	rootToken      string
 	http           *http.Client
+	// pid is read by the sampler while the outage scenario restarts the server.
+	pid atomic.Int64
 }
 
 func newBaoServer(t *testing.T, bin, dir string, log *os.File) *baoServer {
@@ -82,6 +85,7 @@ func (b *baoServer) start() error {
 	if err := b.cmd.Start(); err != nil {
 		return fmt.Errorf("start bao: %w", err)
 	}
+	b.pid.Store(int64(b.cmd.Process.Pid))
 	return poll(30*time.Second, func() error {
 		_, _, err := b.do(http.MethodGet, "sys/seal-status", nil)
 		return err
@@ -134,11 +138,16 @@ func (b *baoServer) stop() {
 		<-done
 	}
 	b.cmd = nil
+	b.pid.Store(0)
 }
 
-// do sends one request and returns the decoded body. A status of 400 or above is an error, except on sys/health,
-// which reports standby, sealed and uninitialised servers that way.
 func (b *baoServer) do(method, path string, body any) (map[string]any, int, error) {
+	return b.doIn("", method, path, body)
+}
+
+// doIn sends one request in the OpenBao namespace ns and returns the decoded body. A status of 400 or above is an
+// error, except on sys/health, which reports standby, sealed and uninitialised servers that way.
+func (b *baoServer) doIn(ns, method, path string, body any) (map[string]any, int, error) {
 	var reader io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
@@ -153,6 +162,9 @@ func (b *baoServer) do(method, path string, body any) (map[string]any, int, erro
 	}
 	if b.rootToken != "" {
 		req.Header.Set("X-Vault-Token", b.rootToken)
+	}
+	if ns != "" {
+		req.Header.Set("X-Vault-Namespace", ns)
 	}
 	resp, err := b.http.Do(req)
 	if err != nil {
@@ -192,6 +204,8 @@ func startManager(t *testing.T, cfg config, kubeconfig string, log *os.File) *ma
 		"--drift-interval-standard=" + cfg.driftInterval.String(),
 		"--max-concurrent-reconciles=" + strconv.Itoa(cfg.maxConcurrent),
 		"--watch-namespaces=" + objectNamespace,
+		// One replica; lease renewals would count as Kubernetes writes in the steady window.
+		"--leader-elect=false",
 	}
 	if cfg.writeBudget != 0 {
 		args = append(args, "--write-budget-per-minute="+strconv.Itoa(cfg.writeBudget))
@@ -218,6 +232,8 @@ type cluster struct {
 	k8s        client.Client
 	dyn        dynamic.Interface
 	kubeconfig string
+	// caPEM is the apiserver CA, which the tree set's kubernetes auth configs pin.
+	caPEM string
 }
 
 func startCluster(t *testing.T, cfg config, dir string) cluster {
@@ -270,7 +286,7 @@ func startCluster(t *testing.T, cfg config, dir string) cluster {
 	if err := k8s.Create(context.Background(), ns); err != nil {
 		t.Fatal(err)
 	}
-	return cluster{k8s: k8s, dyn: dyn, kubeconfig: kubeconfig}
+	return cluster{k8s: k8s, dyn: dyn, kubeconfig: kubeconfig, caPEM: string(restCfg.CAData)}
 }
 
 // createConnection stores the operator's AppRole credentials in a Secret, declares the server as an OpenBaoServer

@@ -4,6 +4,8 @@ package load
 
 import (
 	"math"
+	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -26,6 +28,27 @@ func TestSnapshotAddSkipsConnectionControllers(t *testing.T) {
 	s.add("controller_runtime_reconcile_total", map[string]string{"controller": "openbaoconnection", "result": "success"}, 5)
 	if s["controller_runtime_reconcile_total"] != 3 || s["controller_runtime_reconcile_total:result=success"] != 3 {
 		t.Fatalf("got %v", s)
+	}
+}
+
+func TestCarryKeepsDeletedConnectionCounters(t *testing.T) {
+	seen := map[string]float64{}
+	first := map[string]float64{`openbao_requests_total{code="200",connection="a"}`: 5,
+		`openbao_requests_total{code="200",connection="b"}`: 7, "go_goroutines": 10}
+	carry(seen, first)
+	second := map[string]float64{`openbao_requests_total{code="200",connection="a"}`: 6, "go_goroutines": 9}
+	carry(seen, second)
+	if got := aggregate(second)["openbao_requests_total"]; got != 13 {
+		t.Fatalf("openbao_requests_total = %v, want 13: a deleted connection must not lower the sum", got)
+	}
+	if got := aggregate(second)["go_goroutines"]; got != 9 {
+		t.Fatalf("go_goroutines = %v, want 9", got)
+	}
+	third := map[string]float64{`openbao_requests_total{code="200",connection="a"}`: 6,
+		`openbao_requests_total{code="200",connection="b"}`: 1}
+	carry(seen, third)
+	if got := aggregate(third)["openbao_requests_total"]; got != 13 {
+		t.Fatalf("openbao_requests_total = %v, want 13: a restarted series must not lower the sum", got)
 	}
 }
 
@@ -102,5 +125,80 @@ func TestPlanReferrers(t *testing.T) {
 	}
 	if alias.GetAnnotations()["openbaoconfig.io/allow-destructive-delete"] != "true" {
 		t.Fatal("generated objects must allow destructive delete")
+	}
+}
+
+func TestParseTreeShape(t *testing.T) {
+	got, err := parseTreeShape("5x3x4")
+	if err != nil || got != (treeShape{Parents: 5, Children: 3, KV: 4, Roles: 3, Policies: 3}) {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+	if got, err := parseTreeShape("1x2x3x4x5"); err != nil || got.Roles != 4 || got.Policies != 5 {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+	for _, bad := range []string{"5x3", "5x0x4", "5x3x4x1", "axbxc", "5x3x-4"} {
+		if _, err := parseTreeShape(bad); err == nil {
+			t.Errorf("parseTreeShape(%q): want an error", bad)
+		}
+	}
+}
+
+func TestPlanTree(t *testing.T) {
+	s := treeShape{Parents: 2, Children: 3, KV: 4, Roles: 2, Policies: 1}
+	objects := planTree(s, "ca")
+	// Per namespace: the namespace, the auth mount, its config, the kv mounts, the roles and the policies.
+	if want := s.namespaces()*(3+s.KV+s.Roles+s.Policies) + s.Parents; len(objects) != want {
+		t.Fatalf("got %d objects, want %d", len(objects), want)
+	}
+	byName := map[string]object{}
+	last := 0
+	for _, o := range objects {
+		level := slices.Index(treeLevels, o.level)
+		if level < last {
+			t.Fatalf("%s at level %s comes after level %s", o.key(), o.level, treeLevels[last])
+		}
+		last = level
+		byName[o.name] = o
+	}
+
+	spec := func(name string) map[string]any {
+		u := byName[name].unstructured()
+		s, _, _ := unstructured.NestedMap(u.Object, "spec")
+		return s
+	}
+	for name, want := range map[string]map[string]any{
+		"p001":                {"connectionRef": map[string]any{litName: "bao"}},
+		"p002-c03":            {"connectionRef": map[string]any{litName: "bao-p002"}},
+		"p001-kv-04":          {"connectionRef": map[string]any{litName: "bao"}, "namespace": "p001", "deletionPolicy": "Delete"},
+		"p002-c03-k8s-role-2": {"connectionRef": map[string]any{litName: "bao-p002"}, "namespace": "p002-c03", litMountPath: "p002-c03-k8s", "deletionPolicy": "Delete"},
+		"p002-c03-k8s-config": {"connectionRef": map[string]any{litName: "bao-p002"}, "namespace": "p002-c03", litMountPath: "p002-c03-k8s"},
+		"bao-p002":            {"namespace": "p002", "authNamespace": ""},
+	} {
+		got := spec(name)
+		for k, v := range want {
+			if !reflect.DeepEqual(got[k], v) {
+				t.Errorf("%s: spec.%s = %v, want %v", name, k, got[k], v)
+			}
+		}
+	}
+	if _, ok := spec("p001")["deletionPolicy"]; ok {
+		t.Error("namespaces must keep the default deletionPolicy")
+	}
+	if _, ok := spec("bao-p002")["connectionRef"]; ok {
+		t.Error("a connection has no connectionRef")
+	}
+	if got := byName["p002-c03-pol-1"].baoNS; got != "p002/p002-c03" {
+		t.Errorf("child policy lives in %q, want p002/p002-c03", got)
+	}
+}
+
+func TestParseScenarios(t *testing.T) {
+	if got, err := parseScenarios("ramp,delete"); err != nil || !slices.Equal(got, []string{"ramp", "delete"}) {
+		t.Fatalf("got %v, %v", got, err)
+	}
+	for _, bad := range []string{"drfit", "ramp,drfit", "ramp,,delete", ""} {
+		if _, err := parseScenarios(bad); err == nil {
+			t.Errorf("parseScenarios(%q): want an error", bad)
+		}
 	}
 }
