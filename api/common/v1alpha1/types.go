@@ -106,7 +106,7 @@ type ResourceSpec struct {
 	// +kubebuilder:default=Create
 	// +optional
 	CreationPolicy CreationPolicy `json:"creationPolicy,omitempty"`
-	// What happens in OpenBao when this resource is deleted. Orphan (default): the OpenBao object stays. Delete: the object is removed (a configuration singleton is reset to its defaults); data holders such as mounts, namespaces and KV data are removed only while the resource carries the annotation openbaoconfig.io/allow-destructive-delete: "true". Kinds whose OpenBao object cannot be deleted reject Delete.
+	// What happens in OpenBao when this resource is deleted. Orphan (default): the OpenBao object stays. Delete: the object is removed (a configuration singleton is reset to its defaults); data and key holders (mounts, namespaces, KV data, audit devices, endpoints, transit, PKI, SSH CA and TOTP keys, MFA methods, entities) are removed only while the resource carries the annotation openbaoconfig.io/allow-destructive-delete: "true". Kinds whose OpenBao object cannot be deleted reject Delete.
 	// +kubebuilder:default=Orphan
 	// +optional
 	DeletionPolicy DeletionPolicy `json:"deletionPolicy,omitempty"`

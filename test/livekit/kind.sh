@@ -3,14 +3,15 @@
 # the operator installed from the chart: test/livekit/kind holds every connection mode. Once they are Ready it checks
 # that a child login cannot leave its OpenBao namespace, deletes the active OpenBao node and switches root/full to
 # Observe (observe/full): every object must be Ready again and the operator must not write to OpenBao meanwhile. An
-# object that is not Ready fails the run unless test/livekit/exceptions excuses it and kind_ready below does not
-# revoke that excuse. Run after `make setup-test-e2e` and loading E2E_IMG into kind; it reuses the OpenBao and chart
-# that the e2e suite leaves with E2E_KEEP=true.
+# object that is not Ready fails the run unless test/livekit/exceptions excuses it without env: dev, which limits an
+# excuse to bao server -dev (outside Kubernetes, inmem storage). Run after `make setup-test-e2e` and loading E2E_IMG
+# into kind; it reuses the OpenBao and chart that the e2e suite leaves with E2E_KEEP=true.
 set -euo pipefail
 
 : "${E2E_IMG:?E2E_IMG must name the operator image loaded into kind}"
 kind_cluster=${KIND_CLUSTER:-openbao-config-operator-test-e2e}
 timeout=${LIVEKIT_TIMEOUT:-10m}
+stall_polls=60
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 helm=${HELM:-$repo_root/bin/helm}
 kustomize=${KUSTOMIZE:-$repo_root/bin/kustomize}
@@ -28,10 +29,7 @@ tenant_role=$(param tenantAuthRole)
 tenant_sa=$(param tenantServiceAccount)
 child_role=$(param childAuthRole)
 child_sa=$(param childServiceAccount)
-labels=(root-full r2c-full opt-full child-full ccr-full)
-
-# Exceptions for bao server -dev that do not hold here, where OpenBao runs in a pod on raft storage.
-kind_ready=("JWTAuthConfig|jwt-k8s-config" "RaftAutopilot|*")
+labels=(root-full r2c-full opt-full child-full ccr-full root-min)
 
 err() { printf '%s: %s\n' "${0##*/}" "$*" >&2; }
 
@@ -49,6 +47,7 @@ overlay_dir() {
     opt-full) echo optional/full ;;
     child-full) echo child/full ;;
     ccr-full) echo child-connection-root-login/full ;;
+    root-min) echo root/minimal ;;
     *) echo "$1" ;;
   esac
 }
@@ -117,6 +116,7 @@ kubectl -n "$namespace" create configmap openbao-ca --from-literal=ca.crt="$ca" 
 kubectl -n "$namespace" create secret generic live-connection-auth-ca --from-literal=ca.crt="$ca" \
   --dry-run=client -o yaml | kubectl apply -f -
 examples/live/create-secrets.sh --namespace "$namespace"
+hack/e2e/postgres.sh "$namespace"
 helm_status=0
 wait "$helm_pid" || helm_status=$?
 cat "$helm_log"
@@ -127,20 +127,19 @@ fi
 
 exceptions=()
 for f in test/livekit/exceptions/*.yaml; do
-  "$yq" -N '.notReady[] | .kind + "|" + (.name // "*") + "|" + ((.overlays // ["*"]) | join(",")) + "|" + (.reason | sub("\n"; " "))' "$f"
+  "$yq" -N '.notReady[] | select(.env != "dev") | .kind + "|" + (.name // "*") + "|" + ((.overlays // ["*"]) | join(",")) + "|" + (.reason | sub("\n"; " "))' "$f"
 done >"$out_dir/exceptions.txt"
 while IFS= read -r line; do exceptions+=("$line"); done <"$out_dir/exceptions.txt"
 
 # Prints the reason when an exception excuses an object, given its kind, its name without the overlay prefix and
 # its kit overlay.
 excuse() {
-  local kind=$1 name=$2 overlay=$3 e ekind ename eoverlays ereason k glob globs
+  local kind=$1 name=$2 overlay=$3 e ekind ename eoverlays ereason glob globs
   for e in "${exceptions[@]}"; do
     IFS='|' read -r ekind ename eoverlays ereason <<<"$e"
     [ "$ekind" = "$kind" ] || continue
     # shellcheck disable=SC2053 # globs from the exceptions files
     [[ $name == $ename ]] || continue
-    for k in "${kind_ready[@]}"; do [ "$k" != "$ekind|$ename" ] || continue 2; done
     IFS=, read -ra globs <<<"$eoverlays"
     for glob in "${globs[@]}"; do
       # shellcheck disable=SC2053 # globs from the exceptions files
@@ -169,6 +168,9 @@ drop_skipped() {
 }
 
 drop_skipped "$rendered"
+# credentialConfig.ca_cert must match the CA key that create-secrets.sh generates into live-db-client-ca.
+db_ca=$(kubectl -n "$namespace" get secret live-db-client-ca -o 'jsonpath={.data.ca\.crt}' | base64 -d)
+DB_CA=$db_ca "$yq" -i '(select(.spec.caPrivateKeySecretRef.name == "live-db-client-ca") | .spec.credentialConfig.ca_cert) = strenv(DB_CA)' "$rendered"
 printf '%s\n' "${skipped[@]}" >"$out_dir/exclusions.txt"
 echo "not applied on kind: ${#skipped[@]} objects"
 "$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "." + (.apiVersion | split("/") | .[0]) + "/" + .metadata.name' "$rendered" >"$out_dir/applied.txt"
@@ -179,13 +181,14 @@ done
 kubectl apply -f "$rendered" >/dev/null
 names=()
 while IFS= read -r ref; do names+=("$ref"); done <"$out_dir/applied.txt"
+types=$(cut -d/ -f1 "$out_dir/applied.txt" | sort -u | paste -sd, -)
 
-# Prints the applied objects that are not Ready for their current generation, one kind.group/name per line, in one
-# API call.
+# Prints the applied objects that are not Ready for their current generation, one kind.group/name per line, from one
+# list call per applied kind (every kit object carries the overlay label).
 not_ready() {
   {
     printf 'want %s\n' "${names[@]}"
-    kubectl -n "$namespace" get "${names[@]}" --ignore-not-found \
+    kubectl -n "$namespace" get "$types" -l live.openbaoconfig.io/overlay \
       -o 'jsonpath={range .items[*]}{.status.conditions[?(@.type=="Ready")].status}|{.metadata.generation}/{.status.observedGeneration}/{.status.conditions[?(@.type=="Ready")].observedGeneration}|{.spec.connectionRef.name}|{.spec.managementPolicy}|{.status.conditions[?(@.type=="Synced")].status}|{.status.conditions[?(@.type=="Synced")].observedGeneration}|{.kind}.{.apiVersion}/{.metadata.name}{"\n"}{end}' |
       awk -F'|' '$1 == "True" {
         split($2, g, "/")
@@ -199,23 +202,23 @@ not_ready() {
 # Waits until every applied object is Ready, sets failed to those that are not, and prints a table per mode, also to
 # the job summary. LIVEKIT_TIMEOUT is only the upper bound; observe names the mode of the root/full objects.
 settle() {
-  local title=$1 observe=$2 deadline best=-1 progress pending now ref kind name state label mode applied failed_n skipped_n
+  local title=$1 observe=$2 deadline best=-1 stalled=0 pending now ref kind name state label mode applied failed_n skipped_n
   local report=apply
   if $observe; then report=failover-observe; fi
   local -a waiting
   case $timeout in *m) deadline=$((${timeout%m} * 60)) ;; *s) deadline=${timeout%s} ;; *) deadline=$timeout ;; esac
   deadline=$(($(date +%s) + deadline))
-  progress=$(date +%s)
-  echo "waiting for ${#names[@]} objects (at most $timeout, or until 2m pass without progress)"
+  # Polls sleep 5s each, so the stall window is at least 5m however slow the API server answers.
+  echo "waiting for ${#names[@]} objects (at most $timeout, or until $stall_polls polls pass without progress)"
   while :; do
     waiting=()
     while IFS= read -r ref; do waiting+=("$ref"); done < <(not_ready)
     pending=${#waiting[@]}
     [ "$pending" -eq 0 ] && break
     now=$(date +%s)
-    if [ "$best" -lt 0 ] || [ "$pending" -lt "$best" ]; then best=$pending progress=$now; fi
+    if [ "$best" -lt 0 ] || [ "$pending" -lt "$best" ]; then best=$pending stalled=0; else stalled=$((stalled + 1)); fi
     if [ "$now" -ge "$deadline" ]; then echo "timed out with $pending objects not Ready"; break; fi
-    if [ $((now - progress)) -ge 120 ]; then echo "no progress for 2m, $pending objects not Ready"; break; fi
+    if [ "$stalled" -ge "$stall_polls" ]; then echo "no progress for $stalled polls, $pending objects not Ready"; break; fi
     echo "$pending objects not Ready yet"
     sleep 5
   done

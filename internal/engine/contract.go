@@ -241,12 +241,6 @@ type ReadBackSkipper[T Object] interface {
 	SkipReadBack(obj T) bool
 }
 
-// ActiveNodeReader is implemented by clients that can direct a read to the active node. The engine reads back
-// through it after a write, because a standby serving drift reads may not have the write yet.
-type ActiveNodeReader interface {
-	ActiveNode() openbao.Client
-}
-
 // ClusterIdentifier is implemented by clients that can name the OpenBao cluster behind them (the cluster_id of
 // sys/health, stable for the life of the cluster). The engine records it in status.serverID and never writes or
 // deletes through a connection that now reaches another cluster.

@@ -2,7 +2,7 @@
 
 This page explains the mental model behind the operator: what it manages, how a tenant reaches
 OpenBao, how one reconcile works and how the operator decides that an OpenBao object is its own.
-[Architecture v2](../architecture.md) is the source of truth for the design; read this page first,
+[Architecture](../architecture.md) is the source of truth for the design; read this page first,
 then the full design when you need the detail. Exact condition reasons, status fields and events
 are listed in [status and events](../reference/status-and-events.md).
 
@@ -92,17 +92,20 @@ desired payload and its comparison rules ([ADR 0002](../adr/0002-generic-engine-
 The engine enforces the design rules:
 
 1. A steady-state reconcile reads and does not write.
-2. The spec is the whole desired state: every typed field is compared
-   ([ADR 0011](../adr/0011-full-field-comparison.md)).
-3. One path has one owner; a second resource on the same path gets `Conflict`
+2. One path has one owner; a second resource on the same path gets `Conflict`
    ([ADR 0012](../adr/0012-ownership-path-index-and-marker.md)).
-4. Create by default, adopt on request; retain by default, delete on request. Mounts, namespaces,
-   KV data and audit devices also need the annotation
+3. Create by default, adopt on request; retain by default, delete on request. Mounts, namespaces,
+   KV data, audit devices, key material, MFA methods, entities and `OpenBaoEndpoint` also need the annotation
    `openbaoconfig.io/allow-destructive-delete: "true"`
    ([ADR 0013](../adr/0013-destructive-delete-guard.md)).
-5. Secrets only by reference: secret inputs come from Kubernetes Secrets and never appear in a
+4. Secrets only by reference: secret inputs come from Kubernetes Secrets and never appear in a
    spec, status, event or log.
-6. No root token at runtime.
+5. No root token at runtime.
+
+One rule is not enforced yet: that the spec is the whole desired state, so removing a field unsets it. Top-level
+keys the spec omits are not compared until [ADR 0011](../adr/0011-full-field-comparison.md) is closed
+([architecture](../architecture.md#not-yet-enforced)). The full numbered list is in the
+[architecture](../architecture.md#design-rules).
 
 Putting these rules in one engine, not in each kind, is what keeps more than a hundred kinds
 consistent: an adapter cannot skip the ownership check, write on every pass or log a secret,
@@ -195,9 +198,9 @@ written or deleted there.
 ## Kinds
 
 Typed kinds cover the objects compiled into OpenBao, in the groups `core`, `sys`, `auth`,
-`secrets`, `identity` and `access`, all `v1alpha1` under the provisional domain `openbaoconfig.io`
+`secrets`, `identity` and `access`, all `v1alpha1` under the domain `openbaoconfig.io`, which is final
 ([ADR 0008](../adr/0008-provisional-api-group-domain.md)). Kinds for external plugins are in the
-code but disabled behind `--enable-plugin-kinds`. `OpenBaoEndpoint` writes any payload to any
+code, experimental and disabled behind `--enable-plugin-kinds`. `OpenBaoEndpoint` writes any payload to any
 path for everything without a typed kind ([ADR 0006](../adr/0006-endpoint-escape-hatch.md)).
 Validation lives in the CRD schema (OpenAPI and CEL), with no admission webhooks
 ([ADR 0005](../adr/0005-cel-validation-without-webhooks.md)).

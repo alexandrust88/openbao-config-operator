@@ -48,6 +48,7 @@ var (
 	_ engine.OutputSecretNamer[*secretsv1alpha1.PKIKey] = PKIKeyAdapter{}
 
 	_ engine.SecretReferencer[*secretsv1alpha1.PKIKey] = PKIKeyAdapter{}
+	_ engine.Destructive                               = PKIKeyAdapter{}
 )
 
 // Path implements engine.Adapter.
@@ -72,6 +73,9 @@ func (PKIKeyAdapter) Desired(ctx context.Context, r engine.Resolver, k *secretsv
 func (PKIKeyAdapter) Fields() engine.FieldSpec {
 	return engine.FieldSpec{WriteOnly: []string{"pem_bundle"}, CreateOnly: []string{"pem_bundle"}}
 }
+
+// Destructive implements engine.Destructive: deleting the resource destroys the private key.
+func (PKIKeyAdapter) Destructive() bool { return true }
 
 // Observe implements engine.Observer, reading by key ID once known. An exported key whose private key is not in
 // the output Secret is an error, never Ready.

@@ -9,6 +9,7 @@ Each page states where its facts come from in the code. For the mental model, re
 | [API reference](api/index.md) | every kind and field, generated from the CRD schemas, with an example per kind |
 | [Examples](examples/index.md) | the curated and generated example manifests, tested against the CRDs in CI |
 | [Kind catalogue](../kinds.md) | every kind with its OpenBao path, availability class, roadmap phase and test evidence |
+| [Constants and timings](constants.md) | drift intervals, backoffs, retry counts, rate shares, write budget, login and renewal points, with their source lines |
 | [API coverage](../api-coverage.md) | how many OpenBao API paths have a typed kind, per OpenBao release |
 | [Connections](connections.md) | `OpenBaoServer`, `OpenBaoConnection` and `ClusterOpenBaoConnection` fields, authentication methods, tenant boundary rules, TLS |
 | [Status and events](status-and-events.md) | conditions, every reason and what to do about it, status fields, events, print columns |
@@ -22,5 +23,5 @@ Related pages outside this section:
 |------|---------------|
 | [Observability](../operate/observability.md) | metrics, labels, example queries and alert rules, log flags |
 | [Troubleshooting](../operate/troubleshooting.md) | symptoms, checks and fixes |
-| [Architecture v2](../architecture.md) | the design rules the engine enforces |
+| [Architecture](../architecture.md) | the design rules the engine enforces |
 | [Decisions (ADRs)](../adr/index.md) | why the design is the way it is |

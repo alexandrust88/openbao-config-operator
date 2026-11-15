@@ -15,7 +15,7 @@ type CredentialFunc func(ctx context.Context) (string, error)
 // TokenAuth uses a static token. The token is looked up to learn its TTL, so a renewable or periodic token
 // is renewed like a login token.
 type TokenAuth struct {
-	// CredentialKey identifies the credential source, such as the Secret name, key and resourceVersion.
+	// CredentialKey identifies the credential source, such as the Secret name, key and a digest of the value.
 	CredentialKey string
 	Token         CredentialFunc
 }

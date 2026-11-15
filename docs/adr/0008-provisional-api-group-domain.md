@@ -1,6 +1,6 @@
-# 0008. The API group domain openbaoconfig.io is provisional
+# 0008. Keep the API group domain openbaoconfig.io
 
-Status: proposed (open question). Date: 2026-11-13.
+Status: accepted (final, released in v0.1.0). Date: 2026-11-15. Proposed on 2026-11-13 as a provisional domain.
 
 ## Context
 
@@ -11,16 +11,26 @@ manifest users write and cannot be renamed after release without a migration. An
 risks collisions with other projects. The `openbao` name belongs to the OpenBao project, so a domain under it needs that
 project's agreement.
 
+The first proposal (2026-11-13) kept `openbaoconfig.io` during pre-alpha and asked the maintainers to pick a
+domain they own, and rename every group, the annotation prefix, `PROJECT` and the Go module path, before the first
+tagged release. Options were a domain the maintainers register, a subdomain of an organisation that hosts the
+project, or a subdomain under `openbao.org` if the OpenBao project agrees.
+
+v0.1.0 and v0.1.1 were released with `openbaoconfig.io`. From then on a rename breaks every manifest, RBAC rule and
+GitOps repository of real users, and needs a migration (delete the custom resources and CRDs, install the new
+CRDs, re-apply).
+
 ## Decision
 
-Keep `openbaoconfig.io` during pre-alpha. Before v1alpha1 is published (first tagged release,
-chart or CRD bundle), the maintainers must pick a domain they own or are permitted to use, and
-rename every group, the annotation prefix, `PROJECT` and the Go module path if needed.
+Keep `openbaoconfig.io` as the final API group domain for every group and for the annotation prefix. No rename is
+planned. [BL-001](../project/backlog.md#bl-001-pick-an-owned-api-group-domain-before-the-first-release) is closed
+by this decision.
 
 ## Consequences
 
-- Manifests written before the rename will break; the README states this.
-- Options to evaluate: a domain the maintainers register, a subdomain of an organisation that
-  hosts the project, or a subdomain under `openbao.org` if the OpenBao project agrees.
-- The rename is a mechanical change across `api/`, `config/`, the chart, docs and samples, and
-  should be done in one change before the first release.
+- Manifests written for v0.1.0 and later stay valid; no group migration is needed before `v1beta1`.
+- The collision risk of an unowned domain remains; a collision would surface as a CRD name clash at install
+  time.
+- Short names to type are tracked separately in
+  [BL-007](../project/backlog.md#bl-007-short-api-group-names-and-kubectl-short-names), without a group rename.
+- The file name of this ADR keeps the word "provisional" so that existing links resolve.

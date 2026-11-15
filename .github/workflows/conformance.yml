@@ -1,6 +1,9 @@
 name: conformance
 
+# A pull request measures only the kinds it touches (hack/ci/conformance-kinds.sh), or every kind when shared code
+# changes; the job always runs and passes with "no kinds affected" otherwise, so `conformance` can be a required check.
 on:
+  pull_request:
   push:
     branches:
       - main
@@ -12,7 +15,7 @@ permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   conformance:
@@ -23,23 +26,59 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The parent of HEAD: the base branch for a pull request merge commit.
+          fetch-depth: 2
           persist-credentials: false
-      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
-      - run: make bao setup-envtest
-      - name: Run the complete conformance matrix
+      - run: hack/ci/conformance-kinds-test.sh
+      - id: select
+        name: Select the kinds to measure
         env:
-          CONF_OUT: ${{ runner.temp }}/conformance/matrix.md
-          CONF_LOG_DIR: ${{ runner.temp }}/conformance/logs
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           mkdir -p "$RUNNER_TEMP/conformance"
+          selection="$RUNNER_TEMP/conformance/selection.txt"
+          if [ "$EVENT_NAME" = pull_request ] && git rev-parse -q --verify HEAD^1 >/dev/null; then
+            git -c core.quotePath=false diff -z --name-only HEAD^1 HEAD >"$RUNNER_TEMP/conformance/changed-files.z"
+            tr '\0' '\n' <"$RUNNER_TEMP/conformance/changed-files.z" >"$RUNNER_TEMP/conformance/changed-files.txt"
+            hack/ci/conformance-kinds.sh <"$RUNNER_TEMP/conformance/changed-files.z" >"$selection"
+          else
+            printf 'mode=all\nconf_kinds=\nreason=%s runs the complete matrix\n' "$EVENT_NAME" >"$selection"
+          fi
+          cat "$selection"
+          cat "$selection" >>"$GITHUB_OUTPUT"
+      - name: No kinds affected
+        if: steps.select.outputs.mode == 'none'
+        env:
+          REASON: ${{ steps.select.outputs.reason }}
+        run: |
+          echo "::notice::conformance: $REASON"
+          echo "conformance: $REASON" >>"$GITHUB_STEP_SUMMARY"
+      - if: steps.select.outputs.mode != 'none'
+        uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
+      - if: steps.select.outputs.mode != 'none'
+        run: make bao setup-envtest
+      - name: Run the conformance matrix
+        if: steps.select.outputs.mode != 'none'
+        env:
+          CONF_KINDS: ${{ steps.select.outputs.conf_kinds }}
+          CONF_OUT: ${{ runner.temp }}/conformance/matrix.md
+          CONF_LOG_DIR: ${{ runner.temp }}/conformance/logs
+          REASON: ${{ steps.select.outputs.reason }}
+        run: |
+          set -o pipefail
+          echo "conformance: $REASON" >>"$GITHUB_STEP_SUMMARY"
           make test-conformance 2>&1 | tee "$RUNNER_TEMP/conformance/tests.log"
           test -s "$CONF_OUT"
           if grep -qE '^--- SKIP: TestConformance([ /]|$)' "$RUNNER_TEMP/conformance/tests.log"; then
             echo "::error::conformance suite skipped instead of measuring the live matrix"
             exit 1
           fi
+          if ! grep -qE '^ *--- PASS: TestConformance/nowrite ' "$RUNNER_TEMP/conformance/tests.log"; then
+            echo "::error::the no-write phase did not run"
+            exit 1
+          fi
       - name: Matrix summary
-        if: always()
+        if: always() && steps.select.outputs.mode != 'none'
         run: cat "$RUNNER_TEMP/conformance/matrix.md" >> "$GITHUB_STEP_SUMMARY" || true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

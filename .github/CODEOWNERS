@@ -15,6 +15,7 @@
 /.gitleaks.toml           @alexandrust88
 /hack/release/            @alexandrust88
 /hack/github/             @alexandrust88
+/hack/ci/                 @alexandrust88
 /hack/ocm/                @alexandrust88
 /release/                 @alexandrust88
 /config/                  @alexandrust88

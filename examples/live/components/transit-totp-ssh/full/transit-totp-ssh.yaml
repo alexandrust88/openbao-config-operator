@@ -184,6 +184,8 @@ apiVersion: secrets.openbaoconfig.io/v1alpha1
 kind: SSHCA
 metadata:
   name: ssh-ca
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
 spec:
   connectionRef:
     kind: OpenBaoConnection
@@ -202,6 +204,8 @@ apiVersion: secrets.openbaoconfig.io/v1alpha1
 kind: SSHCA
 metadata:
   name: ssh-ca-import
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
 spec:
   connectionRef:
     kind: OpenBaoConnection
@@ -297,3 +301,635 @@ spec:
   excludeCIDRList:
     - 10.20.0.0/24
   port: 2222
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-aes128-gcm96
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-aes128-gcm96
+  type: aes128-gcm96
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-chacha20-poly1305
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-chacha20-poly1305
+  type: chacha20-poly1305
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-xchacha20-poly1305
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-xchacha20-poly1305
+  type: xchacha20-poly1305
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-ecdsa-p256
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-ecdsa-p256
+  type: ecdsa-p256
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-ecdsa-p384
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-ecdsa-p384
+  type: ecdsa-p384
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-ecdsa-p521
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-ecdsa-p521
+  type: ecdsa-p521
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-ed25519
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-ed25519
+  type: ed25519
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-rsa-2048
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-rsa-2048
+  type: rsa-2048
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-rsa-3072
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-rsa-3072
+  type: rsa-3072
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-rsa-4096
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-rsa-4096
+  type: rsa-4096
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-mldsa-44
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-mldsa-44
+  type: mldsa-44
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-mldsa-65
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-mldsa-65
+  type: mldsa-65
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: transit-mldsa-87
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  name: transit-mldsa-87
+  type: mldsa-87
+  deletionAllowed: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TOTPKey
+metadata:
+  name: totp-carol
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: totp
+  name: totp-carol
+  urlSecretRef:
+    name: live-totp-carol
+    key: url
+  skew: 1
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TOTPKey
+metadata:
+  name: totp-dave
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: totp
+  name: totp-dave
+  generate:
+    exported: false
+  issuer: Example
+  accountName: dave@example.com
+  period: 30s
+  algorithm: SHA512
+  digits: 6
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: ssh-rsa
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: ssh-rsa
+  type: ssh
+  description: SSH certificates signed by an ssh-rsa CA key
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: SSHCA
+metadata:
+  name: ssh-rsa-ca
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: ssh-rsa
+  keyType: ssh-rsa
+  keyBits: 4096
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: ssh-nistp256
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: ssh-nistp256
+  type: ssh
+  description: SSH certificates signed by an ecdsa-sha2-nistp256 CA key
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: SSHCA
+metadata:
+  name: ssh-nistp256-ca
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: ssh-nistp256
+  keyType: ecdsa-sha2-nistp256
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: ssh-nistp521
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: ssh-nistp521
+  type: ssh
+  description: SSH certificates signed by an ecdsa-sha2-nistp521 CA key
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: SSHCA
+metadata:
+  name: ssh-nistp521-ca
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: ssh-nistp521
+  keyType: ecdsa-sha2-nistp521
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: ssh-ed25519
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: ssh-ed25519
+  type: ssh
+  description: SSH certificates signed by an ssh-ed25519 CA key
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: SSHCA
+metadata:
+  name: ssh-ed25519-ca
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: ssh-ed25519
+  keyType: ssh-ed25519
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: ssh-alias-rsa
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: ssh-alias-rsa
+  type: ssh
+  description: SSH certificates signed by a CA key of the rsa alias type
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: SSHCA
+metadata:
+  name: ssh-alias-rsa-ca
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: ssh-alias-rsa
+  keyType: rsa
+  keyBits: 3072
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: ssh-alias-ec
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: ssh-alias-ec
+  type: ssh
+  description: SSH certificates signed by a CA key of the ec alias type
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: SSHCA
+metadata:
+  name: ssh-alias-ec-ca
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: ssh-alias-ec
+  keyType: ec
+  keyBits: 256
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: ssh-alias-ed25519
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: ssh-alias-ed25519
+  type: ssh
+  description: SSH certificates signed by a CA key of the ed25519 alias type
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: SSHCA
+metadata:
+  name: ssh-alias-ed25519-ca
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: ssh-alias-ed25519
+  keyType: ed25519
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: SSHRole
+metadata:
+  name: ssh-rsa-sha1
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: ssh-rsa
+  name: ssh-rsa-sha1
+  keyType: ca
+  allowUserCertificates: true
+  allowedUsers:
+    - ubuntu
+  algorithmSigner: ssh-rsa
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: SSHRole
+metadata:
+  name: ssh-rsa-sha256
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: ssh-rsa
+  name: ssh-rsa-sha256
+  keyType: ca
+  allowUserCertificates: true
+  allowedUsers:
+    - ubuntu
+  algorithmSigner: rsa-sha2-256
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: SSHRole
+metadata:
+  name: ssh-rsa-sha512
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: ssh-rsa
+  name: ssh-rsa-sha512
+  keyType: ca
+  allowUserCertificates: true
+  allowedUsers:
+    - ubuntu
+  algorithmSigner: rsa-sha2-512

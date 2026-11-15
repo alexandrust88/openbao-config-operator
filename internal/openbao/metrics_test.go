@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
-// TestSteadyStateLogsInOnce guards design rule 1: reconciles reuse the cached token, so OpenBao does not accumulate
+// TestSteadyStateLogsInOnce guards design rule 2: reconciles reuse the cached token, so OpenBao does not accumulate
 // a lease (and, for some methods, an entity alias) per reconcile.
 func TestSteadyStateLogsInOnce(t *testing.T) {
 	f := newFakeServer(t)

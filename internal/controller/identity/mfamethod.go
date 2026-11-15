@@ -46,6 +46,7 @@ var (
 
 	_ engine.SecretReferencer[*identityv1alpha1.MFAMethod] = MFAMethodAdapter{}
 	_ engine.FieldsProvider[*identityv1alpha1.MFAMethod]   = MFAMethodAdapter{}
+	_ engine.Destructive                                   = MFAMethodAdapter{}
 )
 
 // Path implements engine.Adapter: the method itself once its ID is known, the type collection before.
@@ -121,6 +122,10 @@ func (MFAMethodAdapter) Fields() engine.FieldSpec {
 		Durations: []string{"period"},
 	}
 }
+
+// Destructive implements engine.Destructive: deleting a TOTP method destroys the TOTP secret of every enrolled
+// entity.
+func (MFAMethodAdapter) Destructive() bool { return true }
 
 // FieldsFor implements engine.FieldsProvider. A PingID method read omits username_format, so there it is tracked
 // through the write-only hash.

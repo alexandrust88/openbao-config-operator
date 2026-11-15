@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -105,6 +107,10 @@ type shared struct {
 	budget  *writeBudget
 	ramp    recoveryRamp
 	creates pathLocks
+	live    map[schema.GroupVersionKind]*liveSnapshot
+	// touched maps a path to when this process last changed a claim on it.
+	touched  map[string]time.Time
+	prunedAt time.Time
 }
 
 var (
@@ -138,6 +144,58 @@ func (s *shared) ownerKinds() []schema.GroupVersionKind {
 	return slices.Clone(s.kinds)
 }
 
+// liveSnapshotTTL bounds how long one live LIST of a kind serves the ownership rechecks.
+const liveSnapshotTTL = 10 * time.Second
+
+// liveSnapshot is the time the last live LIST of one kind was sent and the claims it showed, path to claimants.
+type liveSnapshot struct {
+	mu     sync.Mutex
+	start  time.Time
+	claims map[string][]client.ObjectKey
+}
+
+func (s *shared) snapshot(gvk schema.GroupVersionKind) *liveSnapshot {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.live == nil {
+		s.live = map[schema.GroupVersionKind]*liveSnapshot{}
+	}
+	l, ok := s.live[gvk]
+	if !ok {
+		l = &liveSnapshot{}
+		s.live[gvk] = l
+	}
+	return l
+}
+
+// touch records that a status write of this process, already answered, changed the claims on paths.
+func (s *shared) touch(paths []string) {
+	now := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.touched == nil {
+		s.touched = map[string]time.Time{}
+	}
+	if now.Sub(s.prunedAt) > liveSnapshotTTL {
+		for path, at := range s.touched {
+			if now.Sub(at) > liveSnapshotTTL {
+				delete(s.touched, path)
+			}
+		}
+		s.prunedAt = now
+	}
+	for _, path := range paths {
+		s.touched[path] = now
+	}
+}
+
+func (s *shared) touchedSince(path string, since time.Time) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	at, ok := s.touched[path]
+	return ok && !at.Before(since)
+}
+
 // owner is another resource that claims the same OpenBao path.
 type owner struct {
 	kind string
@@ -162,7 +220,7 @@ func (r *Reconciler[T]) olderOwner(ctx context.Context, obj T, absPath, server, 
 const liveListPage = 500
 
 // olderOwnerLive is olderOwner read from the API server, which already shows a claim the cache may not have yet. It
-// lists obj's own kind, the likely racer, and the other kinds whose cached index shows a claim on absPath, instead
+// reads obj's own kind, the likely racer, and the other kinds whose cached index shows a claim on absPath, instead
 // of every managed kind.
 func (r *Reconciler[T]) olderOwnerLive(ctx context.Context, obj T, absPath, server, serverID string) (owner, bool, error) {
 	_, _, kinds, err := r.findOlderOwner(ctx, r.shared.ownerKinds(), r.listCached(absPath), obj, absPath, server, serverID)
@@ -176,8 +234,68 @@ func (r *Reconciler[T]) olderOwnerLive(ctx context.Context, obj T, absPath, serv
 	if !slices.Contains(kinds, own) {
 		kinds = append(kinds, own)
 	}
-	other, ok, _, err := r.findOlderOwner(ctx, kinds, r.listLive, obj, absPath, server, serverID)
+	other, ok, _, err := r.findOlderOwner(ctx, kinds, r.listLiveClaims(absPath), obj, absPath, server, serverID)
 	return other, ok, err
+}
+
+// listLiveClaims lists the resources of a kind that claim absPath on the API server. One live LIST of the kind serves
+// every path for liveSnapshotTTL, so that adopting many objects does not list the kind once per object. A claim
+// written after that LIST is missing from it and maybe from the cache too: a path whose claims this process changed
+// since then is listed again. The claimants the reused LIST shows are read again, so a released claim does not stand.
+// A claim made after that LIST without a status write of this process (another writer, or an older resource switched
+// from Observe to Manage) is missed while the LIST is younger than liveSnapshotTTL and can allow one adoption; the next
+// pass finds it in the cache and the newer resource stops with Conflict. l.mu is held across the LIST by design, so
+// the concurrent rechecks of one kind wait for and share a single LIST.
+func (r *Reconciler[T]) listLiveClaims(absPath string) listFunc {
+	return func(ctx context.Context, gvk schema.GroupVersionKind) ([]runtime.Object, error) {
+		l := r.shared.snapshot(gvk)
+		l.mu.Lock()
+		defer l.mu.Unlock()
+		if time.Since(l.start) < liveSnapshotTTL && !r.shared.touchedSince(absPath, l.start) {
+			return r.getLive(ctx, gvk, l.claims[absPath])
+		}
+		start := time.Now()
+		items, err := r.listLive(ctx, gvk)
+		if err != nil {
+			return nil, err
+		}
+		l.start, l.claims = start, map[string][]client.ObjectKey{}
+		for _, item := range items {
+			if o, ok := item.(client.Object); ok {
+				for _, path := range PathIndexFunc(o) {
+					l.claims[path] = append(l.claims[path], client.ObjectKeyFromObject(o))
+				}
+			}
+		}
+		return items, nil
+	}
+}
+
+// getLive gets the resources of a kind with keys from the API server and leaves out the deleted ones.
+func (r *Reconciler[T]) getLive(ctx context.Context, gvk schema.GroupVersionKind, keys []client.ObjectKey) ([]runtime.Object, error) {
+	var items []runtime.Object
+	for _, key := range keys {
+		obj, err := r.scheme.New(gvk)
+		if err != nil {
+			return nil, fmt.Errorf("object type for %s: %w", gvk.Kind, err)
+		}
+		err = r.liveReader().Get(ctx, key, obj.(client.Object))
+		switch {
+		case apierrors.IsNotFound(err):
+			continue
+		case err != nil:
+			return nil, fmt.Errorf("get %s: %w", gvk.Kind, err)
+		}
+		items = append(items, obj)
+	}
+	return items, nil
+}
+
+func (r *Reconciler[T]) liveReader() client.Reader {
+	if r.apiReader == nil {
+		return r.client
+	}
+	return r.apiReader
 }
 
 type listFunc func(ctx context.Context, gvk schema.GroupVersionKind) ([]runtime.Object, error)
@@ -199,10 +317,7 @@ func (r *Reconciler[T]) listCached(absPath string) listFunc {
 // listLive lists the resources of a kind from the API server, page by page, in the watched namespaces only, since
 // the operator may be granted nothing outside them.
 func (r *Reconciler[T]) listLive(ctx context.Context, gvk schema.GroupVersionKind) ([]runtime.Object, error) {
-	reader := r.apiReader
-	if reader == nil {
-		reader = r.client
-	}
+	reader := r.liveReader()
 	namespaces := r.opts.Namespaces
 	if len(namespaces) == 0 {
 		namespaces = []string{metav1.NamespaceAll}

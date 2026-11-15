@@ -42,6 +42,7 @@ var (
 	_ engine.Deleter[*secretsv1alpha1.TransitKey]       = TransitKeyAdapter{}
 	_ engine.StatusWriter[*secretsv1alpha1.TransitKey]  = TransitKeyAdapter{}
 	_ engine.RotationNonce[*secretsv1alpha1.TransitKey] = TransitKeyAdapter{}
+	_ engine.Destructive                                = TransitKeyAdapter{}
 )
 
 var (
@@ -85,6 +86,10 @@ func (TransitKeyAdapter) Fields() engine.FieldSpec {
 		Durations:  []string{"auto_rotate_period"},
 	}
 }
+
+// Destructive implements engine.Destructive: deleting the resource destroys the key, so data encrypted with it can
+// no longer be decrypted.
+func (TransitKeyAdapter) Destructive() bool { return true }
 
 // Observe implements engine.Observer. A key that exists with a different type, derivation or size cannot be
 // converged and is reported as an error.
@@ -157,7 +162,8 @@ func (a TransitKeyAdapter) Write(ctx context.Context, c openbao.Client, k *secre
 	return nil, nil
 }
 
-// Delete implements engine.Deleter. OpenBao refuses to delete a key until deletion_allowed is set.
+// Delete implements engine.Deleter. OpenBao refuses to delete a key until deletion_allowed is set; the engine calls
+// Delete only once the destructive-delete annotation allows it.
 func (a TransitKeyAdapter) Delete(ctx context.Context, c openbao.Client, k *secretsv1alpha1.TransitKey) error {
 	path := a.Path(k)
 	if _, err := c.Read(ctx, path); err != nil {

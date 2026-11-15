@@ -51,6 +51,8 @@ apiVersion: secrets.openbaoconfig.io/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-root-ca
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
 spec:
   connectionRef:
     kind: OpenBaoConnection
@@ -122,6 +124,8 @@ apiVersion: secrets.openbaoconfig.io/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-int-ca
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
 spec:
   connectionRef:
     kind: OpenBaoConnection
@@ -170,6 +174,8 @@ apiVersion: secrets.openbaoconfig.io/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-int-ca-reuse
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
 spec:
   connectionRef:
     kind: OpenBaoConnection
@@ -198,6 +204,8 @@ apiVersion: secrets.openbaoconfig.io/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-int-ca-imported
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
 spec:
   connectionRef:
     kind: OpenBaoConnection
@@ -226,6 +234,8 @@ apiVersion: secrets.openbaoconfig.io/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-int-key
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
 spec:
   connectionRef:
     kind: OpenBaoConnection
@@ -245,6 +255,8 @@ apiVersion: secrets.openbaoconfig.io/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-int-key-exported
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
 spec:
   connectionRef:
     kind: OpenBaoConnection
@@ -266,6 +278,8 @@ apiVersion: secrets.openbaoconfig.io/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-int-key-imported
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
 spec:
   connectionRef:
     kind: OpenBaoConnection
@@ -409,6 +423,8 @@ spec:
   driftInterval: 30m
   managementPolicy: Manage
   mountPath: pki-root
+  cluster:
+    path: https://openbao.example.com:8200/v1/pki-root
   issuers:
     default:
       issuerName: pki-root-ca
@@ -512,3 +528,837 @@ spec:
   pauseDuration: 0s
   maintainStoredCertificateCounts: true
   publishStoredCertificateCountMetrics: true
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: pki-alg
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: pki-alg
+  type: pki
+  description: One root issuer, key and role per key algorithm
+  maxLeaseTTL: 87600h
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-alg-rsa2048
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-rsa2048
+  type: root
+  key:
+    source: exported
+    name: pki-alg-rsa2048-key
+    type: rsa
+    bits: 2048
+    privateKeyFormat: der
+  certificate:
+    commonName: Live Kit pki-alg-rsa2048
+    ttl: 87600h
+    signatureBits: 256
+  writeSecretRef:
+    name: pki-alg-rsa2048
+  leafNotAfterBehavior: permit
+  usage:
+    - read-only
+  revocationSignatureAlgorithm: SHA512WithRSAPSS
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-alg-rsa3072
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-rsa3072
+  type: root
+  key:
+    type: rsa
+    bits: 3072
+  certificate:
+    commonName: Live Kit pki-alg-rsa3072
+    ttl: 87600h
+    signatureBits: 512
+  revocationSignatureAlgorithm: SHA512WithRSA
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-alg-rsa4096
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-rsa4096
+  type: root
+  key:
+    type: rsa
+    bits: 4096
+  certificate:
+    commonName: Live Kit pki-alg-rsa4096
+    ttl: 87600h
+    usePSS: true
+  revocationSignatureAlgorithm: SHA256WithRSAPSS
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-alg-rsa8192
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-rsa8192
+  type: root
+  key:
+    type: rsa
+    bits: 8192
+  certificate:
+    commonName: Live Kit pki-alg-rsa8192
+    ttl: 87600h
+  revocationSignatureAlgorithm: SHA384WithRSAPSS
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-alg-ec224
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-ec224
+  type: root
+  key:
+    type: ec
+    bits: 224
+  certificate:
+    commonName: Live Kit pki-alg-ec224
+    ttl: 87600h
+    signatureBits: 256
+  revocationSignatureAlgorithm: ECDSAWithSHA256
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-alg-ec521
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-ec521
+  type: root
+  key:
+    type: ec
+    bits: 521
+  certificate:
+    commonName: Live Kit pki-alg-ec521
+    ttl: 87600h
+    signatureBits: 512
+  revocationSignatureAlgorithm: ECDSAWithSHA512
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-alg-ed25519
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-ed25519
+  type: root
+  key:
+    type: ed25519
+  certificate:
+    commonName: Live Kit pki-alg-ed25519
+    ttl: 87600h
+  revocationSignatureAlgorithm: Ed25519
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-alg-mldsa44
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-mldsa44
+  type: root
+  key:
+    type: mldsa
+    bits: 44
+  certificate:
+    commonName: Live Kit pki-alg-mldsa44
+    ttl: 87600h
+  revocationSignatureAlgorithm: MLDSA44
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-alg-mldsa65
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-mldsa65
+  type: root
+  key:
+    type: mldsa
+    bits: 65
+  certificate:
+    commonName: Live Kit pki-alg-mldsa65
+    ttl: 87600h
+  revocationSignatureAlgorithm: MLDSA65
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-alg-mldsa87
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-mldsa87
+  type: root
+  key:
+    type: mldsa
+    bits: 87
+  certificate:
+    commonName: Live Kit pki-alg-mldsa87
+    ttl: 87600h
+  revocationSignatureAlgorithm: MLDSA87
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIIssuer
+metadata:
+  name: pki-alg-existing
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-existing
+  type: root
+  key:
+    source: existing
+    existing:
+      keyRef:
+        name: pki-alg-key-rsa3072
+  certificate:
+    commonName: Live Kit pki-alg-existing
+    ttl: 87600h
+  revocationSignatureAlgorithm: SHA384WithRSA
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-alg-key-ec224
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-key-ec224
+  type: internal
+  keyType: ec
+  keyBits: 224
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-alg-key-ec384
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-key-ec384
+  type: internal
+  keyType: ec
+  keyBits: 384
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-alg-key-ec521
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-key-ec521
+  type: internal
+  keyType: ec
+  keyBits: 521
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-alg-key-rsa3072
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-key-rsa3072
+  type: internal
+  keyType: rsa
+  keyBits: 3072
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-alg-key-rsa4096
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-key-rsa4096
+  type: internal
+  keyType: rsa
+  keyBits: 4096
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-alg-key-rsa8192
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-key-rsa8192
+  type: internal
+  keyType: rsa
+  keyBits: 8192
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-alg-key-ed25519
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-key-ed25519
+  type: internal
+  keyType: ed25519
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-alg-key-mldsa44
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-key-mldsa44
+  type: internal
+  keyType: mldsa
+  keyBits: 44
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-alg-key-mldsa65
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-key-mldsa65
+  type: internal
+  keyType: mldsa
+  keyBits: 65
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-alg-key-mldsa87
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-key-mldsa87
+  type: internal
+  keyType: mldsa
+  keyBits: 87
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-alg-role-rsa2048
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-role-rsa2048
+  keyType: rsa
+  keyBits: 2048
+  signatureBits: 384
+  allowedDomains:
+    - users.openbao.example.com
+  allowSubdomains: true
+  cnValidations:
+    - email
+  notBeforeBound: duration
+  keyUsage:
+    - DigitalSignature
+    - ContentCommitment
+    - KeyEncipherment
+    - DataEncipherment
+  extKeyUsage:
+    - EmailProtection
+    - CodeSigning
+    - TimeStamping
+    - OCSPSigning
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-alg-role-rsa3072
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-role-rsa3072
+  keyType: rsa
+  keyBits: 3072
+  signatureBits: 512
+  keyUsage:
+    - CertSign
+    - CRLSign
+    - EncipherOnly
+    - DecipherOnly
+  extKeyUsage:
+    - IPSECEndSystem
+    - IPSECTunnel
+    - IPSECUser
+    - MicrosoftServerGatedCrypto
+    - NetscapeServerGatedCrypto
+    - MicrosoftCommercialCodeSigning
+    - MicrosoftKernelCodeSigning
+    - Any
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-alg-role-rsa4096
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-role-rsa4096
+  keyType: rsa
+  keyBits: 4096
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-alg-role-rsa8192
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-role-rsa8192
+  keyType: rsa
+  keyBits: 8192
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-alg-role-ec224
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-role-ec224
+  keyType: ec
+  keyBits: 224
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-alg-role-ec384
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-role-ec384
+  keyType: ec
+  keyBits: 384
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-alg-role-ec521
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-role-ec521
+  keyType: ec
+  keyBits: 521
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-alg-role-mldsa44
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-role-mldsa44
+  keyType: mldsa
+  keyBits: 44
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-alg-role-mldsa65
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-role-mldsa65
+  keyType: mldsa
+  keyBits: 65
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-alg-role-mldsa87
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-role-mldsa87
+  keyType: mldsa
+  keyBits: 87
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-alg-role-ed25519
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-role-ed25519
+  keyType: ed25519
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIRole
+metadata:
+  name: pki-alg-role-any
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  name: pki-alg-role-any
+  keyType: any
+  cnValidations:
+    - disabled
+  notBeforeBound: forbid
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIConfig
+metadata:
+  name: pki-alg-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  cluster:
+    path: https://openbao.example.com:8200/v1/pki-alg
+  issuers:
+    default:
+      issuerRef:
+        name: pki-alg-ec521
+    defaultFollowsLatestIssuer: false
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIACMEConfig
+metadata:
+  name: pki-alg-acme
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-alg
+  enabled: true
+  eabPolicy: new-account-required
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIACMEConfig
+metadata:
+  name: pki-root-acme
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-root
+  enabled: true
+  eabPolicy: always-required

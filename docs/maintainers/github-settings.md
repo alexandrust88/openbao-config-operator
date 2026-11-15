@@ -91,6 +91,7 @@ Required status checks (the job names, or the job `name:` where one is set):
 |----------|-------|
 | `ci.yml` | `lint`, `test`, `integration`, `namespaces`, `livekit`, `verify-generated`, `api-coverage`, `govulncheck`, `manifests`, `docs-examples` |
 | `e2e.yml` | `e2e` |
+| `conformance.yml` | `conformance` (runs on every pull request and measures only the kinds it touches, every kind when shared code changes, or reports "no kinds affected") |
 | `codeql.yml` | `analyze (go)`, `analyze (actions)` |
 | `dependency-review.yml` | `dependency-review` |
 | `secret-scan.yml` | `gitleaks` |
@@ -101,8 +102,7 @@ Required status checks (the job names, or the job `name:` where one is set):
 
 Not required, on purpose: `labels` and `helm.yml` (`unittest`, and `lifecycle`, which packages the chart and
 installs, upgrades from the last release, rolls back and uninstalls it on kind) run only when their paths change, and
-a required check that never starts blocks the merge. `conformance` and `govulncheck-nightly` do not run on pull
-requests.
+a required check that never starts blocks the merge. `govulncheck-nightly` does not run on pull requests.
 
 ### `release-branches` (branch ruleset)
 

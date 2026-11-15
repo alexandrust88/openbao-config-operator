@@ -2,4 +2,10 @@ fullFields:
   OIDCAssignment:
     entities[].entityID: server-generated, not known before apply; the ref/name/selector alternatives cover it
     groups[].groupID: server-generated, not known before apply; the ref/name/selector alternatives cover it
+oneOfBranches:
+  OIDCAssignment:
+    spec.entities[]:
+      entityID: server-generated, not known before apply; the ref/name/selector branches are covered
+    spec.groups[]:
+      groupID: server-generated, not known before apply; the ref/name/selector branches are covered
 notReady: []

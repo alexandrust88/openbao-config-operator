@@ -124,8 +124,47 @@ func splitImage(image string) (string, string) {
 	return image[:i], image[i+1:]
 }
 
-// condition returns the status of a condition type of a namespaced object.
+// condition returns the status of a condition type of an object in the tenant namespace.
 func condition(resource, name, conditionType string) (string, error) {
-	return run("kubectl", "-n", tenantNamespace, "get", resource, name,
-		"-o", fmt.Sprintf(`jsonpath={.status.conditions[?(@.type=="%s")].status}`, conditionType))
+	return conditionField(tenantNamespace, resource, name, conditionType, "status")
+}
+
+// conditionField returns one field (status, reason or message) of a condition type of an object in namespace.
+func conditionField(namespace, resource, name, conditionType, field string) (string, error) {
+	return run("kubectl", "-n", namespace, "get", resource, name,
+		"-o", fmt.Sprintf(`jsonpath={.status.conditions[?(@.type=="%s")].%s}`, conditionType, field))
+}
+
+// dumpDiagnosticsOnFailure writes the operator and OpenBao logs, every openbao object and the events of a failed
+// spec to the GinkgoWriter.
+func dumpDiagnosticsOnFailure() {
+	if !CurrentSpecReport().Failed() {
+		return
+	}
+	for _, args := range [][]string{
+		{"-n", operatorNamespace, "logs", "-l", "app.kubernetes.io/name=openbao-config-operator",
+			"--all-containers", "--prefix", "--tail=200"},
+		{"-n", openbaoNamespace, "get", "pods,pvc,services,endpointslices", "-o", "wide"},
+		{"-n", openbaoNamespace, "logs", "-l", "app.kubernetes.io/name=openbao",
+			"--all-containers", "--prefix", "--tail=200"},
+		{"get", "openbao", "-A", "-o", "yaml"},
+		{"get", "events", "-A", "--sort-by=.lastTimestamp"},
+	} {
+		out, _ := run("kubectl", args...)
+		_, _ = fmt.Fprintf(GinkgoWriter, "kubectl %s:\n%s\n", strings.Join(args, " "), out)
+	}
+}
+
+// baoAbsent succeeds when OpenBao answers a read of path in the OpenBao namespace ns ("" is the root) with not
+// found. Any other failure, such as a failed exec or a denied read, is returned, so a broken check never passes as
+// absence.
+func baoAbsent(ns, path string) error {
+	out, err := baoRun("read", "-namespace="+ns, path)
+	if err == nil {
+		return fmt.Errorf("%s exists in OpenBao namespace %q", path, ns)
+	}
+	if !strings.Contains(out, "No value found at") {
+		return err
+	}
+	return nil
 }

@@ -14,7 +14,7 @@ count and kind set. Each run starts a fresh environment:
 - The manager binary from `./cmd/`, run against envtest with `--watch-namespaces=load`, `--leader-elect=false`
   (one replica; lease renewals would count as Kubernetes writes in the steady window), both drift intervals at 1 minute, `--max-concurrent-reconciles=4` and the default
   `--max-concurrent-reconciles-high-volume=8` unless a run says otherwise. It authenticates with
-  its own AppRole (design rule 6), not a root token.
+  its own AppRole (design rule 9), not a root token.
 
 The harness creates the objects with 16 parallel workers, follows their `Ready` and `Synced` conditions through
 informers, scrapes the manager's `/metrics` every 2 s and reads the manager's RSS and CPU time and OpenBao's RSS
@@ -42,7 +42,7 @@ Scenarios, in order:
 5. **delete**: delete every object (`deletionPolicy: Delete`) and time until each is finalized; check OpenBao.
 
 After each phase the harness lists `auth/token/accessors`, `identity/entity/id` and `identity/entity-alias/id`.
-Only the managed `Entity` and `EntityAlias` objects may change them (design rule 1).
+Only the managed `Entity` and `EntityAlias` objects may change them (design rule 2).
 
 ### Run it
 
@@ -158,7 +158,7 @@ applied for `refs`, 5.8 s and 9.1 s for `members`.
 
 ### Resources
 
-The idle manager runs about 4,400 goroutines: 107 controllers (plugin kinds are off by default), each with its
+The idle manager runs about 4,400 goroutines: 68 controllers, one per built-in kind (plugin kinds are off by default), each with its
 workers, informers and queues. The count stayed flat through every scenario and after deletion, so nothing
 leaks. RSS was about 55 MiB idle, 125 to
 160 MiB with 1,000 objects and 232 MiB with 5,000. CPU peaked at 70 % of one core during the mixed N=1000 ramp;
@@ -317,7 +317,7 @@ All three are fixed on the build of ~04:00 (see above).
    6 times at N=5000 (513 against 81 req/s), and every stalled object re-ran every 30 s until its connection was
    ready again: 10,149 reconciles for 5,000 objects. Objects were ready 50 to 68 s after OpenBao.
 
-Steady state writes nothing, the operator logs in once per connection (design rule 1), and drift checks are
+Steady state writes nothing (design rule 1), the operator logs in once per connection (design rule 2), and drift checks are
 jittered. Errors use controller-runtime's per-item exponential backoff. On the ~01:50 build the connection-not-ready requeue was the one periodic wait without jitter. The
 cache is scoped to `--watch-namespaces`, the client reads Secrets live and the Secret cache drops their data.
 
@@ -328,7 +328,7 @@ cache is scoped to `--watch-namespaces`, the client reads Secrets live and the S
   of 60, a drift repair or default change across N objects takes N/60 minutes.
 - `--max-concurrent-reconciles` (default 4 per kind, 8 for high-volume kinds): creates scale with workers per
   kind until OpenBao or the Kubernetes API slows down. Raise it for a few kinds with thousands of objects. Every
-  worker is a goroutine on each of the 107 controllers, so do not raise it for everything.
+  worker is a goroutine on each of the 68 controllers, so do not raise it for everything.
 - `--drift-interval-critical` and `--drift-interval-standard` (the old `--drift-interval` flag is removed): the steady
   OpenBao read rate is N divided by the interval, for example 5,000 objects at 10 minutes is 8.3 reads/s. Repair
   of out-of-band changes takes up to 1.2 intervals.

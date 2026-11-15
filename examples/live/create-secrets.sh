@@ -19,12 +19,15 @@ read; each line is "<secret> <key> <generator>". Generators:
   rsa-key-pkcs1     a 2048-bit RSA private key, PKCS#1 PEM
   ec-key            a P-256 EC private key, SEC1 PEM
   ssh-key           a 2048-bit RSA private key in PEM form for SSH
-  pem-bundle        a self-signed CA certificate followed by its RSA private key
+  pem-bundle        a client certificate and its RSA private key, then the self-signed CA certificate that issued it
+  pem-json          the same as pem-bundle, as JSON {"certificate": ..., "private_key": ..., "issuing_ca": ...}
   ca-cert           a self-signed CA certificate only (its key is discarded)
   kv-json=<key>     a KV version 2 write body {"data":{"<key>":"<32 random letters and digits>"}}
   bcrypt=<key>      the bcrypt hash of the value generated for <key> of the same Secret (needs htpasswd)
+  ca-cert-for=<key> a self-signed CA certificate of the private key generated for <key> of the same Secret
 
-Values are never printed. Needs kubectl and openssl; ssh-key needs ssh-keygen, bcrypt needs htpasswd.
+Values are never printed. Needs kubectl and openssl; ssh-key needs ssh-keygen, bcrypt needs htpasswd, base32 and
+pem-json need python3.
 EOF
 }
 
@@ -70,8 +73,31 @@ work_dir=$(mktemp -d)
 trap 'rm -rf -- "$work_dir"' EXIT
 umask 077
 
+# Writes <out>.crt, a client certificate for the new RSA key <out>.key, and <out>.ca.crt, the throwaway CA that
+# issued it. The files stay in work_dir, which the exit trap removes.
+client_cert() {
+  local out=$1
+  openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=openbao live kit test CA" \
+    -addext basicConstraints=critical,CA:true -addext keyUsage=critical,keyCertSign,cRLSign \
+    -keyout "$out.ca.key" -out "$out.ca.crt" 2>/dev/null &&
+    openssl req -new -newkey rsa:2048 -nodes -subj "/CN=openbao live kit client" -keyout "$out.key" \
+      -out "$out.csr" 2>/dev/null &&
+    openssl x509 -req -sha256 -days 365 -in "$out.csr" -CA "$out.ca.crt" -CAkey "$out.ca.key" \
+      -set_serial "0x$(openssl rand -hex 16)" -out "$out.crt" 2>/dev/null \
+      -extfile <(printf 'basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=clientAuth\n')
+}
+
 generate() {
-  local generator=$1 out=$2 dir=$3
+  local generator=$1 out=$2 dir=$3 source=""
+  case $generator in
+    bcrypt=* | ca-cert-for=*)
+      source="$dir/${generator#*=}"
+      if [ ! -s "$source" ]; then
+        err "$generator: list key ${generator#*=} of the same Secret in input-secrets.txt"
+        return 1
+      fi
+      ;;
+  esac
   case $generator in
     password) openssl rand -base64 64 | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 32 >"$out" ;;
     literal=*) printf '%s' "${generator#literal=}" >"$out" ;;
@@ -80,12 +106,11 @@ generate() {
     rsa-key-pkcs1) openssl genrsa -traditional -out "$out" 2048 2>/dev/null ;;
     ec-key) openssl ecparam -name prime256v1 -genkey -noout -out "$out" 2>/dev/null ;;
     ssh-key) ssh-keygen -q -t rsa -b 2048 -m PEM -N '' -C live-kit -f "$out.ssh" && mv "$out.ssh" "$out" && rm -f "$out.ssh.pub" ;;
-    pem-bundle)
-      openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=openbao live kit test CA" \
-        -addext basicConstraints=critical,CA:true -addext keyUsage=critical,keyCertSign,cRLSign \
-        -keyout "$out.key" -out "$out.crt" 2>/dev/null
-      cat "$out.crt" "$out.key" >"$out"
-      rm -f "$out.crt" "$out.key"
+    pem-bundle) client_cert "$out" && cat "$out.crt" "$out.key" "$out.ca.crt" >"$out" ;;
+    pem-json)
+      client_cert "$out" &&
+        python3 -c 'import json, sys; c, k, a = (open(f).read() for f in sys.argv[1:]); sys.stdout.write(json.dumps({"certificate": c, "private_key": k, "issuing_ca": a}))' \
+          "$out.crt" "$out.key" "$out.ca.crt" >"$out"
       ;;
     ca-cert)
       openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=openbao live kit test CA" \
@@ -95,12 +120,11 @@ generate() {
       printf '{"data":{"%s":"%s"}}' "${generator#kv-json=}" \
         "$(openssl rand -base64 64 | LC_ALL=C tr -dc 'A-Za-z0-9' | head -c 32)" >"$out"
       ;;
+    ca-cert-for=*)
+      openssl req -x509 -new -key "$source" -days 365 -subj "/CN=openbao live kit test CA" \
+        -addext basicConstraints=critical,CA:true -addext keyUsage=critical,keyCertSign,cRLSign -out "$out" 2>/dev/null
+      ;;
     bcrypt=*)
-      local source="$dir/${generator#bcrypt=}"
-      if [ ! -s "$source" ]; then
-        err "bcrypt=${generator#bcrypt=}: list that key before this one in input-secrets.txt"
-        return 1
-      fi
       if ! command -v htpasswd >/dev/null; then
         err "htpasswd not found in PATH (apache2-utils); needed for bcrypt"
         return 1
@@ -127,7 +151,7 @@ for secret in $(printf '%s\n' "$entries" | awk '{print $1}' | sort -u); do
       continue 2
     fi
     args+=("--from-file=$key=$dir/$key")
-  done <<<"$(printf '%s\n' "$entries" | awk -v s="$secret" '$1 == s && $3 !~ /^bcrypt=/' ; printf '%s\n' "$entries" | awk -v s="$secret" '$1 == s && $3 ~ /^bcrypt=/')"
+  done <<<"$(printf '%s\n' "$entries" | awk -v s="$secret" '$1 == s && $3 !~ /^(bcrypt|ca-cert-for)=/' ; printf '%s\n' "$entries" | awk -v s="$secret" '$1 == s && $3 ~ /^(bcrypt|ca-cert-for)=/')"
   kubectl create secret generic "$secret" -n "$namespace" "${args[@]}" >/dev/null
   kubectl label secret "$secret" -n "$namespace" app.kubernetes.io/part-of=openbao-live-kit >/dev/null
   printf 'created %s/%s\n' "$namespace" "$secret"

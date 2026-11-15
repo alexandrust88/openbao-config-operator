@@ -118,7 +118,7 @@ func pkiTestRoot(ctx context.Context, t *testing.T, e env) *secretsv1alpha1.PKII
 
 func pkiTestIntermediate(ctx context.Context, t *testing.T, e env) *secretsv1alpha1.PKIIssuer {
 	intermediate := &secretsv1alpha1.PKIIssuer{
-		ObjectMeta: metav1.ObjectMeta{Name: "itest-int", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: "itest-int", Namespace: namespace, Annotations: secretsAllowDestructiveDelete},
 		Spec: secretsv1alpha1.PKIIssuerSpec{
 			ResourceSpec: pkiSpec(),
 			MountPath:    "pki-int",
@@ -306,7 +306,7 @@ func pkiTestAutoTidy(ctx context.Context, t *testing.T, e env) {
 
 func pkiTestKey(ctx context.Context, t *testing.T, e env) {
 	key := &secretsv1alpha1.PKIKey{
-		ObjectMeta: metav1.ObjectMeta{Name: "itest-key", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: "itest-key", Namespace: namespace, Annotations: secretsAllowDestructiveDelete},
 		Spec: secretsv1alpha1.PKIKeySpec{
 			ResourceSpec:   pkiSpec(),
 			Type:           secretsv1alpha1.PKIKeyCreationExported,

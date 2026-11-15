@@ -43,6 +43,7 @@ var (
 	_ engine.StatusWriter[*secretsv1alpha1.SSHCA] = SSHCAAdapter{}
 
 	_ engine.SecretReferencer[*secretsv1alpha1.SSHCA] = SSHCAAdapter{}
+	_ engine.Destructive                              = SSHCAAdapter{}
 )
 
 // Path implements engine.Adapter.
@@ -72,6 +73,9 @@ func (SSHCAAdapter) Desired(ctx context.Context, r engine.Resolver, c *secretsv1
 func (SSHCAAdapter) Fields() engine.FieldSpec {
 	return engine.FieldSpec{WriteOnly: []string{"private_key"}}
 }
+
+// Destructive implements engine.Destructive: deleting config/ca purges every signing key of the mount.
+func (SSHCAAdapter) Destructive() bool { return true }
 
 // Observe implements engine.Observer. A mount without a default issuer answers 400, which means absent here.
 // A generated key is never replaced, so its generation inputs are reported as desired; the public key of an

@@ -144,3 +144,53 @@ spec:
     - 10.0.0.0/8
     - 127.0.0.1/32
   tokenType: service
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthRole
+metadata:
+  name: k8s-batch-jobs
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: k8s
+  name: k8s-batch-jobs
+  boundServiceAccountNames:
+    - batch-runner
+  boundServiceAccountNamespaceSelector:
+    matchLabels:
+      openbao.example.com/batch: "true"
+  audience: openbao
+  aliasNameSource: serviceaccount_uid
+  policyRefs:
+    - name: k8s-app-read
+  tokenTTL: 10m
+  tokenType: batch
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthRole
+metadata:
+  name: k8s-monitoring
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: k8s
+  name: k8s-monitoring
+  boundServiceAccountNames:
+    - prometheus
+  boundServiceAccountNamespaces:
+    - monitoring
+  policyRefs:
+    - name: k8s-app-read
+  tokenType: default

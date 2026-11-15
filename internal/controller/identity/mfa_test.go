@@ -311,6 +311,20 @@ func TestMFALoginEnforcement(t *testing.T) {
 	}
 }
 
+func TestMFAMethodIsDestructive(t *testing.T) {
+	var kind engine.Destructive = MFAMethodAdapter{}
+	if !kind.Destructive() {
+		t.Error("MFAMethod must need the destructive-delete annotation: deleting a TOTP method drops every enrolment")
+	}
+}
+
+func TestEntityIsDestructive(t *testing.T) {
+	var kind engine.Destructive = EntityAdapter{}
+	if !kind.Destructive() {
+		t.Error("Entity must need the destructive-delete annotation: deleting an entity drops its TOTP enrolments")
+	}
+}
+
 func TestMFAMethodWithoutTypeIsInvalid(t *testing.T) {
 	m := &identityv1alpha1.MFAMethod{ObjectMeta: oidcMeta("otp")}
 	if _, err := (MFAMethodAdapter{}).Desired(context.Background(), mfaSecrets, m); !errors.Is(err, engine.ErrInvalidSpec) {

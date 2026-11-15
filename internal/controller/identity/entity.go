@@ -36,6 +36,7 @@ var (
 	_ engine.Adapter[*identityv1alpha1.Entity]      = EntityAdapter{}
 	_ engine.StatusWriter[*identityv1alpha1.Entity] = EntityAdapter{}
 	_ engine.Marker[*identityv1alpha1.Entity]       = EntityAdapter{}
+	_ engine.Destructive                            = EntityAdapter{}
 )
 
 // Path implements engine.Adapter.
@@ -56,6 +57,9 @@ func (EntityAdapter) Desired(_ context.Context, _ engine.Resolver, e *identityv1
 func (EntityAdapter) Fields() engine.FieldSpec {
 	return engine.FieldSpec{Sets: []string{"policies"}}
 }
+
+// Destructive implements engine.Destructive: deleting an entity erases its enrolled MFA TOTP secrets.
+func (EntityAdapter) Destructive() bool { return true }
 
 // WriteStatus implements engine.StatusWriter.
 func (EntityAdapter) WriteStatus(_ context.Context, _ openbao.Client, e *identityv1alpha1.Entity, observed engine.Payload) error {

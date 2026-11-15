@@ -104,6 +104,17 @@ func testTransitKey(ctx context.Context, t *testing.T, e env) {
 	if err := e.k8s.Delete(ctx, key); err != nil {
 		t.Fatal(err)
 	}
+	waitFor(t, "transit key delete guarded", func() error {
+		return expectSynced(ctx, e.k8s, key, commonv1alpha1.ReasonDeleteGuarded, commonv1alpha1.AnnotationAllowDestructiveDelete)
+	})
+	if err := engineExpectFields(ctx, e.bao, path, want); err != nil {
+		t.Fatalf("guarded transit key changed: %v", err)
+	}
+	patch := client.MergeFrom(key.DeepCopy())
+	key.Annotations = secretsAllowDestructiveDelete
+	if err := e.k8s.Patch(ctx, key, patch); err != nil {
+		t.Fatal(err)
+	}
 	waitFor(t, "transit key deleted", func() error { return expectAbsent(ctx, e.bao, path) })
 	waitFor(t, "transit key resource gone", func() error { return expectGone(ctx, e.k8s, key) })
 }
@@ -147,7 +158,7 @@ func testSSHCAImported(ctx context.Context, t *testing.T, e env) {
 	}
 	mustCreate(ctx, t, e.k8s, secret)
 	ca := &secretsv1alpha1.SSHCA{
-		ObjectMeta: metav1.ObjectMeta{Name: "itest-ca-imported", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: "itest-ca-imported", Namespace: namespace, Annotations: secretsAllowDestructiveDelete},
 		Spec: secretsv1alpha1.SSHCASpec{
 			ResourceSpec:        secretsResourceSpec(commonv1alpha1.DeletionPolicyDelete),
 			MountPath:           "itest-ssh-imported",
@@ -308,7 +319,7 @@ func testTOTPKeyImported(ctx context.Context, t *testing.T, e env) {
 	}
 	mustCreate(ctx, t, e.k8s, seed)
 	key := &secretsv1alpha1.TOTPKey{
-		ObjectMeta: metav1.ObjectMeta{Name: "itest-bob", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: "itest-bob", Namespace: namespace, Annotations: secretsAllowDestructiveDelete},
 		Spec: secretsv1alpha1.TOTPKeySpec{
 			ResourceSpec: secretsResourceSpec(commonv1alpha1.DeletionPolicyDelete),
 			MountPath:    "totp",

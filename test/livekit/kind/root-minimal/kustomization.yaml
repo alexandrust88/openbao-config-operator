@@ -1,0 +1,18 @@
+# root/minimal, limited to the components whose minimal objects are excused only against bao server -dev (notReady
+# env: dev): here OpenBao runs in a pod, so kind.sh requires them Ready. The other root/minimal components would
+# reconfigure the root-only settings that root/full already manages on the same OpenBao.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: root-min-
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: openbao-live-kit
+      live.openbaoconfig.io/overlay: root-min
+resources:
+  - ../../../../examples/live/params
+components:
+  - ../../../../examples/live/base
+  - ../../../../examples/live/modes/root
+  - ../../../../examples/live/components/auth-kubernetes/minimal
+  - ../../../../examples/live/components/kubernetes-secrets/minimal
+  - ../../../../examples/live/finalize

@@ -16,7 +16,6 @@ spec:
     name: openbao
   mountPath: db
   pluginName: postgresql-database-plugin
-  verifyConnection: false
   allowedRoles:
     - db-app
     - db-app-static
@@ -24,7 +23,7 @@ spec:
     name: live-db-root
     key: password
   postgresql:
-    connectionURL: postgresql://{{username}}:{{password}}@postgres.example.invalid:5432/app?sslmode=require
+    connectionURL: postgresql://{{username}}:{{password}}@postgres.postgres.svc:5432/app?sslmode=disable
     username: openbao
 ---
 apiVersion: secrets.openbaoconfig.io/v1alpha1

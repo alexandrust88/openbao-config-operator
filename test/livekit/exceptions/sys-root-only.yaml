@@ -1,8 +1,18 @@
 fullFields:
   RateLimitQuota:
     role: needs path auth/<mount>, which a namePrefix cannot compose from the overlay's prefixed mount name
+enumValues:
+  Audit:
+    type:
+      http: needs a reachable HTTP collector; OpenBao audits fail closed, so with no collector every request fails while it is the only enabled device
+      socket: needs a reachable TCP or UDP log collector; OpenBao audits fail closed, so with no collector every request fails while it is the only enabled device
+      syslog: the syslog device connects to the local syslog daemon socket (/dev/log) when it is enabled, which the OpenBao container on kind does not have
+  Plugin:
+    type:
+      database: registering needs a database plugin binary with the declared sha256 in plugin_directory, which neither bao server -dev nor the kind OpenBao has; the sys config integration suite covers registration
 notReady:
   - kind: RaftAutopilot
+    env: dev
     reason: bao server -dev runs on inmem storage; autopilot needs raft storage
   - kind: Plugin
     reason: no plugin binary with the declared sha256 exists in plugin_directory, and no OCI plugin is declared in the server configuration

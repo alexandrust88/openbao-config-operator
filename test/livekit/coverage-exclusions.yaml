@@ -1,20 +1,5 @@
 # These builtins have dedicated live suites because the shared dev-server overlays cannot supply their prerequisites.
 # Plugin-only CRDs are classified separately from hack/chart/plugin-crds.txt and docs/kinds.md.
-- kind: DatabaseConnection
-  reason: The shared overlays omit the database component because it also contains static roles requiring a live database. The dedicated scenario uses verify_connection=false; the postgres scenario separately exercises a real database.
-  file: test/integration/secrets_credentials_test.go
-  test: TestIntegrationSecretsCredentials
-  scenario: testDatabaseConnection
-- kind: DatabaseRole
-  reason: The shared overlays omit the database component because it also contains static roles requiring a live database. The dedicated scenario creates a role against a configured database mount without issuing credentials.
-  file: test/integration/secrets_credentials_test.go
-  test: TestIntegrationSecretsCredentials
-  scenario: testDatabaseRole
-- kind: DatabaseStaticRole
-  reason: Creating the role immediately rotates a database password; the shared overlays have no database. The dedicated postgres scenario requires Docker and its PostgreSQL image.
-  file: test/integration/secrets_credentials_test.go
-  test: TestIntegrationSecretsCredentials
-  scenario: testDatabasePostgres
 - kind: Plugin
   reason: Registration requires a matching executable and checksum in the server plugin directory. The dedicated scenario supplies these; it tests registration, not running an external plugin.
   file: test/integration/sys_config_test.go

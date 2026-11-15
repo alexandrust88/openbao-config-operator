@@ -185,3 +185,83 @@ spec:
   tokenBoundCIDRs:
     - 10.0.0.0/8
   tokenType: service
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AppRole
+metadata:
+  name: approle-deploy-job
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: approle
+  name: approle-deploy-job
+  secretIDTTL: 1h
+  policyRefs:
+    - name: approle-ci-read
+  tokenTTL: 10m
+  tokenMaxTTL: 30m
+  tokenType: batch
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AppRole
+metadata:
+  name: approle-nightly
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: approle
+  name: approle-nightly
+  policyRefs:
+    - name: approle-ci-read
+  tokenTTL: 1h
+  tokenType: default
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: TokenRole
+metadata:
+  name: approle-token-batch
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: approle-token-batch
+  allowedPolicies:
+    - approle-ci-read
+  orphan: true
+  renewable: false
+  tokenType: batch
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: TokenRole
+metadata:
+  name: approle-token-default
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: approle-token-default
+  allowedPolicies:
+    - approle-ci-read
+  tokenType: default

@@ -185,7 +185,8 @@ func testMFA(ctx context.Context, t *testing.T, e env) {
 		Data:       map[string][]byte{"secret-key": []byte("fake-secret"), "integration-key": []byte("fake-ikey")},
 	})
 
-	totp := &identityv1alpha1.MFAMethod{ObjectMeta: metav1.ObjectMeta{Name: "itest-totp", Namespace: namespace},
+	allowDelete := map[string]string{commonv1alpha1.AnnotationAllowDestructiveDelete: "true"}
+	totp := &identityv1alpha1.MFAMethod{ObjectMeta: metav1.ObjectMeta{Name: "itest-totp", Namespace: namespace, Annotations: allowDelete},
 		Spec: identityv1alpha1.MFAMethodSpec{ResourceSpec: oidcSpec(commonv1alpha1.DeletionPolicyDelete),
 			TOTP: &identityv1alpha1.MFATOTP{Issuer: "Acme", Period: &metav1.Duration{Duration: 30 * time.Second}}}}
 	mustCreate(ctx, t, e.k8s, totp)
@@ -228,7 +229,7 @@ func testMFA(ctx context.Context, t *testing.T, e env) {
 		Data: map[string][]byte{"settings": []byte("use_base64_key=fake\nuse_signature=true\ntoken=fake\n" +
 			"idp_url=https://idp.example\norg_alias=org\nadmin_url=https://admin.example\nauthenticator_url=https://auth.example\n")},
 	})
-	pingID := &identityv1alpha1.MFAMethod{ObjectMeta: metav1.ObjectMeta{Name: "itest-pingid", Namespace: namespace},
+	pingID := &identityv1alpha1.MFAMethod{ObjectMeta: metav1.ObjectMeta{Name: "itest-pingid", Namespace: namespace, Annotations: allowDelete},
 		Spec: identityv1alpha1.MFAMethodSpec{ResourceSpec: oidcSpec(commonv1alpha1.DeletionPolicyDelete), PingID: &identityv1alpha1.MFAPingID{
 			SettingsFileSecretRef: commonv1alpha1.SecretKeySelector{Name: "itest-pingid", Key: "settings"},
 			UsernameFormat:        "{{identity.entity.name}}",

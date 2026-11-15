@@ -14,4 +14,27 @@ fullFields:
     entities[].entityID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
     groups[].groupID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
     mfaMethods[].methodID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
+oneOfBranches:
+  EntityAlias:
+    spec:
+      entityID: server-generated id, not known before apply; the ref/name/selector branches are covered
+      mountAccessor: server-generated id, not known before apply; the ref/path/selector branches are covered
+  GroupAlias:
+    spec:
+      groupID: server-generated id, not known before apply; the ref/name/selector branches are covered
+      mountAccessor: server-generated id, not known before apply; the ref/path/selector branches are covered
+  GroupMembership:
+    spec:
+      entityID: server-generated id, not known before apply; the ref/name/selector branches are covered
+      groupID: server-generated id, not known before apply; the ref/name/selector branches are covered
+      memberGroupID: server-generated id, not known before apply; the ref/name/selector branches are covered
+  MFALoginEnforcement:
+    spec.authMounts[]:
+      mountAccessor: server-generated id, not known before apply; the ref/path/selector branches are covered
+    spec.entities[]:
+      entityID: server-generated id, not known before apply; the ref/name/selector branches are covered
+    spec.groups[]:
+      groupID: server-generated id, not known before apply; the ref/name/selector branches are covered
+    spec.mfaMethods[]:
+      methodID: server-generated id, not known before apply; the ref/name/selector branches are covered
 notReady: []

@@ -93,8 +93,8 @@ Clean up in reverse waves while the operator still runs. The full examples set `
 minimal ones keep the default `Orphan`, so their OpenBao objects stay unless you switch them to `Delete` first.
 Objects the kit adopts (`creationPolicy: Adopt` or `CreateOrAdopt` of an existing setting) always use `Orphan`.
 
-Some objects do not reach Ready everywhere, for example the database kinds without a database, `RaftAutopilot`
-without raft storage, `Audit` where the server refuses audit devices from the API, and `Plugin` without a plugin
+Some objects do not reach Ready everywhere, for example the database kinds when no database is
+reachable (the kind e2e starts PostgreSQL with `hack/e2e/postgres.sh`), `RaftAutopilot` without raft storage, `Audit` where the server refuses audit devices from the API, and `Plugin` without a plugin
 binary. `test/livekit/exceptions/` lists each one with the reason.
 
 ## Checks

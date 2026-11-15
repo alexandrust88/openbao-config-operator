@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -160,6 +161,9 @@ func TestConformance(t *testing.T) {
 			r.skip = confSkipNoExample
 		}
 		results = append(results, r)
+	}
+	if !slices.ContainsFunc(results, func(r *confResult) bool { return !r.kind.plugin() }) {
+		t.Fatalf("CONF_KINDS=%q selects no built-in kind", os.Getenv("CONF_KINDS"))
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

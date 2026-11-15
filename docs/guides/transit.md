@@ -36,9 +36,11 @@ that rotates every 30 days and an HMAC key:
 - `type`, `derived`, `convergentEncryption` and `keySize` are immutable, and `exportable` and
   `allowPlaintextBackup` cannot be turned off once on: the API server refuses such a change.
 
-A key can be deleted in OpenBao only with `deletionAllowed`. With `deletionPolicy: Delete`, the
-operator sets it just before it deletes the key; data encrypted with a deleted key cannot be
-decrypted again.
+Both keys keep the default `deletionPolicy: Orphan`, so deleting a resource leaves its key in OpenBao.
+`TransitKey` is a destructive kind ([ADR 0013](../adr/0013-destructive-delete-guard.md)): to destroy the key
+when its resource is deleted, set `deletionPolicy: Delete` and the annotation
+`openbaoconfig.io/allow-destructive-delete: "true"`. With both, the operator sets `deletionAllowed` just before
+it deletes the key. The deletion is irreversible: data encrypted with a deleted key cannot be decrypted again.
 
 ## 3. Check that it worked
 

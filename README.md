@@ -2,7 +2,8 @@
 
 # openbao-config-operator
 
-**Manage OpenBao configuration as Kubernetes resources: typed, multi-tenant, and silent at rest.**
+**A Kubernetes operator that keeps the configuration of an OpenBao server, such as its policies, auth methods and
+mounts, the same as the custom resources you keep in Git.**
 
 <!-- Replace the Best Practices badge with https://www.bestpractices.dev/projects/<id>/badge once the project is registered. -->
 [![CI](https://github.com/alexandrust88/openbao-config-operator/actions/workflows/ci.yml/badge.svg)](https://github.com/alexandrust88/openbao-config-operator/actions/workflows/ci.yml)
@@ -26,35 +27,60 @@ YAML to Git, let Argo CD or Flux apply it, and the operator converges OpenBao, r
 It does not deploy, initialise, unseal or upgrade OpenBao, and it does not copy secret values into Kubernetes
 (use [External Secrets Operator](https://external-secrets.io) for that).
 
-> **Status: pre-release.** Every built-in kind is implemented and tested, but nothing is published yet: no tag,
-> image or chart. The API group domain (`openbaoconfig.io`) is provisional and will be renamed once before
-> v0.1.0 ([ADR 0008](docs/adr/0008-provisional-api-group-domain.md)). See the [roadmap](docs/maintainers/roadmap.md).
+> **Status: alpha.** v0.1.0 and v0.1.1 are released (image, Helm chart and `install.yaml`). The API is `v1alpha1`;
+> the API group domain `openbaoconfig.io` is final ([ADR 0008](docs/adr/0008-provisional-api-group-domain.md)).
+> Read the [risks](#risks) and the [known limitations](docs/reference/limitations.md) before you rely on it; the
+> [roadmap](docs/maintainers/roadmap.md) says what comes next.
 
-## Why
+## Today and its limits
 
 Platform teams that run OpenBao for many tenants want its configuration in Git, reviewed and reconciled like
-everything else in the cluster. This operator is built for that case:
+everything else in the cluster. Several tools already manage Vault-style configuration declaratively. They differ
+in model more than in quality:
 
-- one custom resource per OpenBao object, with typed and validated fields, and `OpenBaoEndpoint` for any path
-  without a typed kind;
-- a platform-owned `OpenBaoServer` and per-tenant connections that log in as the tenant's own ServiceAccount;
-- adopt and orphan semantics, an `Observe` mode and an import tool for servers that already have configuration;
-- drift detection on by default, with no writes while OpenBao matches the spec.
+| tool | model | tenant boundary | drift and ownership |
+|------|-------|-----------------|---------------------|
+| OpenTofu or Terraform with the Vault provider, run in the cluster by tofu-controller | HCL modules planned and applied against the API | the token of the runner; tenants are separated by workspace, state and token | drift shows in the next plan; ownership is the state file, and existing objects need an import |
+| redhat-cop vault-config-operator | one custom resource per Vault object, built for HashiCorp Vault; also syncs secret values into Kubernetes Secrets | per resource, through a Kubernetes auth role | the operator reconciles each resource against Vault |
+| Crossplane managed resources for Vault | Crossplane managed resources generated from the Terraform provider, with compositions on top | the credentials of the `ProviderConfig` a resource references | Crossplane re-reads and corrects managed resources; the external name links a resource to its object |
+| bank-vaults configurer | one configuration document applied by the configurer, next to the bank-vaults init and unseal tooling | one privileged identity for the whole document | the document owns what it lists; with its purge option enabled, the configurer also removes configuration the document does not list |
 
-All of it runs on one generic engine; each kind adds a small adapter.
+The gap: we know of none that combines typed resources built for OpenBao (its namespaces, self-init and OpenBao-only
+kinds) with tenants that configure OpenBao from their own Kubernetes namespace under their own OpenBao identity,
+while the platform alone decides which server they reach. This operator adds, per OpenBao path, one owning
+resource with conflict detection and a binding to one server, drift checks in two tiers inside a per-server
+request budget with no writes at rest, and an `Observe` mode and import tool for servers that already have
+configuration. All of it runs on one generic engine; each kind adds a small adapter.
+
+## Risks
+
+- **KV history purge race.** A destructive delete of a KV version 2 secret can destroy a version another writer
+  created in the instant before the delete ([TD-008](docs/project/tech-debt.md#td-008-a-kv-history-purge-can-destroy-a-version-written-right-before-it)).
+- **Write-only drift is invisible.** OpenBao never returns passwords and similar fields, so a change made to them
+  outside Git is not detected ([known limitations](docs/reference/limitations.md#drift-detection-and-comparison)).
+- **The hash key cannot be rotated.** Replacing the key of `status.writeOnlyHash` rewrites every object with
+  write-only inputs once ([known limitations](docs/reference/limitations.md#ownership-and-restore)).
+- **The self-init platform identity can rewrite its own policy.** OpenBao has no Sentinel or EGP to stop it;
+  split the identity ([RR-02](docs/security/threat-model.md#residual-risks-and-recommendations)).
+- **One maintainer.** The project has a single maintainer today, and the bus-factor risk is stated in the
+  governance ([GOVERNANCE.md](GOVERNANCE.md#single-maintainer-phase)).
 
 ## Highlights
 
 - **68 built-in kinds** (64 typed OpenBao kinds plus the server, connection and `OpenBaoEndpoint` kinds), every one
-  reconciled against a real `bao server -dev` in CI, plus 52 plugin-gated kinds for external plugins
-  ([kind catalogue](docs/kinds.md)). Typed kinds cover 87.0% of the configuration paths
-  of OpenBao 2.7.2, measured per release in CI ([API coverage](docs/api-coverage.md)).
+  reconciled against a real `bao server -dev` in CI ([kind catalogue](docs/kinds.md)). Built-in kinds cover 87.0%
+  of the configuration paths of OpenBao 2.7.2, measured per release in CI ([API coverage](docs/api-coverage.md)).
+  52 further kinds for external plugins are experimental, off by default and not run against a server.
 - **`OpenBaoEndpoint` escape hatch** for every path without a typed kind, with the same drift, ownership and
   delete-guard rules ([ADR 0006](docs/adr/0006-endpoint-escape-hatch.md)).
-- **A real tenant boundary.** The platform team declares a cluster-scoped `OpenBaoServer` (address, CA, allowed
+- **Tenants act as themselves.** The platform team declares a cluster-scoped `OpenBaoServer` (address, CA, allowed
   namespaces and token audiences). A tenant's `OpenBaoConnection` logs in as a ServiceAccount of its own namespace
-  through TokenRequest, never as the operator ([ADR 0003](docs/adr/0003-connections-and-tenant-boundary.md),
-  [ADR 0010](docs/adr/0010-openbaoserver-owns-address-and-audiences.md)).
+  through TokenRequest, never as the operator, so the tenant's OpenBao policy is the limit
+  ([ADR 0003](docs/adr/0003-connections-and-tenant-boundary.md),
+  [ADR 0010](docs/adr/0010-openbaoserver-owns-address-and-audiences.md)). The [e2e tests](test/e2e) exercise
+  tenant connections; the [known limitations](docs/reference/limitations.md#verification) list what is not proven
+  yet (a two-tenant e2e test, `test/e2e/isolation_test.go`, is being added), and the default install is
+  cluster-wide (RR-01 in the [threat model](docs/security/threat-model.md)).
 - **Silent at rest.** A steady-state reconcile reads and never writes; `openbao_writes_total` stays flat. The load
   test shows zero OpenBao and Kubernetes writes over three drift intervals at 5,000 objects
   ([load testing](docs/operate/load-testing.md#steady-state)).
@@ -64,7 +90,8 @@ All of it runs on one generic engine; each kind adds a small adapter.
   mode, which reports drift and never writes. Switch them to `Manage` one at a time ([import](docs/guides/import.md),
   [ADR 0016](docs/adr/0016-observe-mode-and-import-tool.md)).
 - **Safe by default.** `creationPolicy: Create` and `deletionPolicy: Orphan` by default, one owner per path, a
-  second guard before deleting mounts, namespaces, KV data or audit devices, and a write circuit breaker
+  second guard before deleting mounts, namespaces, KV data, audit devices, key material, MFA methods, entities or
+  the target of an `OpenBaoEndpoint`, and a write circuit breaker
   ([ADR 0013](docs/adr/0013-destructive-delete-guard.md), [ADR 0018](docs/adr/0018-write-circuit-breaker.md)).
 - **No webhooks, no cert-manager.** Validation is OpenAPI and CEL in the CRDs ([ADR 0005](docs/adr/0005-cel-validation-without-webhooks.md)).
 - **Secrets only by reference.** Inputs come from Kubernetes Secrets; write-only values are tracked as an HMAC in
@@ -114,7 +141,7 @@ helm install openbao-config-operator openbao-config-operator/openbao-config-oper
   --namespace openbao-config-operator --create-namespace --wait
 ```
 
-Until the first release is published, build the image and install the chart from the clone instead:
+To try a change that is not released yet, build the image and install the chart from the clone instead:
 
 ```sh
 make docker-build IMG=openbao-config-operator:dev
@@ -249,11 +276,11 @@ requeues; each kind contributes a small adapter with its path, payload and compa
 
 | component | supported |
 |-----------|-----------|
-| OpenBao | 2.6 and 2.7 only ([ADR 0009](docs/adr/0009-openbao-only-target.md)); integration-tested on 2.7.2 only, 2.6 is API-compatible per its OpenAPI snapshot until the nightly matrix on every supported minor exists ([support window](docs/maintainers/release-process.md#openbao-versions)) |
+| OpenBao | 2.6 and 2.7 only ([ADR 0009](docs/adr/0009-openbao-only-target.md)); integration-tested on 2.7.2 only, 2.6 is API-compatible per its OpenAPI snapshot until a scheduled run on every supported minor exists ([support window](docs/maintainers/release-process.md#openbao-versions)) |
 | Kubernetes | 1.31 or later (chart `kubeVersion`); tested on envtest 1.35 and kind |
 
-Kinds that need an OpenBao external plugin (cloud methods, LDAP, Kerberos, RADIUS) are disabled by default behind
-`--enable-plugin-kinds` and report `Unsupported` until the plugin is mounted.
+Kinds that need an OpenBao external plugin (cloud methods, LDAP, Kerberos, RADIUS) are experimental, disabled by
+default behind `--enable-plugin-kinds`, and report `Unsupported` until the plugin is mounted.
 
 ## Documentation
 

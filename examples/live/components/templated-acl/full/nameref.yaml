@@ -1,0 +1,5 @@
+nameReference:
+  - kind: AuthMount
+    fieldSpecs:
+      - path: spec/accessorRefs/userpass/mountPath
+        kind: Policy

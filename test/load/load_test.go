@@ -383,7 +383,7 @@ func (r *loadRun) mark(phase string, at time.Time) {
 	r.res.Phases[phase] = seconds(at.Sub(r.start))
 }
 
-// markIdentity records the identity counts after phase. Design rule 1: only the managed Entity and EntityAlias
+// markIdentity records the identity counts after phase. Design rule 2: only the managed Entity and EntityAlias
 // objects may change them; token accessors grow by one per generated connection, because the operator logs in
 // once per connection, and shrink back when the connections are deleted.
 func (r *loadRun) markIdentity(phase string) {

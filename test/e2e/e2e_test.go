@@ -3,8 +3,6 @@
 package e2e
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -20,23 +18,7 @@ const (
 )
 
 var _ = Describe("openbao-config-operator", Ordered, func() {
-	AfterEach(func() {
-		if !CurrentSpecReport().Failed() {
-			return
-		}
-		for _, args := range [][]string{
-			{"-n", operatorNamespace, "logs", "-l", "app.kubernetes.io/name=openbao-config-operator",
-				"--all-containers", "--prefix", "--tail=200"},
-			{"-n", openbaoNamespace, "get", "pods,pvc,services,endpointslices", "-o", "wide"},
-			{"-n", openbaoNamespace, "logs", "-l", "app.kubernetes.io/name=openbao",
-				"--all-containers", "--prefix", "--tail=200"},
-			{"get", "openbao", "-A", "-o", "yaml"},
-			{"get", "events", "-A", "--sort-by=.lastTimestamp"},
-		} {
-			out, _ := run("kubectl", args...)
-			_, _ = fmt.Fprintf(GinkgoWriter, "kubectl %s:\n%s\n", strings.Join(args, " "), out)
-		}
-	})
+	AfterEach(dumpDiagnosticsOnFailure)
 
 	It("verifies TLS identity and active Service routing", testVerifiedTLS)
 

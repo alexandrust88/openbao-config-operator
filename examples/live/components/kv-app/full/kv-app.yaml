@@ -184,3 +184,71 @@ spec:
   casRequired: false
   allowWildcardsInIdentityTemplates: false
   allowSlashesInIdentityTemplates: false
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: kv1
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: kv1
+  type: kv-v1
+  description: Legacy application secrets on KV version 1
+  listingVisibility: unauth
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVSecret
+metadata:
+  name: app-legacy-config
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: kv1
+  path: app/config
+  kvVersion: 1
+  data:
+    password:
+      secretKeyRef:
+        name: live-kv-app
+        key: password
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: app-legacy-token
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: kv1
+  path: app/token
+  kvVersion: 1
+  key: token
+  generator:
+    length: 32
+  writeSecretRef:
+    name: app-legacy-token

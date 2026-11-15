@@ -40,6 +40,7 @@ var (
 	_ engine.Adapter[*sysv1alpha1.SecretsMount]          = SecretsMountAdapter{}
 	_ engine.Observer[*sysv1alpha1.SecretsMount]         = SecretsMountAdapter{}
 	_ engine.Writer[*sysv1alpha1.SecretsMount]           = SecretsMountAdapter{}
+	_ engine.Deleter[*sysv1alpha1.SecretsMount]          = SecretsMountAdapter{}
 	_ engine.StatusWriter[*sysv1alpha1.SecretsMount]     = SecretsMountAdapter{}
 	_ engine.Destructive                                 = SecretsMountAdapter{}
 	_ engine.ReferenceWatcher[*sysv1alpha1.SecretsMount] = SecretsMountAdapter{}
@@ -94,6 +95,11 @@ func (SecretsMountAdapter) Observe(ctx context.Context, c openbao.Client, m *sys
 // Write implements engine.Writer.
 func (SecretsMountAdapter) Write(ctx context.Context, c openbao.Client, m *sysv1alpha1.SecretsMount, desired engine.Payload, create bool) (engine.Payload, error) {
 	return nil, writeMount(ctx, c, secretsTable, secretsMountPath(m), desired, create)
+}
+
+// Delete implements engine.Deleter.
+func (a SecretsMountAdapter) Delete(ctx context.Context, c openbao.Client, m *sysv1alpha1.SecretsMount) error {
+	return deleteMount(ctx, c, a.Path(m))
 }
 
 // WriteStatus implements engine.StatusWriter: status.id is the mount accessor.
