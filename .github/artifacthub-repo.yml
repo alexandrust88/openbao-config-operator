@@ -1,5 +1,6 @@
 # Artifact Hub repository metadata. The release pushes it to oci://ghcr.io/<owner>/charts/openbao-config-operator
-# as the tag artifacthub.io; pages.yml serves it next to the Pages Helm index (/charts). Add repositoryID once the
-# repository is registered on artifacthub.io, to get the verified publisher badge.
+# as the tag artifacthub.io; pages.yml serves it next to the Pages Helm index (/charts). repositoryID gives the
+# verified publisher badge.
+repositoryID: aab779f3-fa0d-498d-bbb0-a4458f0cd38d
 owners: []
 ignore: []
