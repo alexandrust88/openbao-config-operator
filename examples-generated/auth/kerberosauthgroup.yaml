@@ -1,3 +1,13 @@
+# KerberosAuthGroup (auth.openbaoconfig.io/v1alpha1)
+# KerberosAuthGroup manages an LDAP group mapping of an OpenBao Kerberos auth method at
+# auth/<mountPath>/groups/<name>.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: connectionRef.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#kerberosauthgroup
+# Curated example: examples/auth/kerberosauthgroup.yaml
 apiVersion: auth.openbaoconfig.io/v1alpha1
 kind: KerberosAuthGroup
 metadata:

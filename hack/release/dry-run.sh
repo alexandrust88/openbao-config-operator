@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs every release step locally and pushes nothing: builds the multi-arch image into an OCI layout, generates SPDX
 # and CycloneDX SBOMs per platform, gates on vulnerabilities, writes SLSA provenance, packages the chart with the
-# image digest pinned and pushes it by digest into an OCI layout, builds install.yaml/crds.yaml, signs and attests
+# image digest pinned and pushes it by digest into an OCI layout, builds install.yaml/crds.yaml and the examples
+# bundle (twice, to prove it is reproducible), signs and attests
 # every subject with a throwaway cosign key (no Rekor, no Fulcio, no TUF), then verifies all of it, and last builds,
 # verifies and transfers the OCM component against local registries (hack/ocm/dry-run.sh). Outputs land in
 # $OUT (default .tmp/release-dryrun).
@@ -128,6 +129,21 @@ echo "chart $chart_digest"
 echo "== install.yaml and crds.yaml"
 "$repo_root/hack/release/installer.sh" "$image@$index_digest" "$out/dist"
 grep -q "image: $image@$index_digest" "$out/dist/install.yaml" || { echo "dry-run: install.yaml lacks the digest" >&2; exit 1; }
+
+echo "== examples bundle"
+examples=$("$repo_root/hack/release/examples-bundle.sh" "$tag" "$out/dist")
+rebuilt=$("$repo_root/hack/release/examples-bundle.sh" "$tag" "$out/examples-rebuild")
+cmp -s "$examples" "$rebuilt" || { echo "dry-run: $(basename "$examples") is not reproducible" >&2; exit 1; }
+rm -rf -- "$out/examples-rebuild"
+listing=$(tar -tzf "$examples")
+for want in examples/core/openbaoserver.yaml examples-generated/core/openbaoserver.yaml; do
+  grep -qxF "$want" <<<"$listing" || { echo "dry-run: $(basename "$examples") lacks $want" >&2; exit 1; }
+done
+if grep -vE '^examples(-generated)?/[^./][^/]*(/[^./][^/]*)*$' <<<"$listing"; then
+  echo "dry-run: $(basename "$examples") holds files outside examples/ and examples-generated/" >&2
+  exit 1
+fi
+echo "$(basename "$examples"): $(wc -l <<<"$listing" | tr -d ' ') files"
 
 echo "== sign and attest with a throwaway key"
 COSIGN_PASSWORD="" "$cosign" generate-key-pair --output-key-prefix "$out/keys/dryrun" >/dev/null 2>&1

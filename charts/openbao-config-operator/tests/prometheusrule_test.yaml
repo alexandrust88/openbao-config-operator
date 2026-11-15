@@ -1,0 +1,52 @@
+suite: prometheusrule
+templates:
+  - templates/prometheusrule.yaml
+release:
+  name: obc
+  namespace: openbao-system
+set:
+  prometheusRule.enabled: true
+tests:
+  - it: renders every alert with its default threshold and no extra labels
+    asserts:
+      - equal:
+          path: metadata.name
+          value: obc-openbao-config-operator
+      - lengthEqual:
+          path: spec.groups[0].rules
+          count: 5
+      - equal:
+          path: spec.groups[0].rules[3].alert
+          value: OpenBaoConfigOperatorOpenBaoServerErrors
+      - matchRegex:
+          path: spec.groups[0].rules[3].expr
+          pattern: '> 0.05$'
+      - equal:
+          path: spec.groups[0].rules[0].labels
+          value: {severity: critical}
+      - notExists:
+          path: metadata.labels.release
+
+  - it: uses openbaoErrorRatio and runbookBaseURL
+    set:
+      prometheusRule.openbaoErrorRatio: 0.2
+      prometheusRule.runbookBaseURL: https://runbooks.example.com/obc
+    asserts:
+      - matchRegex:
+          path: spec.groups[0].rules[3].expr
+          pattern: '> 0.2$'
+      - equal:
+          path: spec.groups[0].rules[0].annotations.runbook_url
+          value: https://runbooks.example.com/obc#openbaoconfigoperatordown
+
+  - it: renders an empty rule list when every alert is disabled
+    set:
+      prometheusRule.disabledAlerts:
+        - OpenBaoConfigOperatorDown
+        - OpenBaoConfigOperatorReconcileErrors
+        - OpenBaoConfigOperatorSteadyStateWrites
+        - OpenBaoConfigOperatorOpenBaoServerErrors
+        - OpenBaoConfigOperatorOpenBaoDenied
+    asserts:
+      - isNullOrEmpty:
+          path: spec.groups[0].rules

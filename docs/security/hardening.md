@@ -464,7 +464,6 @@ metadata:
 spec:
   serverRef:
     name: openbao
-  namespace: ""
   allowedNamespaces:
     matchLabels:
       kubernetes.io/metadata.name: openbao-platform
@@ -554,7 +553,7 @@ spec:
 
 ### R-OPENBAO-01: Least-privilege policies
 
-[openbao-policy.md](../operations/openbao-policy.md) derives the paths each kind needs. On top of
+[openbao-policy.md](../operate/openbao-policy.md) derives the paths each kind needs. On top of
 it:
 
 - **Split the platform identity.** One identity that can write `sys/policies/acl/*` and auth roles
@@ -623,7 +622,7 @@ operator's role before trusting it.
 ### R-OPENBAO-04: Self-init and no root token
 
 - Create the operator's auth method, role and policy with self-init
-  ([self-init.md](../operations/self-init.md)); it revokes the root token it used.
+  ([self-init.md](../guides/self-init.md)); it revokes the root token it used.
 - Keep recovery keys under split custody, and treat `sys/generate-root` as an incident.
 - Check now and then that no token with the `root` policy exists: list
   `bao list auth/token/accessors` and look each one up with `bao token lookup -accessor`.
@@ -643,7 +642,7 @@ operator's role before trusting it.
 ### R-TENANCY-02: Quotas
 
 Cap object counts per tenant namespace with a `ResourceQuota`
-([tenant-quotas.md](../operations/tenant-quotas.md)). The request budget and the write budget are
+([tenant-quotas.md](../operate/tenant-quotas.md)). The request budget and the write budget are
 per server, not per tenant, so one namespace can otherwise slow every other one (T-10). Set a
 `rateLimit` on every `OpenBaoServer`: without it, nothing paces the requests of one tenant. A
 resource cannot poll faster than every 30 s: CEL and the engine floor `spec.driftInterval`
@@ -669,7 +668,7 @@ offline against the status of every resource.
 - Restrict `get` on Secrets in the operator namespace
   ([R-RBAC-04](#r-rbac-04-isolate-the-operator-namespace)).
 - Back it up with the namespace
-  ([backup-restore.md](../operations/backup-restore.md#the-hash-key-secret)).
+  ([backup-restore.md](../operate/backup-restore.md#the-hash-key-secret)).
 
 Rotate it only when it may have leaked. Effect: every resource with write-only inputs sees a new
 hash with an unchanged spec, so it writes once and re-sends the **current** values of its
@@ -724,7 +723,7 @@ who can restore them (T-26).
 ### R-MONITORING-01: Alerts and audit
 
 - Enable `prometheusRule.enabled` and `serviceMonitor.enabled`; the alerts and their runbooks are
-  in [runbooks.md](../operations/runbooks.md). `OpenBaoConfigOperatorSteadyStateWrites` catches a
+  in [runbooks.md](../operate/runbooks.md). `OpenBaoConfigOperatorSteadyStateWrites` catches a
   rewrite loop; `OpenBaoConfigOperatorOpenBaoDenied` catches a policy that is too narrow or an
   identity being probed.
 - Kubernetes audit policy: log at `Metadata` level the manager ServiceAccount's
@@ -739,7 +738,7 @@ who can restore them (T-26).
 
 ### R-OPS-01: Upgrades
 
-Follow [upgrade.md](../upgrade.md), and in addition:
+Follow [upgrade.md](../operate/upgrade.md), and in addition:
 
 1. Verify the new image and chart ([R-SUPPLY-01](#r-supply-01-verify-and-enforce-signatures)).
 2. Read the release notes for changed defaults: a changed default can rewrite many objects. The

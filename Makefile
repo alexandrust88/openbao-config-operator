@@ -69,6 +69,16 @@ samples: ## Regenerate examples-generated/ from the CRDs in config/crd/bases.
 test-samples: setup-envtest ## Dry-run every generated sample against envtest with the CRDs installed.
 	KUBEBUILDER_ASSETS="$(shell "$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(LOCALBIN)" -p path)" go test ./test/samplegen/... -count=1 -v
 
+TEST_DOCS_FLAGS ?= -v
+
+.PHONY: test-docs
+test-docs: setup-envtest ## Dry-run every manifest in examples/, examples-generated/ and the docs pages against envtest; check snippet includes.
+	KUBEBUILDER_ASSETS="$(shell "$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(LOCALBIN)" -p path)" go test -tags docs ./test/docs/... -count=1 $(TEST_DOCS_FLAGS)
+
+.PHONY: docs-lint
+docs-lint: ## Shellcheck the quickstart script that the docs include (shellcheck from PATH or SHELLCHECK).
+	"$${SHELLCHECK:-shellcheck}" hack/docs/quickstart.sh
+
 .PHONY: api-coverage
 api-coverage: ## Check api-coverage/classification.yaml against the OpenAPI snapshots and regenerate docs/api-coverage.md.
 	go run ./hack/apicoverage
@@ -98,7 +108,7 @@ mod-check: ## Fail when go.mod or go.sum is not tidy, or a downloaded module doe
 	go mod verify
 
 .PHONY: check
-check: fmt-check vet mod-check lint test verify-generated api-coverage helm-lint validate-manifests ## Run the fast subset of the PR gate (no integration, namespaces or e2e).
+check: fmt-check vet mod-check lint test test-docs verify-generated api-coverage helm-lint validate-manifests ## Run the fast subset of the PR gate (no integration, namespaces or e2e).
 
 .PHONY: test-unit
 test-unit: ## Run unit tests that need no envtest control plane.
@@ -203,6 +213,12 @@ validate-manifests: kustomize helm kubeconform ## Validate the kustomize and Hel
 	"$(KUSTOMIZE)" build config/default | "$(KUBECONFORM)" -strict -ignore-missing-schemas -summary
 	"$(HELM)" template openbao-config-operator $(CHART_DIR) --namespace openbao-config-operator | \
 		"$(KUBECONFORM)" -strict -ignore-missing-schemas -summary
+
+# Env: IMAGE (required, repository:tag already loaded into the kind cluster), KIND_CLUSTER (default obco-helm),
+# PREVIOUS_CHART, PREVIOUS_VERSION, NAMESPACE, ARTIFACTS_DIR; see hack/chart/lifecycle.sh.
+.PHONY: helm-lifecycle
+helm-lifecycle: helm yq ## Package, install, upgrade from the last release, roll back and uninstall the chart on a kind cluster (deletes its CRDs).
+	PATH="$(LOCALBIN):$$PATH" HELM="$(HELM)" YQ="$(YQ)" KUBECTL="$(KUBECTL)" CHART_DIR="$(CHART_DIR)" hack/chart/lifecycle.sh
 
 ##@ Build
 

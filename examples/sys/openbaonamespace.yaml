@@ -1,3 +1,5 @@
+# Creates the OpenBao namespace team-a with custom metadata; with deletionPolicy Orphan the namespace and its
+# contents stay when the resource is deleted.
 apiVersion: sys.openbaoconfig.io/v1alpha1
 kind: OpenBaoNamespace
 metadata:

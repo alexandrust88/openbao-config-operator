@@ -492,6 +492,9 @@ jobs:
           expected=(install.yaml crds.yaml "openbao-config-operator-$VERSION.tgz" chart.cdx.json chart.spdx.json grype-db-status.json ocm-component-descriptor.yaml)
           mapfile -t -O "${#expected[@]}" expected < <(jq -r '.[].platform | sub(".*/"; "") | "sbom-\(.).spdx.json", "sbom-\(.).cdx.json"' <<<"$PLATFORMS")
           diff <(printf '%s\n' "${expected[@]}" | sort) <(cd dist && find . -mindepth 1 | sed 's|^\./||' | sort)
+      # Built after the check above and before the checksums, so it is signed and covered by the provenance.
+      - name: Examples bundle
+        run: hack/release/examples-bundle.sh "$VERSION" dist
       - name: Checksums
         run: (cd dist && sha256sum -- * > sha256sums.txt)
       - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
@@ -557,4 +560,5 @@ jobs:
           cd release
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" \
             --notes-file notes/release-notes.md --generate-notes "${flags[@]}" \
-            dist/install.yaml dist/crds.yaml dist/*.tgz dist/*.json dist/*.intoto.jsonl dist/ocm-component-descriptor.yaml dist/sha256sums.txt
+            dist/install.yaml dist/crds.yaml dist/*.tgz dist/*.json dist/*.intoto.jsonl dist/ocm-component-descriptor.yaml \
+            dist/examples-*.tar.gz dist/sha256sums.txt

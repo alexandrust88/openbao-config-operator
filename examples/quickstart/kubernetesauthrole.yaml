@@ -1,0 +1,19 @@
+# Lets the ServiceAccount app of the quickstart namespace log in with a token for the openbao audience. Its tokens
+# get the OpenBao policy of the Policy resource quickstart-app-read.
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthRole
+metadata:
+  name: quickstart-app
+  namespace: quickstart
+spec:
+  connectionRef:
+    name: openbao
+  deletionPolicy: Delete
+  boundServiceAccountNames:
+    - app
+  boundServiceAccountNamespaces:
+    - quickstart
+  audience: openbao
+  tokenTTL: 15m
+  policyRefs:
+    - name: quickstart-app-read

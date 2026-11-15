@@ -23,7 +23,7 @@ The project version and the API version are separate:
 
 Conditions for adding `v1beta1` (tracked in the [roadmap](roadmap.md)):
 
-- the API group domain is final ([BL-001](../backlog.md#bl-001-pick-an-owned-api-group-domain-before-the-first-release));
+- the API group domain is final ([BL-001](../project/backlog.md#bl-001-pick-an-owned-api-group-domain-before-the-first-release));
 - two consecutive minor releases without a breaking change to `v1alpha1`;
 - the no-write and default conformance gates pass for every built-in kind;
 - a migration guide for `v1alpha1` objects exists and the storage version migration is tested.
@@ -138,6 +138,18 @@ attests the component descriptor with keyless cosign. `hack/ocm/verify.sh vX.Y.Z
 `make release-dry-run` (or `make ocm-dry-run` on its outputs) proves the whole step, including an
 `ocm transfer --copy-resources` round trip, against local registries.
 
+The `assets` job also builds the examples bundle, `examples-<version>.tar.gz`, with
+`hack/release/examples-bundle.sh`: the curated examples (`examples/`) and the generated samples
+(`examples-generated/`) of the tagged commit, at their repository paths, so users get examples that match the CRDs
+of the release without cloning the repository. Files that git ignores are never packed, so local files such as
+`examples/live/params/params.env` do not ship, and the version placeholders that the docs use are replaced with the
+version and tag of the release. The archive is reproducible (sorted entries, the commit time as modification time,
+owner 0:0, `gzip -n`) and is built before the checksums, so `sha256sums.txt`, its signature and the provenance cover it. Users
+download it from `https://github.com/alexandrust88/openbao-config-operator/releases/download/<tag>/examples-<version>.tar.gz`.
+`hack/release/verify-release.sh` with `ASSETS_DIR` checks that the bundle is listed in `sha256sums.txt`, is covered by
+the provenance and holds only those two directories (releases up to v0.1.1 have no bundle), and `make release-dry-run`
+builds it twice and fails unless both archives are identical.
+
 If the release workflow fails after the tag is pushed, fix the cause on `main` and release the next patch
 version. Never move or reuse a tag: published artefacts are immutable, and users may have pinned the digest.
 
@@ -220,7 +232,7 @@ release that deprecates it and again in the release that removes it.
 
 | API version | rule |
 |-------------|------|
-| `v1alpha1` | a field to be removed or renamed is deprecated first and kept for at least one minor release ([upgrade.md](../upgrade.md#api-compatibility)); a renamed field keeps working under its old name during that release |
+| `v1alpha1` | a field to be removed or renamed is deprecated first and kept for at least one minor release ([upgrade.md](../operate/upgrade.md#api-compatibility)); a renamed field keeps working under its old name during that release |
 | `v1beta1` | a deprecated field is kept for at least three minor releases or nine months, whichever is longer |
 | `v1` | fields are not removed; a removal needs a new API version |
 
@@ -245,7 +257,7 @@ A default changes only in a minor release and is always called out. Changing `cr
 
 Following the Kubernetes deprecation policy, once `v1beta1` exists: `v1alpha1` is served next to it for at least one
 minor release, then deprecated (the CRD version gets `deprecated: true` and a `deprecationWarning`), and stops being
-served only after a release note told users to run the storage version migration in [upgrade.md](../upgrade.md).
+served only after a release note told users to run the storage version migration in [upgrade.md](../operate/upgrade.md).
 A deprecated beta version is served for at least three minor releases or nine months.
 
 ### Manager flags, chart values and metrics

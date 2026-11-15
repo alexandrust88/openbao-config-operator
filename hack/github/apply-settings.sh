@@ -24,7 +24,7 @@ actions_app_id=15368
 admin_role_id=5
 
 required_checks=(
-  lint test integration namespaces livekit verify-generated api-coverage govulncheck manifests
+  lint test integration namespaces livekit verify-generated api-coverage govulncheck manifests docs-examples
   e2e
   "analyze (go)" "analyze (actions)"
   dependency-review

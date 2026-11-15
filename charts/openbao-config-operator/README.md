@@ -19,6 +19,37 @@ helm install openbao-config-operator oci://ghcr.io/alexandrust88/charts/openbao-
     OpenBao identity is used, so only the platform team manages it. Aggregated into `admin` and `edit`.
   - `<release>-viewer`: read-only access to every kind. Aggregated into `view`.
 
+## CRDs managed outside the release
+
+`crds.annotations` and `crds.labels` add metadata to every CRD, for example
+`argocd.argoproj.io/sync-options: ServerSideApply=true`. `crds.keep=true` wins over a `helm.sh/resource-policy` in
+`crds.annotations`.
+
+To install the CRDs separately (`kubectl apply --server-side -f crds.yaml` from the GitHub release, a GitOps wave or
+another release), install the chart with `crds.install=false` and apply the new `crds.yaml` before each upgrade.
+`crds.yaml` has no plugin-kind CRDs.
+
+CRDs that exist without Helm ownership metadata make an install with `crds.install=true` fail:
+
+```text
+CustomResourceDefinition "accessgrants.access.openbaoconfig.io" in namespace "" exists and cannot be imported into
+the current release: invalid ownership metadata; label validation error: missing key "app.kubernetes.io/managed-by":
+must be set to "Helm"; annotation validation error: missing key "meta.helm.sh/release-name": must be set to
+"openbao-config-operator"; annotation validation error: missing key "meta.helm.sh/release-namespace": must be set to
+"openbao-config-operator"
+```
+
+Either install with `crds.install=false`, or stop the current owner managing them and adopt them into the release:
+
+```sh
+kubectl get crd -o name | grep openbaoconfig.io | xargs -I{} kubectl label {} app.kubernetes.io/managed-by=Helm --overwrite
+kubectl get crd -o name | grep openbaoconfig.io | xargs -I{} kubectl annotate {} \
+  meta.helm.sh/release-name=openbao-config-operator meta.helm.sh/release-namespace=openbao-config-operator --overwrite
+```
+
+The chart does not detect existing CRDs with `lookup`: `helm template` and GitOps render without a cluster, so the
+CRDs would drop out of the manifest and an upgrade could delete them.
+
 ## Watching a subset of namespaces
 
 With `watchNamespaces` set, the manager gets `--watch-namespaces=<list>`, and access to Secrets, ConfigMaps,
@@ -46,6 +77,8 @@ change `injectedIdentity.projectedToken.path`, set the connection's `tokenPath` 
 |-----|---------|-------------|
 | `crds.install` | `true` | install and upgrade the CRDs with the release |
 | `crds.keep` | `true` | annotate CRDs with `helm.sh/resource-policy: keep` |
+| `crds.annotations` | `{}` | extra annotations on every CRD; with `crds.keep: true` a `helm.sh/resource-policy` here is replaced by `keep` |
+| `crds.labels` | `{}` | extra labels on every CRD; the chart's own label keys are refused |
 | `image.repository` | `ghcr.io/alexandrust88/openbao-config-operator` | manager image |
 | `image.tag` | `""` | defaults to the chart `appVersion` |
 | `image.digest` | `""` | `sha256:...`; pulls by digest when set |
@@ -70,7 +103,7 @@ change `injectedIdentity.projectedToken.path`, set the connection's `tokenPath` 
 | `serviceMonitor.labels` / `.interval` / `.scrapeTimeout` | `{}` / `30s` / `10s` | |
 | `serviceMonitor.tlsConfig` | `{insecureSkipVerify: true}` | with `metrics.certSecret`, `ca` (or `caFile`) and `serverName` are required and `insecureSkipVerify` is refused |
 | `serviceMonitor.relabelings` / `.metricRelabelings` | `[]` | |
-| `prometheusRule.enabled` | `false` | PrometheusRule with the alerts in [runbooks.md](../../docs/operations/runbooks.md) |
+| `prometheusRule.enabled` | `false` | PrometheusRule with the alerts in [runbooks.md](../../docs/operate/runbooks.md) |
 | `prometheusRule.selector` | `""` | series selector; empty means `job="<fullname>-metrics"` in the release namespace |
 | `prometheusRule.labels` / `.alertLabels` / `.disabledAlerts` | `{}` / `{}` / `[]` | rule object labels, labels on every alert, alerts to leave out |
 | `prometheusRule.reconcileErrorRatio` / `.openbaoErrorRatio` / `.steadyStateWritesFor` | `0.1` / `0.05` / `30m` | alert thresholds |

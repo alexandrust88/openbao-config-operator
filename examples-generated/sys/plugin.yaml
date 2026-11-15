@@ -1,3 +1,13 @@
+# Plugin (sys.openbaoconfig.io/v1alpha1)
+# Plugin registers an external plugin in the OpenBao plugin catalog at sys/plugins/catalog/<type>/<name>, so mounts
+# can use it.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: command, connectionRef, sha256, type.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/sys/#plugin
+# Curated example: examples/sys/plugin.yaml
 apiVersion: sys.openbaoconfig.io/v1alpha1
 kind: Plugin
 metadata:

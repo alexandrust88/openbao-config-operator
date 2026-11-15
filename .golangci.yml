@@ -3,6 +3,7 @@ run:
   allow-parallel-runners: true
   build-tags:
     - conformance
+    - docs
     - e2e
     - integration
     - load

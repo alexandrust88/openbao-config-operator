@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/assets/logo.svg" width="128" alt=""></p>
+
 # openbao-config-operator
 
 **Manage OpenBao configuration as Kubernetes resources: typed, multi-tenant, and silent at rest.**
@@ -12,6 +14,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/alexandrust88/openbao-config-operator)](https://goreportcard.com/report/github.com/alexandrust88/openbao-config-operator)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-site-blue)](https://alexandrust88.github.io/openbao-config-operator/)
+
+**[Read the documentation](https://alexandrust88.github.io/openbao-config-operator/)**: [quickstart on kind](https://alexandrust88.github.io/openbao-config-operator/get-started/quickstart/),
+[install](https://alexandrust88.github.io/openbao-config-operator/get-started/install/), [guides](https://alexandrust88.github.io/openbao-config-operator/guides/), [API reference](https://alexandrust88.github.io/openbao-config-operator/reference/api/).
 
 openbao-config-operator keeps the configuration of an existing [OpenBao](https://openbao.org) server in the
 state that Kubernetes custom resources declare: policies, namespaces, mounts, auth methods and roles, secrets
@@ -52,11 +57,11 @@ All of it runs on one generic engine; each kind adds a small adapter.
   [ADR 0010](docs/adr/0010-openbaoserver-owns-address-and-audiences.md)).
 - **Silent at rest.** A steady-state reconcile reads and never writes; `openbao_writes_total` stays flat. The load
   test shows zero OpenBao and Kubernetes writes over three drift intervals at 5,000 objects
-  ([load testing](docs/load-testing.md#steady-state)).
+  ([load testing](docs/operate/load-testing.md#steady-state)).
 - **Drift tiers.** Access-critical kinds (policies, auth) are checked every 15 minutes and everything else hourly,
   with ±20% jitter and a per-server request budget; per-object overrides ([ADR 0014](docs/adr/0014-drift-tiers-and-request-budget.md)).
 - **Adopt a running server safely.** `obc-import` reads a live OpenBao and writes custom resources in `Observe`
-  mode, which reports drift and never writes. Switch them to `Manage` one at a time ([import](docs/import.md),
+  mode, which reports drift and never writes. Switch them to `Manage` one at a time ([import](docs/guides/import.md),
   [ADR 0016](docs/adr/0016-observe-mode-and-import-tool.md)).
 - **Safe by default.** `creationPolicy: Create` and `deletionPolicy: Orphan` by default, one owner per path, a
   second guard before deleting mounts, namespaces, KV data or audit devices, and a write circuit breaker
@@ -101,7 +106,7 @@ EOF
 ```
 
 **3. Install the operator** from the Helm repository (the same signed chart is also published as an OCI
-artifact, see the [install guide](docs/operations/install.md)):
+artifact, see the [install guide](docs/get-started/install.md)):
 
 ```sh
 helm repo add openbao-config-operator https://alexandrust88.github.io/openbao-config-operator/charts
@@ -257,15 +262,17 @@ The full documentation is published at
 
 | | |
 |---|---|
-| [Install](docs/operations/install.md) and [connections](docs/operations/connections.md) | install modes, tenancy models, server and connection fields |
+| [Quickstart on kind](docs/get-started/quickstart.md) | a local tutorial: OpenBao dev server, the operator and first resources |
+| [Guides](docs/guides/) | auth methods, secrets engines, identity, the access model, tenants, Argo CD |
+| [Install](docs/get-started/install.md) and [connections](docs/reference/connections.md) | install modes, tenancy models, server and connection fields |
 | [Kind catalogue](docs/kinds.md) | every kind, its path, availability and test evidence |
-| [Import a running OpenBao](docs/import.md) | `obc-import` and observe mode |
-| [Operations](docs/operations/) | Argo CD health, backup and restore, runbooks, troubleshooting |
-| [Upgrade](docs/upgrade.md) | API compatibility, CRD upgrades, rollback |
+| [Import a running OpenBao](docs/guides/import.md) | `obc-import` and observe mode |
+| [Operations](docs/operate/) | Argo CD health, backup and restore, runbooks, troubleshooting |
+| [Upgrade](docs/operate/upgrade.md) | API compatibility, CRD upgrades, rollback |
 | [Security](docs/security.md), [threat model](docs/security/threat-model.md), [hardening](docs/security/hardening.md) | controls, residual risks, recommended settings |
 | [Architecture](docs/architecture.md) and [ADRs](docs/adr/) | design rules and decisions |
-| [Load testing](docs/load-testing.md), [API coverage](docs/api-coverage.md), [verification](docs/verification.md) | the evidence behind the claims above |
-| [Live testing](docs/live-testing.md) | a kustomize kit that applies every built-in kind to a running OpenBao, per connection mode |
+| [Load testing](docs/operate/load-testing.md), [API coverage](docs/api-coverage.md), [verification](docs/project/verification.md) | the evidence behind the claims above |
+| [Live testing](docs/operate/live-testing.md) | a kustomize kit that applies every built-in kind to a running OpenBao, per connection mode |
 | [Roadmap](docs/maintainers/roadmap.md) and [release process](docs/maintainers/release-process.md) | what comes next, versioning, support window, deprecation policy |
 
 ## Community

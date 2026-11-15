@@ -8,6 +8,12 @@ crds:
   install: true
   # -- Annotate the CRDs with helm.sh/resource-policy=keep so uninstalling the release does not delete every custom resource.
   keep: true
+  # -- Extra annotations on every CRD, for example argocd.argoproj.io/sync-options: ServerSideApply=true. With keep
+  # true, helm.sh/resource-policy here is replaced by keep. controller-gen.kubebuilder.io/version is refused.
+  annotations: {}
+  # -- Extra labels on every CRD. The chart's own label keys (helm.sh/chart, app.kubernetes.io/name, instance,
+  # version and managed-by) are refused.
+  labels: {}
 
 pluginKinds:
   # -- Install the CRDs of kinds that need an external OpenBao plugin (cloud auth and secrets, GitHub, Okta, LDAP,

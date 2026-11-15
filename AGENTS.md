@@ -110,7 +110,7 @@ fails on any diff or untracked generated file.
 
 Run the narrowest check that proves the change first, then widen. Report the exact commands and
 their results; a skipped test is not a pass. What each check proves, and what it does not, is in
-[docs/verification.md](docs/verification.md).
+[docs/project/verification.md](docs/project/verification.md).
 
 ```sh
 gofmt -l api/<group> internal/controller/<group>
@@ -168,9 +168,9 @@ make test-e2e              # kind and Docker; creates and deletes a local kind c
 | [docs/architecture.md](docs/architecture.md) | goals, non-goals, design, reconcile flow, roadmap |
 | [docs/kinds.md](docs/kinds.md) | the catalogue of kinds: path, availability, phase |
 | [docs/adr/](docs/adr/) | accepted decisions and their rationale |
-| [docs/verification.md](docs/verification.md) | what each check proves and its limits |
-| [docs/backlog.md](docs/backlog.md) | planned outcomes not implemented yet |
-| [docs/tech-debt.md](docs/tech-debt.md) | known current limitations and their exit criteria |
+| [docs/project/verification.md](docs/project/verification.md) | what each check proves and its limits |
+| [docs/project/backlog.md](docs/project/backlog.md) | planned outcomes not implemented yet |
+| [docs/project/tech-debt.md](docs/project/tech-debt.md) | known current limitations and their exit criteria |
 
 Keep these categories separate: product promises and design in the architecture, rationale in
 ADRs, planned outcomes in the backlog, unresolved shortcomings in

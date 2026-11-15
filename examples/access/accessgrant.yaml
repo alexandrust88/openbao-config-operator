@@ -1,3 +1,5 @@
+# Gives the payments ServiceAccounts write access to their own KV paths and read access to shared paths per
+# organization, through one generated ACL policy and one Kubernetes auth role per subject.
 apiVersion: access.openbaoconfig.io/v1alpha1
 kind: AccessGrant
 metadata:

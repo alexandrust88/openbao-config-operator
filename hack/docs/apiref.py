@@ -1,7 +1,9 @@
 """Generate the API reference (markdown) from the CRDs in config/crd/bases.
 
 Usage: python hack/docs/apiref.py [<crd-dir>] [<out-dir>]
-The mkdocs hook (hack/docs/hooks.py) calls render() during the build, so the pages are never committed.
+The mkdocs hook (hack/docs/hooks.py) calls render() during the build, so the pages are never committed. Each kind
+shows its curated example (examples/<group>/<kind>.yaml), or else its generated sample (examples-generated/), included
+with a pymdown snippet so the page always shows the file CI tests.
 """
 
 import html
@@ -11,8 +13,11 @@ from pathlib import Path
 
 import yaml
 
+ROOT = Path(__file__).resolve().parents[2]
 GROUP_ORDER = ["core", "sys", "auth", "secrets", "identity", "access"]
 SKIPPED_ROOT_FIELDS = {"apiVersion", "kind", "metadata"}
+# Links from a page under docs/reference/<dir>/ to a repository file; hooks.py turns them into GitHub links.
+REPO_LINK = "../../../"
 
 
 def load_crds(crd_dir):
@@ -26,6 +31,38 @@ def load_crds(crd_dir):
 
 def short_group(group):
     return group.split(".", 1)[0]
+
+
+def examples_of(root, group, kind):
+    """Repository-relative example files of a kind: (curated, curated variants, generated); missing ones are None."""
+    name = kind.lower()
+    short = short_group(group)
+    curated = root / "examples" / short / f"{name}.yaml"
+    generated = root / "examples-generated" / short / f"{name}.yaml"
+    variants = sorted((root / "examples" / short).glob(f"{name}-*.yaml"))
+
+    def rel(path):
+        return path.relative_to(root).as_posix() if path.is_file() else None
+
+    return rel(curated), [rel(v) for v in variants], rel(generated)
+
+
+def snippet(path, indent=""):
+    """A yaml fence that includes a repository file with pymdown snippets, titled with the file path."""
+    return [f'{indent}```yaml title="{path}"', f'{indent}--8<-- "{path}"', f"{indent}```"]
+
+
+def example_section(root, crd, heading):
+    spec = crd["spec"]
+    curated, variants, generated = examples_of(root, spec["group"], spec["names"]["kind"])
+    shown = curated or generated
+    if not shown:
+        return []
+    links = [f"[`{Path(shown).name}`]({REPO_LINK}{shown})"]
+    links += [f"[`{Path(v).name}`]({REPO_LINK}{v})" for v in variants]
+    if curated and generated:
+        links.append(f"[generated sample with every field]({REPO_LINK}{generated})")
+    return [f"{heading} Example", ""] + snippet(shown) + ["", "On GitHub: " + ", ".join(links) + ".", ""]
 
 
 def group_key(group):
@@ -198,7 +235,7 @@ def field_table(schema):
     return "\n".join(lines)
 
 
-def kind_section(crd):
+def kind_section(crd, root=ROOT):
     spec = crd["spec"]
     names = spec["names"]
     facts = [
@@ -211,6 +248,7 @@ def kind_section(crd):
     if names.get("categories"):
         facts.append("**Categories:** " + ", ".join(f"`{n}`" for n in names["categories"]))
     out = [f"## {names['kind']}", "", "  \n".join(facts), ""]
+    heading = "###" if len(spec["versions"]) == 1 else "####"
     for version in spec["versions"]:
         schema = version["schema"]["openAPIV3Schema"]
         if len(spec["versions"]) > 1:
@@ -221,13 +259,16 @@ def kind_section(crd):
         description = describe(schema.get("description", ""))
         if description:
             out += [f"<div>{description}</div>", ""]
+        if version.get("storage"):
+            out += example_section(root, crd, heading)
+        out += [f"{heading} Fields", ""]
         if rules(schema):
             out += ["<div><strong>Object validation:</strong><br>" + "<br>".join(rules(schema)) + "</div>", ""]
         out += [field_table(schema), ""]
     return "\n".join(out)
 
 
-def render(crd_dir):
+def render(crd_dir, root=ROOT):
     """Return {relative markdown path: content} for the reference index and one page per API group."""
     groups = {}
     for crd in load_crds(crd_dir):
@@ -238,7 +279,8 @@ def render(crd_dir):
         "",
         "Generated from the CustomResourceDefinitions in `config/crd/bases`, which `controller-gen` builds from",
         "the Go types in `api/`. Every field lists its type, default, validation (OpenAPI and CEL) and",
-        "description. The [kind catalogue](../../kinds.md) has the implementation status of each kind.",
+        "description, after an example manifest. The [kind catalogue](../../kinds.md) has the implementation status of",
+        "each kind; the [example gallery](../examples/index.md) lists every example.",
         "",
         "| group | kinds |",
         "|-------|-------|",
@@ -249,7 +291,7 @@ def render(crd_dir):
         index.append(f"| [`{group}`]({name}.md) | {len(crds)} |")
         page = [f"# {group}", ""]
         page += [", ".join(f"[{c['spec']['names']['kind']}](#{c['spec']['names']['kind'].lower()})" for c in crds), ""]
-        page += [kind_section(c) for c in crds]
+        page += [kind_section(c, root) for c in crds]
         pages[f"reference/api/{name}.md"] = "\n".join(page)
     index.append("")
     pages["reference/api/index.md"] = "\n".join(index)

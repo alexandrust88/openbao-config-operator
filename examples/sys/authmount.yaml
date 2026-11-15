@@ -1,3 +1,5 @@
+# Enables the auth methods that the auth kinds then configure: AppRole for CI pipelines at approle-ci, with user
+# lockout after five failed logins, plus LDAP and Kubernetes mounts.
 apiVersion: sys.openbaoconfig.io/v1alpha1
 kind: AuthMount
 metadata:

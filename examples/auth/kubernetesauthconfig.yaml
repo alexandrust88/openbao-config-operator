@@ -1,3 +1,5 @@
+# Points the kubernetes auth mount at the cluster's API server with its CA certificate, and reads the token reviewer
+# JWT from a Secret.
 apiVersion: v1
 kind: Secret
 metadata:

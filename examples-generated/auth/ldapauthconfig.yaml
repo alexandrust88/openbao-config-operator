@@ -1,3 +1,12 @@
+# LDAPAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# LDAPAuthConfig manages the configuration of an OpenBao LDAP auth method at auth/<mountPath>/config.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef, url.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#ldapauthconfig
+# Curated example: examples/auth/ldapauthconfig.yaml
 apiVersion: auth.openbaoconfig.io/v1alpha1
 kind: LDAPAuthConfig
 metadata:

@@ -1,3 +1,12 @@
+# EntityAlias (identity.openbaoconfig.io/v1alpha1)
+# EntityAlias links a login on an auth mount to an OpenBao identity entity (`identity/entity-alias`).
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: aliasName, connectionRef.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/identity/#entityalias
+# Curated example: examples/identity/entityalias.yaml
 apiVersion: identity.openbaoconfig.io/v1alpha1
 kind: EntityAlias
 metadata:

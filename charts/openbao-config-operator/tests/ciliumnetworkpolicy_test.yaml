@@ -1,0 +1,96 @@
+suite: ciliumnetworkpolicy
+templates:
+  - templates/ciliumnetworkpolicy.yaml
+release:
+  name: obc
+  namespace: openbao-system
+set:
+  networkPolicy.flavor: cilium
+tests:
+  - it: selects the manager pods and allows OpenBao on any destination without fqdns
+    asserts:
+      - equal:
+          path: spec.endpointSelector.matchLabels
+          value:
+            app.kubernetes.io/name: openbao-config-operator
+            app.kubernetes.io/instance: obc
+      - equal:
+          path: spec.ingress[0].toPorts
+          value: [{ports: [{port: "8443", protocol: TCP}]}]
+      - equal:
+          path: spec.ingress[0].fromEndpoints
+          value:
+            - matchLabels: {"k8s:io.kubernetes.pod.namespace": openbao-system}
+            - matchLabels: {"k8s:io.kubernetes.pod.namespace": monitoring}
+      - notExists:
+          path: spec.egress[0].toPorts[0].rules
+      - equal:
+          path: spec.egress[1].toPorts[0].ports
+          value: [{port: "443", protocol: TCP}, {port: "6443", protocol: TCP}]
+      - equal:
+          path: spec.egress[2].toPorts[0].ports
+          value: [{port: "8200", protocol: TCP}]
+      - notExists:
+          path: spec.egress[2].toFQDNs
+      - lengthEqual:
+          path: spec.egress
+          count: 3
+
+  - it: renders no CiliumNetworkPolicy when disabled
+    set:
+      networkPolicy.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: allows no ingress without metrics
+    set:
+      metrics.enabled: false
+    asserts:
+      - equal:
+          path: spec.ingress
+          value: [{}]
+
+  - it: allows only the release namespace to scrape when monitoringNamespace is empty
+    set:
+      networkPolicy.metrics.monitoringNamespace: ""
+    asserts:
+      - equal:
+          path: spec.ingress[0].fromEndpoints
+          value:
+            - matchLabels: {"k8s:io.kubernetes.pod.namespace": openbao-system}
+
+  - it: allows NodeLocal DNSCache without DNS proxy rules when there are no fqdns
+    set:
+      networkPolicy.dns.nodeLocalDNS.enabled: true
+    asserts:
+      - equal:
+          path: spec.egress[1].toCIDR
+          value: [169.254.20.10/32]
+      - notExists:
+          path: spec.egress[1].toPorts[0].rules
+      - lengthEqual:
+          path: spec.egress
+          count: 4
+
+  - it: uses custom ports and appends extraEgress
+    set:
+      networkPolicy.apiServer.ports: [8443]
+      networkPolicy.openbao.ports: [443]
+      networkPolicy.extraEgress:
+        - toFQDNs:
+            - matchName: idp.example.com
+          toPorts:
+            - ports:
+                - port: "443"
+                  protocol: TCP
+    asserts:
+      - equal:
+          path: spec.egress[1].toPorts[0].ports
+          value: [{port: "8443", protocol: TCP}]
+      - equal:
+          path: spec.egress[2].toPorts[0].ports
+          value: [{port: "443", protocol: TCP}]
+      - equal:
+          path: spec.egress[3].toFQDNs
+          value: [{matchName: idp.example.com}]

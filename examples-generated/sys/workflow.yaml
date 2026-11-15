@@ -1,3 +1,13 @@
+# Workflow (sys.openbaoconfig.io/v1alpha1)
+# Workflow manages an OpenBao workflow at sys/workflows/manage/<path>: a declarative sequence of API requests (a
+# profile) that callers run through sys/workflows/execute/<path>.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: connectionRef, workflow.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/sys/#workflow
+# Curated example: examples/sys/workflow.yaml
 apiVersion: sys.openbaoconfig.io/v1alpha1
 kind: Workflow
 metadata:

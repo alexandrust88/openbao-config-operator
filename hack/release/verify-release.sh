@@ -3,7 +3,9 @@
 # workflow run of exactly this tag (keyless, GitHub OIDC issuer, push trigger), carry SPDX + CycloneDX SBOM and SLSA
 # provenance attestations, the image provenance names this tag, the chart also carries the legacy cosign signature
 # Artifact Hub detects, and the verified chart pins the verified image digest. With ASSETS_DIR it also checks the
-# signed sha256sums.txt and the provenance (.intoto.jsonl) of the downloaded release assets, with the gh CLI on PATH
+# signed sha256sums.txt and the provenance (.intoto.jsonl) of the downloaded release assets, and that the examples
+# bundle (examples-<version>.tar.gz) is listed there and holds only examples/ and examples-generated/ (skipped for the
+# releases published before the bundle existed), with the gh CLI on PATH
 # the GitHub artifact attestations, and with the ocm CLI on PATH (or OCM) the OCM component version
 # (hack/ocm/verify.sh; skipped for releases published before the OCM component existed).
 # Usage: hack/release/verify-release.sh <vX.Y.Z>
@@ -93,6 +95,25 @@ if [ -n "${ASSETS_DIR:-}" ]; then
   step "release assets provenance (.intoto.jsonl)"
   check cosign verify-blob-attestation "${pin[@]}" --type slsaprovenance1 \
     --bundle "$ASSETS_DIR/openbao-config-operator.intoto.jsonl" "$ASSETS_DIR/install.yaml"
+  examples=examples-$version.tar.gz
+  step "release assets include $examples"
+  case $tag in
+    v0.1.0 | v0.1.1) echo "skipped (published before the examples bundle)" ;;
+    *)
+      examples_listed() { awk '{sub(/^\*/, "", $2); print $2}' "$ASSETS_DIR/sha256sums.txt" | grep -qxF "$examples"; }
+      check examples_listed
+      step "  provenance (.intoto.jsonl)"
+      check cosign verify-blob-attestation "${pin[@]}" --type slsaprovenance1 \
+        --bundle "$ASSETS_DIR/openbao-config-operator.intoto.jsonl" "$ASSETS_DIR/$examples"
+      step "  holds only examples/ and examples-generated/"
+      only_examples() {
+        local listing
+        listing=$(tar -tzf "$ASSETS_DIR/$examples") || return 1
+        ! grep -vE '^examples(-generated)?/[^./][^/]*(/[^./][^/]*)*$' <<<"$listing"
+      }
+      check only_examples
+      ;;
+  esac
 fi
 
 if command -v gh >/dev/null; then

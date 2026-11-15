@@ -1,0 +1,34 @@
+suite: poddisruptionbudget
+templates:
+  - templates/poddisruptionbudget.yaml
+release:
+  name: obc
+  namespace: openbao-system
+tests:
+  - it: selects the manager pods
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: openbao-config-operator
+            app.kubernetes.io/instance: obc
+
+  - it: renders no PodDisruptionBudget when disabled
+    set:
+      podDisruptionBudget.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: accepts a percentage minAvailable
+    set:
+      replicas: 3
+      podDisruptionBudget.minAvailable: 50%
+    asserts:
+      - equal:
+          path: spec.minAvailable
+          value: 50%
+      - notExists:
+          path: spec.maxUnavailable

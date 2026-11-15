@@ -21,7 +21,7 @@ Questions about OpenBao itself (server configuration, sealing, storage, plugins)
 
 - Check the resource's conditions: `kubectl describe <kind> <name>`. The `Ready` and `Synced` reasons and messages
   usually name the cause.
-- Read the [troubleshooting guide](docs/operations/troubleshooting.md) and the [runbooks](docs/operations/runbooks.md).
+- Read the [troubleshooting guide](docs/operate/troubleshooting.md) and the [runbooks](docs/operate/runbooks.md).
 - Search existing issues and discussions.
 
 When you ask, include the operator version, the OpenBao version, the resource YAML and its status conditions.

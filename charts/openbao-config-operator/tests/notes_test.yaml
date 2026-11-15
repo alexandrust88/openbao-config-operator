@@ -1,0 +1,108 @@
+suite: notes
+templates:
+  - templates/NOTES.txt
+release:
+  name: obc
+  namespace: openbao-system
+tests:
+  - it: names the release and the rollout command
+    asserts:
+      - matchRegexRaw:
+          pattern: obc-openbao-config-operator 0\.1\.0 is installed in namespace openbao-system
+      - matchRegexRaw:
+          pattern: kubectl -n openbao-system rollout status deployment/obc-openbao-config-operator
+
+  - it: says nothing about watched namespaces when cluster-wide
+    asserts:
+      - notMatchRegexRaw:
+          pattern: The manager watches only
+
+  - it: lists the watched namespaces once each
+    set:
+      watchNamespaces: [team-a, team-b, team-a]
+    asserts:
+      - matchRegexRaw:
+          pattern: "The manager watches only: team-a,team-b\\."
+
+  - it: names the user roles
+    asserts:
+      - matchRegexRaw:
+          pattern: "User roles: obc-tenant-editor .* and obc-viewer\\."
+
+  - it: leaves the user roles out when rbac.userRoles is false
+    set:
+      rbac.userRoles: false
+    asserts:
+      - notMatchRegexRaw:
+          pattern: "User roles:"
+
+  - it: explains metrics access
+    asserts:
+      - matchRegexRaw:
+          pattern: bind ClusterRole obc-openbao-config-operator-metrics-reader
+      - matchRegexRaw:
+          pattern: on port 8443
+
+  - it: leaves metrics out when disabled
+    set:
+      metrics.enabled: false
+    asserts:
+      - notMatchRegexRaw:
+          pattern: Metrics are served
+
+  - it: says nothing about CRDs managed by the release
+    asserts:
+      - notMatchRegexRaw:
+          pattern: crds.install=false
+
+  - it: points at the release crds.yaml when the release does not manage the CRDs
+    set:
+      crds.install: false
+    asserts:
+      - matchRegexRaw:
+          pattern: "crds.install=false: this release does not manage the CRDs"
+      - matchRegexRaw:
+          pattern: https://github\.com/alexandrust88/openbao-config-operator/releases/download/v0\.1\.0/crds\.yaml
+
+  - it: warns about open egress of the cilium flavor without OpenBao host names
+    set:
+      networkPolicy.flavor: cilium
+    asserts:
+      - matchRegexRaw:
+          pattern: "WARNING: the cilium network policy allows egress to any destination on the OpenBao ports. Set networkPolicy.openbao.fqdns"
+
+  - it: does not warn for the cilium flavor with OpenBao host names
+    set:
+      networkPolicy.flavor: cilium
+      networkPolicy.openbao.fqdns: [bao.example.com]
+    asserts:
+      - notMatchRegexRaw:
+          pattern: network policy allows egress
+
+  - it: warns for the kubernetes flavor when only the API server is named
+    set:
+      networkPolicy.apiServer.cidrs: [10.0.0.10/32]
+    asserts:
+      - matchRegexRaw:
+          pattern: "API server or OpenBao ports. Set networkPolicy.apiServer.cidrs and networkPolicy.openbao.to"
+
+  - it: does not warn when the network policy is disabled
+    set:
+      networkPolicy.enabled: false
+    asserts:
+      - notMatchRegexRaw:
+          pattern: network policy allows egress
+
+  - it: does not warn about CRD deletion by default
+    asserts:
+      - notMatchRegexRaw:
+          pattern: crds.keep=false
+
+  - it: does not warn about CRD deletion when crds.annotations keeps the CRDs
+    set:
+      crds.keep: false
+      crds.annotations:
+        helm.sh/resource-policy: keep
+    asserts:
+      - notMatchRegexRaw:
+          pattern: crds.keep=false

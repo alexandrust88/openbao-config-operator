@@ -31,3 +31,91 @@ tests:
       - hasDocuments:
           count: 0
 
+
+  - it: adds no extra annotations or labels by default
+    asserts:
+      - equal:
+          path: metadata.annotations
+          value:
+            controller-gen.kubebuilder.io/version: v0.20.1
+            helm.sh/resource-policy: keep
+      - equal:
+          path: metadata.labels
+          value:
+            helm.sh/chart: openbao-config-operator-0.1.0
+            app.kubernetes.io/name: openbao-config-operator
+            app.kubernetes.io/instance: obc
+            app.kubernetes.io/version: "0.1.0"
+            app.kubernetes.io/managed-by: Helm
+
+  - it: adds crds.annotations and crds.labels
+    set:
+      crds.annotations:
+        argocd.argoproj.io/sync-options: ServerSideApply=true,Prune=false
+      crds.labels:
+        team: platform
+    asserts:
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-options"]
+          value: ServerSideApply=true,Prune=false
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep
+      - equal:
+          path: metadata.labels.team
+          value: platform
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+
+  - it: lets crds.keep=true win over helm.sh/resource-policy in crds.annotations
+    set:
+      crds.annotations:
+        helm.sh/resource-policy: delete
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep
+
+  - it: uses helm.sh/resource-policy from crds.annotations when crds.keep is false
+    set:
+      crds.keep: false
+      crds.annotations:
+        helm.sh/resource-policy: keep
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep
+
+  - it: renders only the controller-gen annotation when crds.keep is false and crds.annotations is empty
+    set:
+      crds.keep: false
+    asserts:
+      - equal:
+          path: metadata.annotations
+          value:
+            controller-gen.kubebuilder.io/version: v0.20.1
+
+  - it: refuses the controller-gen annotation in crds.annotations
+    set:
+      crds.annotations:
+        controller-gen.kubebuilder.io/version: v0.0.0
+    asserts:
+      - failedTemplate:
+          errorPattern: invalid propertyName 'controller-gen.kubebuilder.io/version'
+
+  - it: refuses a chart label in crds.labels
+    set:
+      crds.labels:
+        app.kubernetes.io/managed-by: argocd
+    asserts:
+      - failedTemplate:
+          errorPattern: invalid propertyName 'app.kubernetes.io/managed-by'
+
+  - it: refuses a non-string annotation value
+    set:
+      crds.annotations:
+        example.com/flag: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/crds/annotations/example.com~1flag': got boolean, want string"

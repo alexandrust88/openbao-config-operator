@@ -1,3 +1,5 @@
+# Gives people access by identity provider group: per organization, developers can write and leads own the org
+# paths, while in the prod namespace developers only read and leads write.
 apiVersion: access.openbaoconfig.io/v1alpha1
 kind: AccessLayout
 metadata:

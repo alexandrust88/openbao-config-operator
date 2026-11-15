@@ -1,3 +1,13 @@
+# AuditRequestHeader (sys.openbaoconfig.io/v1alpha1)
+# AuditRequestHeader makes the OpenBao audit devices record an HTTP request header, at
+# sys/config/auditing/request-headers/<name>, in the root namespace only.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: connectionRef.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/sys/#auditrequestheader
+# Curated example: examples/sys/auditrequestheader.yaml
 apiVersion: sys.openbaoconfig.io/v1alpha1
 kind: AuditRequestHeader
 metadata:

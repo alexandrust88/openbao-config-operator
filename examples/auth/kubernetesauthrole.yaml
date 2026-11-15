@@ -1,3 +1,5 @@
+# Lets pods of ServiceAccount app or app-worker in namespace team-a (or in a namespace selected by labels) log in
+# with the openbao audience and get the app-reader policy plus the policy of a Policy resource.
 apiVersion: auth.openbaoconfig.io/v1alpha1
 kind: KubernetesAuthRole
 metadata:

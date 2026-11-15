@@ -1,7 +1,7 @@
 //go:build load
 
 // Package load runs the manager binary against envtest and a local OpenBao and measures ramp-up, steady state,
-// drift repair, an OpenBao outage and deletion at a configurable object count. See docs/load-testing.md and
+// drift repair, an OpenBao outage and deletion at a configurable object count. See docs/operate/load-testing.md and
 // hack/load/run.sh.
 package load
 

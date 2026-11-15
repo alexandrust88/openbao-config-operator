@@ -16,7 +16,29 @@
       "additionalProperties": false,
       "properties": {
         "install": {"type": "boolean"},
-        "keep": {"type": "boolean"}
+        "keep": {"type": "boolean"},
+        "annotations": {
+          "description": "Extra annotations on every CRD. With keep true, helm.sh/resource-policy is replaced by keep.",
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "propertyNames": {"not": {"const": "controller-gen.kubebuilder.io/version"}}
+        },
+        "labels": {
+          "description": "Extra labels on every CRD, besides the chart's own labels.",
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "propertyNames": {
+            "not": {
+              "enum": [
+                "helm.sh/chart",
+                "app.kubernetes.io/name",
+                "app.kubernetes.io/instance",
+                "app.kubernetes.io/version",
+                "app.kubernetes.io/managed-by"
+              ]
+            }
+          }
+        }
       }
     },
     "pluginKinds": {

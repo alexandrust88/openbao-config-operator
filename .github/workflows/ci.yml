@@ -26,7 +26,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - run: make fmt-check vet mod-check
-      - run: go vet -tags conformance,load ./test/...
+      - run: go vet -tags conformance,load,docs ./test/...
       - run: make lint-config lint
 
   test:
@@ -140,6 +140,7 @@ jobs:
           LIVEKIT_LOG_DIR: ${{ runner.temp }}/livekit/logs
           LIVEKIT_OUT: ${{ runner.temp }}/livekit/e2e.md
         run: |
+          set -o pipefail
           mkdir -p "$RUNNER_TEMP/livekit"
           make test-livekit 2>&1 | tee "$RUNNER_TEMP/livekit/tests.log"
           test -s "$LIVEKIT_OUT"
@@ -166,6 +167,73 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - run: make verify-generated
+
+  docs-examples:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
+      - run: make docs-lint
+      # go test -json becomes a JUnit report; the step fails on a test failure, a missing top-level test, no manifest
+      # subtests or any skipped test.
+      - name: Dry-run every manifest the docs show
+        run: |
+          mkdir -p "$RUNNER_TEMP/docs"
+          status=0
+          make test-docs TEST_DOCS_FLAGS=-json >"$RUNNER_TEMP/docs/tests.jsonl" 2>&1 || status=$?
+          python3 - "$RUNNER_TEMP/docs/tests.jsonl" "$RUNNER_TEMP/docs/junit.xml" <<'PYTHON'
+          import json, os, sys, xml.etree.ElementTree as ET
+          results, output = {}, {}
+          with open(sys.argv[1]) as f:
+              for line in f:
+                  try:
+                      event = json.loads(line)
+                  except ValueError:
+                      print(line, end="")
+                      continue
+                  if not isinstance(event, dict) or not event.get("Test"):
+                      continue
+                  if event["Action"] == "output":
+                      output.setdefault(event["Test"], []).append(event.get("Output", ""))
+                  elif event["Action"] in ("pass", "fail", "skip"):
+                      results[event["Test"]] = (event["Action"], event.get("Elapsed", 0))
+          counts = {"pass": 0, "fail": 0, "skip": 0}
+          suite = ET.Element("testsuite", name="docs-examples")
+          for name, (action, elapsed) in sorted(results.items()):
+              counts[action] += 1
+              case = ET.SubElement(suite, "testcase", classname="test/docs", name=name, time=str(elapsed))
+              text = "".join(output.get(name, []))
+              if action == "fail":
+                  ET.SubElement(case, "failure", message="failed").text = text
+                  print(text, end="")
+              elif action == "skip":
+                  ET.SubElement(case, "skipped", message="skipped").text = text
+          suite.set("tests", str(len(results)))
+          suite.set("failures", str(counts["fail"]))
+          suite.set("skipped", str(counts["skip"]))
+          ET.ElementTree(suite).write(sys.argv[2], encoding="utf-8", xml_declaration=True)
+          summary = f"docs examples: {counts['pass']} passed, {counts['fail']} failed, {counts['skip']} skipped"
+          print(summary)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(summary + "\n")
+          required = {"TestManifestsDryRun", "TestSnippetReferences", "TestVersionTokens", "TestNoDuplicatedManifests"}
+          assert required <= results.keys(), f"top-level tests did not run: {sorted(required - results.keys())}"
+          assert any(n.startswith("TestManifestsDryRun/") for n in results), "no manifest subtests ran"
+          assert not counts["skip"], "docs tests were skipped"
+          PYTHON
+          exit "$status"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: docs-examples-results
+          path: ${{ runner.temp }}/docs
+          retention-days: 14
+          if-no-files-found: error
 
   api-coverage:
     runs-on: ubuntu-24.04

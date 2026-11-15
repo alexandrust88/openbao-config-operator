@@ -17,7 +17,7 @@ concurrency:
 jobs:
   e2e:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 75
     permissions:
       contents: read
     env:
@@ -60,6 +60,7 @@ jobs:
           E2E_SKIP_IMAGE_BUILD: "true"
           E2E_KEEP: "true"
         run: |
+          set -o pipefail
           mkdir -p "$RUNNER_TEMP/e2e"
           KIND="$PWD/bin/kind" HELM="$PWD/bin/helm" go test -tags=e2e ./test/e2e/ -count=1 -timeout 25m -v -ginkgo.v \
             -ginkgo.fail-on-empty -ginkgo.fail-on-pending -ginkgo.junit-report="$RUNNER_TEMP/e2e/junit.xml" \
@@ -76,8 +77,25 @@ jobs:
         env:
           LIVEKIT_OUT: ${{ runner.temp }}/e2e/livekit
         run: |
+          set -o pipefail
           command -v htpasswd || { sudo apt-get update && sudo apt-get install -y --no-install-recommends apache2-utils; }
           test/livekit/kind.sh 2>&1 | tee "$RUNNER_TEMP/e2e/livekit.log"
+
+      # The quickstart gets its own cluster: the suite and the live kit leave an operator, OpenBao and CRDs owned by
+      # another Helm release in the first one. Deleting that cluster first keeps the runner to one kind node, and the
+      # node image and the operator image are already local, so this adds a few minutes and no rebuild.
+      - name: Run the docs quickstart against the locally built image and chart
+        env:
+          QUICKSTART_CLUSTER: openbao-quickstart
+        run: |
+          set -o pipefail
+          make cleanup-test-e2e KIND_CLUSTER="$KIND_CLUSTER"
+          make setup-test-e2e KIND_CLUSTER="$QUICKSTART_CLUSTER"
+          bin/kind load docker-image "$E2E_IMG" --name "$QUICKSTART_CLUSTER"
+          PATH="$PWD/bin:$PATH" KIND_CLUSTER="$QUICKSTART_CLUSTER" SKIP_KIND_CREATE=1 \
+            CHART_REF=charts/openbao-config-operator IMAGE="$E2E_IMG" \
+            VERSION="$(awk '/^version:/ {print $2}' charts/openbao-config-operator/Chart.yaml)" \
+            hack/docs/quickstart.sh 2>&1 | tee "$RUNNER_TEMP/e2e/quickstart.log"
 
       - name: Diagnostics
         if: failure()
@@ -101,6 +119,8 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-      - name: Delete kind cluster
+      - name: Delete kind clusters
         if: always()
-        run: make cleanup-test-e2e
+        run: |
+          make cleanup-test-e2e
+          make cleanup-test-e2e KIND_CLUSTER=openbao-quickstart

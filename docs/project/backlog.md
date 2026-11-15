@@ -1,0 +1,231 @@
+# Backlog
+
+These are real outcomes that are planned and not implemented yet. The order of typed kinds is in
+the [roadmap](../architecture.md#roadmap) and each kind's phase is in the [kind catalogue](../kinds.md);
+this page holds the outcomes behind them and the work that is not a single kind. Known
+limitations of what already exists belong in the [tech-debt register](tech-debt.md).
+
+## BL-001: Pick an owned API group domain before the first release
+
+Status: open ([ADR 0008](../adr/0008-provisional-api-group-domain.md))
+
+Goal: publish v1alpha1 under an API group domain the maintainers own or may use.
+
+Acceptance criteria:
+
+- Every group, the annotation prefix, `PROJECT`, the chart, the docs and the samples use the new
+  domain, renamed in one change before the first tagged release.
+- ADR 0008 is accepted with the chosen domain.
+
+## BL-002: Core configuration kinds (roadmap phase 2)
+
+Status: done (test/apicoverage, docs/api-coverage.md)
+
+Goal: a platform team can configure namespaces, mounts, the Kubernetes, JWT/OIDC, AppRole and
+token auth methods, the core identity objects, password policies, rate-limit quotas and KV and
+random secrets with typed kinds instead of `OpenBaoEndpoint`.
+
+Constraints: cross-object fields use flexible references (exactly one of a literal, an OpenBao
+name or path, a same-namespace Kubernetes ref or a label selector); KV values come only from
+Kubernetes Secrets and are write-only; values OpenBao returns once go to `writeSecretRef`.
+
+Acceptance criteria:
+
+- Every phase 2 row in the catalogue, except `Audit` (BL-003), has types, an adapter, unit and
+  envtest tests, an integration scenario against `bao server -dev` and a sample that sets every
+  spec field.
+- No kind writes in steady state.
+
+## BL-003: Audit devices
+
+Status: open; deferred from phase 2
+
+Goal: manage `sys/audit/<path>` declaratively.
+
+Rationale: OpenBao refuses to create audit devices through the API unless the server sets
+`unsafe_allow_api_audit_creation`, and declarative audit configuration in the server config is
+the recommended path. `OpenBaoEndpoint` covers the API path meanwhile.
+
+Acceptance criteria: a design, recorded as an ADR, that states when the kind applies, how it
+reports a server that refuses API creation, and why it does not weaken the server's default.
+
+## BL-004: Secrets engines, OIDC, MFA, plugins and sys singletons (roadmap phase 3)
+
+Status: open
+
+Goal: typed kinds for the database, PKI, transit, SSH, Kubernetes, RabbitMQ and TOTP engines,
+the OIDC provider kinds, MFA, the plugin catalogue and the sys singletons.
+
+Acceptance criteria: as BL-002; singletons default to `Orphan` or reset through a `Deleter`, and
+no reconcile triggers a rotation, issue or other one-shot action.
+
+## BL-005: External-plugin kinds (roadmap phase 3b)
+
+Status: open
+
+Goal: typed kinds for the cloud auth methods and secrets engines, LDAP, Kerberos and RADIUS,
+which OpenBao ships as external plugins.
+
+Acceptance criteria: each kind reports `Unsupported` until its plugin is registered and mounted,
+and is verified as described in TD-004 before release.
+
+## BL-006: Access models (roadmap phase 4)
+
+Status: open
+
+Goal: `AccessLevel`, `AccessGrant` and `AccessLayout` render policies, roles, groups and aliases
+from a machine-side and a human-side access description, as the architecture describes.
+
+Acceptance criteria: a level cannot be deleted while cited; removing human access requires the
+disruptive-update annotation; the rendered objects go through the same engine and show no
+steady-state writes.
+
+Kinds for features OpenBao does not have are not planned.
+
+## BL-007: Short API group names and kubectl short names
+
+Status: open, decision pending (related to BL-001)
+
+Goal: shorter resource and group names. `openbaoconfig.io` makes long CRD and RBAC names, and long names
+get close to the 63-character limit for DNS labels and label values in generated objects.
+
+Proposal: use a short domain such as `obc` (groups `sys.obc`, `auth.obc`, `secrets.obc`, `identity.obc`,
+`access.obc`, `core.obc`; Kubernetes requires at least one dot in a group). Add a unique
+`+kubebuilder:resource:shortName` of 2 to 8 characters to every kind (for example `obpol` for Policy and
+`obsm` for SecretsMount).
+
+Acceptance criteria:
+- the domain is decided and recorded in ADR 0008;
+- one mechanical rename across api, internal, config, charts, examples, docs and tests (674 files reference
+  the current domain), with regenerated CRDs, RBAC, chart and generated samples;
+- a short-name table in docs/kinds.md, unique across the catalogue and against core Kubernetes resources;
+- a migration note for clusters that already run the `openbaoconfig.io` CRDs (delete CRs, delete CRDs,
+  install new, re-apply).
+
+## BL-008: Threat model and hardening guide
+
+Status: done (docs/security/threat-model.md, hardening.md; review N1-N6 fixed; GAP-07 is BL-013)
+
+Goal: a written threat model and hardening guide for the operator, following the method of
+cert-manager's [threat modelling](https://cert-manager.io/docs/devops-tips/threat-modelling/) page and
+the ControlPlane 2026 cert-manager hardening guide.
+
+Acceptance criteria:
+- data-flow diagram with trust boundaries (tenant namespace, operator pod, kube-apiserver, OpenBao,
+  etcd Secrets) and the assets on each side (operator OpenBao identity, Secret read, TokenRequest, HMAC key);
+- threat list per boundary (STRIDE), each threat mapped to a control in code or deployment, and residual risks;
+- a hardening guide: least-privilege RBAC and namespace-scoped install, network policy, pod security, image
+  verification, OpenBao-side policy for the operator, audit settings, upgrade and key rotation;
+- an independent review of the finished implementation against the threat model, with findings filed and fixed.
+
+## BL-009: Remaining typed-kind gaps
+
+Status: open
+
+The listed gaps are already implemented: AuditRequestHeader, Logger, KeyRotationConfig, QuotaConfig,
+RaftAutopilot, Workflow, CertAuthConfig, PKIKey, PKIConfig (urls, crl, cluster, issuers), PKIACMEConfig,
+PKIAutoTidy, the PKI root and intermediate flow (PKIIssuer), SSHCA, KVConfig and OIDCConfig. Still missing:
+- `CertAuthCRL`: `auth/<b>/crls/<name>`;
+- `TransitCacheConfig`: `<m>/cache-config`;
+- `KVSecretMetadata`: `<m>/metadata/<path>` (max_versions, cas_required, delete_version_after,
+  custom_metadata), or a metadata section on KVSecret.
+
+## BL-010: Provable API coverage in CI
+
+Status: done (test/apicoverage, docs/api-coverage.md)
+
+Goal: "full coverage" is a number per OpenBao release, not a claim. Every writable path in the pinned OpenAPI
+snapshot of each supported OpenBao minor is in exactly one list: typed kind (with the kind name), Endpoint only
+(with a reason), or action (not configuration). CI fails when a path is in none, so a new release that adds
+API surface is caught automatically. The report shows covered, Endpoint-only and action counts per release.
+
+## BL-011: Restore without status, chart attestation
+
+Status: open
+
+- GroupMembership and AccessGrant/AccessLayout keep which members and children they own only in status. A
+  restore of the CRs without status cannot rebuild ownership. Use the server-side ownership marker (or a
+  deterministic naming scheme that can be recomputed) so a status-less restore adopts exactly its own objects.
+- Done: the Helm chart OCI artifact now gets a CycloneDX SBOM attestation in release.yml.
+
+## BL-012: Remaining v2 rule gaps
+
+Status: open
+
+- Rule 3: the engine compares every key Desired returns; it does not itself enforce that Desired covers every typed
+  field. Add a generic test that compares each kind's Desired keys with its CRD schema properties.
+- Rule 9: the self-init example is verified by examples/self-init/verify.sh (docker). Run it in the e2e workflow
+  on GitHub runners so it is a CI gate.
+- Safety 8: tenant quotas are documented only; add an e2e step that a ResourceQuota count blocks the 11th object.
+- Unbounded strings read by CEL (about 55 duration strings, Entity/Group metadata values, JWT leeways): add
+  MaxLength for cost headroom.
+
+## BL-013: NetworkPolicy on by default
+
+Status: done (chart: on by default, metrics from the release and monitoring namespaces, NOTES warning for open
+API server or OpenBao egress, `networkPolicy.flavor: cilium` for a CiliumNetworkPolicy)
+
+The NetworkPolicy is enabled by default, but empty `apiServer.cidrs` or `openbao.to` leaves egress
+unrestricted by destination on the configured ports. The chart notes warn about this; operators
+should set explicit peers as described in
+[hardening.md](../security/hardening.md#r-network-01-enable-the-networkpolicy).
+
+## BL-014: Detect OpenBao API changes automatically
+
+Status: open
+
+[ADR 0023](../adr/0023-openbao-api-changes-and-crd-lifecycle.md) turns every OpenBao minor into a failing pull
+request. Done:
+
+- Renovate tracks `BAO_VERSION` in the Makefile (`# renovate: datasource=github-releases depName=openbao/openbao`,
+  matched by the Makefile custom manager in `renovate.json`); its pull request runs integration and API coverage.
+- Server version from `sys/health` on `OpenBaoServer` status (`status.version` in
+  `api/core/v1alpha1/openbaoserver_types.go`), and acquired objects bound to their server by cluster id with reason
+  `ServerChanged` (`internal/engine/reconciler.go`).
+
+Missing pieces:
+
+- The `BAO_VERSION` pull request refreshes the API snapshot and runs conformance.
+- Field-level API coverage: every request parameter of a typed path maps to a CRD field or is excluded with a
+  reason (path-level coverage exists).
+- Nightly integration against every supported OpenBao minor (2.6 is snapshot-only today).
+- An integration run logged in with the least-privilege operator policy from [openbao-policy.md](../operate/openbao-policy.md)
+  instead of the dev root token.
+- `api-coverage diff <old> <new>` listing added, removed and changed paths and fields for release notes.
+- The server version named in `Unsupported` and `PermissionDenied` messages.
+
+## BL-015: TOTP output delivery after an out-of-band key rotation
+
+Status: done (internal/controller/secrets/totpkey.go, TestTOTPKeyRegeneratedKeyNotDeliveredIsNotReady)
+
+PKI outputs carry `key_id` in the output Secret, so a Secret left over from an earlier key is detected as not
+delivered. A TOTP key has no readable identifier: if a delivered key is deleted outside the operator, regenerated,
+and the Secret write then fails, the old URL in the Secret still counts as delivered.
+
+Fix: when OpenBao generates a key, the adapter records an HMAC-SHA256 of the URL, keyed with the operator's hash
+key, in `status.id` and writes the same value to the output Secret under `fingerprint`. The delivery check compares
+them, so a Secret holding an earlier key's URL keeps the resource at `Ready=False`, reason `OutputNotDelivered`.
+The hash is keyed because `keySize` may be as small as one byte and status is readable more widely than the
+Secret. Secrets written before the fingerprint existed stay accepted, as for PKI outputs without `key_id`.
+
+## BL-016: Per-namespace fairness for the write budget
+
+Status: open
+
+The write budget (ADR 0018) is one sliding window per `OpenBaoServer`, shared by every namespace. Changed input
+Secrets no longer spend it, but one namespace with many objects that drift (or a kind that flaps) can still use
+the whole window and delay other namespaces' drift repairs on the same server. Give each namespace a fair share
+of the window (for example a per-namespace sub-budget, or round-robin between namespaces with held-back writes),
+with a metric per namespace.
+
+## BL-017: Refuse a literal password in DatabaseConnection pluginConfig.connection_url
+
+Status: open
+
+`connectionURL` refuses a literal password with CEL, but `pluginConfig` can carry `connection_url` too. The same
+rule on `pluginConfig` is rejected at CRD install: its map values have no `maxLength`, so the estimated CEL cost is
+over 100 times the budget. Fix: bound the values (a named string type with `MaxLength`, which gives
+`additionalProperties.maxLength`, plus the existing `MaxProperties=64`), then add
+`!has(self.pluginConfig) || !('connection_url' in self.pluginConfig) || <the connectionURL check>` with an envtest
+case for the rejection and a CRD-install test for the cost budget. It changes the Go type of `pluginConfig` and its
+adapter, so it waits for the owner of `databaseconnection_types.go`.

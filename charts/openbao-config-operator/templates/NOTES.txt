@@ -24,7 +24,9 @@ bind ClusterRole {{ include "openbao-config-operator.fullname" . }}-metrics-read
 {{- end }}
 {{- if not .Values.crds.install }}
 
-crds.install=false: install the CRDs separately before creating resources.
+crds.install=false: this release does not manage the CRDs. Install them before creating resources and upgrade them
+yourself before each chart upgrade, from the release's crds.yaml asset:
+  https://github.com/alexandrust88/openbao-config-operator/releases/download/v{{ .Chart.AppVersion }}/crds.yaml
 {{- end }}
 {{- $np := .Values.networkPolicy }}
 {{- if and $np.enabled (or (and (eq $np.flavor "kubernetes") (or (not $np.apiServer.cidrs) (not $np.openbao.to))) (and (eq $np.flavor "cilium") (not $np.openbao.fqdns))) }}
@@ -33,7 +35,7 @@ WARNING: the {{ $np.flavor }} network policy allows egress to any destination on
 {{- if eq $np.flavor "kubernetes" }} API server or{{ end }} OpenBao ports. Set
 {{- if eq $np.flavor "kubernetes" }} networkPolicy.apiServer.cidrs and networkPolicy.openbao.to{{ else }} networkPolicy.openbao.fqdns{{ end }} to name the peers.
 {{- end }}
-{{- if not .Values.crds.keep }}
+{{- if not (or .Values.crds.keep (eq (get .Values.crds.annotations "helm.sh/resource-policy") "keep")) }}
 
 WARNING: crds.keep=false: helm uninstall deletes the CRDs and every OpenBao custom resource in the cluster.
 {{- end }}

@@ -1,3 +1,13 @@
+# OpenBaoConnection (core.openbaoconfig.io/v1alpha1)
+# OpenBaoConnection is a tenant's login to an OpenBaoServer, usable only by resources in its own Kubernetes namespace
+# through spec.connectionRef.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: auth, serverRef.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/core/#openbaoconnection
+# Curated example: examples/core/openbaoconnection.yaml
 apiVersion: core.openbaoconfig.io/v1alpha1
 kind: OpenBaoConnection
 metadata:

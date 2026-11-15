@@ -1,3 +1,13 @@
+# RateLimitQuota (sys.openbaoconfig.io/v1alpha1)
+# RateLimitQuota manages an OpenBao rate limit quota at sys/quotas/rate-limit/<name>, which caps the request rate
+# globally or for one namespace, mount, path or auth role.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: connectionRef, rate.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/sys/#ratelimitquota
+# Curated example: examples/sys/ratelimitquota.yaml
 apiVersion: sys.openbaoconfig.io/v1alpha1
 kind: RateLimitQuota
 metadata:

@@ -1,3 +1,12 @@
+# JWTAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# JWTAuthConfig manages the configuration of an OpenBao JWT/OIDC auth method at auth/<mountPath>/config.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#jwtauthconfig
+# Curated example: examples/auth/jwtauthconfig.yaml
 apiVersion: auth.openbaoconfig.io/v1alpha1
 kind: JWTAuthConfig
 metadata:

@@ -4,12 +4,15 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.1
-    {{- if .Values.crds.keep }}
-    helm.sh/resource-policy: keep
+    {{- with include "openbao-config-operator.crdAnnotations" . }}
+    {{- . | nindent 4 }}
     {{- end }}
   name: kerberosauthconfigs.auth.openbaoconfig.io
   labels:
     {{- include "openbao-config-operator.labels" . | nindent 4 }}
+    {{- with .Values.crds.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   group: auth.openbaoconfig.io
   names:

@@ -26,7 +26,7 @@ is implemented.
 
 | area | v1 | v2 | status |
 |------|----|----|--------|
-| target | OpenBao + Vault where APIs match | OpenBao only ([ADR 0009](adr/0009-openbao-only-target.md)) | docs and catalogue done; `status.flavor` still reported |
+| target | OpenBao + Vault where APIs match | OpenBao only ([ADR 0009](adr/0009-openbao-only-target.md)) | done; no status field reports a flavour (the probe still detects one internally) |
 | field comparison | only keys the spec sets | every typed field, omitted ones at their declared default ([ADR 0011](adr/0011-full-field-comparison.md)) | in progress (nested maps compared exactly, `Partial` opts out; top-level keys still desired-only) |
 | re-login | on any 401/403 | on 401, or when lookup-self fails after a 403 | done |
 | creationPolicy default | `CreateOrAdopt` | `Create` ([ADR 0015](adr/0015-create-and-orphan-by-default.md)) | done |
@@ -66,10 +66,10 @@ The engine enforces these rules; an adapter cannot break them.
 8. **A tenant acts only as itself.** A namespaced connection never uses the operator's identity,
    files or network position. Done: the address comes only from the platform's `OpenBaoServer`.
 9. **No root token at runtime.** OpenBao self-init creates the operator's auth role and policy at
-   first boot and revokes the transient root token. [operations](operations/connections.md) has a
+   first boot and revokes the transient root token. The [self-init guide](guides/self-init.md) has a
    tested example.
 10. **`Ready` and `Synced` conditions with typed reasons and `observedGeneration` on every kind**,
-    so Argo CD and Flux health checks and sync waves work. [operations](operations/) ships an Argo
+    so Argo CD and Flux health checks and sync waves work. The [Argo CD guide](guides/argocd.md) ships an Argo
     CD health check.
 
 Typed kinds give validation, references and accurate status; `OpenBaoEndpoint` covers any path without a
@@ -135,6 +135,47 @@ charts/openbao-config-operator   Helm chart (CRDs as templates)
 ```
 
 The API packages import nothing from `internal/`, so other projects can import the types.
+
+### Layers
+
+| layer | packages | owns | depends on |
+|-------|----------|------|------------|
+| API types | `api/common/v1alpha1`, `api/<group>/v1alpha1` | CRD schemas, defaults, CEL rules, condition and reason names | nothing in `internal/` |
+| manager | `cmd/main.go`, `cmd/controllers.go` | flags, metrics and health servers, leader election, the hash key, the table of kind controllers | every layer below |
+| connections | `internal/connection`, `internal/controller/core` | resolving a `connectionRef`, the tenant boundary, credential sources, `OpenBaoServer` and connection status | engine contract, OpenBao client |
+| OpenBao client | `internal/openbao` | HTTP, TLS, login and renewal, the per-connection client pool, the per-server rate limit, request metrics, the attribution header | OpenBao |
+| engine | `internal/engine` | the reconcile sequence, ownership and path index, drift schedule, write budget, conditions, events, engine metrics | OpenBao client |
+| adapters | `internal/controller/<group>` | per kind: path, desired payload, comparison rules, optional custom read, write, delete and status | engine contract, `internal/refs` |
+| import | `internal/importer`, `cmd/obc-import` | reading a live server into resources with `managementPolicy: Observe` | adapters, engine, OpenBao client |
+
+### Controllers
+
+| controller | kinds | reconciler | name in metrics and logs |
+|------------|-------|------------|--------------------------|
+| server | `OpenBaoServer` | `internal/controller/core/server_controller.go` | `openbaoserver` |
+| connection | `OpenBaoConnection`, `ClusterOpenBaoConnection` | `internal/controller/core/connection_controller.go`, one per kind | `openbaoconnection`, `clusteropenbaoconnection` |
+| access level | `AccessLevel` | `internal/controller/access/accesslevel.go`; writes nothing to OpenBao | `accesslevel.access.openbaoconfig.io` |
+| engine | every other kind, one controller per kind; external-plugin kinds only with `--enable-plugin-kinds` | `engine.Reconciler` with the kind's adapter | `<kind>.<group>` in lower case, for example `policy.sys.openbaoconfig.io` |
+
+Every controller runs only on the leader. Engine controllers run `--max-concurrent-reconciles`
+(default 4) workers each, or `--max-concurrent-reconciles-high-volume` (default 8) for the kinds
+that usually have many objects.
+
+### Status ownership
+
+| status | written by | when | read by |
+|--------|------------|------|---------|
+| `conditions`, `observedGeneration` of managed kinds | engine | at the end of every pass that changes them | Argo CD and Flux health checks, referrers (a referent must be `Ready` for its generation), `openbao_resource_ready` |
+| `path`, `namespace`, `serverID` | engine | as a claim right before a create; again after a successful pass; cleared on `Conflict` and after a create that wrote nothing | the path index (one owner per path), deletion, the `NamespaceChanged` and `ServerChanged` checks |
+| `acquired` | engine | once the object is created or adopted; cleared on `Conflict` | ownership checks, deletion (only an acquired object is deleted) |
+| `writeOnlyHash`, `rotationNonce` | engine | after a successful write | the next pass, to decide whether write-only or write-once inputs must be sent again |
+| `id` and kind-specific fields (`children`, `roles`, `managedKeys`, `latestVersion` and others) | the kind's adapter (`StatusWriter`, or the composite kinds' own bookkeeping), inside the engine's pass | after a successful sync or observe | referrers (`status.id`), the adapter's next pass and deletion |
+| `citedBy` and conditions of `AccessLevel` | access level controller | on every change of a citing resource | its `openbaoconfig.io/in-use` finalizer |
+| `OpenBaoServer` status | server controller | after a probe that changed something | connection controller (a connection is `Ready` only when its server is) |
+| connection status | connection controller | after a check that changed something | the resolver (resources wait while the connection is not `Ready` for its generation), `openbao_connection_ready` |
+
+No status is written by more than one controller. The exact fields and reasons are in
+[status and events](reference/status-and-events.md).
 
 ## Connections and the tenant boundary
 
@@ -411,7 +452,7 @@ without backoff. Write errors redact any write-only value OpenBao echoes.
   (`ServerChanged`) or a marker naming another cluster or resource (`Conflict`) leaves the object in
   OpenBao, removes the finalizer and records a Warning event. The same applies when an older
   resource owns the path.
-- Destructive kinds (`SecretsMount`, `AuthMount`, `OpenBaoNamespace`, `KVSecret`, `Audit`,
+- Destructive kinds (`SecretsMount`, `AuthMount`, `OpenBaoNamespace`, `KVSecret`, `RandomSecret`, `Audit`,
   `OpenBaoEndpoint`) delete only with the annotation
   `openbaoconfig.io/allow-destructive-delete: "true"`; otherwise the finalizer holds with reason
   `DeleteGuarded`. The same annotation gates an update that would
@@ -449,7 +490,7 @@ without backoff. Write errors redact any write-only value OpenBao echoes.
   `key_id`, so a Secret left from an earlier key does not count. A generated `TOTPKey` stores an HMAC
   fingerprint of its URL, keyed with the engine hash key, in `status.id` and in the output Secret's
   `fingerprint` key, so a Secret left over after the key was regenerated out of band is detected as not
-  delivered ([BL-015](backlog.md#bl-015-totp-output-delivery-after-an-out-of-band-key-rotation)).
+  delivered ([BL-015](project/backlog.md#bl-015-totp-output-delivery-after-an-out-of-band-key-rotation)).
 - Observe mode makes no remote change: `AppRoleSecretID` destroys retired secret IDs only under
   `managementPolicy: Manage`.
 
@@ -478,7 +519,7 @@ through the same engine.
   one shared policy, rendered from rules of the form `mount + path + level`. Paths can use
   `{sa.namespace}` and `{sa.name}`, which OpenBao identity templating renders. CEL requires a broad
   subject (a glob or a selector) to scope every path with `{sa.namespace}`. See
-  [templated-policies.md](templated-policies.md).
+  [templated policies](guides/templated-policies.md).
 - `AccessLayout` is the human side. A matrix of role × namespace → level becomes one external group
   per role and OIDC mount, with a group alias and a rendered policy.
 
@@ -563,10 +604,10 @@ Items 1 to 3 are phase 1 engine work.
 | 5 | **CRD versioning without webhooks** ([ADR 0020](adr/0020-crd-versioning-without-webhooks.md)). Version bumps stay schema-compatible (additive; storage version migration with kube-storage-version-migrator). A conversion webhook only if a breaking change is unavoidable. | decided |
 | 6 | **One writer cluster per OpenBao namespace** ([ADR 0021](adr/0021-one-writer-cluster-per-namespace.md)). The server-side marker carries a cluster id (`--cluster-id`) and the CR UID; a marker from another cluster gives `Conflict`. | done (`--cluster-id`) |
 | 7 | **Audit attribution** ([ADR 0022](adr/0022-audit-attribution-header.md)). Every request carries `X-Openbao-Config-Resource: <group>/<kind>/<k8s-namespace>/<name>`; an `AuditRequestHeader` example makes OpenBao log it, so each audit entry traces to a Git object. | done (`examples/sys/auditrequestheader-attribution.yaml`) |
-| 8 | **Tenant object limits.** Kubernetes `ResourceQuota` object counts (`count/policies.sys.openbaoconfig.io` and so on) stop one tenant from exhausting the drift budget; see [tenant-quotas.md](operations/tenant-quotas.md). | documented |
+| 8 | **Tenant object limits.** Kubernetes `ResourceQuota` object counts (`count/policies.sys.openbaoconfig.io` and so on) stop one tenant from exhausting the drift budget; see [tenant quotas](operate/tenant-quotas.md). | documented |
 
 Smaller items: a guide for adopting existing configuration
-([operations/migration.md](operations/migration.md)), and optional `policyRefs` on auth roles so a role waits for its `Policy` CRs to be `Ready`
+([migration guide](guides/migration.md)), and optional `policyRefs` on auth roles so a role waits for its `Policy` CRs to be `Ready`
 (planned).
 
 ## Plugin support

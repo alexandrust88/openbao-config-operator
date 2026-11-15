@@ -78,5 +78,5 @@ body:
       options:
         - label: I removed tokens, secret values and OpenBao response bodies from this report.
           required: true
-        - label: I searched existing issues and the [troubleshooting guide](https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/operations/troubleshooting.md).
+        - label: I searched existing issues and the [troubleshooting guide](https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/operate/troubleshooting.md).
           required: true

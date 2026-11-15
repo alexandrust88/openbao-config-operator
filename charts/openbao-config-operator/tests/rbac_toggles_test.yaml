@@ -1,0 +1,115 @@
+suite: rbac toggles
+templates:
+  - templates/rbac/manager.yaml
+  - templates/rbac/leader-election.yaml
+  - templates/rbac/metrics.yaml
+  - templates/rbac/user-roles.yaml
+release:
+  name: obc
+  namespace: openbao-system
+tests:
+  - it: renders the leader-election Role and RoleBinding by default
+    template: templates/rbac/leader-election.yaml
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: subjects[0]
+          value: {kind: ServiceAccount, name: obc-openbao-config-operator, namespace: openbao-system}
+        documentIndex: 1
+
+  - it: renders no leader-election RBAC without leader election
+    template: templates/rbac/leader-election.yaml
+    set:
+      replicas: 1
+      leaderElection.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders no leader-election RBAC when rbac.create is false
+    template: templates/rbac/leader-election.yaml
+    set:
+      rbac.create: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders the metrics auth role, its binding and the metrics reader
+    template: templates/rbac/metrics.yaml
+    asserts:
+      - hasDocuments:
+          count: 3
+      - equal:
+          path: metadata.name
+          value: obc-openbao-config-operator-metrics-reader
+        documentIndex: 2
+      - equal:
+          path: rules
+          value: [{nonResourceURLs: [/metrics], verbs: [get]}]
+        documentIndex: 2
+
+  - it: renders no metrics RBAC without metrics
+    template: templates/rbac/metrics.yaml
+    set:
+      metrics.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders no metrics RBAC when rbac.create is false
+    template: templates/rbac/metrics.yaml
+    set:
+      rbac.create: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: binds the manager roles to an existing ServiceAccount
+    template: templates/rbac/manager.yaml
+    set:
+      serviceAccount.create: false
+      serviceAccount.name: platform-operator
+    asserts:
+      - equal:
+          path: subjects[0].name
+          value: platform-operator
+        documentIndex: 1
+
+  - it: renders no user roles when rbac.userRoles is false
+    template: templates/rbac/user-roles.yaml
+    set:
+      rbac.userRoles: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: keeps the user roles when rbac.create is false
+    template: templates/rbac/user-roles.yaml
+    set:
+      rbac.create: false
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: drops the admin aggregation label only
+    template: templates/rbac/user-roles.yaml
+    set:
+      rbac.aggregate.admin: false
+    asserts:
+      - notExists:
+          path: metadata.labels["rbac.authorization.k8s.io/aggregate-to-admin"]
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["rbac.authorization.k8s.io/aggregate-to-edit"]
+          value: "true"
+        documentIndex: 0
+
+  - it: drops the view aggregation label
+    template: templates/rbac/user-roles.yaml
+    set:
+      rbac.aggregate.view: false
+    asserts:
+      - notExists:
+          path: metadata.labels["rbac.authorization.k8s.io/aggregate-to-view"]
+        documentIndex: 1

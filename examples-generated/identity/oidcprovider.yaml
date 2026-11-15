@@ -1,3 +1,12 @@
+# OIDCProvider (identity.openbaoconfig.io/v1alpha1)
+# OIDCProvider manages an OpenID Connect provider served by OpenBao at `identity/oidc/provider/<name>`.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: connectionRef.
+#
+# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/identity/#oidcprovider
+# Curated example: examples/identity/oidcprovider.yaml
 apiVersion: identity.openbaoconfig.io/v1alpha1
 kind: OIDCProvider
 metadata:
