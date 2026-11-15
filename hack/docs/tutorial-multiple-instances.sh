@@ -80,7 +80,9 @@ kubectl -n platform get policies.sys.openbaoconfig.io,kubernetesauthroles,secret
 
 server_1=$(server_id policy.sys.openbaoconfig.io/ops-read-instance-1)
 server_2=$(server_id policy.sys.openbaoconfig.io/ops-read-instance-2)
-[ -n "$server_1" ] && [ -n "$server_2" ] || fail "a shared policy has no status.serverID"
+if [ -z "$server_1" ] || [ -z "$server_2" ]; then
+  fail "a shared policy has no status.serverID"
+fi
 [ "$server_1" != "$server_2" ] || fail "both shared policies report the same OpenBao cluster id $server_1"
 for obj in policy.sys.openbaoconfig.io/instance-1-app kubernetesauthrole.auth.openbaoconfig.io/instance-1-app \
   policy.sys.openbaoconfig.io/platform-auditor; do
