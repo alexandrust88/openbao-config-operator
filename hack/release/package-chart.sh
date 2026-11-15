@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Packages the chart for a release from a copy of charts/openbao-config-operator, so the tree stays untouched: sets
 # version and appVersion from the tag, pins the image digest, and writes the Artifact Hub annotations (images,
-# prerelease, changes from the conventional commits since the previous tag).
+# prerelease, changes from the conventional commits since the previous tag). With SIGN_KEYRING it also signs the package
+# into <tgz>.prov (Helm provenance) and sets artifacthub.io/signKey to the key's fingerprint and SIGN_KEY_URL.
 # Usage: hack/release/package-chart.sh <vX.Y.Z> <image-repository> <image-digest> <out-dir>
+# Environment: HELM, YQ; SIGN_KEYRING (a legacy GnuPG secret keyring holding exactly one key), SIGN_PASSPHRASE_FILE,
+# SIGN_KEY_URL (where the armored public key is published); signing needs gpg.
 set -euo pipefail
 
 [ $# -eq 4 ] || { echo "usage: $0 <vX.Y.Z> <image-repository> <image-digest> <out-dir>" >&2; exit 2; }
@@ -15,6 +18,18 @@ repo_root=$(cd "$(dirname "$0")/../.." && pwd)
 
 helm=${HELM:-helm}
 yq=${YQ:-yq}
+
+sign=()
+if [ -n "${SIGN_KEYRING:-}" ]; then
+  : "${SIGN_PASSPHRASE_FILE:?SIGN_KEYRING needs SIGN_PASSPHRASE_FILE}" "${SIGN_KEY_URL:?SIGN_KEYRING needs SIGN_KEY_URL}"
+  keys=$(gpg --batch --quiet --no-auto-check-trustdb --with-colons --show-keys "$SIGN_KEYRING")
+  fingerprint=$(awk -F: '$1 == "sec" {sec = 1; next} sec && $1 == "fpr" {print $10; sec = 0}' <<<"$keys")
+  uid=$(awk -F: '$1 == "uid" {print $10; exit}' <<<"$keys")
+  [[ $fingerprint =~ ^[A-F0-9]{40}$ && -n $uid ]] ||
+    { echo "package-chart: $SIGN_KEYRING must hold exactly one secret key" >&2; exit 2; }
+  # helm --key matches the user ID, not the fingerprint.
+  sign=(--sign --key "$uid" --keyring "$SIGN_KEYRING" --passphrase-file "$SIGN_PASSPHRASE_FILE")
+fi
 
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
@@ -67,11 +82,15 @@ VERSION=$version IMAGES=$images CHANGES=$changes PRERELEASE=$prerelease CRDS=$cr
   .annotations["artifacthub.io/crdsExamples"] = (strenv(CRDS_EXAMPLES) | from_yaml | ... style="" | to_yaml) |
   .annotations["artifacthub.io/operatorCapabilities"] = "Deep Insights"
 ' "$chart/Chart.yaml"
+if [ -n "${fingerprint:-}" ]; then
+  FINGERPRINT=$fingerprint KEY_URL=$SIGN_KEY_URL "$yq" -i '.annotations["artifacthub.io/signKey"] =
+    ({"fingerprint": strenv(FINGERPRINT), "url": strenv(KEY_URL)} | ... style="" | to_yaml)' "$chart/Chart.yaml"
+fi
 chart_bytes=$(wc -c <"$chart/Chart.yaml" | tr -d ' ')
 [ "$chart_bytes" -lt 65536 ] || { echo "package-chart: Chart.yaml is $chart_bytes bytes, limit 64 KiB" >&2; exit 1; }
 IMAGE=$image DIGEST=$digest "$yq" -i '.image.repository = strenv(IMAGE) | .image.digest = strenv(DIGEST)' "$chart/values.yaml"
 
 "$helm" lint --strict "$chart" >/dev/null
 mkdir -p "$out"
-"$helm" package "$chart" --destination "$out" >/dev/null
+"$helm" package "$chart" --destination "$out" ${sign[@]+"${sign[@]}"} >/dev/null
 echo "$out/openbao-config-operator-$version.tgz"

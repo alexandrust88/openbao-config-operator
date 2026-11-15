@@ -2,7 +2,10 @@
 # Verifies a published release: the image index and every platform image, and the chart, are signed by the release
 # workflow run of exactly this tag (keyless, GitHub OIDC issuer, push trigger), carry SPDX + CycloneDX SBOM and SLSA
 # provenance attestations, the image provenance names this tag, the chart also carries the legacy cosign signature
-# Artifact Hub detects, and the verified chart pins the verified image digest. With ASSETS_DIR it also checks the
+# Artifact Hub detects, and the verified chart pins the verified image digest. The chart release asset and its Helm
+# provenance file (.prov, what Artifact Hub shows as signed) verify with the GPG public key published on GitHub Pages,
+# and are the chart and provenance layers of the verified OCI chart (skipped for the releases published before the
+# provenance file). With ASSETS_DIR it also checks the
 # signed sha256sums.txt and the provenance (.intoto.jsonl) of the downloaded release assets, and that the examples
 # bundle (examples-<version>.tar.gz) is listed there and holds only examples/ and examples-generated/ (skipped for the
 # releases published before the bundle existed), with the gh CLI on PATH
@@ -10,8 +13,8 @@
 # (hack/ocm/verify.sh; skipped for releases published before the OCM component existed).
 # Usage: hack/release/verify-release.sh <vX.Y.Z>
 # Environment: REPOSITORY (owner/name), IMAGE, CHART, IMAGE_DIGEST and CHART_DIGEST (from the release notes; resolved
-# from the tags otherwise), ASSETS_DIR, YQ.
-# Needs: cosign v3, crane, jq, yq.
+# from the tags otherwise), ASSETS_DIR, YQ, HELM, SIGN_KEY_URL (the published chart signing public key).
+# Needs: cosign v3, crane, jq, yq, curl, helm v4 (reads the armored public key).
 set -euo pipefail
 
 [ $# -eq 1 ] || { echo "usage: $0 <vX.Y.Z>" >&2; exit 2; }
@@ -23,6 +26,8 @@ owner=$(tr '[:upper:]' '[:lower:]' <<<"${repository%%/*}")
 image=${IMAGE:-ghcr.io/$(tr '[:upper:]' '[:lower:]' <<<"$repository")}
 chart=${CHART:-ghcr.io/$owner/charts/openbao-config-operator}
 yq=${YQ:-yq}
+helm=${HELM:-helm}
+sign_key_url=${SIGN_KEY_URL:-https://$owner.github.io/${repository#*/}/charts/pgp-public-key.asc}
 workflow=$repository/.github/workflows/release.yml
 
 # The exact tag in the identity: a signature from any other release, older or newer, does not verify as this one.
@@ -85,6 +90,33 @@ chart_pin() {
   crane blob "$chart@$layer" | tar -xzOf - openbao-config-operator/values.yaml | "$yq" '.image.digest'
 }
 check test "$(chart_pin)" = "$image_digest"
+
+tgz=openbao-config-operator-$version.tgz
+step "chart provenance $tgz.prov"
+case $tag in
+  v0.1.0 | v0.1.1 | v0.2.0) echo "skipped (published before the provenance file)" ;;
+  *)
+    prov_dir=$(mktemp -d)
+    trap 'rm -rf -- "$prov_dir"' EXIT
+    chart_prov() {
+      local url=https://github.com/$repository/releases/download/$tag/$tgz
+      curl -fsSL -o "$prov_dir/pgp-public-key.asc" "$sign_key_url" &&
+        curl -fsSL -o "$prov_dir/$tgz" "$url" &&
+        curl -fsSL -o "$prov_dir/$tgz.prov" "$url.prov" &&
+        "$helm" verify --keyring "$prov_dir/pgp-public-key.asc" "$prov_dir/$tgz"
+    }
+    check chart_prov
+    step "  release asset and .prov are layers of $chart@$chart_digest"
+    oci_layers() {
+      crane manifest "$chart@$chart_digest" | jq -e \
+        --arg chart "sha256:$(shasum -a 256 "$prov_dir/$tgz" | awk '{print $1}')" \
+        --arg prov "sha256:$(shasum -a 256 "$prov_dir/$tgz.prov" | awk '{print $1}')" '
+        [.layers[] | select(.mediaType == "application/vnd.cncf.helm.chart.content.v1.tar+gzip").digest] == [$chart]
+        and [.layers[] | select(.mediaType == "application/vnd.cncf.helm.chart.provenance.v1.prov").digest] == [$prov]'
+    }
+    check oci_layers
+    ;;
+esac
 
 if [ -n "${ASSETS_DIR:-}" ]; then
   step "release assets sha256sums.txt"

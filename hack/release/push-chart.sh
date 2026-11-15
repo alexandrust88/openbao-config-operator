@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pushes a packaged chart by digest only, in the layout helm push writes (helm config, chart layer, OCI annotations from
-# Chart.yaml), so it can be signed and attested before a version tag points at it. Prints the manifest digest.
+# Pushes a packaged chart by digest only, in the layout helm push writes (helm config, chart layer, provenance layer when
+# <chart.tgz>.prov exists, OCI annotations from Chart.yaml), so it can be signed and attested before a version tag
+# points at it. Prints the manifest digest.
 # Usage: hack/release/push-chart.sh <chart.tgz> <oci-repository>   (no tag; or an OCI layout dir with ORAS_FLAGS)
 # Environment: HELM, YQ, ORAS, ORAS_FLAGS (e.g. --oci-layout or --plain-http), SOURCE_DATE_EPOCH.
 set -euo pipefail
@@ -19,6 +20,11 @@ created=$(date -u -r "$epoch" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$e
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
 cp "$tgz" "$work/chart.tgz"
+layers=(chart.tgz:application/vnd.cncf.helm.chart.content.v1.tar+gzip)
+if [ -f "$tgz.prov" ]; then
+  cp "$tgz.prov" "$work/chart.tgz.prov"
+  layers+=(chart.tgz.prov:application/vnd.cncf.helm.chart.provenance.v1.prov)
+fi
 "$helm" show chart "$tgz" | "$yq" -o json '(.. | select(tag == "!!int" or tag == "!!float")) |= to_string' >"$work/config.json"
 
 # helm push semantics: chart annotations override the generated ones, except title and version.
@@ -39,5 +45,5 @@ jq --arg created "$created" '{"$manifest": ((
 
 (cd "$work" && "$oras" push ${oras_flags[@]+"${oras_flags[@]}"} "$repo" --export-manifest manifest.json \
   --config config.json:application/vnd.cncf.helm.config.v1+json --annotation-file annotations.json \
-  chart.tgz:application/vnd.cncf.helm.chart.content.v1.tar+gzip >&2)
+  "${layers[@]}" >&2)
 echo "sha256:$(shasum -a 256 "$work/manifest.json" | awk '{print $1}')"

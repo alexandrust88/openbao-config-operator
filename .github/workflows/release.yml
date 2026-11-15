@@ -316,10 +316,31 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Refuse to overwrite a published chart
         run: CRANE=bin/crane hack/release/check-absent.sh "$CHART:$VERSION"
+      # The .prov next to the release asset is what Artifact Hub shows as signed for the Pages Helm repository.
       - id: package
-        name: Package the chart with the image digest pinned
+        name: Package and sign the chart with the image digest pinned
+        env:
+          HELM_SIGNING_KEY: ${{ secrets.HELM_SIGNING_KEY }}
+          HELM_SIGNING_PASSPHRASE: ${{ secrets.HELM_SIGNING_PASSPHRASE }}
         run: |
-          tgz=$(HELM=bin/helm YQ=bin/yq hack/release/package-chart.sh "$TAG" "$IMAGE" "$IMAGE_DIGEST" dist)
+          if [ -z "$HELM_SIGNING_KEY" ] || [ -z "$HELM_SIGNING_PASSPHRASE" ]; then
+            echo "::error::the release environment needs the secrets HELM_SIGNING_KEY and HELM_SIGNING_PASSPHRASE"
+            exit 1
+          fi
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          keys="$RUNNER_TEMP/helm-signing"
+          trap 'gpgconf --kill gpg-agent || true; rm -rf -- "$GNUPGHOME" "$keys"' EXIT
+          (umask 077 && mkdir -p "$GNUPGHOME" "$keys")
+          printf '%s\n' "$HELM_SIGNING_PASSPHRASE" > "$keys/passphrase"
+          printf '%s\n' "$HELM_SIGNING_KEY" | gpg --batch --quiet --import
+          gpg --batch --pinentry-mode loopback --passphrase-file "$keys/passphrase" --export-secret-keys > "$keys/secring.gpg"
+          key_url="https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/charts/pgp-public-key.asc"
+          tgz=$(SIGN_KEYRING="$keys/secring.gpg" SIGN_PASSPHRASE_FILE="$keys/passphrase" SIGN_KEY_URL="$key_url" \
+            HELM=bin/helm YQ=bin/yq hack/release/package-chart.sh "$TAG" "$IMAGE" "$IMAGE_DIGEST" dist)
+          if ! bin/helm verify --keyring .github/pgp-public-key.asc "$tgz"; then
+            echo "::error::the chart signature does not verify with .github/pgp-public-key.asc; commit the public key of HELM_SIGNING_KEY"
+            exit 1
+          fi
           echo "tgz=$tgz" >> "$GITHUB_OUTPUT"
       - name: Chart SBOMs and provenance
         env:
@@ -374,6 +395,7 @@ jobs:
           name: release-chart
           path: |
             dist/*.tgz
+            dist/*.tgz.prov
             dist/chart.cdx.json
             dist/chart.spdx.json
           if-no-files-found: error
@@ -414,7 +436,7 @@ jobs:
           path: dist
       - name: Check the downloaded files
         run: |
-          expected=(install.yaml crds.yaml "openbao-config-operator-$VERSION.tgz" chart.cdx.json chart.spdx.json grype-db-status.json)
+          expected=(install.yaml crds.yaml "openbao-config-operator-$VERSION.tgz" "openbao-config-operator-$VERSION.tgz.prov" chart.cdx.json chart.spdx.json grype-db-status.json)
           mapfile -t -O "${#expected[@]}" expected < <(jq -r '.[].platform | sub(".*/"; "") | "sbom-\(.).spdx.json", "sbom-\(.).cdx.json"' <<<"$PLATFORMS")
           diff <(printf '%s\n' "${expected[@]}" | sort) <(cd dist && find . -mindepth 1 | sed 's|^\./||' | sort)
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
@@ -489,7 +511,7 @@ jobs:
           path: dist
       - name: Check the downloaded files
         run: |
-          expected=(install.yaml crds.yaml "openbao-config-operator-$VERSION.tgz" chart.cdx.json chart.spdx.json grype-db-status.json ocm-component-descriptor.yaml)
+          expected=(install.yaml crds.yaml "openbao-config-operator-$VERSION.tgz" "openbao-config-operator-$VERSION.tgz.prov" chart.cdx.json chart.spdx.json grype-db-status.json ocm-component-descriptor.yaml)
           mapfile -t -O "${#expected[@]}" expected < <(jq -r '.[].platform | sub(".*/"; "") | "sbom-\(.).spdx.json", "sbom-\(.).cdx.json"' <<<"$PLATFORMS")
           diff <(printf '%s\n' "${expected[@]}" | sort) <(cd dist && find . -mindepth 1 | sed 's|^\./||' | sort)
       # Built after the check above and before the checksums, so it is signed and covered by the provenance.
@@ -560,5 +582,5 @@ jobs:
           cd release
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" \
             --notes-file notes/release-notes.md --generate-notes "${flags[@]}" \
-            dist/install.yaml dist/crds.yaml dist/*.tgz dist/*.json dist/*.intoto.jsonl dist/ocm-component-descriptor.yaml \
+            dist/install.yaml dist/crds.yaml dist/*.tgz dist/*.tgz.prov dist/*.json dist/*.intoto.jsonl dist/ocm-component-descriptor.yaml \
             dist/examples-*.tar.gz dist/sha256sums.txt
