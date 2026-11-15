@@ -83,7 +83,7 @@ kubectl apply --server-side -f crds.yaml
 
    A short rise in `openbao_writes_total` is expected when a release starts sending a field it did
    not send before. A rate that stays up after the first drift interval is not; see
-   [troubleshooting.md](troubleshooting.md#metrics).
+   [the runbook](runbooks.md#openbaoconfigoperatorsteadystatewrites).
 
 ## Upgrading to 0.2.0
 

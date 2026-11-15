@@ -132,6 +132,12 @@ nav:
       - Quickstart on kind: get-started/quickstart.md
       - Install: get-started/install.md
       - Connect to OpenBao: get-started/connect.md
+  - Tutorials:
+      - tutorials/index.md
+      - Set up the platform: tutorials/platform-owner.md
+      - Manage several OpenBao servers: tutorials/multiple-instances.md
+      - Onboard two tenants: tutorials/tenant-onboarding.md
+      - Onboard teams as a tenant: tutorials/team-onboarding.md
   - Guides:
       - guides/index.md
       - Authentication:
@@ -183,6 +189,7 @@ nav:
       - Known limitations: reference/limitations.md
   - Concepts:
       - concepts/index.md
+      - Why this operator: concepts/why.md
       - Architecture: architecture.md
       - Decisions (ADRs): adr/
   - Project:

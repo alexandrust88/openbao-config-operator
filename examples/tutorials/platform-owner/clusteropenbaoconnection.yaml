@@ -1,0 +1,16 @@
+# Logs in as the operator's own ServiceAccount with the projected token the chart mounts (audience
+# openbao-config-operator). Only resources in the Kubernetes namespace platform may use it.
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: ClusterOpenBaoConnection
+metadata:
+  name: platform
+spec:
+  serverRef:
+    name: openbao
+  auth:
+    kubernetes:
+      role: openbao-config-operator
+      injectedIdentity: {}
+  allowedNamespaces:
+    matchLabels:
+      kubernetes.io/metadata.name: platform

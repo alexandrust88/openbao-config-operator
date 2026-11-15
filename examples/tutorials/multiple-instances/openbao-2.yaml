@@ -1,0 +1,100 @@
+# Evaluation only. A second OpenBao server in dev mode, next to the quickstart's, in the Kubernetes namespace
+# openbao-2: in-memory storage, plain HTTP and the root token "root", as in examples/quickstart/openbao-dev.yaml.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openbao-2
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openbao
+  namespace: openbao-2
+---
+# The kubernetes auth method reviews ServiceAccount tokens with the TokenReview API as this ServiceAccount.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openbao-2-auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: openbao
+    namespace: openbao-2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openbao
+  namespace: openbao-2
+  labels:
+    app.kubernetes.io/name: openbao
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openbao
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: openbao
+    spec:
+      serviceAccountName: openbao
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: openbao
+          image: ghcr.io/openbao/openbao:2.7.2@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f
+          command:
+            - bao
+            - server
+            - -dev
+            - -dev-listen-address=0.0.0.0:8200
+            - -dev-root-token-id=root
+          env:
+            # Dev mode stores the root token in the home directory, which must be writable.
+            - name: HOME
+              value: /tmp
+            - name: BAO_ADDR
+              value: http://127.0.0.1:8200
+            - name: BAO_TOKEN
+              value: root
+          ports:
+            - name: http
+              containerPort: 8200
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health
+              port: http
+            periodSeconds: 2
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openbao
+  namespace: openbao-2
+spec:
+  selector:
+    app.kubernetes.io/name: openbao
+  ports:
+    - name: http
+      port: 8200
+      targetPort: http

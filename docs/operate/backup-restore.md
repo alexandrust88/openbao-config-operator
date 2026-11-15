@@ -119,10 +119,8 @@ Points to check:
 the OpenBao object stays ([ADR 0015](../adr/0015-create-and-orphan-by-default.md)). `Delete` is set
 per resource. It removes the object, or resets a configuration singleton to its defaults; data holders
 are removed only while the resource carries the annotation
-`openbaoconfig.io/allow-destructive-delete: "true"`. They are `SecretsMount`, `AuthMount`,
-`OpenBaoNamespace`, `KVSecret`, `RandomSecret`, `Audit`, `OpenBaoEndpoint`, the key material kinds
-`TransitKey`, `PKIIssuer`, `PKIKey`, `SSHCA` and `TOTPKey`, `MFAMethod`, and `Entity`, whose delete erases the
-MFA TOTP secrets enrolled for it. Kinds whose OpenBao object cannot be deleted reject `Delete`.
+`openbaoconfig.io/allow-destructive-delete: "true"`. The [kind catalogue](../kinds.md) lists these
+destructive kinds; among them `Entity`, whose delete erases the MFA TOTP secrets enrolled for it. Kinds whose OpenBao object cannot be deleted reject `Delete`.
 
 Without the annotation, a data holder with `Delete` in a live Kubernetes Namespace stays `Terminating` with
 reason `DeleteGuarded`. In a terminating Namespace the operator leaves the object in OpenBao, records a Warning
@@ -138,27 +136,11 @@ An orphaned object stays in OpenBao, unmanaged. Re-creating the resource adopts 
 
 ## Uninstall and CRD deletion
 
-`helm uninstall` with the default `crds.keep=true` removes the manager but keeps the CRDs, the
-custom resources and every OpenBao object. Resources with the finalizer cannot be deleted until a
-manager runs again.
+The uninstall steps, including how to remove the operator and leave OpenBao untouched, are in the
+[install guide](../get-started/install.md#uninstall).
 
 With `crds.keep=false`, `helm uninstall` deletes the CRDs, and Kubernetes deletes every custom
 resource with them. What happens in OpenBao then depends on timing: while a manager still runs, it
 deletes every object whose policy is `Delete`, such as policies and roles. Once the manager is
 gone, the finalizers block the deletion and the CRDs stay `Terminating`. Neither outcome is safe,
 so keep `crds.keep=true`.
-
-To remove the operator and leave OpenBao untouched:
-
-1. Set `deletionPolicy: Orphan` on every resource, in Git.
-2. Wait until no resource carries the finalizer:
-
-   ```sh
-   kubectl get openbao -A -o json \
-     | jq -r '.items[] | select(.metadata.finalizers // [] | index("openbaoconfig.io/finalizer")) | "\(.kind) \(.metadata.namespace)/\(.metadata.name)"'
-   ```
-
-3. Run `helm uninstall`, then delete the CRDs.
-
-To remove the operator and its configuration, delete the resources while the manager runs, wait
-until they are gone, then uninstall.

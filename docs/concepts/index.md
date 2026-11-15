@@ -70,20 +70,16 @@ accepts is refused even when the server lists it. Field-level rules are in the
 
 ## Common spec and status
 
-Every kind embeds the same fields:
+Every kind embeds the same spec fields: the immutable `connectionRef` and OpenBao `namespace`, and the policies
+that decide how much the operator may do: `creationPolicy` (`Create` by default, or adopt an existing object,
+[ADR 0015](../adr/0015-create-and-orphan-by-default.md)), `deletionPolicy` (`Orphan` by default), drift
+detection and its interval, and `managementPolicy` (`Manage`, or `Observe` to read and report only,
+[ADR 0016](../adr/0016-observe-mode-and-import-tool.md)). Defaults and meanings are in the
+[architecture](../architecture.md#common-spec).
 
-| field | default | meaning |
-|-------|---------|---------|
-| `connectionRef` | required | the connection to use; immutable |
-| `namespace` | `""` | OpenBao namespace relative to the connection's; immutable |
-| `creationPolicy` | `Create` | `Create`, `Adopt` or `CreateOrAdopt` an existing object ([ADR 0015](../adr/0015-create-and-orphan-by-default.md)) |
-| `deletionPolicy` | `Orphan` | `Orphan` leaves the object; `Delete` removes it with the resource |
-| `driftDetection`, `driftInterval` | `Enabled`, tier default | how often the object is re-read |
-| `managementPolicy` | `Manage` | `Observe` reads and reports drift, never writes ([ADR 0016](../adr/0016-observe-mode-and-import-tool.md)) |
-
-Status carries `Ready` (OpenBao matches the spec) and `Synced` (the last reconcile succeeded)
-conditions with typed reasons and `observedGeneration`, plus the full OpenBao `path`, the
-absolute `namespace`, the server's cluster id, `acquired` and an HMAC of write-only inputs.
+Status carries `Ready` (OpenBao matches the spec) and `Synced` (the last reconcile succeeded), and records which
+object the resource owns: its full path, OpenBao namespace and server. Every field is listed in
+[status and events](../reference/status-and-events.md#common-to-every-managed-kind).
 
 ## The engine
 

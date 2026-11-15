@@ -1,0 +1,56 @@
+# The Kubernetes side of two tenants. Each tenant namespace carries the label the OpenBaoServer openbao admits, holds
+# the ServiceAccount openbao-config that its connection logs in as, and makes the user <tenant>-admin a namespace
+# admin through the built-in ClusterRole admin, bound in that namespace only.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenant-a
+  labels:
+    openbaoconfig.io/tenant: "true"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openbao-config
+  namespace: tenant-a
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-a-admins
+  namespace: tenant-a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: tenant-a-admin
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenant-b
+  labels:
+    openbaoconfig.io/tenant: "true"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openbao-config
+  namespace: tenant-b
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-b-admins
+  namespace: tenant-b
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: tenant-b-admin

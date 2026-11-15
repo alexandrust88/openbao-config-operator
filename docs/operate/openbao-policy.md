@@ -199,8 +199,9 @@ path "tenants/team-a/sys/policies/acl/team-a-*" {
 path "tenants/team-a/auth/kubernetes/role/team-a-*" {
   capabilities = ["create", "read", "update", "delete"]
   allowed_parameters = {
-    "bound_service_account_namespaces" = ["team-a"]
-    "*"                                = []
+    "bound_service_account_namespaces"         = [["team-a"]]
+    "bound_service_account_namespace_selector" = [""]
+    "*"                                        = []
   }
 }
 
@@ -221,9 +222,12 @@ Notes:
   namespace.
 - Do not grant `sys/auth/*` or `sys/mounts/*` to tenants unless they own their mounts. Mounts hold
   data; disabling one destroys every secret in it.
-- `KubernetesAuthRole` sends `bound_service_account_namespaces` as a list; `allowed_parameters`
-  checks every element. Without the restriction, a tenant could bind ServiceAccounts of another
-  Kubernetes namespace to its roles.
+- `KubernetesAuthRole` sends `bound_service_account_namespaces` as a list, and `allowed_parameters`
+  compares that whole list with each allowed value. `[["team-a"]]` therefore allows exactly the list
+  `["team-a"]`; the flat form `["team-a"]` would refuse every write. The operator always sends
+  `bound_service_account_namespace_selector`, empty when unset, and OpenBao admits a ServiceAccount
+  that matches either the list or the selector, so the selector is pinned to empty. Without these
+  restrictions, a tenant could bind ServiceAccounts of another Kubernetes namespace to its roles.
 
 ## Check a policy
 

@@ -1,0 +1,25 @@
+# The platform team's own OpenBao namespace platform, with a KV version 2 secrets engine at secret inside it.
+# spec.namespace on the SecretsMount selects the OpenBao namespace, relative to the connection's root.
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: OpenBaoNamespace
+metadata:
+  name: platform
+  namespace: platform
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: platform
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: platform-secret
+  namespace: platform
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: platform
+  namespace: platform
+  path: secret
+  type: kv-v2
+  description: Platform team secrets

@@ -1,0 +1,75 @@
+# The team payments, onboarded by the tenant-a admin through tenant-a's connection: the ServiceAccount its workloads run
+# as, the OpenBao namespace tenant-a/payments with a KV version 2 mount and a generated password, and a policy and
+# Kubernetes auth role in tenant-a that give the team's ServiceAccount read access to its own namespace only.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: payments
+  namespace: tenant-a
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: OpenBaoNamespace
+metadata:
+  name: payments
+  namespace: tenant-a
+spec:
+  connectionRef:
+    name: openbao
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: payments-secret
+  namespace: tenant-a
+spec:
+  connectionRef:
+    name: openbao
+  namespace: payments
+  path: secret
+  type: kv-v2
+  description: Secrets of the team payments
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: payments-app
+  namespace: tenant-a
+spec:
+  connectionRef:
+    name: openbao
+  namespace: payments
+  mountPath: secret
+  path: app
+  key: password
+  generator:
+    length: 32
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: team-payments
+  namespace: tenant-a
+spec:
+  connectionRef:
+    name: openbao
+  policy: |
+    path "payments/secret/data/*" {
+      capabilities = ["read"]
+    }
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthRole
+metadata:
+  name: team-payments
+  namespace: tenant-a
+spec:
+  connectionRef:
+    name: openbao
+  boundServiceAccountNames:
+    - payments
+  boundServiceAccountNamespaces:
+    - tenant-a
+  audience: openbao
+  tokenTTL: 15m
+  policyRefs:
+    - name: team-payments

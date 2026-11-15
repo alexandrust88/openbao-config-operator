@@ -1,0 +1,30 @@
+# Configuration of the OpenBao root namespace: a read-only policy for platform auditors and an AppRole auth
+# method for CI pipelines.
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: platform-auditor
+  namespace: platform
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: platform
+  policy: |
+    path "sys/namespaces" {
+      capabilities = ["list"]
+    }
+    path "sys/policies/acl" {
+      capabilities = ["list"]
+    }
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: approle
+  namespace: platform
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: platform
+  type: approle
+  description: AppRole logins for CI pipelines

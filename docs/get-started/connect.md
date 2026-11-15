@@ -285,7 +285,7 @@ A resource that hits a missing capability reports `PermissionDenied`.
 | connection reason `AuthenticationFailed` | `kubectl -n team-a describe openbaoconnection openbao` shows the OpenBao error: the role name, its bound ServiceAccount, namespace and audience, the `system:auth-delegator` binding, and `authNamespace` |
 | connection reason `ReferenceNotReady` | the connection's OpenBao `namespace` exists: `bao namespace list` in its parent |
 
-[Troubleshooting](../operate/troubleshooting.md#connection-reasons) has every reason.
+[Status and events](../reference/status-and-events.md#conditions-of-connections-and-servers) has every reason.
 
 ## Related
 

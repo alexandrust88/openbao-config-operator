@@ -62,7 +62,7 @@ from Git rebuilds ownership.
 | item | source | help wanted |
 |------|--------|-------------|
 | phase 1 exit tests: namespaced connection cannot reach the operator identity (e2e); self-init example as a CI gate | [BL-012](../project/backlog.md#bl-012-remaining-v2-rule-gaps) | |
-| a second tenant is refused outside its policy, end to end | [TD-001](../project/tech-debt.md#td-001-live-coverage-uses-openbao-dev-mode) | |
+| a second tenant is refused outside its policy, end to end | [TD-001](../project/tech-debt.md#td-001-live-coverage-uses-openbao-dev-mode) | done: `test/e2e/isolation_test.go` |
 | phase 2 exit test: one commit onboards a tenant namespace and a remote cluster, including dynamic tokens | [phases](#phases) | |
 | phase 3 exit test: wiping status then reconciling makes zero writes for marked kinds | [phases](#phases) | |
 | full field comparison for top-level keys the spec omits, which turns design rule 3 on | [ADR 0011](../adr/0011-full-field-comparison.md) | |

@@ -1,0 +1,15 @@
+# The quickstart's OpenBao, declared by the platform team. OpenBaoConnections in namespaces labelled
+# openbaoconfig.io/tenant may use it, with ServiceAccount tokens for the openbao audience only. Evaluation only:
+# the dev server speaks plain HTTP, which allowInsecureHTTP permits.
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoServer
+metadata:
+  name: openbao
+spec:
+  address: http://openbao.openbao.svc:8200
+  allowInsecureHTTP: true
+  allowedNamespaces:
+    matchLabels:
+      openbaoconfig.io/tenant: "true"
+  allowedAudiences:
+    - openbao

@@ -98,6 +98,13 @@ jobs:
             VERSION="$(awk '/^version:/ {print $2}' charts/openbao-config-operator/Chart.yaml)" \
             hack/docs/quickstart.sh 2>&1 | tee "$RUNNER_TEMP/e2e/quickstart.log"
 
+      # Every command the tutorial pages show runs here, on the cluster the quickstart left.
+      - name: Run the docs tutorials on the quickstart cluster
+        run: |
+          set -o pipefail
+          PATH="$PWD/bin:$PATH" KIND_CLUSTER=openbao-quickstart SKIP_KIND_CREATE=1 \
+            hack/docs/tutorials.sh 2>&1 | tee "$RUNNER_TEMP/e2e/tutorials.log"
+
       - name: Diagnostics
         if: failure()
         run: |
@@ -105,7 +112,7 @@ jobs:
           {
             kubectl get pods -A -o wide || true
             kubectl get events -A --sort-by=.lastTimestamp | tail -n 100 || true
-            for ns in openbao-config-operator openbao-config-operator-system openbao openbao-live postgres; do
+            for ns in openbao-config-operator openbao-config-operator-system openbao openbao-2 openbao-live postgres; do
               kubectl -n "$ns" logs --all-containers --prefix --tail=200 -l app.kubernetes.io/name || true
             done
           } 2>&1 | tee "$RUNNER_TEMP/e2e/diagnostics.log"

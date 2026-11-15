@@ -1,0 +1,75 @@
+# The team devteam, onboarded by the tenant-a admin through tenant-a's connection: the ServiceAccount its workloads run
+# as, the OpenBao namespace tenant-a/devteam with a KV version 2 mount and a generated password, and a policy and
+# Kubernetes auth role in tenant-a that give the team's ServiceAccount read access to its own namespace only.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: devteam
+  namespace: tenant-a
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: OpenBaoNamespace
+metadata:
+  name: devteam
+  namespace: tenant-a
+spec:
+  connectionRef:
+    name: openbao
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: devteam-secret
+  namespace: tenant-a
+spec:
+  connectionRef:
+    name: openbao
+  namespace: devteam
+  path: secret
+  type: kv-v2
+  description: Secrets of the team devteam
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: devteam-app
+  namespace: tenant-a
+spec:
+  connectionRef:
+    name: openbao
+  namespace: devteam
+  mountPath: secret
+  path: app
+  key: password
+  generator:
+    length: 32
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: team-devteam
+  namespace: tenant-a
+spec:
+  connectionRef:
+    name: openbao
+  policy: |
+    path "devteam/secret/data/*" {
+      capabilities = ["read"]
+    }
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthRole
+metadata:
+  name: team-devteam
+  namespace: tenant-a
+spec:
+  connectionRef:
+    name: openbao
+  boundServiceAccountNames:
+    - devteam
+  boundServiceAccountNamespaces:
+    - tenant-a
+  audience: openbao
+  tokenTTL: 15m
+  policyRefs:
+    - name: team-devteam

@@ -41,14 +41,8 @@ Unset `rateLimit` means no client-side limit.
 
 ### Status
 
-| field | meaning |
-|-------|---------|
-| `conditions` | `Ready`: `Available`, `Unreachable`, `Sealed`, `ReferenceNotReady` (CA bundle missing) or `InvalidSpec` |
-| `observedGeneration` | the generation last probed |
-| `version` | OpenBao version from `sys/health` |
-| `sealed` | `true` when sealed or not initialised; no connection to the server is `Ready` then |
-| `standby` | `true` when the probed node is a standby |
-| `lastProbeTime` | when a probe last changed the status |
+The status fields (`conditions`, `version`, `sealed`, `standby`, `lastProbeTime`) and the `Ready` reasons are
+listed in [status and events](status-and-events.md#connections-and-servers).
 
 The operator probes `sys/seal-status` and `sys/health` in the root namespace, without a token,
 every 1 to 1.2 minutes, and when the server or its CA bundle Secret or ConfigMap
@@ -182,13 +176,9 @@ Connections have no TLS settings of their own.
 
 ## Connection status
 
-| field | meaning |
-|-------|---------|
-| `conditions` | `Ready`: `Available`, `ServerNotReady`, `ConnectionDenied`, `CredentialsNotFound`, `AuthenticationFailed`, `ReferenceNotReady` or `InvalidSpec` ([reasons](status-and-events.md#conditions-of-connections-and-servers)) |
-| `observedGeneration` | the generation last checked |
-| `version`, `sealed`, `standby` | copied from the `OpenBaoServer` status |
-| `authenticated` | the last login and `auth/token/lookup-self` succeeded |
-| `lastProbeTime` | when a check last changed the status |
+A connection copies `version`, `sealed` and `standby` from its server and adds `authenticated`; the fields are
+listed in [status and events](status-and-events.md#connections-and-servers), and the `Ready` reasons in
+[conditions of connections and servers](status-and-events.md#conditions-of-connections-and-servers).
 
 The connection controller checks every 1 to 1.2 minutes, and when the connection, its
 server, a referenced Secret or (for an `OpenBaoConnection`) its namespace labels change. Resources

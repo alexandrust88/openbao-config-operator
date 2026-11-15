@@ -26,11 +26,12 @@ rest of the cluster. The operator gives each OpenBao object a typed custom resou
 OpenBao through its own connection, logged in with an identity of its own namespace (a ServiceAccount, or a
 token or AppRole from a Secret there), so the OpenBao policy bound to that identity is the limit of what the tenant can change. It re-reads OpenBao on a drift schedule, writes only
 when OpenBao differs from the spec, and can observe and import a server that already has configuration before it
-takes over.
+takes over. [Why this operator exists](concepts/why.md) compares it with Crossplane provider-vault,
+vault-config-operator and External Secrets Operator.
 
 !!! warning "Status: alpha"
 
-    v0.1.0 and v0.1.1 are released. The API is `v1alpha1`, so a minor release may change it under the
+    v0.2.0 is the latest release. The API is `v1alpha1`, so a minor release may change it under the
     [deprecation policy](maintainers/release-process.md#deprecation-policy); the API group domain
     `openbaoconfig.io` is final ([ADR 0008](adr/0008-provisional-api-group-domain.md)). Check the
     [known limitations](reference/limitations.md) before you point the operator at production configuration.
@@ -56,8 +57,8 @@ takes over.
     The platform team owns the cluster-scoped `OpenBaoServer`: address, CA, allowed namespaces and token
     audiences. A tenant's `OpenBaoConnection` logs in with a ServiceAccount, token or AppRole of its own namespace,
     never as the operator. The tenant's OpenBao policy is the limit; the [e2e tests](https://github.com/alexandrust88/openbao-config-operator/tree/main/test/e2e) exercise it, and
-    the [known limitations](reference/limitations.md#verification) say what is not proven yet; a two-tenant e2e
-    test is being added.
+    a two-tenant e2e test checks that one tenant cannot write to another's configuration; the
+    [known limitations](reference/limitations.md#verification) say what is not proven yet.
 
     [:octicons-arrow-right-24: Connections](reference/connections.md)
 
@@ -174,7 +175,7 @@ flowchart LR
 - **Configuration as code.** Argo CD, Flux or `kubectl apply` put the custom resources in the cluster; the
   operator converges OpenBao to them. The [Argo CD guide](guides/argocd.md) adds a health check for every kind.
 - **Secret delivery is a separate job.** Getting secret values into pods is done by tools such as External Secrets
-  Operator, the Secrets Store CSI Driver or Vault Secrets Operator-style operators. A typical split: this operator
+  Operator or the Secrets Store CSI Driver. A typical split: this operator
   writes the policy and the Kubernetes auth role, and the delivery tool logs in with that role to read the secret.
 - **One exception.** When OpenBao returns a generated value only once, such as an AppRole secret ID, the operator
   writes that value to a Kubernetes Secret it owns, through `writeSecretRef`.

@@ -10,7 +10,6 @@ and the [release process](../maintainers/release-process.md#openbao-versions).
 | component | supported | tested in CI |
 |-----------|-----------|--------------|
 | OpenBao | 2.6 and 2.7 (minimum 2.6) | 2.7.2: unit, envtest and integration tests run against `bao server -dev` (`BAO_VERSION` in the `Makefile`); the e2e test runs `ghcr.io/openbao/openbao:2.7.2` in kind (`hack/e2e/openbao.yaml`). 2.6 is covered by its OpenAPI snapshot (`api-coverage/openapi-2.6.json`) only |
-| HashiCorp Vault | not supported | not tested |
 | Kubernetes | 1.31 or later (chart `kubeVersion: ">=1.31.0-0"`) | envtest 1.35 (from `k8s.io/api` v0.35 in `go.mod`); kind node `kindest/node:v1.35.8` with kind v0.33.0 in the e2e workflow |
 | Helm | 3.8 or later, for OCI charts | Helm v4.3.1 (`HELM_VERSION` in the `Makefile`) for lint, unit tests and e2e |
 | Image architectures | `linux/amd64`, `linux/arm64` | both are built and checked by `hack/release/verify-release.sh` |
@@ -18,8 +17,8 @@ and the [release process](../maintainers/release-process.md#openbao-versions).
 ## OpenBao
 
 - OpenBao is the only target ([ADR 0009](../adr/0009-openbao-only-target.md)). The design relies on
-  OpenBao features: self-init, namespaces, horizontal read scaling and OCI plugins. There is no
-  flavour detection.
+  OpenBao features: self-init, namespaces, horizontal read scaling and OCI plugins. Other servers
+  are not tested and not supported.
 - Each operator minor supports the OpenBao minors that have an API snapshot in `api-coverage/` and
   are listed in its release notes; today `openapi-2.6.json` and `openapi-2.7.json`.
 - The integration suite runs against the single pinned version, 2.7.2. A scheduled run against every
@@ -42,12 +41,6 @@ and the [release process](../maintainers/release-process.md#openbao-versions).
 | self-init | starting without a root token at runtime ([self-init guide](../guides/self-init.md)) |
 | `sys/workflows` | the `Workflow` kind |
 | external plugins | the external-plugin kinds; without the plugin they report `Unsupported` |
-
-## HashiCorp Vault
-
-Vault is neither tested nor promised ([ADR 0009](../adr/0009-openbao-only-target.md)). There are no
-Vault Enterprise kinds, and `OpenBaoEndpoint` does not support Vault-only paths. Features OpenBao
-does not have (Sentinel, KMIP, Transform, managed keys, replication) get no kind.
 
 ## Kubernetes
 

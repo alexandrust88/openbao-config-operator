@@ -3,8 +3,8 @@
 The chart renders these alerts with `prometheusRule.enabled=true`. They use only metrics the
 manager exposes: `up`, `controller_runtime_reconcile_total`, `controller_runtime_reconcile_errors_total`,
 `openbao_writes_total{kind}` and `openbao_requests_total{connection,method,code}`. The `connection`
-label is the connection UID; find the connection with
-`kubectl get openbaoconnections,clusteropenbaoconnections -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,UID:.metadata.uid`.
+label is the connection UID; [observability](observability.md#operator-metrics) shows how to map it to a
+connection.
 
 The shipped rules do not alert on objects or connections that are not `Ready`. The manager exports
 `openbao_resource_ready` and `openbao_connection_ready` for that; example rules are in
