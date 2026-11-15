@@ -330,8 +330,10 @@ if [ "$(head -n1 "$writes_before")" != "$(head -n1 "$writes_after")" ]; then
   err "the operator leader changed ($(head -n1 "$writes_before") -> $(head -n1 "$writes_after")), cannot compare its writes"
   exit 1
 fi
-writes=$(awk 'NR == FNR { before[$1] = $2; next } $1 != "leader" && $2 > before[$1] { print $1 "=" $2 - before[$1] }' \
+all_writes=$(awk 'NR == FNR { before[$1] = $2; next } $1 != "leader" && $2 > before[$1] { print $1 "=" $2 - before[$1] }' \
   "$writes_before" "$writes_after" | sort | tr '\n' ' ')
-echo "OpenBao writes during the failover and Observe: ${writes:-none}"
-printf '\nOpenBao writes during the failover and Observe: %s\n' "${writes:-none}" >>"${GITHUB_STEP_SUMMARY:-/dev/null}"
+echo "OpenBao writes during the failover and Observe: ${all_writes:-none}"
+printf '\nOpenBao writes during the failover and Observe: %s\n' "${all_writes:-none}" >>"${GITHUB_STEP_SUMMARY:-/dev/null}"
+# A Logger level lives only in the memory of the node that took the write, so the new active node needs it again.
+writes=$(tr ' ' '\n' <<<"$all_writes" | grep -v '^Logger=' | tr '\n' ' ' | sed 's/ *$//' || true)
 [ "${#failed[@]}" -eq 0 ] && [ "$boundary_failed" -eq 0 ] && [ -z "$writes" ]
