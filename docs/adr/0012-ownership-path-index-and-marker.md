@@ -20,4 +20,5 @@ keeps the path, the newer gets `Conflict` and never writes.
 - Two tenants cannot fight over one path inside one cluster.
 - After status loss, marked kinds recover without writes; other kinds need a one-time `Adopt`.
 - Which kinds can carry a marker must be tested per kind.
-- Status: path index in progress (phase 1); marker planned (phase 3).
+- Status: implemented for the path index and markers on entities, groups and namespaces. The KV v2
+  metadata marker remains planned.
