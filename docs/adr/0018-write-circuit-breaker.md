@@ -22,4 +22,4 @@ affected objects, emits an event, and resumes when the window allows. Reads are 
   changed input Secrets (a new write-only hash) are user-intended and exempt, so one tenant rotating
   a Secret cannot starve another tenant's drift repairs. A rotated hash key also changes every hash
   and is therefore not budgeted; the server's `rateLimit` still paces it.
-- Status: reason defined; engine in progress (phase 1).
+- Status: implemented as a per-server write budget in the engine.

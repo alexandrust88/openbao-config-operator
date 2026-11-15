@@ -14,6 +14,7 @@ An `AuditRequestHeader` example configures OpenBao to log it.
 
 ## Consequences
 
-- Each audit entry traces to a CR and so to a Git commit.
+- Each audit entry identifies a CR, which operators can correlate with their GitOps history.
 - The header names a resource, never a value, so it adds no secret to the audit log.
-- Status: planned.
+- Status: implemented by the OpenBao client; attribution header handling and audit-log output are
+  covered by tests.

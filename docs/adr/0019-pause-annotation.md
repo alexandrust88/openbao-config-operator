@@ -17,4 +17,4 @@ The object reports reason `Paused`.
 
 - Scope is chosen by where the annotation goes: one object, one tenant namespace or one server.
 - A paused object shows stale status; the reason makes that visible.
-- Status: annotation and reason defined in `api/common/v1alpha1`; engine in progress.
+- Status: implemented for resource, Namespace and OpenBaoServer annotations in the engine.

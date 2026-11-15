@@ -78,11 +78,12 @@ docs/                          architecture, kind catalogue, ADRs, backlog, tech
      print columns;
    - doc comments become CRD descriptions: write them for the user ("the OpenBao role").
 4. Adapter in `internal/controller/<group>/<kind>.go`: RBAC markers, `Setup<Kind>`, `Path`,
-   `Desired`, `Fields`, `DefaultDeletionPolicy` (`Delete` for leaf config such as policies, roles
-   and quotas; `Orphan` for namespaces, mounts, identities, data and singletons). Add an optional
-   interface only when the default read, write or delete is wrong. Every write-only, create-only,
-   aliased, unordered or duration field goes in `FieldSpec`. Resolve references through the
-   `Resolver` and wrap `engine.ErrReferenceNotReady` when a referent is missing or not `Ready`.
+   `Desired` and `Fields`. Every kind defaults to `deletionPolicy: Orphan`; users opt into
+   `Delete` on each resource. `DefaultDeletionPolicy` remains deprecated and ignored. Add an
+   optional interface only when the default read, write or delete is wrong. Every write-only,
+   create-only, aliased, unordered or duration field goes in `FieldSpec`. Resolve references
+   through the `Resolver` and wrap `engine.ErrReferenceNotReady` when a referent is missing or not
+   `Ready`.
 5. Register the scheme and `Setup<Kind>` in `cmd/main.go`.
 6. Generate (below), add `examples/<group>/<kind>.yaml` setting every spec field (validated by a
    server-side dry-run test in `test/examples/`), and update the docs/kinds.md row if the path,

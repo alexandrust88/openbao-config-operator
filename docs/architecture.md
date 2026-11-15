@@ -45,7 +45,9 @@ The engine enforces these rules; an adapter cannot break them.
 
 1. **Steady-state reconcile reads and does not write.** `openbao_writes_total` is zero at rest.
    Proven on a live OpenBao 2.7.2 cluster (81 objects of 55 kinds, zero rewrites across drift
-   intervals and a manager restart). The per-kind no-write CI test is in progress.
+   intervals and a manager restart). The per-kind no-write conformance test runs on pushes to
+   `main` and weekly, except for cases documented in `test/conformance/exceptions.yaml`; it is
+   not part of the pull-request gate.
 2. **One cached client per connection.** The operator logs in once and renews. Logging in on every
    reconcile would grow entities, aliases and leases without bound; `openbao_logins_total` makes
    this visible. A new login only after a 401 or a failed lookup-self (see
@@ -604,10 +606,11 @@ and guarded delete. Logs never contain tokens, secret values or OpenBao response
 
 ## CI gates
 
-Lint, unit tests, envtest, integration of every adapter against `bao server -dev`, a
-`verify-generated` job, govulncheck and a kind e2e test with the chart. In progress: run the
-integration suite on each pinned OpenBao minor; the no-write test (second reconcile makes zero
-writes, every kind); the default test (empty spec, then each optional field set and removed).
+The pull-request gate runs lint, unit tests, envtest, integration of every adapter against
+`bao server -dev`, `verify-generated`, govulncheck and a kind e2e test with the chart. The
+per-kind no-write and default conformance tests run on pushes to `main`, weekly and on demand,
+with documented exceptions, not on pull requests. Remaining gaps: integration against every
+supported OpenBao minor and field-level API coverage.
 
 ## Delivery
 
@@ -624,9 +627,9 @@ A phase ends when its exit test passes in CI.
 
 1. Engine and tenant boundary: `OpenBaoServer`, connections, engine field classes, ownership and
    path index, observe mode, write-once fields, write circuit breaker, `Policy`, `OpenBaoEndpoint`, chart,
-   CI. Exit: no-write and default tests for `Policy`; a
-   namespaced connection cannot reach the operator identity (e2e); the self-init example boots
-   with no root token left. In progress.
+   CI. The no-write and default conformance tests cover built-in kinds, including `Policy`, subject
+   to the documented exceptions; the namespaced-identity e2e proof and self-init example are not
+   yet CI gates. In progress.
 2. Tenant and cluster onboarding: `OpenBaoNamespace`, mounts, Kubernetes, JWT and AppRole auth,
    `TokenRole`, `KubernetesSecrets*`. Exit: one commit onboards a tenant namespace and a remote
    cluster, including dynamic tokens. Kinds implemented; exit test planned.

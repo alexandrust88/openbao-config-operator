@@ -22,4 +22,5 @@ with `serverRef` and have no address field. A namespaced connection may referenc
 - A tenant cannot choose the network target or mint a general token.
 - The per-server rate limit and write budget have a natural home.
 - Breaking change for v1 connection manifests (pre-alpha, accepted).
-- Status: in progress; the code still has `address` on the connection kinds.
+- Status: implemented. `OpenBaoServer` owns `address`; both connection kinds refer to it through
+  `serverRef`.

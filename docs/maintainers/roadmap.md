@@ -18,6 +18,9 @@ before you begin a large one.
 - Evidence: [API coverage](../api-coverage.md) per OpenBao release (87.0% of configuration paths typed on 2.7.2),
   the nightly conformance matrix (no-write and default tests per kind), and a [load test](../load-testing.md) up to
   5,000 objects with zero writes at rest.
+- The chart enables NetworkPolicy by default. Set explicit API server and OpenBao peers; empty peer
+  lists leave egress unrestricted by destination on the configured ports
+  ([hardening guide](../security/hardening.md#r-network-01-enable-the-networkpolicy)).
 - Not released yet: no tag, image or chart has been published.
 
 ## v0.1.0: first public release
@@ -44,7 +47,6 @@ Goal: one commit onboards a tenant namespace and a remote cluster, and a restore
 | full field comparison for top-level keys the spec omits | [ADR 0011](../adr/0011-full-field-comparison.md) | |
 | remaining typed kinds: `CertAuthCRL`, `TransitCacheConfig`, `KVSecretMetadata` | [BL-009](../backlog.md#bl-009-remaining-typed-kind-gaps) | yes |
 | generic test that each kind's `Desired` covers its CRD schema; `MaxLength` on strings read by CEL | [BL-012](../backlog.md#bl-012-remaining-v2-rule-gaps) | yes |
-| NetworkPolicy on by default with a safe API server peer | [BL-013](../backlog.md#bl-013-networkpolicy-on-by-default) | |
 | `DatabaseConnection` and LDAP rotated root credentials on `WriteOnce` instead of `CreateOnly` | [ADR 0017](../adr/0017-write-once-fields-for-rotated-root-credentials.md) | yes |
 
 ## v0.3: scale and operations

@@ -165,11 +165,10 @@ Status: open
 Status: done (chart: on by default, metrics from the release and monitoring namespaces, NOTES warning for open
 API server or OpenBao egress, `networkPolicy.flavor: cilium` for a CiliumNetworkPolicy)
 
-The chart's NetworkPolicy is off by default, and when it is on with empty `apiServer.cidrs` or `openbao.to`
-it allows egress to any host on 443, 6443 and 8200 (threat model GAP-07). Until the default changes,
-[hardening.md](security/hardening.md#r-network-01-enable-the-networkpolicy) tells platform teams to enable it
-with explicit peers. Turning it on by default needs a safe default for the API server peer (the `kubernetes`
-EndpointSlice addresses are cluster-specific), so it is a chart design change, not a values flip.
+The NetworkPolicy is enabled by default, but empty `apiServer.cidrs` or `openbao.to` leaves egress
+unrestricted by destination on the configured ports. The chart notes warn about this; operators
+should set explicit peers as described in
+[hardening.md](security/hardening.md#r-network-01-enable-the-networkpolicy).
 
 ## BL-014: Detect OpenBao API changes automatically
 
