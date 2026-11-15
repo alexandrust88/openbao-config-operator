@@ -28,10 +28,11 @@ token or AppRole from a Secret there), so the OpenBao policy bound to that ident
 when OpenBao differs from the spec, and can observe and import a server that already has configuration before it
 takes over.
 
-!!! warning "Status: pre-1.0"
+!!! warning "Status: alpha"
 
-    The API is `v1alpha1`. The API group domain `openbaoconfig.io` is provisional and may be renamed, which breaks
-    manifests written before the rename ([ADR 0008](adr/0008-provisional-api-group-domain.md)). Check the
+    v0.1.0 and v0.1.1 are released. The API is `v1alpha1`, so a minor release may change it under the
+    [deprecation policy](maintainers/release-process.md#deprecation-policy); the API group domain
+    `openbaoconfig.io` is final ([ADR 0008](adr/0008-provisional-api-group-domain.md)). Check the
     [known limitations](reference/limitations.md) before you point the operator at production configuration.
 
 ## Features
@@ -48,13 +49,15 @@ takes over.
 
     [:octicons-arrow-right-24: Kind catalogue](kinds.md)
 
--   :material-account-lock:{ .lg .middle } **A real tenant boundary**
+-   :material-account-lock:{ .lg .middle } **Tenants act as themselves**
 
     ---
 
     The platform team owns the cluster-scoped `OpenBaoServer`: address, CA, allowed namespaces and token
     audiences. A tenant's `OpenBaoConnection` logs in with a ServiceAccount, token or AppRole of its own namespace,
-    never as the operator.
+    never as the operator. The tenant's OpenBao policy is the limit; the [e2e tests](https://github.com/alexandrust88/openbao-config-operator/tree/main/test/e2e) exercise it, and
+    the [known limitations](reference/limitations.md#verification) say what is not proven yet; a two-tenant e2e
+    test is being added.
 
     [:octicons-arrow-right-24: Connections](reference/connections.md)
 
@@ -90,7 +93,8 @@ takes over.
     ---
 
     `creationPolicy: Create` and `deletionPolicy: Orphan` by default, one owner per path, a second guard before
-    deleting mounts, namespaces, KV data or audit devices, and validation in the CRDs with no webhooks.
+    deleting mounts, namespaces, KV data, audit devices, key material, MFA methods, entities or the target of an
+    `OpenBaoEndpoint`, and validation in the CRDs with no webhooks.
 
     [:octicons-arrow-right-24: Security model](security.md)
 

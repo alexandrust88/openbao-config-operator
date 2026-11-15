@@ -33,7 +33,7 @@ jobs:
       - run: make actionlint
       - run: bin/actionlint
       - name: shellcheck
-        run: shellcheck hack/release/*.sh hack/github/*.sh hack/docs/*.sh
+        run: shellcheck hack/release/*.sh hack/github/*.sh hack/docs/*.sh hack/ci/*.sh hack/e2e/postgres.sh test/livekit/kind.sh
 
   zizmor:
     runs-on: ubuntu-24.04

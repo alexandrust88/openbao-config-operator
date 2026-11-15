@@ -1,23 +1,24 @@
 # Backlog
 
-These are real outcomes that are planned and not implemented yet. The order of typed kinds is in
-the [roadmap](../architecture.md#roadmap) and each kind's phase is in the [kind catalogue](../kinds.md);
-this page holds the outcomes behind them and the work that is not a single kind. Known
+These are real outcomes that are planned and not implemented yet. The order of work, by release, and the phases
+are only in the [roadmap](../maintainers/roadmap.md); this page holds the outcomes behind them and the work that is
+not a single kind. Known
 limitations of what already exists belong in the [tech-debt register](tech-debt.md).
 
 ## BL-001: Pick an owned API group domain before the first release
 
-Status: open ([ADR 0008](../adr/0008-provisional-api-group-domain.md))
+Status: closed on 2026-11-15. The maintainers keep `openbaoconfig.io`; it shipped in v0.1.0 and v0.1.1 and
+[ADR 0008](../adr/0008-provisional-api-group-domain.md) records the decision.
 
-Goal: publish v1alpha1 under an API group domain the maintainers own or may use.
+Goal: publish v1alpha1 under an API group domain that will not be renamed.
 
 Acceptance criteria:
 
-- Every group, the annotation prefix, `PROJECT`, the chart, the docs and the samples use the new
-  domain, renamed in one change before the first tagged release.
 - ADR 0008 is accepted with the chosen domain.
+- No rename: every group, the annotation prefix, `PROJECT`, the chart, the docs and the samples keep
+  `openbaoconfig.io`.
 
-## BL-002: Core configuration kinds (roadmap phase 2)
+## BL-002: Core configuration kinds
 
 Status: done (test/apicoverage, docs/api-coverage.md)
 
@@ -31,14 +32,14 @@ Kubernetes Secrets and are write-only; values OpenBao returns once go to `writeS
 
 Acceptance criteria:
 
-- Every phase 2 row in the catalogue, except `Audit` (BL-003), has types, an adapter, unit and
+- Every [phase 2](../maintainers/roadmap.md#phases) row in the catalogue, except `Audit` (BL-003), has types, an adapter, unit and
   envtest tests, an integration scenario against `bao server -dev` and a sample that sets every
   spec field.
 - No kind writes in steady state.
 
 ## BL-003: Audit devices
 
-Status: open; deferred from phase 2
+Status: open; deferred from [phase 2](../maintainers/roadmap.md#phases)
 
 Goal: manage `sys/audit/<path>` declaratively.
 
@@ -49,7 +50,7 @@ the recommended path. `OpenBaoEndpoint` covers the API path meanwhile.
 Acceptance criteria: a design, recorded as an ADR, that states when the kind applies, how it
 reports a server that refuses API creation, and why it does not weaken the server's default.
 
-## BL-004: Secrets engines, OIDC, MFA, plugins and sys singletons (roadmap phase 3)
+## BL-004: Secrets engines, OIDC, MFA, plugins and sys singletons
 
 Status: open
 
@@ -59,7 +60,7 @@ the OIDC provider kinds, MFA, the plugin catalogue and the sys singletons.
 Acceptance criteria: as BL-002; singletons default to `Orphan` or reset through a `Deleter`, and
 no reconcile triggers a rotation, issue or other one-shot action.
 
-## BL-005: External-plugin kinds (roadmap phase 3b)
+## BL-005: External-plugin kinds
 
 Status: open
 
@@ -69,7 +70,7 @@ which OpenBao ships as external plugins.
 Acceptance criteria: each kind reports `Unsupported` until its plugin is registered and mounted,
 and is verified as described in TD-004 before release.
 
-## BL-006: Access models (roadmap phase 4)
+## BL-006: Access models
 
 Status: open
 
@@ -84,23 +85,18 @@ Kinds for features OpenBao does not have are not planned.
 
 ## BL-007: Short API group names and kubectl short names
 
-Status: open, decision pending (related to BL-001)
+Status: open for kubectl short names. The group rename this item proposed is rejected: the domain stays
+`openbaoconfig.io` (BL-001, [ADR 0008](../adr/0008-provisional-api-group-domain.md)).
 
-Goal: shorter resource and group names. `openbaoconfig.io` makes long CRD and RBAC names, and long names
-get close to the 63-character limit for DNS labels and label values in generated objects.
+Goal: shorter names to type. `openbaoconfig.io` makes long CRD and RBAC names, and generic short names such as
+`policy` collide with other operators.
 
-Proposal: use a short domain such as `obc` (groups `sys.obc`, `auth.obc`, `secrets.obc`, `identity.obc`,
-`access.obc`, `core.obc`; Kubernetes requires at least one dot in a group). Add a unique
-`+kubebuilder:resource:shortName` of 2 to 8 characters to every kind (for example `obpol` for Policy and
-`obsm` for SecretsMount).
+Proposal: add a unique `+kubebuilder:resource:shortName` of 2 to 8 characters to every kind (for example `obpol`
+for Policy and `obsm` for SecretsMount).
 
 Acceptance criteria:
-- the domain is decided and recorded in ADR 0008;
-- one mechanical rename across api, internal, config, charts, examples, docs and tests (674 files reference
-  the current domain), with regenerated CRDs, RBAC, chart and generated samples;
 - a short-name table in docs/kinds.md, unique across the catalogue and against core Kubernetes resources;
-- a migration note for clusters that already run the `openbaoconfig.io` CRDs (delete CRs, delete CRDs,
-  install new, re-apply).
+- regenerated CRDs, chart and docs.
 
 ## BL-008: Threat model and hardening guide
 
@@ -152,9 +148,9 @@ Status: open
 
 Status: open
 
-- Rule 3: the engine compares every key Desired returns; it does not itself enforce that Desired covers every typed
+- Design rule 3: the engine compares every key Desired returns; it does not itself enforce that Desired covers every typed
   field. Add a generic test that compares each kind's Desired keys with its CRD schema properties.
-- Rule 9: the self-init example is verified by examples/self-init/verify.sh (docker). Run it in the e2e workflow
+- Design rule 9: the self-init example is verified by examples/self-init/verify.sh (docker). Run it in the e2e workflow
   on GitHub runners so it is a CI gate.
 - Safety 8: tenant quotas are documented only; add an e2e step that a ResourceQuota count blocks the 11th object.
 - Unbounded strings read by CEL (about 55 duration strings, Entity/Group metadata values, JWT leeways): add

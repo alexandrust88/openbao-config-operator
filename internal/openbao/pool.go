@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/openbao/openbao/api/v2"
@@ -25,6 +26,9 @@ const revokeTimeout = 5 * time.Second
 // sharedLoginTimeout bounds a login that several callers wait for; it runs detached from each caller's context, so
 // one cancelled reconcile does not fail the others.
 const sharedLoginTimeout = time.Minute
+
+// sessionIDs numbers sessions, so a client's Identity is never reused by a later session.
+var sessionIDs atomic.Uint64
 
 // errLoginInvalidated is returned to the callers of a login that Invalidate overtook.
 var errLoginInvalidated = errors.New("connection invalidated during login, retry")
@@ -184,6 +188,7 @@ func fingerprint(cfg Config) string {
 }
 
 type session struct {
+	id         uint64
 	base       *api.Client
 	httpc      *http.Client
 	ns         string
@@ -223,6 +228,7 @@ func newSession(cfg Config, connection string, now func() time.Time, limit *serv
 	}
 	httpc.Transport = &limitedTransport{next: httpc.Transport, limit: limit}
 	return &session{
+		id:         sessionIDs.Add(1),
 		base:       base,
 		httpc:      httpc,
 		ns:         joinNamespace("", cfg.Namespace),

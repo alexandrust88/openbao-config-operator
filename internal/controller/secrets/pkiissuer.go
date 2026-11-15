@@ -54,6 +54,7 @@ var (
 	_ engine.OutputWriter[*secretsv1alpha1.PKIIssuer] = PKIIssuerAdapter{}
 
 	_ engine.OutputSecretNamer[*secretsv1alpha1.PKIIssuer] = PKIIssuerAdapter{}
+	_ engine.Destructive                                   = PKIIssuerAdapter{}
 )
 
 // Keys that carry resolved references from Desired to Write while the issuer is being created. They are never
@@ -129,6 +130,9 @@ func pkiCreationInputs(ctx context.Context, r engine.Resolver, i *secretsv1alpha
 func (PKIIssuerAdapter) Fields() engine.FieldSpec {
 	return engine.FieldSpec{Sets: []string{"usage"}}
 }
+
+// Destructive implements engine.Destructive: deleting the resource destroys the issuer and the CA key it created.
+func (PKIIssuerAdapter) Destructive() bool { return true }
 
 // Observe implements engine.Observer. It reads by issuer ID once known, so an out-of-band rename is repaired,
 // and maps read shapes onto the spec: usage is read as a comma string, manual_chain as IDs, the revocation

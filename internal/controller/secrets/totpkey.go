@@ -53,6 +53,7 @@ var (
 	_ engine.OutputSecretNamer[*secretsv1alpha1.TOTPKey] = TOTPKeyAdapter{}
 
 	_ engine.SecretReferencer[*secretsv1alpha1.TOTPKey] = TOTPKeyAdapter{}
+	_ engine.Destructive                                = TOTPKeyAdapter{}
 )
 
 // Key of the output Secret that holds the fingerprint of the generated key's URL, so a Secret left over from an
@@ -115,6 +116,9 @@ func (TOTPKeyAdapter) Fields() engine.FieldSpec {
 		Durations: []string{"period"},
 	}
 }
+
+// Destructive implements engine.Destructive: deleting the resource destroys the TOTP seed.
+func (TOTPKeyAdapter) Destructive() bool { return true }
 
 // Observe implements engine.Observer. Every write replaces the key, and with generate it creates a new secret,
 // so a generated key that exists is reported as desired and never rewritten. Inputs a read never returns are

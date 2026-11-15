@@ -2,10 +2,16 @@ package connection
 
 import (
 	"context"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -192,7 +198,7 @@ func TestForNamespacedToken(t *testing.T) {
 		t.Errorf("Token() = %q, %v", token, err)
 	}
 	if strings.Contains(auth.CredentialKey, litToken) || !strings.HasPrefix(auth.CredentialKey, "Secret/team-a/bao-token/token@") {
-		t.Errorf("credential key %q must name the secret version, not its value", auth.CredentialKey)
+		t.Errorf("credential key %q must name the secret and a digest, not its value", auth.CredentialKey)
 	}
 }
 
@@ -486,6 +492,117 @@ func TestCacheKeyCoversGenerationsAndCredential(t *testing.T) {
 	if key(conn, server) == base {
 		t.Error("credential rotation kept the cache key")
 	}
+}
+
+// loginServer is an OpenBao stand-in that counts AppRole logins and reports each revoked token.
+type loginServer struct {
+	srv     *httptest.Server
+	mu      sync.Mutex
+	logins  int
+	revoked chan string
+}
+
+func newLoginServer(t *testing.T) *loginServer {
+	t.Helper()
+	l := &loginServer{revoked: make(chan string, 4)}
+	l.srv = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/auth/approle/login":
+			l.mu.Lock()
+			l.logins++
+			token := fmt.Sprintf("t%d", l.logins)
+			l.mu.Unlock()
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"auth": map[string]any{"client_token": token}})
+		case "/v1/auth/token/revoke-self":
+			l.revoked <- req.Header.Get("X-Vault-Token")
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(l.srv.Close)
+	return l
+}
+
+func (l *loginServer) count() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.logins
+}
+
+// TestPooledClientFollowsCredentialData: a metadata-only edit of the credential Secret or the CA ConfigMap keeps the
+// pooled client, while a change of either value logs in again and revokes the token of the replaced client.
+func TestPooledClientFollowsCredentialData(t *testing.T) {
+	bao := newLoginServer(t)
+	caPEM := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: bao.srv.Certificate().Raw}))
+	server := tenantServer()
+	server.Spec.Address = bao.srv.URL
+	server.Spec.CABundle = &corev1alpha1.CABundleSource{
+		ConfigMapRef: &corev1alpha1.NamespacedCABundleReference{Namespace: litOpenBaoNS, Name: "ca"},
+	}
+	ca := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: litOpenBaoNS, Name: "ca"},
+		Data:       map[string]string{"ca.crt": caPEM},
+	}
+	conn := namespacedConn(corev1alpha1.ConnectionAuth{AppRole: &corev1alpha1.AppRoleAuth{
+		MountPath:         appRoleName,
+		RoleIDSecretRef:   commonv1alpha1.SecretKeySelector{Name: appRoleName, Key: "role-id"},
+		SecretIDSecretRef: commonv1alpha1.SecretKeySelector{Name: appRoleName, Key: "secret-id"},
+	}})
+	r, _ := newResolver(t, server, conn, ca, secret(teamA, appRoleName, map[string]string{"role-id": "r", "secret-id": "s"}))
+	r.Pool = openbao.NewPool()
+	ctx := t.Context()
+
+	resolve := func(wantLogins int) {
+		t.Helper()
+		if _, err := r.For(ctx, teamA, commonv1alpha1.ConnectionReference{Name: connName}); err != nil {
+			t.Fatalf("For: %v", err)
+		}
+		if got := bao.count(); got != wantLogins {
+			t.Fatalf("logins = %d, want %d", got, wantLogins)
+		}
+	}
+	expectRevoked := func(want string) {
+		t.Helper()
+		select {
+		case got := <-bao.revoked:
+			if got != want {
+				t.Fatalf("revoked %q, want %q", got, want)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("no revoke of %q", want)
+		}
+	}
+	edit := func(obj client.Object, change func()) {
+		t.Helper()
+		if err := r.Client.Get(ctx, client.ObjectKeyFromObject(obj), obj); err != nil {
+			t.Fatal(err)
+		}
+		change()
+		if err := r.Client.Update(ctx, obj); err != nil {
+			t.Fatal(err)
+		}
+	}
+	credentials := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: teamA, Name: appRoleName}}
+
+	resolve(1)
+	edit(credentials, func() { credentials.Labels = map[string]string{"edited": litTrue} })
+	edit(ca, func() { ca.Annotations = map[string]string{"edited": litTrue} })
+	resolve(1)
+	select {
+	case got := <-bao.revoked:
+		t.Fatalf("metadata edit revoked %q", got)
+	default:
+	}
+
+	edit(credentials, func() { credentials.Data["secret-id"] = []byte("s2") })
+	resolve(2)
+	expectRevoked("t1")
+
+	edit(ca, func() { ca.Data["ca.crt"] = caPEM + caPEM })
+	resolve(3)
+	expectRevoked("t2")
 }
 
 func TestConfigMissingSecret(t *testing.T) {

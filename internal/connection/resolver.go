@@ -5,6 +5,8 @@ package connection
 import (
 	"cmp"
 	"context"
+	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -338,7 +340,7 @@ func (r *Resolver) ServerConfig(ctx context.Context, server *corev1alpha1.OpenBa
 		cfg.RateLimit = openbao.RateLimit{QPS: float64(rl.QPS), Burst: int(cmp.Or(rl.Burst, rl.QPS))}
 	}
 	if ca := serverCARef(server); ca != nil {
-		bundle, _, err := r.value(ctx, *ca)
+		bundle, err := r.value(ctx, *ca)
 		if err != nil {
 			return openbao.Config{}, err
 		}
@@ -433,13 +435,13 @@ func (r *Resolver) auth(ctx context.Context, s settings) (openbao.Auth, error) {
 	switch {
 	case s.token != nil:
 		ref := *s.token
-		_, version, err := r.value(ctx, ref)
+		token, err := r.value(ctx, ref)
 		if err != nil {
 			return nil, err
 		}
 		return openbao.TokenAuth{
 			Token:         r.credential(ref),
-			CredentialKey: ref.String() + "@" + version,
+			CredentialKey: ref.String() + "@" + digest(token),
 		}, nil
 	case s.tokenFile != "":
 		if r.automounted(s.tokenFile) {
@@ -454,11 +456,11 @@ func (r *Resolver) auth(ctx context.Context, s settings) (openbao.Auth, error) {
 			CredentialKey: "file:" + s.tokenFile + "@" + version,
 		}, nil
 	case s.appRole != nil:
-		_, roleIDVersion, err := r.value(ctx, s.appRole.roleID)
+		roleID, err := r.value(ctx, s.appRole.roleID)
 		if err != nil {
 			return nil, err
 		}
-		_, secretIDVersion, err := r.value(ctx, s.appRole.secretID)
+		secretID, err := r.value(ctx, s.appRole.secretID)
 		if err != nil {
 			return nil, err
 		}
@@ -466,8 +468,8 @@ func (r *Resolver) auth(ctx context.Context, s settings) (openbao.Auth, error) {
 			MountPath: s.appRole.mountPath,
 			RoleID:    r.credential(s.appRole.roleID),
 			SecretID:  r.credential(s.appRole.secretID),
-			CredentialKey: s.appRole.roleID.String() + "@" + roleIDVersion + "," +
-				s.appRole.secretID.String() + "@" + secretIDVersion,
+			CredentialKey: s.appRole.roleID.String() + "@" + digest(roleID) + "," +
+				s.appRole.secretID.String() + "@" + digest(secretID),
 		}, nil
 	case s.saLogin != nil:
 		login := *s.saLogin
@@ -486,7 +488,7 @@ func (r *Resolver) auth(ctx context.Context, s settings) (openbao.Auth, error) {
 
 func (r *Resolver) credential(ref keyRef) func(context.Context) (string, error) {
 	return func(ctx context.Context) (string, error) {
-		v, _, err := r.value(ctx, ref)
+		v, err := r.value(ctx, ref)
 		if err != nil {
 			return "", err
 		}
@@ -616,21 +618,35 @@ func (r *Resolver) requestToken(ctx context.Context, sa objectRef, audiences []s
 	return request.Status.Token, nil
 }
 
-// value returns the referenced bytes and the resourceVersion of the object holding them.
-func (r *Resolver) value(ctx context.Context, ref keyRef) ([]byte, string, error) {
+// credentialHashKey keys digest with a per-process secret, so a credential key that surfaces in a dump cannot be
+// used to guess a low-entropy Secret value offline.
+var credentialHashKey = func() []byte {
+	key := make([]byte, sha256.Size)
+	_, _ = rand.Read(key)
+	return key
+}()
+
+// digest identifies credential bytes in a cache key: a change of the value replaces the pooled client, while a
+// metadata-only edit of the object holding it does not.
+func digest(data []byte) string {
+	mac := hmac.New(sha256.New, credentialHashKey)
+	mac.Write(data)
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// value returns the referenced bytes.
+func (r *Resolver) value(ctx context.Context, ref keyRef) ([]byte, error) {
 	key := client.ObjectKey{Namespace: ref.namespace, Name: ref.name}
 	var (
-		data    []byte
-		found   bool
-		version string
-		err     error
+		data  []byte
+		found bool
+		err   error
 	)
 	switch ref.kind {
 	case kindSecret:
 		secret := &corev1.Secret{}
 		err = r.Client.Get(ctx, key, secret)
 		data, found = secret.Data[ref.key]
-		version = secret.ResourceVersion
 	case kindConfigMap:
 		cm := &corev1.ConfigMap{}
 		err = r.Client.Get(ctx, key, cm)
@@ -639,19 +655,18 @@ func (r *Resolver) value(ctx context.Context, ref keyRef) ([]byte, string, error
 		} else {
 			data, found = cm.BinaryData[ref.key]
 		}
-		version = cm.ResourceVersion
 	default:
-		return nil, "", fmt.Errorf("unsupported reference kind %q", ref.kind)
+		return nil, fmt.Errorf("unsupported reference kind %q", ref.kind)
 	}
 	if apierrors.IsNotFound(err) {
-		return nil, "", fmt.Errorf("%w: %s %s/%s", ErrReferenceNotFound, ref.kind, ref.namespace, ref.name)
+		return nil, fmt.Errorf("%w: %s %s/%s", ErrReferenceNotFound, ref.kind, ref.namespace, ref.name)
 	}
 	if err != nil {
-		return nil, "", fmt.Errorf("get %s %s/%s: %w", ref.kind, ref.namespace, ref.name, err)
+		return nil, fmt.Errorf("get %s %s/%s: %w", ref.kind, ref.namespace, ref.name, err)
 	}
 	if !found {
-		return nil, "", fmt.Errorf("%w: key %q in %s %s/%s", ErrReferenceNotFound, ref.key, ref.kind, ref.namespace,
+		return nil, fmt.Errorf("%w: key %q in %s %s/%s", ErrReferenceNotFound, ref.key, ref.kind, ref.namespace,
 			ref.name)
 	}
-	return data, version, nil
+	return data, nil
 }

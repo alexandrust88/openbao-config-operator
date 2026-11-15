@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/common/v1alpha1"
 	corev1alpha1 "github.com/alexandrust88/openbao-config-operator/api/core/v1alpha1"
@@ -394,6 +395,48 @@ func TestV2DestructiveDelete(t *testing.T) {
 	}
 }
 
+func TestV2DestructiveDeleteTerminatingNamespace(t *testing.T) {
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace, Finalizers: []string{"test"}}}
+	h := newHarness(t, v2DestructiveAdapter{}, deletable(newResource(testName)), ns)
+	h.mustReconcile()
+	if err := h.k8s.Delete(context.Background(), h.get()); err != nil {
+		t.Fatal(err)
+	}
+	reads, writes := h.store.counts()
+	h.mustReconcile()
+	got := h.get()
+	if r, w := h.store.counts(); !controllerutil.ContainsFinalizer(got, DefaultFinalizer) || r != reads || w != writes ||
+		h.store.deleteCount() != 0 {
+		t.Fatalf("guard in a live Namespace: finalizers %v, OpenBao calls %d/%d/%d", got.Finalizers, r-reads, w-writes,
+			h.store.deleteCount())
+	}
+	assertCondition(t, got, commonv1alpha1.ConditionSynced, metav1.ConditionFalse, commonv1alpha1.ReasonDeleteGuarded)
+
+	if err := h.k8s.Delete(context.Background(), ns); err != nil {
+		t.Fatal(err)
+	}
+	terminating := &corev1.Namespace{}
+	if err := h.k8s.Get(context.Background(), client.ObjectKey{Name: testNamespace}, terminating); err != nil {
+		t.Fatal(err)
+	}
+	want := []reconcile.Request{{NamespacedName: client.ObjectKey{Namespace: testNamespace, Name: testName}}}
+	if got := h.r.deletingInNamespace(context.Background(), terminating); !slices.Equal(got, want) {
+		t.Fatalf("the terminating Namespace queued %v, want the guarded resource %v", got, want)
+	}
+	h.drainEvents()
+	h.mustReconcile()
+	if err := h.k8s.Get(context.Background(), client.ObjectKey{Namespace: testNamespace, Name: testName}, &testResource{}); err == nil {
+		t.Fatal("finalizer kept in a terminating Namespace")
+	}
+	if _, ok := h.store.get(policyPath); !ok || h.store.deleteCount() != 0 {
+		t.Fatalf("the object must stay in OpenBao, deletes %d", h.store.deleteCount())
+	}
+	if events := h.drainEvents(); len(events) != 1 || !strings.Contains(events[0], commonv1alpha1.ReasonOrphaned) ||
+		!strings.Contains(events[0], commonv1alpha1.AnnotationAllowDestructiveDelete) {
+		t.Fatalf("events = %v, want one Orphaned event naming the annotation", events)
+	}
+}
+
 func TestV2DestructiveRecreate(t *testing.T) {
 	obj := newResource(testName)
 	obj.Spec.Data[keyType] = v2TypeOld
@@ -561,16 +604,10 @@ func (v2FailingWriteBao) Write(_ context.Context, path string, _ map[string]any)
 // v2DroppingBao keeps only the policy key of every write, as a server that ignores a field would.
 type v2DroppingBao struct {
 	*fakeBao
-	activeReads *int
 }
 
 func (c v2DroppingBao) Write(ctx context.Context, path string, data map[string]any) (map[string]any, error) {
 	return c.fakeBao.Write(ctx, path, map[string]any{keyPolicy: data[keyPolicy]})
-}
-
-func (c v2DroppingBao) ActiveNode() openbao.Client {
-	*c.activeReads++
-	return c.fakeBao
 }
 
 type v2SkipReadBack struct{ testAdapter }
@@ -582,8 +619,7 @@ func TestV2ReadAfterWrite(t *testing.T) {
 	obj.Spec.Data["ignored_by_server"] = "x"
 	t.Run("unconfirmed write is OutOfSync with backoff", func(t *testing.T) {
 		h := newHarness(t, testAdapter{}, obj.DeepCopyObject().(*testResource))
-		active := 0
-		h.conns.client = v2DroppingBao{fakeBao: &fakeBao{store: h.store, ns: litAdmin}, activeReads: &active}
+		h.conns.client = v2DroppingBao{fakeBao: &fakeBao{store: h.store, ns: litAdmin}}
 		res, err := h.reconcile()
 		if err != nil {
 			t.Fatal(err)
@@ -597,18 +633,14 @@ func TestV2ReadAfterWrite(t *testing.T) {
 		if got.Status.Acquired != commonv1alpha1.AcquiredCreated || got.Status.Path != policyPath {
 			t.Fatalf("status of the written object not recorded: %+v", got.Status)
 		}
-		if active != 1 {
-			t.Fatalf("read-back used the active node %d times, want 1", active)
-		}
 	})
 	t.Run("read-back can be skipped", func(t *testing.T) {
 		h := newHarness(t, v2SkipReadBack{}, obj.DeepCopyObject().(*testResource))
-		active := 0
-		h.conns.client = v2DroppingBao{fakeBao: &fakeBao{store: h.store, ns: litAdmin}, activeReads: &active}
+		h.conns.client = v2DroppingBao{fakeBao: &fakeBao{store: h.store, ns: litAdmin}}
 		h.mustReconcile()
 		assertCondition(t, h.get(), commonv1alpha1.ConditionReady, metav1.ConditionTrue, commonv1alpha1.ReasonAvailable)
-		if active != 0 {
-			t.Fatal("skipped read-back still read")
+		if reads, _ := h.store.counts(); reads != 2 {
+			t.Fatalf("skipped read-back still read: %d reads, want only the two observes before the create", reads)
 		}
 	})
 }

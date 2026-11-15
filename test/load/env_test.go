@@ -290,7 +290,7 @@ func startCluster(t *testing.T, cfg config, dir string) cluster {
 }
 
 // createConnection stores the operator's AppRole credentials in a Secret, declares the server as an OpenBaoServer
-// and points an OpenBaoConnection at it; design rule 6 keeps the root token away from the operator.
+// and points an OpenBaoConnection at it; design rule 9 keeps the root token away from the operator.
 func createConnection(ctx context.Context, t *testing.T, c cluster, addr, roleID, secretID string) {
 	t.Helper()
 	secret := &corev1.Secret{

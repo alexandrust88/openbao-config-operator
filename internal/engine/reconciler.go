@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -184,6 +185,13 @@ func (r *Reconciler[T]) SetupWithManager(mgr ctrl.Manager, opts ...SetupOption) 
 		WithOptions(controller.Options{MaxConcurrentReconciles: r.opts.MaxConcurrentReconciles})
 	if err := r.watchConnections(mgr, b); err != nil {
 		return err
+	}
+	if r.destructive() {
+		// A guarded delete gets no event of its own when its Namespace starts terminating, and must orphan then.
+		b = b.Watches(&corev1.Namespace{}, handler.EnqueueRequestsFromMapFunc(r.deletingInNamespace),
+			builder.WithPredicates(predicate.NewPredicateFuncs(func(o client.Object) bool {
+				return !o.GetDeletionTimestamp().IsZero()
+			})))
 	}
 	if _, ok := any(r.adapter).(OutputWriter[T]); ok {
 		// A deleted or edited output Secret re-queues its owner, which writes it again or reports it undelivered.
@@ -449,7 +457,7 @@ func (r *Reconciler[T]) converge(ctx, opCtx context.Context, p *pass[T], observe
 				return r.fail(ctx, obj, p.before, commonv1alpha1.ReasonReconcileError, err)
 			}
 		}
-		if res, done, err := r.checkLiveOwner(ctx, p, found); done {
+		if res, done, err := r.checkLiveOwner(ctx, p, observed, found); done {
 			return res, err
 		}
 	}
@@ -605,25 +613,37 @@ func (r *Reconciler[T]) acquire(obj T, absPath string, observed Payload, found b
 		}
 		return commonv1alpha1.AcquiredCreated, "", nil
 	}
-	switch r.checkMarker(obj, observed) {
-	case markerForeignCluster:
-		return "", commonv1alpha1.ReasonConflict, fmt.Errorf("%s carries the ownership marker of another cluster", absPath)
-	case markerOurs:
-		return cmp.Or(status.Acquired, commonv1alpha1.AcquiredCreated), "", nil
-	case markerStale:
-		ours = false
-	case markerAbsent:
-	}
+	ours, err := r.ownsExisting(obj, absPath, observed)
 	switch {
+	case err != nil:
+		return "", commonv1alpha1.ReasonConflict, err
 	case ours:
 		return cmp.Or(status.Acquired, commonv1alpha1.AcquiredCreated), "", nil
-	case creationPolicy == commonv1alpha1.CreationPolicyCreate && !r.singleton():
-		return "", commonv1alpha1.ReasonConflict, fmt.Errorf("%s already exists and is not owned by this resource; "+
-			"set creationPolicy to Adopt or CreateOrAdopt to take it over", absPath)
 	default:
 		r.recorder.Eventf(obj, nil, corev1.EventTypeNormal, "Adopted", "Adopt", "adopted %s", absPath)
 		return commonv1alpha1.AcquiredAdopted, "", nil
 	}
+}
+
+// ownsExisting reports whether obj owns the existing object at absPath, or why it may not take it over; (false, nil)
+// means it may adopt the object.
+func (r *Reconciler[T]) ownsExisting(obj T, absPath string, observed Payload) (bool, error) {
+	ours := openbao.CanonicalPath(obj.GetResourceStatus().Path) == absPath
+	switch r.checkMarker(obj, observed) {
+	case markerForeignCluster:
+		return false, fmt.Errorf("%s carries the ownership marker of another cluster", absPath)
+	case markerOurs:
+		return true, nil
+	case markerStale:
+		ours = false
+	case markerAbsent:
+	}
+	creationPolicy := cmp.Or(obj.GetResourceSpec().CreationPolicy, commonv1alpha1.CreationPolicyCreate)
+	if !ours && creationPolicy == commonv1alpha1.CreationPolicyCreate && !r.singleton() {
+		return false, fmt.Errorf("%s already exists and is not owned by this resource; "+
+			"set creationPolicy to Adopt or CreateOrAdopt to take it over", absPath)
+	}
+	return ours, nil
 }
 
 // claim records the path and server in the status before a create, so that a lost status patch after the create
@@ -657,8 +677,12 @@ func (r *Reconciler[T]) recheckOwner(obj T, absPath string, found bool) bool {
 // checkLiveOwner stops with Conflict when an existing object, or one read as absent and created meanwhile, has its
 // path claimed by an older resource. The claims are read from the API server, since the cache may not show that
 // claim yet.
-func (r *Reconciler[T]) checkLiveOwner(ctx context.Context, p *pass[T], found bool) (ctrl.Result, bool, error) {
+func (r *Reconciler[T]) checkLiveOwner(ctx context.Context, p *pass[T], observed Payload, found bool) (ctrl.Result, bool, error) {
 	if !found {
+		return ctrl.Result{}, false, nil
+	}
+	// acquire refuses it anyway; a Create stuck on an existing object must not list on every pass.
+	if _, err := r.ownsExisting(p.obj, p.absPath, observed); err != nil {
 		return ctrl.Result{}, false, nil
 	}
 	other, conflict, err := r.olderOwnerLive(ctx, p.obj, p.absPath, p.server, p.serverID)
@@ -827,8 +851,7 @@ var ErrNothingWritten = errors.New("nothing to write")
 var errUnconfirmed = errors.New("OpenBao did not keep the written values")
 
 // readBack reads the object after a write and returns the read and, when it differs from desired, the read together
-// with an error wrapping errUnconfirmed that names the differing keys. The read goes to the active node when the
-// client can pin it.
+// with an error wrapping errUnconfirmed that names the differing keys.
 func (r *Reconciler[T]) readBack(ctx context.Context, bao openbao.Client, obj T, path string, desired Payload,
 	fields FieldSpec) (Payload, error) {
 	skipper, skip := any(r.adapter).(ReadBackSkipper[T])
@@ -837,11 +860,7 @@ func (r *Reconciler[T]) readBack(ctx context.Context, bao openbao.Client, obj T,
 	if skip && !needRead {
 		return nil, nil
 	}
-	reader := bao
-	if active, ok := bao.(ActiveNodeReader); ok {
-		reader = active.ActiveNode()
-	}
-	observed, found, err := r.observe(ctx, reader, obj, path)
+	observed, found, err := r.observe(ctx, bao, obj, path)
 	switch {
 	case err != nil:
 		return nil, err
@@ -882,8 +901,19 @@ func (r *Reconciler[T]) reconcileDelete(ctx context.Context, obj T, before clien
 	if r.deletionPolicy(obj) == commonv1alpha1.DeletionPolicyDelete && !observeOnly(obj) &&
 		status.Acquired != "" && status.Path != "" {
 		if r.destructive() && !allowsDestructive(obj) {
-			return r.guard(ctx, obj, before, fmt.Errorf("deleting %s destroys its data; set the annotation %s=%q to allow it",
-				status.Path, commonv1alpha1.AnnotationAllowDestructiveDelete, annotationTrue))
+			if !r.namespaceTerminating(ctx, obj) {
+				return r.guard(ctx, obj, before, fmt.Errorf("deleting %s destroys its data; set the annotation %s=%q to allow it",
+					status.Path, commonv1alpha1.AnnotationAllowDestructiveDelete, annotationTrue))
+			}
+			// A terminating Namespace cannot wait for the annotation; orphaning is the only way out that destroys nothing.
+			r.recorder.Eventf(obj, nil, corev1.EventTypeWarning, commonv1alpha1.ReasonOrphaned, "Delete",
+				"left %s in OpenBao: the Namespace is terminating and the annotation %s is absent",
+				status.Path, commonv1alpha1.AnnotationAllowDestructiveDelete)
+			if err := r.patchFinalizer(ctx, obj, controllerutil.RemoveFinalizer); err != nil {
+				return ctrl.Result{}, err
+			}
+			r.forget(client.ObjectKeyFromObject(obj))
+			return ctrl.Result{}, nil
 		}
 		var other owner
 		var owned bool
@@ -951,6 +981,36 @@ func (r *Reconciler[T]) namespaceTerminating(ctx context.Context, obj T) bool {
 		return false
 	}
 	return !ns.DeletionTimestamp.IsZero()
+}
+
+// deletingInNamespace returns the resources of this kind that are being deleted in the Namespace ns.
+func (r *Reconciler[T]) deletingInNamespace(ctx context.Context, ns client.Object) []reconcile.Request {
+	if len(r.opts.Namespaces) > 0 && !slices.Contains(r.opts.Namespaces, ns.GetName()) {
+		return nil
+	}
+	var items []runtime.Object
+	gvk, err := apiutil.GVKForObject(r.newObj(), r.scheme)
+	var list client.ObjectList
+	if err == nil {
+		list, err = r.newList(gvk)
+	}
+	if err == nil {
+		err = r.client.List(ctx, list, client.InNamespace(ns.GetName()))
+	}
+	if err == nil {
+		items, err = meta.ExtractList(list)
+	}
+	if err != nil {
+		log.FromContext(ctx).Error(err, "Listing resources in a terminating Namespace failed", "namespace", ns.GetName())
+		return nil
+	}
+	var requests []reconcile.Request
+	for _, item := range items {
+		if o, ok := item.(client.Object); ok && !o.GetDeletionTimestamp().IsZero() {
+			requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(o)})
+		}
+	}
+	return requests
 }
 
 func (r *Reconciler[T]) cleanupBlocked(ctx context.Context, obj T, before client.Object, cause error) (ctrl.Result, error) {
@@ -1474,6 +1534,9 @@ func (r *Reconciler[T]) patchStatus(ctx context.Context, obj T, before client.Ob
 		return nil
 	}
 	err := r.client.Status().Patch(ctx, obj, client.MergeFrom(before), client.FieldOwner(r.opts.FieldOwner))
+	if claims, now := PathIndexFunc(before), PathIndexFunc(obj); !slices.Equal(claims, now) {
+		r.shared.touch(append(claims, now...))
+	}
 	if client.IgnoreNotFound(err) != nil {
 		return fmt.Errorf("patch status: %w", err)
 	}

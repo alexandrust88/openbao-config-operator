@@ -22,7 +22,7 @@ and the [release process](../maintainers/release-process.md#openbao-versions).
   flavour detection.
 - Each operator minor supports the OpenBao minors that have an API snapshot in `api-coverage/` and
   are listed in its release notes; today `openapi-2.6.json` and `openapi-2.7.json`.
-- The integration suite runs against the single pinned version, 2.7.2. A nightly run against every
+- The integration suite runs against the single pinned version, 2.7.2. A scheduled run against every
   supported minor is not in place yet
   ([BL-014](../project/backlog.md#bl-014-detect-openbao-api-changes-automatically)).
 - Adapters do not branch on the server version. A field or endpoint the server lacks shows as the
@@ -94,3 +94,8 @@ Each kind in the [kind catalogue](../kinds.md) has an availability class.
 
 An external-plugin kind reports `Unsupported` until its plugin is mounted. Only the LDAP, Kerberos
 and RADIUS paths are confirmed by OpenBao documentation; the catalogue marks the others `(u)`.
+
+The 52 external-plugin kinds are experimental: they are not tested against any OpenBao version, so the support
+statements on this page do not cover them, and no coverage claim counts on them. The typed share in
+[API coverage](../api-coverage.md) for OpenBao 2.7.2 contains no plugin-kind path; the 2.6 figure counts LDAP,
+Kerberos and RADIUS paths, which 2.6 still builds in, through plugin kinds that are not run against a server.

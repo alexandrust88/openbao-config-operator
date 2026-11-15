@@ -74,6 +74,8 @@ apiVersion: identity.openbaoconfig.io/v1alpha1
 kind: Entity
 metadata:
   name: tacl-billing
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
 spec:
   connectionRef:
     kind: OpenBaoConnection
@@ -151,3 +153,25 @@ spec:
   allowSlashesInIdentityTemplates: false
   allowWildcardsInIdentityTemplates: true
   casRequired: false
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: tacl-user-home
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: tacl-user-home
+  policy: |
+    path "+/data/home/{{identity.entity.aliases.${accessor:userpass}.name}}/*" {
+      capabilities = ["create", "read", "update", "delete", "list"]
+    }
+  accessorRefs:
+    userpass:
+      mountPath: tacl-userpass

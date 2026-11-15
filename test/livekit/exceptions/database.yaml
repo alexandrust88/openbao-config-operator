@@ -1,21 +1,20 @@
 fullFields:
   DatabaseConnection:
-    cassandra.pemJSONSecretRef.key: needs a JSON certificate bundle (certificate, private_key, issuing_ca) in an input Secret; create-secrets.sh has no generator for it, so the full example uses pemBundleSecretRef
-    cassandra.pemJSONSecretRef.name: needs a JSON certificate bundle (certificate, private_key, issuing_ca) in an input Secret; create-secrets.sh has no generator for it, so the full example uses pemBundleSecretRef
-    influxdb.pemJSONSecretRef.key: needs a JSON certificate bundle (certificate, private_key, issuing_ca) in an input Secret; create-secrets.sh has no generator for it, so the full example uses pemBundleSecretRef
-    influxdb.pemJSONSecretRef.name: needs a JSON certificate bundle (certificate, private_key, issuing_ca) in an input Secret; create-secrets.sh has no generator for it, so the full example uses pemBundleSecretRef
     pluginVersion: selects a version of an externally registered database plugin; the built-in plugins of OpenBao are unversioned
     privateKeySecretRef.key: private_key is read only by external key-pair plugins such as Snowflake; no built-in OpenBao database plugin uses it
     privateKeySecretRef.name: private_key is read only by external key-pair plugins such as Snowflake; no built-in OpenBao database plugin uses it
+enumValues:
+  DatabaseConnection:
+    cassandra.tlsMinVersion:
+      tls10: checking it needs a Cassandra server that still offers TLS 1.0 (deprecated by RFC 8996); without one OpenBao only maps the name through the tlsutil table that tls12 and tls13 already exercise
+      tls11: checking it needs a Cassandra server that still offers TLS 1.1 (deprecated by RFC 8996); without one OpenBao only maps the name through the tlsutil table that tls12 and tls13 already exercise
+    influxdb.tlsMinVersion:
+      tls10: checking it needs an InfluxDB server that still offers TLS 1.0 (deprecated by RFC 8996); without one OpenBao only maps the name through the tlsutil table that tls12 and tls13 already exercise
+      tls11: checking it needs an InfluxDB server that still offers TLS 1.1 (deprecated by RFC 8996); without one OpenBao only maps the name through the tlsutil table that tls12 and tls13 already exercise
+  DatabaseStaticRole:
+    credentialType:
+      rsa_private_key: needs an external key-pair database plugin such as Snowflake; no built-in OpenBao plugin declares rsa_private_key support, and creating a static role rotates at once, which OpenBao refuses with unsupported credential_type
 notReady:
-  - kind: DatabaseConnection
-    name: db-cassandra
-    reason: the Cassandra plugin needs a client (non-CA) certificate and its key in pem_bundle; create-secrets.sh only generates a CA certificate bundle (pem-bundle), which the plugin refuses with "found private key for client-side TLS authentication but no certificate"
   - kind: DatabaseStaticRole
     name: db-app-static-cert
-    reason: OpenBao checks that credentialConfig.ca_cert is the certificate of the private key in caPrivateKeySecretRef, which create-secrets.sh generates at run time; a static role also rotates on write, which needs a reachable database
-  - kind: DatabaseStaticRole
-    reason: OpenBao rotates the password of a static role as soon as it is written, which needs a reachable database; the kit has none
-  - kind: DatabaseRole
-    name: db-app-cert
-    reason: OpenBao checks that credentialConfig.ca_cert is the certificate of the private key in caPrivateKeySecretRef; create-secrets.sh generates that key at run time, so no committed certificate can match it
+    reason: needs an external database plugin that declares client_certificate support; no built-in OpenBao plugin does, and creating a static role rotates at once, which OpenBao refuses with unsupported credential_type "client_certificate"

@@ -1,4 +1,8 @@
 fullFields:
   AccessGrant:
     mountAccessor: server-generated accessor, not known before apply; authMountRef and mountPath cover the same field
+oneOfBranches:
+  AccessGrant:
+    spec:
+      mountAccessor: server-generated accessor, not known before apply; the authMountRef and mountPath branches are covered
 notReady: []

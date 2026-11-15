@@ -121,7 +121,9 @@ immutable Secret. Protect it like any other Secret in the operator namespace.
 
 `create` on `serviceaccounts/token` lets the manager mint a token for any ServiceAccount in the
 namespaces it covers. Set `watchNamespaces` to the namespaces that hold connections and their
-references, so a compromised manager cannot impersonate ServiceAccounts elsewhere.
+references, so a compromised manager cannot impersonate ServiceAccounts elsewhere. The default install is
+cluster-wide, which the threat model lists as residual risk
+[RR-01](security/threat-model.md#residual-risks-and-recommendations).
 
 The manager pod runs as non-root user 65532 on a distroless image, with a read-only root
 filesystem, no capabilities, no privilege escalation and the `RuntimeDefault` seccomp profile.

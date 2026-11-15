@@ -176,6 +176,7 @@ nav:
       - Examples: reference/examples/
       - Connections: reference/connections.md
       - Status and events: reference/status-and-events.md
+      - Constants and timings: reference/constants.md
       - Helm values: reference/helm-values.md
       - Compatibility: reference/compatibility.md
       - API coverage: api-coverage.md

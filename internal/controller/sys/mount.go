@@ -105,16 +105,16 @@ func mountPayload(typ string, f sysv1alpha1.MountFields) engine.Payload {
 // observeMount finds path in the mount table. The table is used instead of sys/<table>/<path>, which answers
 // 400 for a missing mount and, for secrets engines, matches the longest mount prefix. The read omits
 // listing_visibility at its default. A create-only field that differs is left to the engine, which recreates a
-// destructive kind only with the allow-destructive-delete annotation.
+// destructive kind only with the allow-destructive-delete annotation. The table read is shared through mountTables.
 func observeMount(ctx context.Context, c openbao.Client, table, path string) (engine.Payload, bool, error) {
-	mounts, err := c.Read(ctx, "sys/"+table)
+	mounts, err := mountTables.read(ctx, c, table)
 	if errors.Is(err, openbao.ErrNotFound) {
 		return nil, false, nil
 	}
 	if err != nil {
 		return nil, false, fmt.Errorf("read sys/%s: %w", table, err)
 	}
-	entry, ok := mounts[path+"/"].(map[string]any)
+	entry, ok := cloneJSON(mounts[path+"/"]).(map[string]any)
 	if !ok {
 		return nil, false, nil
 	}
@@ -140,6 +140,9 @@ func observeMount(ctx context.Context, c openbao.Client, table, path string) (en
 
 // writeMount enables the mount with its config on create and tunes what enable cannot set; an update only tunes.
 func writeMount(ctx context.Context, c openbao.Client, table, path string, desired engine.Payload, create bool) error {
+	// The stored options read below and the engine's read-back must not see a snapshot from before this write.
+	mountTables.invalidate()
+	defer mountTables.invalidate()
 	base := "sys/" + table + "/" + path
 	tune := engine.Payload{}
 	lockout := map[string]any{}
@@ -190,6 +193,12 @@ func writeMount(ctx context.Context, c openbao.Client, table, path string, desir
 		return fmt.Errorf("tune %s: %w", base, err)
 	}
 	return nil
+}
+
+// deleteMount disables the mount at path, the engine's default delete, and drops the mount table snapshots.
+func deleteMount(ctx context.Context, c openbao.Client, path string) error {
+	defer mountTables.invalidate()
+	return c.Delete(ctx, path)
 }
 
 // withRemovedOptions adds an empty value, which tune treats as a delete, for every stored option that options

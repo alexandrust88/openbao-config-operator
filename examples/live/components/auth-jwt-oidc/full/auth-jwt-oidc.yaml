@@ -419,3 +419,183 @@ spec:
       - name: on_main
         expression: 'has(claims.ref) && claims.ref == "main"'
     expression: 'project.startsWith("platform/") && on_main'
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: jwt-azure
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: jwt-azure
+  type: oidc
+  description: Browser and device logins through Microsoft Entra ID, listed on the login page
+  listingVisibility: unauth
+  tokenType: default-batch
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: jwt-secureauth
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: jwt-secureauth
+  type: oidc
+  description: OIDC logins through SecureAuth IdP
+  tokenType: service
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: jwt-ibmisam
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  path: jwt-ibmisam
+  type: oidc
+  description: OIDC logins through IBM Security Verify Access
+  tokenType: batch
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: jwt-azure-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: jwt-azure
+  oidcDiscoveryURL: https://login.microsoftonline.com/5f1c3a8e-2b7d-4c9e-9a41-0d6e8b3f7c21/v2.0
+  skipJWKSValidation: true
+  oidcResponseMode: query
+  oidcResponseTypes:
+    - code
+  boundIssuer: https://login.microsoftonline.com/5f1c3a8e-2b7d-4c9e-9a41-0d6e8b3f7c21/v2.0
+  providerConfig:
+    provider: azure
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: jwt-secureauth-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: jwt-secureauth
+  oidcDiscoveryURL: https://idp.example.com/SecureAuth2
+  skipJWKSValidation: true
+  providerConfig:
+    provider: secureauth
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthConfig
+metadata:
+  name: jwt-ibmisam-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: jwt-ibmisam
+  oidcDiscoveryURL: https://isam.example.com/mga/sps/oauth/oauth20
+  skipJWKSValidation: true
+  providerConfig:
+    provider: ibmisam
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthRole
+metadata:
+  name: jwt-azure-device
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: jwt-azure
+  name: jwt-azure-device
+  roleType: oidc
+  userClaim: oid
+  groupsClaim: groups
+  allowedRedirectURIs:
+    - http://localhost:8250/oidc/callback
+  callbackMode: device
+  pollInterval: 5
+  boundClaimsType: string
+  boundClaims:
+    tid:
+      - 5f1c3a8e-2b7d-4c9e-9a41-0d6e8b3f7c21
+  oauth2Metadata:
+    - access_token
+    - refresh_token
+  policyRefs:
+    - name: jwt-ci-read
+  tokenTTL: 30m
+  tokenType: batch
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: JWTAuthRole
+metadata:
+  name: jwt-secureauth-user
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: jwt-secureauth
+  name: jwt-secureauth-user
+  roleType: oidc
+  userClaim: sub
+  groupsClaim: groups
+  allowedRedirectURIs:
+    - https://openbao.example.com:8200/v1/auth/jwt-secureauth/oidc/callback
+  callbackMode: direct
+  policyRefs:
+    - name: jwt-ci-read

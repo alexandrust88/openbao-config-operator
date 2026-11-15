@@ -154,7 +154,7 @@ live-render: kustomize ## Render every live kit overlay (examples/live/overlays/
 	done
 
 .PHONY: test-livekit
-test-livekit: setup-envtest kustomize ## Check the live kit: render, coverage, full fields, CRD validation, and root and child overlays against bao server -dev.
+test-livekit: setup-envtest kustomize ## Check the live kit: render, coverage, full fields, enum values, one-of branches, CRD validation, and root and child overlays against bao server -dev.
 	BAO_BIN="$${BAO_BIN:-$$(command -v bao || echo "$(BAO)")}" \
 	KUSTOMIZE="$(KUSTOMIZE)" \
 	KUBEBUILDER_ASSETS="$(shell "$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(LOCALBIN)" -p path)" \

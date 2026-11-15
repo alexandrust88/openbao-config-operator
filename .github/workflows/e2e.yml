@@ -17,7 +17,7 @@ concurrency:
 jobs:
   e2e:
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 110
     permissions:
       contents: read
     env:
@@ -62,7 +62,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "$RUNNER_TEMP/e2e"
-          KIND="$PWD/bin/kind" HELM="$PWD/bin/helm" go test -tags=e2e ./test/e2e/ -count=1 -timeout 25m -v -ginkgo.v \
+          KIND="$PWD/bin/kind" HELM="$PWD/bin/helm" go test -tags=e2e ./test/e2e/ -count=1 -timeout 40m -v -ginkgo.v \
             -ginkgo.fail-on-empty -ginkgo.fail-on-pending -ginkgo.junit-report="$RUNNER_TEMP/e2e/junit.xml" \
             2>&1 | tee "$RUNNER_TEMP/e2e/tests.log"
           python3 - "$RUNNER_TEMP/e2e/junit.xml" <<'PYTHON'
@@ -76,6 +76,7 @@ jobs:
       - name: Apply the live kit in every connection mode
         env:
           LIVEKIT_OUT: ${{ runner.temp }}/e2e/livekit
+          LIVEKIT_TIMEOUT: 20m
         run: |
           set -o pipefail
           command -v htpasswd || { sudo apt-get update && sudo apt-get install -y --no-install-recommends apache2-utils; }
@@ -104,7 +105,7 @@ jobs:
           {
             kubectl get pods -A -o wide || true
             kubectl get events -A --sort-by=.lastTimestamp | tail -n 100 || true
-            for ns in openbao-config-operator openbao-config-operator-system openbao openbao-live; do
+            for ns in openbao-config-operator openbao-config-operator-system openbao openbao-live postgres; do
               kubectl -n "$ns" logs --all-containers --prefix --tail=200 -l app.kubernetes.io/name || true
             done
           } 2>&1 | tee "$RUNNER_TEMP/e2e/diagnostics.log"

@@ -594,6 +594,7 @@ func TestLiveOwnerCheckListsOnlyClaimingKinds(t *testing.T) {
 	now := time.Now()
 	pending := true
 	newer := v2At(testName, now, "u-new")
+	newer.Spec.CreationPolicy = commonv1alpha1.CreationPolicyCreateOrAdopt
 	h := newHarnessWith(t, lateCreateAdapter{pending: &pending}, Options{Namespaces: []string{testNamespace, "other"}},
 		v2Owned(v2At(v2Older, now.Add(-time.Hour), "u-old"), v2SharedAbs), newer)
 	builder := fake.NewClientBuilder().WithScheme(h.r.scheme).WithStatusSubresource(&testResource{}).
@@ -663,5 +664,156 @@ func TestOtherChildOwner(t *testing.T) {
 				t.Fatalf("owned = %v (%q), want %v", owned, other, tc.want)
 			}
 		})
+	}
+}
+
+// countLiveLists counts the LISTs that do not go through PathIndex; hideClaims makes PathIndex show no claim, as a
+// cache that lags would.
+func (h *harness) countLiveLists(hideClaims bool) *int {
+	lists := 0
+	h.r.client = interceptor.NewClient(h.k8s.(client.WithWatch), interceptor.Funcs{
+		List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+			listOpts := &client.ListOptions{}
+			listOpts.ApplyOptions(opts)
+			switch {
+			case listOpts.FieldSelector == nil:
+				lists++
+			case hideClaims:
+				return nil
+			}
+			return c.List(ctx, list, opts...)
+		},
+	})
+	return &lists
+}
+
+func (h *harness) mustReconcileName(name string) {
+	h.t.Helper()
+	if _, err := h.reconcileName(name); err != nil {
+		h.t.Fatalf("reconcile %s: %v", name, err)
+	}
+}
+
+func adopting(obj *testResource) *testResource {
+	obj.Spec.CreationPolicy = commonv1alpha1.CreationPolicyAdopt
+	return obj
+}
+
+func TestBulkAdoptionSharesOneLiveList(t *testing.T) {
+	const n = 20
+	objs := make([]client.Object, 0, n)
+	for i := range n {
+		objs = append(objs, adopting(newResource(fmt.Sprintf("bulk-%d", i))))
+	}
+	h := newHarnessWith(t, testAdapter{}, Options{WriteBudgetPerMinute: 10 * n}, objs...)
+	for _, obj := range objs {
+		h.store.objects[litAdmin+"/"+testAdapter{}.Path(obj.(*testResource))] = Payload{keyPolicy: foreignTxt}
+	}
+	lists := h.countLiveLists(false)
+	for _, obj := range objs {
+		h.mustReconcileName(obj.GetName())
+		if got := h.getName(obj.GetName()).Status.Acquired; got != commonv1alpha1.AcquiredAdopted {
+			t.Fatalf("%s: acquired = %q, want Adopted", obj.GetName(), got)
+		}
+	}
+	if *lists != 1 {
+		t.Fatalf("adopting %d objects sent %d live LISTs, want 1", n, *lists)
+	}
+}
+
+func TestStuckCreateDoesNotListLive(t *testing.T) {
+	h := newHarness(t, testAdapter{}, newResource(testName))
+	h.store.putPolicy(Payload{keyPolicy: foreignTxt})
+	lists := h.countLiveLists(false)
+	for range 3 {
+		if _, err := h.reconcile(); err != nil {
+			t.Fatal(err)
+		}
+		assertCondition(t, h.get(), commonv1alpha1.ConditionSynced, "False", commonv1alpha1.ReasonConflict)
+	}
+	if *lists != 0 || h.writes() != 0 {
+		t.Fatalf("a Create stuck on an existing object sent %d live LISTs and %d writes, want none", *lists, h.writes())
+	}
+}
+
+// sharedPairAdapter writes v2Older and testName to the shared path and every other resource to its own.
+type sharedPairAdapter struct{ testAdapter }
+
+func (a sharedPairAdapter) Path(obj *testResource) string {
+	if obj.Name == v2Older || obj.Name == testName {
+		return v2SharedPath
+	}
+	return a.testAdapter.Path(obj)
+}
+
+// TestLiveListAfterClaimIsRepeated: a live LIST sent before the older resource claimed the shared path does not
+// serve the newer resource's adoption, although the cache does not show the claim yet.
+func TestLiveListAfterClaimIsRepeated(t *testing.T) {
+	now := time.Now()
+	primer := adopting(v2At("primer", now, "u-primer"))
+	h := newHarness(t, sharedPairAdapter{}, primer, v2At(v2Older, now.Add(-time.Hour), "u-old"),
+		adopting(v2At(testName, now, "u-new")))
+	h.store.objects[litAdmin+"/"+testAdapter{}.Path(primer)] = Payload{keyPolicy: foreignTxt}
+	lists := h.countLiveLists(true)
+	h.mustReconcileName(primer.Name)
+	h.mustReconcileName(v2Older)
+	if got := h.getName(v2Older).Status.Acquired; got != commonv1alpha1.AcquiredCreated {
+		t.Fatalf("older resource: acquired = %q, want Created", got)
+	}
+	h.mustReconcile()
+	got := h.get()
+	if got.Status.Acquired != "" {
+		t.Fatalf("adopted the object the older resource created after the live LIST: %+v", got.Status)
+	}
+	assertCondition(t, got, commonv1alpha1.ConditionSynced, "False", commonv1alpha1.ReasonConflict)
+	if *lists != 2 {
+		t.Fatalf("live LISTs = %d, want 2: the path claimed since the first must be listed again", *lists)
+	}
+}
+
+// TestReusedLiveListRereadsClaimants: a claimant the reused live LIST still shows is read again, so a resource
+// deleted since then does not block the adoption.
+func TestReusedLiveListRereadsClaimants(t *testing.T) {
+	now := time.Now()
+	primer := adopting(v2At("primer", now, "u-primer"))
+	older := v2Owned(v2At(v2Older, now.Add(-time.Hour), "u-old"), v2SharedAbs)
+	h := newHarness(t, sharedPairAdapter{}, primer, older, adopting(v2At(testName, now, "u-new")))
+	h.store.objects[litAdmin+"/"+testAdapter{}.Path(primer)] = Payload{keyPolicy: foreignTxt}
+	h.store.objects[v2SharedAbs] = Payload{keyPolicy: foreignTxt}
+	lists := h.countLiveLists(false)
+	h.mustReconcileName(primer.Name)
+	if err := h.k8s.Delete(context.Background(), older); err != nil {
+		t.Fatal(err)
+	}
+	h.mustReconcile()
+	if got := h.get().Status.Acquired; got != commonv1alpha1.AcquiredAdopted || *lists != 1 {
+		t.Fatalf("acquired = %q after %d live LISTs, want Adopted after 1", got, *lists)
+	}
+}
+
+// TestReusedLiveListSeesObserveSwitchedToManage: an older resource that only observed the shared path when the live
+// LIST was sent, and manages it now, keeps the path, although neither the reused LIST nor the cache shows its claim.
+func TestReusedLiveListSeesObserveSwitchedToManage(t *testing.T) {
+	now := time.Now()
+	primer := adopting(v2At("primer", now, "u-primer"))
+	older := v2Owned(v2At(v2Older, now.Add(-time.Hour), "u-old"), v2SharedAbs)
+	older.Spec.ManagementPolicy = commonv1alpha1.ManagementPolicyObserve
+	h := newHarness(t, sharedPairAdapter{}, primer, older, adopting(v2At(testName, now, "u-new")))
+	h.store.objects[litAdmin+"/"+testAdapter{}.Path(primer)] = Payload{keyPolicy: foreignTxt}
+	h.store.objects[v2SharedAbs] = Payload{keyPolicy: foreignTxt}
+	lists := h.countLiveLists(true)
+	h.mustReconcileName(primer.Name)
+	managed := h.getName(v2Older)
+	managed.Spec.ManagementPolicy = commonv1alpha1.ManagementPolicyManage
+	h.update(managed)
+	writes := h.writes()
+	h.mustReconcile()
+	got := h.get()
+	if got.Status.Acquired != "" || h.writes() != writes {
+		t.Fatalf("adopted the object the older resource manages now: %+v, %d writes", got.Status, h.writes()-writes)
+	}
+	assertCondition(t, got, commonv1alpha1.ConditionSynced, "False", commonv1alpha1.ReasonConflict)
+	if *lists != 1 {
+		t.Fatalf("live LISTs = %d, want 1", *lists)
 	}
 }

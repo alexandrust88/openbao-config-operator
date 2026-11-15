@@ -41,7 +41,7 @@ func TestIntegrationPKIUndeliveredKey(t *testing.T) {
 
 	newKey := func() *secretsv1alpha1.PKIKey {
 		key := &secretsv1alpha1.PKIKey{
-			ObjectMeta: metav1.ObjectMeta{Name: "itest-undelivered", Namespace: ns.Name},
+			ObjectMeta: metav1.ObjectMeta{Name: "itest-undelivered", Namespace: ns.Name, Annotations: secretsAllowDestructiveDelete},
 			Spec: secretsv1alpha1.PKIKeySpec{
 				ResourceSpec:   pkiSpec(),
 				Type:           secretsv1alpha1.PKIKeyCreationExported,

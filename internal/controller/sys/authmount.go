@@ -40,6 +40,7 @@ var (
 	_ engine.Adapter[*sysv1alpha1.AuthMount]          = AuthMountAdapter{}
 	_ engine.Observer[*sysv1alpha1.AuthMount]         = AuthMountAdapter{}
 	_ engine.Writer[*sysv1alpha1.AuthMount]           = AuthMountAdapter{}
+	_ engine.Deleter[*sysv1alpha1.AuthMount]          = AuthMountAdapter{}
 	_ engine.StatusWriter[*sysv1alpha1.AuthMount]     = AuthMountAdapter{}
 	_ engine.Destructive                              = AuthMountAdapter{}
 	_ engine.DriftTier                                = AuthMountAdapter{}
@@ -96,6 +97,11 @@ func (AuthMountAdapter) Observe(ctx context.Context, c openbao.Client, m *sysv1a
 // Write implements engine.Writer.
 func (AuthMountAdapter) Write(ctx context.Context, c openbao.Client, m *sysv1alpha1.AuthMount, desired engine.Payload, create bool) (engine.Payload, error) {
 	return nil, writeMount(ctx, c, authTable, authMountPath(m), desired, create)
+}
+
+// Delete implements engine.Deleter.
+func (a AuthMountAdapter) Delete(ctx context.Context, c openbao.Client, m *sysv1alpha1.AuthMount) error {
+	return deleteMount(ctx, c, a.Path(m))
 }
 
 // WriteStatus implements engine.StatusWriter: status.id is the mount accessor.

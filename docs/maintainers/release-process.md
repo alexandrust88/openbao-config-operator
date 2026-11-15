@@ -86,7 +86,7 @@ Do these once, before `v0.1.0`:
 
 ## Cutting a release
 
-1. **Check main.** The latest `ci`, `e2e` and nightly `conformance` runs on `main` are green, and no
+1. **Check main.** The latest `ci`, `e2e` and weekly `conformance` runs on `main` are green, and no
    `priority/critical-urgent` issue is open for the release.
 2. **Review the release pull request.** release-please keeps one open, titled `chore(main): release X.Y.Z`. Check
    that the version is what you expect and that `CHANGELOG.md` reads well. Edit the entries in the pull request if

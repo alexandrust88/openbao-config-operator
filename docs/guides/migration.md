@@ -56,7 +56,7 @@ names them.
 | secret inputs | `<field>SecretRef: {name, key}` in the resource's namespace; the value is hashed into `status.writeOnlyHash`, never compared |
 | generated outputs | `writeSecretRef: {name}`, only for values OpenBao returns once; no general secret sync ([ADR 0007](../adr/0007-no-secret-sync.md)) |
 | existing objects | `creationPolicy`: `Create` (default), `Adopt` or `CreateOrAdopt` |
-| deletion | `deletionPolicy`: `Orphan` (default) or `Delete`; mounts, namespaces and KV data are deleted only with the annotation `openbaoconfig.io/allow-destructive-delete: "true"` ([backup and restore](../operate/backup-restore.md#deletion-policy-and-orphaned-objects)) |
+| deletion | `deletionPolicy`: `Orphan` (default) or `Delete`; destructive kinds (mounts, namespaces, KV data, audit devices, key material, MFA methods, entities and `OpenBaoEndpoint`) are deleted only with the annotation `openbaoconfig.io/allow-destructive-delete: "true"` ([backup and restore](../operate/backup-restore.md#deletion-policy-and-orphaned-objects)) |
 | drift | compared key by key; written only on a difference; `driftDetection: Disabled` stops re-reads |
 
 Check each field against the CRD before you write the resource:

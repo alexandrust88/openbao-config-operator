@@ -1,19 +1,30 @@
 # Kind catalogue
 
-Every typed kind, with its implementation status. The design is
-[architecture v2](architecture.md) (OpenBao-only). The v2 typed catalogue is built-ins first: the
+Every typed kind, with its implementation status. The design is in the
+[architecture](architecture.md). The v2 typed catalogue is built-ins first: the
 kinds compiled into OpenBao 2.7 are implemented and tested against `bao server -dev`, including
 built-in kinds beyond the core set of the v2 spec. The external-plugin kinds stay in the code but
 are disabled by default behind `--enable-plugin-kinds` (chart `pluginKinds.enabled`) until plugin
-support (phase 5) works end to end.
+support ([phase 5](maintainers/roadmap.md#phases)) works end to end.
+
+!!! warning "Plugin kinds are experimental"
+
+    The 52 external-plugin kinds are experimental. They are not run against a server, and their paths marked
+    `(u)` come from documentation, not OpenBao source. No coverage claim counts on them: the
+    [API coverage](api-coverage.md) share for OpenBao 2.7.2, the figure this documentation cites, contains no
+    plugin-kind path.
 
 Counts: 120 rows, one per CRD in `config/crd/bases`: 68 built-in kinds, all integration-tested, and 52
 plugin-gated kinds (the CRDs listed in `hack/chart/plugin-crds.txt`). The built-in kinds are `OpenBaoServer`, the two
 connection kinds, `OpenBaoEndpoint` and 64 typed OpenBao kinds. `test/apidocs/kinds_catalogue_test.go` checks these
 counts and the evidence paths. Features without a typed kind are listed under [not typed](#not-typed).
 
-Kind names and groups can change until v1alpha1 is published
-([ADR 0008](adr/0008-provisional-api-group-domain.md)).
+The API group domain `openbaoconfig.io` is final ([ADR 0008](adr/0008-provisional-api-group-domain.md)).
+
+Destructive kinds delete only with the annotation `openbaoconfig.io/allow-destructive-delete: "true"`
+([ADR 0013](adr/0013-destructive-delete-guard.md)): `SecretsMount`, `AuthMount`, `OpenBaoNamespace`, `KVSecret`,
+`RandomSecret`, `Audit`, `OpenBaoEndpoint`, `TransitKey`, `PKIIssuer`, `PKIKey`, `SSHCA`, `TOTPKey`, `MFAMethod`
+and `Entity`.
 
 ## Columns
 
@@ -25,18 +36,17 @@ Kind names and groups can change until v1alpha1 is published
   - `external-plugin`: needs a plugin from openbao-plugins (or a third party) registered with
     `Plugin`. Only LDAP, Kerberos and RADIUS are confirmed by OpenBao docs; the rest are `(u)`.
     The kind reports `Unsupported` until the plugin is mounted.
-- **phase**: [v2 roadmap](architecture.md#roadmap) phase. 1 engine and tenant boundary, 2 tenant
-  and cluster onboarding, 3 identity with marker, 4 secrets engines, rest of sys, OIDC and MFA,
-  5 plugin support, 6 plugin-backed kinds, 7 access models. `after 6`: plugin kinds that are not
-  in the v2 spec; they stay gated until each has a plugin and backend in CI.
+- **phase**: the [roadmap phase](maintainers/roadmap.md#phases) whose exit test covers the kind; the roadmap
+  defines the phases and their releases. `after 6`: plugin kinds outside the core plan; they stay gated until
+  each has a plugin and backend in CI.
 - **status**:
   - `implemented`: types, adapter, unit and envtest tests; wired in `cmd/controllers.go`.
   - `integration-tested`: implemented, and reconciled against a real `bao server -dev` in the
     file named under evidence.
-  - `plugin-gated`: implemented with unit tests and recorded reads, but not tested against a
+  - `plugin-gated`: experimental; implemented with unit tests and recorded reads, but not tested against a
     server, because OpenBao 2.7.2 does not ship the plugin; disabled by default.
   - `in progress`: being implemented now; not in the code yet.
-  - `planned`: later phase.
+  - `planned`: a later phase.
 - **evidence**: test files under `test/integration/` (build tag `integration`), other bao-backed
   tests by full path, and `live` when the kind ran `Ready` on a live OpenBao 2.7.2 cluster
   (create, update, steady state with zero rewrites, and delete where `Delete` is allowed).
@@ -56,7 +66,7 @@ compared.
 | `OpenBaoServer` | none (holds address, CA bundle, allowed namespaces and audiences, rate limit) | builtin | 1 | integration-tested | `internal/controller/core/server_bao_test.go`, `test/e2e` | cluster-scoped, platform-owned; connections name it with `serverRef` ([ADR 0010](adr/0010-openbaoserver-owns-address-and-audiences.md)) |
 | `OpenBaoConnection` | login: `auth/<b>/login`; status: `sys/health`, `sys/seal-status`, `auth/token/lookup-self` | builtin | 1 | integration-tested | `internal/openbao/integration_test.go`, `internal/controller/core/connection_bao_test.go`, live | namespaced; Kubernetes/JWT auth uses TokenRequest for a ServiceAccount in the same namespace |
 | `ClusterOpenBaoConnection` | same | builtin | 1 | integration-tested | `internal/openbao/integration_test.go`, `internal/controller/core/connection_bao_test.go` | cluster-scoped; `allowedNamespaces` selector |
-| `OpenBaoEndpoint` | any | builtin | 1 | integration-tested | `integration_test.go`, live | escape hatch, see [ADR 0006](adr/0006-endpoint-escape-hatch.md) |
+| `OpenBaoEndpoint` | any | builtin | 1 | integration-tested | `integration_test.go`, live | escape hatch, see [ADR 0006](adr/0006-endpoint-escape-hatch.md); destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 
 ## sys
 
@@ -64,9 +74,9 @@ compared.
 |------|------|--------------|-------|--------|----------|-------|
 | `Policy` | `sys/policies/acl/<name>` | builtin | 1 | integration-tested | `integration_test.go`, `sys_core_test.go`, `templated_acl_test.go`, live | ACL only; OpenBao has no EGP/RGP |
 | `PasswordPolicy` | `sys/policies/password/<name>` | builtin | 4 | integration-tested | `sys_core_test.go`, live |  |
-| `OpenBaoNamespace` | `sys/namespaces/<path>` | builtin | 2 | integration-tested | `sys_core_test.go`, `templated_acl_test.go`, live | namespace scope: any (creates a child of its OpenBao namespace); delete leaves it `tainted` until purged; sealable namespaces return key shares once (`writeSecretRef`); default `Orphan` |
-| `AuthMount` | `sys/auth/<path>`, `sys/auth/<path>/tune` | builtin | 2 | integration-tested | `identity_test.go`, `sys_core_test.go`, `templated_acl_test.go`, live | `type`, `local`, `seal_wrap` immutable; accessor in status; default `Orphan` |
-| `SecretsMount` | `sys/mounts/<path>`, `sys/mounts/<path>/tune` | builtin | 2 | integration-tested | `sys_core_test.go`, `templated_acl_test.go`, live | as `AuthMount` |
+| `OpenBaoNamespace` | `sys/namespaces/<path>` | builtin | 2 | integration-tested | `sys_core_test.go`, `templated_acl_test.go`, live | namespace scope: any (creates a child of its OpenBao namespace); delete leaves it `tainted` until purged; sealable namespaces return key shares once (`writeSecretRef`); default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| `AuthMount` | `sys/auth/<path>`, `sys/auth/<path>/tune` | builtin | 2 | integration-tested | `identity_test.go`, `sys_core_test.go`, `templated_acl_test.go`, live | `type`, `local`, `seal_wrap` immutable; accessor in status; default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| `SecretsMount` | `sys/mounts/<path>`, `sys/mounts/<path>/tune` | builtin | 2 | integration-tested | `sys_core_test.go`, `templated_acl_test.go`, live | as `AuthMount`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `Audit` | `sys/audit/<path>` | builtin | 4 | integration-tested | `sys_audit_test.go` | namespace scope: root only (`RootOnlyKind` elsewhere); types file, socket, syslog, http; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `AuditRequestHeader` | `sys/config/auditing/request-headers/<name>` | builtin | 4 | integration-tested | `sys_config_test.go` | namespace scope: root only (`RootOnlyKind` elsewhere); `hmac` flag |
 | `RateLimitQuota` | `sys/quotas/rate-limit/<name>` | builtin | 4 | integration-tested | `sys_core_test.go` | namespace scope: root only (`RootOnlyKind` elsewhere); enforced per node; `group_by` and `secondary_rate` are not in OpenBao |
@@ -127,26 +137,26 @@ compared.
 
 | kind | path | availability | phase | status | evidence | notes |
 |------|------|--------------|-------|--------|----------|-------|
-| `KVSecret` | v2: `<m>/data/<path>` (+ `<m>/metadata/<path>`); v1: `<m>/<path>` | builtin | 4 | integration-tested | `secrets_kv_test.go`, live | values from Secret refs; delete via metadata (`Deleter`); default `Orphan` |
+| `KVSecret` | v2: `<m>/data/<path>` (+ `<m>/metadata/<path>`); v1: `<m>/<path>` | builtin | 4 | integration-tested | `secrets_kv_test.go`, live | values from Secret refs; delete via metadata (`Deleter`); default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `KVConfig` | `<m>/config` | builtin | 4 | integration-tested | `secrets_kv_test.go`, live | singleton per mount: `max_versions`, `cas_required`, `delete_version_after` |
-| `RandomSecret` | `<m>/data/<path>`; value from `sys/policies/password/<name>/generate` | builtin | 4 | integration-tested | `secrets_kv_test.go`, live | OpenBao generates the value from the password policy |
+| `RandomSecret` | `<m>/data/<path>`; value from `sys/policies/password/<name>/generate` | builtin | 4 | integration-tested | `secrets_kv_test.go`, live | OpenBao generates the value from the password policy; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `DatabaseConnection` | `<m>/config/<name>` | builtin | 4 | integration-tested | `secrets_credentials_test.go`, live | `password`, `private_key` write-only; `connection_url` redacted on read; never re-send the password after `rotate-root`; builtin plugins: MySQL family, PostgreSQL, Cassandra, InfluxDB, Redis, Valkey |
 | `DatabaseRole` | `<m>/roles/<name>` | builtin | 4 | integration-tested | `secrets_credentials_test.go`, live |  |
 | `DatabaseStaticRole` | `<m>/static-roles/<name>` | builtin | 4 | integration-tested | `secrets_credentials_test.go` | password not returned |
-| `PKIIssuer` | generate: `<m>/root/generate/<type>`, `<m>/intermediate/generate/<type>`; import: `<m>/config/ca`, `<m>/intermediate/set-signed`; config: `<m>/issuer/<ref>` (u) | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | multi-step and non-idempotent; exported private key returned once (`writeSecretRef`); CSR in status |
-| `PKIKey` | `<m>/key/<ref>`, `<m>/keys/generate/<type>`, `<m>/keys/import` (u) | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | extra; OpenBao external keys (`sys/external-keys`) are an alternative |
+| `PKIIssuer` | generate: `<m>/root/generate/<type>`, `<m>/intermediate/generate/<type>`; import: `<m>/config/ca`, `<m>/intermediate/set-signed`; config: `<m>/issuer/<ref>` (u) | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | multi-step and non-idempotent; exported private key returned once (`writeSecretRef`); CSR in status; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| `PKIKey` | `<m>/key/<ref>`, `<m>/keys/generate/<type>`, `<m>/keys/import` (u) | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | extra; OpenBao external keys (`sys/external-keys`) are an alternative; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `PKIRole` | `<m>/roles/<name>` | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | OpenBao CEL policies not modelled |
 | `PKIConfig` | `<m>/config/urls`, `<m>/config/crl`, `<m>/config/cluster`, `<m>/config/issuers` (u) | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | one kind for the per-mount singletons; shape to be decided |
 | `PKIACMEConfig` | `<m>/config/acme` (u) | builtin (u) | 4 | integration-tested | `secrets_pki_test.go`, live |  |
 | `PKIAutoTidy` | `<m>/config/auto-tidy` (u) | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | extra |
-| `TransitKey` | `<m>/keys/<name>`, `<m>/keys/<name>/config` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live | `type`, `derived`, `convergent_encryption` immutable; key material never read; delete needs `deletion_allowed` |
-| `SSHCA` | `<m>/config/ca` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live | `private_key` write-only (u); generated key cannot be replaced without delete |
+| `TransitKey` | `<m>/keys/<name>`, `<m>/keys/<name>/config` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live | `type`, `derived`, `convergent_encryption` immutable; key material never read; delete needs `deletion_allowed`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| `SSHCA` | `<m>/config/ca` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live | `private_key` write-only (u); generated key cannot be replaced without delete; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `SSHRole` | `<m>/roles/<name>` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live |  |
 | `KubernetesSecretsConfig` | `<m>/config` | builtin | 2 | integration-tested | `secrets_credentials_test.go`, live | `service_account_jwt` write-only |
 | `KubernetesSecretsRole` | `<m>/roles/<name>` | builtin | 2 | integration-tested | `secrets_credentials_test.go`, live |  |
 | `RabbitMQConfig` | `<m>/config/connection`, `<m>/config/lease` | builtin | 6 | integration-tested | `secrets_credentials_test.go`, live | `password` write-only; two writes (`Writer`); built into 2.7.2, listed under phase 6 in the v2 spec pending an open question |
 | `RabbitMQRole` | `<m>/roles/<name>` | builtin | 6 | integration-tested | `secrets_credentials_test.go`, live |  |
-| `TOTPKey` | `<m>/keys/<name>` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live | with `generate=true` the barcode and URL are returned once (u) |
+| `TOTPKey` | `<m>/keys/<name>` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live | with `generate=true` the barcode and URL are returned once (u); destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `LDAPSecretsConfig` | `<m>/config` | external-plugin | 6 | plugin-gated | - | `bindpass` write-only |
 | `LDAPSecretsDynamicRole` | `<m>/role/<name>` | external-plugin | 6 | plugin-gated | - |  |
 | `LDAPSecretsStaticRole` | `<m>/static-role/<name>` | external-plugin | 6 | plugin-gated | - |  |
@@ -176,7 +186,7 @@ compared.
 
 | kind | path | availability | phase | status | evidence | notes |
 |------|------|--------------|-------|--------|----------|-------|
-| `Entity` | `identity/entity/name/<name>` | builtin | 3 | integration-tested | `identity_test.go`, `templated_acl_test.go`, live | ID server-generated, kept in `status.id`; default `Orphan` |
+| `Entity` | `identity/entity/name/<name>` | builtin | 3 | integration-tested | `identity_test.go`, `templated_acl_test.go`, live | ID server-generated, kept in `status.id`; default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `EntityAlias` | `identity/entity-alias/id/<id>` | builtin | 3 | integration-tested | `identity_test.go`, `templated_acl_test.go`, live | no lookup by name; identity is (mount accessor, name), adopt by list and read |
 | `Group` | `identity/group/name/<name>` | builtin | 3 | integration-tested | `identity_test.go`, `templated_acl_test.go`, live | `type` internal/external immutable; default `Orphan` |
 | `GroupAlias` | `identity/group-alias/id/<id>` | builtin | 3 | integration-tested | `identity_test.go`, live | external groups only |
@@ -188,7 +198,7 @@ compared.
 | `OIDCClient` | `identity/oidc/client/<name>` | builtin | 4 | integration-tested | `identity_oidc_test.go`, live | `client_id`, `client_secret` server-generated; secret written via `writeSecretRef` |
 | `OIDCScope` | `identity/oidc/scope/<name>` | builtin | 4 | integration-tested | `identity_oidc_test.go`, live |  |
 | `OIDCAssignment` | `identity/oidc/assignment/<name>` | builtin | 4 | integration-tested | `identity_oidc_test.go`, live |  |
-| `MFAMethod` | `identity/mfa/method/<totp\|okta\|duo\|pingid>/<id>` | builtin | 4 | integration-tested | `identity_oidc_test.go`, live |  |
+| `MFAMethod` | `identity/mfa/method/<totp\|okta\|duo\|pingid>/<id>` | builtin | 4 | integration-tested | `identity_oidc_test.go`, live | destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `MFALoginEnforcement` | `identity/mfa/login-enforcement/<name>` | builtin | 4 | integration-tested | `identity_oidc_test.go`, live |  |
 
 ## access

@@ -6,6 +6,7 @@ fullFields:
 notReady:
   - kind: KubernetesAuthConfig
     name: k8s-config
+    env: dev
     overlays:
       - "*/minimal"
     reason: without kubernetesCACert OpenBao reads its pod's /var/run/secrets/kubernetes.io/serviceaccount/ca.crt, which bao server -dev outside a cluster does not have; Ready when OpenBao runs in Kubernetes

@@ -14,7 +14,7 @@ node, no TLS. The e2e test (`test/e2e`) runs the manager in kind, where a namesp
 in with Kubernetes auth through TokenRequest as the tenant ServiceAccount, under a non-root tenant
 policy, and reconciles a `Policy`, a `KVSecret` and an `OpenBaoEndpoint` through create, drift
 repair, steady state and delete. No test yet shows that a second tenant cannot write outside its
-policy.
+policy; a two-tenant e2e test (`test/e2e/isolation_test.go`) is being added.
 
 Exit criteria: an e2e scenario with a second tenant namespace and connection, proving that its
 writes outside its policy are refused and leave OpenBao unchanged. Storage, HA, TLS and backup
@@ -45,7 +45,7 @@ Rows marked `(u)` in the [kind catalogue](../kinds.md) take their path from docu
 OpenBao source. External-plugin kinds cannot run against
 `bao server -dev`, so they are verified by golden payload tests only.
 
-Exit criteria: before a phase 3b kind is released, confirm its path in the plugin source and run
+Exit criteria: before an external-plugin kind is un-gated ([phase 6](../maintainers/roadmap.md#phases)), confirm its path in the plugin source and run
 it once against a server with the plugin registered through `Plugin`; remove the `(u)` mark.
 
 ## TD-005: The default install can read Secrets cluster-wide

@@ -49,7 +49,8 @@ func WithPriority(ctx context.Context) context.Context {
 	return context.WithValue(ctx, priorityKey{}, true)
 }
 
-func hasPriority(ctx context.Context) bool {
+// HasPriority reports whether ctx carries WithPriority.
+func HasPriority(ctx context.Context) bool {
 	priority, _ := ctx.Value(priorityKey{}).(bool)
 	return priority
 }
@@ -90,7 +91,7 @@ func (l *serverLimiter) wait(ctx context.Context) error {
 	if all == nil {
 		return nil
 	}
-	if !hasPriority(ctx) {
+	if !HasPriority(ctx) {
 		if err := drift.Wait(ctx); err != nil {
 			return err
 		}

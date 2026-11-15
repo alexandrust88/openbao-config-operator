@@ -50,7 +50,7 @@ hash-key Secret `openbao-config-operator-hash-key`.
 
 By default the manager's ClusterRole grants Secrets `get`, `list`, `watch`, `create`, `update`,
 `patch` and `serviceaccounts/token` `create` in every namespace
-(`templates/rbac/_manager-rules.tpl:44-76`). A compromised manager can then read every Secret
+(`templates/rbac/_manager-rules.tpl:60-76`). A compromised manager can then read every Secret
 and mint a token for any ServiceAccount, cluster-admin-bound ones included.
 
 List the namespaces that hold resources, connections and the Secrets or ServiceAccounts they
@@ -68,7 +68,7 @@ managed kind with its `status` and `finalizers`, into a Role per listed namespac
 namespace (`templates/rbac/manager.yaml:30-58`). The ClusterRole keeps only the cluster-scoped
 kinds (`openbaoservers`, `clusteropenbaoconnections`), Namespace reads and the OIDC discovery URL.
 The manager caches only those namespaces and lists live only inside them (`cmd/main.go:228-240`,
-`internal/engine/ownership.go:141-175`). Resources in other namespaces are not reconciled, and the
+`internal/engine/ownership.go:326-333`). Resources in other namespaces are not reconciled, and the
 manager cannot read or patch them. Adding a tenant means a chart upgrade, which is the point:
 enrolment becomes a reviewed change.
 
@@ -91,11 +91,13 @@ Grant these only to the platform team or its GitOps identity:
 | `openbaoservers`, `clusteropenbaoconnections` | choose where credentials go and which identity is used ([privilege equivalences](threat-model.md#privilege-equivalences)) |
 | `openbaoconnections` | choose which ServiceAccount or Secret of the namespace logs in; the chart's tenant role already leaves it out (`templates/rbac/user-roles.yaml:14-16`) |
 | `patch` on Namespaces (labels, annotations) | labels enrol a namespace in a server; `openbaoconfig.io/paused` on a Namespace stops drift repair for it |
-| `update`, `patch` on `*/status` of managed kinds | `status.path` steers deletes; the chart's roles grant only `get` (`templates/_helpers.tpl:72-78`) |
+| `update`, `patch` on `*/status` of managed kinds | `status.path` steers deletes; the chart's roles grant only `get` (`templates/_helpers.tpl:85-91`) |
 
 RBAC cannot restrict annotations. The engine requires `openbaoconfig.io/allow-destructive-delete`
-before deleting mounts, namespaces, KV data, audit devices and any `OpenBaoEndpoint`
-(`internal/controller/core/openbaoendpoint.go:56`). If tenants must not delete data at all, add an
+before deleting the objects of every kind that reports `Destructive()`: mounts (`SecretsMount`, `AuthMount`),
+`OpenBaoNamespace`, KV data (`KVSecret`, `RandomSecret`), `Audit`, `OpenBaoEndpoint`, key material (`TransitKey`,
+`PKIIssuer`, `PKIKey`, `SSHCA`, `TOTPKey`), `MFAMethod` and `Entity` (for example
+`internal/controller/core/openbaoendpoint.go:60`). If tenants must not delete data at all, add an
 admission rule that allows that annotation only for platform subjects, in the same way as
 [R-CONFIG-03](#r-config-03-forbid-the-escape-hatches-in-production).
 
@@ -103,7 +105,7 @@ admission rule that allows that annotation only for platform subjects, in the sa
 
 Every managed kind with a `<field>SecretRef` reads the Secret with the manager's rights, and the
 value can be written to an OpenBao path the author can read back. The chart aggregates
-`<release>-tenant-editor` into `admin` and `edit` (`values.yaml:68-76`), which already read
+`<release>-tenant-editor` into `admin` and `edit` (`values.yaml:77-81`), which already read
 Secrets, so nothing is gained there. Do not bind `<release>-tenant-editor` on its own to a subject
 that must not read the namespace's Secrets. To keep plain `edit` users away from OpenBao entirely,
 set `rbac.aggregate.edit=false` and bind the role explicitly.
@@ -151,7 +153,7 @@ networkPolicy:
 Take the API server addresses from
 `kubectl get endpointslices -n default -l kubernetes.io/service-name=kubernetes`. For an OpenBao
 outside the cluster, use an `ipBlock` in `openbao.to`. The client already refuses redirects
-(`internal/openbao/client.go:245-250,267-268`); the policy is the second line. With NodeLocal
+(`internal/openbao/client.go:274-280,298-299`); the policy is the second line. With NodeLocal
 DNSCache, set `dns.nodeLocalDNS.enabled=true`.
 
 On Cilium (RKE2), an `ipBlock` does not match the API server's identity. Set
@@ -194,7 +196,7 @@ would violate the profile.
 
 ### R-POD-02: Keep the security context
 
-Do not override these values (`values.yaml:145-161`):
+Do not override these values (`values.yaml:152-168`):
 
 | setting | value |
 |---------|-------|
@@ -210,11 +212,11 @@ token; the chart refuses the automount directory (`templates/deployment.yaml:4-7
 ### R-POD-03: Resources and availability
 
 - Keep the memory limit (`512Mi` by default) and size it from the object count; the chart sets a
-  CPU request and no CPU limit (`values.yaml:138-143`).
-- Run two replicas with leader election (`values.yaml:30-34`); the chart refuses more than one
+  CPU request and no CPU limit (`values.yaml:145-150`).
+- Run two replicas with leader election (`values.yaml:36-40`); the chart refuses more than one
   replica without it (`templates/deployment.yaml:1-3`). Only the leader reconciles.
 - Keep the PodDisruptionBudget (`unhealthyPodEvictionPolicy: AlwaysAllow`, so a crash-looping
-  pod does not block a node drain) and the topology spread (`values.yaml:170-181`); set a
+  pod does not block a node drain) and the topology spread (`values.yaml:177-188`); set a
   `priorityClassName` so the operator is not the first pod evicted.
 
 ### R-POD-04: No sidecar injection
@@ -438,16 +440,16 @@ spec:
 ```
 
 - Always `https://`. CEL and the resolver refuse `http://` unless `allowInsecureHTTP: true`
-  (`api/core/v1alpha1/openbaoserver_types.go:8`, `internal/connection/resolver.go:305-307`); keep
+  (`api/core/v1alpha1/openbaoserver_types.go:8`, `internal/connection/resolver.go:332-334`); keep
   that flag for local test servers and forbid it in production with
   [R-CONFIG-03](#r-config-03-forbid-the-escape-hatches-in-production). The import CLI sets it for an
   `http://` address and warns; review its output before committing it.
 - Set `caBundle` instead of trusting the system roots for an internal CA. There is no option to
-  skip verification (`internal/openbao/client.go:307-316`). Without `caBundle`, `SSL_CERT_FILE` and
+  skip verification (`internal/openbao/client.go:314-316`). Without `caBundle`, `SSL_CERT_FILE` and
   `SSL_CERT_DIR` in the operator pod (chart `extraEnv`) choose the system roots: review them as trust
   configuration.
 - The operator never uses a proxy for OpenBao: `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` are
-  ignored, also when a cluster-wide injector sets them (`internal/openbao/client.go:306`). Allow
+  ignored, also when a cluster-wide injector sets them (`internal/openbao/client.go:313`). Allow
   direct egress to the address ([R-NETWORK-01](#r-network-01-enable-the-networkpolicy)).
 - The address carries no credentials: the CRD refuses `user:password@`.
 - Never use an empty selector (`{}`) for `allowedNamespaces`: it admits every namespace.
@@ -488,11 +490,11 @@ injectedIdentity:
   hands the platform identity to every tenant.
 - Keep the projected token on. The default `injectedIdentity.tokenPath` is the chart's projected
   token; CEL and the resolver refuse the automounted token by path and by file identity, and refuse
-  a token file whose `aud` is an API server audience or cannot be read (`internal/connection/resolver.go:525-601`).
+  a token file whose `aud` is an API server audience or cannot be read (`internal/connection/resolver.go:527-576`).
 - A `token.filesystem` file that holds a JWT gets the same API server audience check; an OpenBao token
   passes unchanged.
 - With `serviceAccountRef`, `audiences` is required, and the resolver refuses API server audiences
-  for cluster connections as for tenants (`internal/connection/resolver.go:349-372`).
+  for cluster connections as for tenants (`internal/connection/resolver.go:378-391`).
 - CEL and the resolver refuse `auth.token.filesystem.path` under
   `/var/run/secrets/kubernetes.io/serviceaccount/`.
 - `mountPath` is a clean relative path (CRD pattern, and the login path is checked again before the
@@ -544,9 +546,9 @@ spec:
 | setting | value | why |
 |---------|-------|-----|
 | `apiServerAudiences` | every audience in the API server's `--api-audiences` | the operator always refuses the built-in audiences (including `rke2` and `k3s`) and the discovered issuer (`internal/connection/audiences.go:17-23,29-54`), but not other custom audiences |
-| `extraArgs: ["--cluster-id=<name>"]` | a stable name per cluster | the ownership marker carries it, so a second cluster writing the same OpenBao namespace gets `Conflict`; the default is the `kube-system` UID, which changes when a cluster is rebuilt (`cmd/main.go:183-187`) |
+| `extraArgs: ["--cluster-id=<name>"]` | a stable name per cluster | the ownership marker carries it, so a second cluster writing the same OpenBao namespace gets `Conflict`; the default is the `kube-system` UID, which changes when a cluster is rebuilt (`cmd/main.go:174-176`) |
 | `pluginKinds.enabled` | `false` unless you use those plugins | fewer CRDs, fewer controllers, smaller RBAC |
-| `metrics.certSecret` and `serviceMonitor.tlsConfig` | a certificate from your CA, and that CA and `serverName` in the ServiceMonitor | the default ServiceMonitor skips TLS verification of the self-signed certificate (`values.yaml:95-98`); with `metrics.certSecret` the chart refuses to render without `ca` (or `caFile`) and `serverName`, or with `insecureSkipVerify` |
+| `metrics.certSecret` and `serviceMonitor.tlsConfig` | a certificate from your CA, and that CA and `serverName` in the ServiceMonitor | the default ServiceMonitor skips TLS verification of the self-signed certificate (`values.yaml:104-105`); with `metrics.certSecret` the chart refuses to render without `ca` (or `caFile`) and `serverName`, or with `insecureSkipVerify` |
 | `--write-budget-per-minute` | default 60; lower for a small OpenBao | caps drift repairs and default-change rewrites per server during upgrades; changed write-only inputs (Secret or hash-key rotation) are exempt and paced only by `rateLimit` |
 
 ## OpenBao side
@@ -588,7 +590,7 @@ For every connection's role:
 
 Avoid `auth.token` (a long-lived token in a Secret). If AppRole is unavoidable, set
 `secret_id_bound_cidrs` and `token_bound_cidrs`, and rotate the secret ID by updating its Secret;
-the operator reads credentials at every login (`internal/connection/resolver.go:462-470`).
+the operator reads credentials at every login (`internal/connection/resolver.go:489-497`).
 
 ### R-OPENBAO-03: Audit device and attribution header
 
@@ -597,7 +599,7 @@ from the first request; the `Audit` kind can manage it afterwards (root namespac
 destructive). Keep the defaults that HMAC sensitive values; never set `log_raw`.
 
 The operator sends `X-Openbao-Config-Resource: <group>/<kind>/<namespace>/<name>` on every request
-(`internal/openbao/pool.go:177-179`). OpenBao records it only when the header is listed; apply
+(`internal/openbao/pool.go:284`). OpenBao records it only when the header is listed; apply
 [examples/sys/auditrequestheader-attribution.yaml](../../examples/sys/auditrequestheader-attribution.yaml),
 or the same with a platform connection:
 
@@ -635,7 +637,7 @@ operator's role before trusting it.
   admins may set. Anyone who can label a Namespace enrols it; protect the label with an admission
   rule if namespace owners can edit labels.
 - Use one dedicated audience per server in `allowedAudiences`, such as `openbao`. The API server's
-  audiences are refused for tenants whatever the list says (`internal/connection/resolver.go:337-346`).
+  audiences are refused for tenants whatever the list says (`internal/connection/resolver.go:364-368`).
 - Every `ClusterOpenBaoConnection` selects only platform namespaces
   ([R-CONFIG-02](#r-config-02-clusteropenbaoconnection)).
 
@@ -646,7 +648,7 @@ Cap object counts per tenant namespace with a `ResourceQuota`
 per server, not per tenant, so one namespace can otherwise slow every other one (T-10). Set a
 `rateLimit` on every `OpenBaoServer`: without it, nothing paces the requests of one tenant. A
 resource cannot poll faster than every 30 s: CEL and the engine floor `spec.driftInterval`
-(`api/common/v1alpha1/types.go:118`, `internal/engine/drift.go:42-47`).
+(`api/common/v1alpha1/types.go:120`, `internal/engine/drift.go:42-47`).
 
 ### R-TENANCY-03: One OpenBao namespace per tenant
 
@@ -704,7 +706,7 @@ old statuses were readable by anyone with `get` on those resources.
 ### R-KEYS-02: Connection credentials
 
 - Prefer Kubernetes or JWT auth with a ServiceAccount (TokenRequest, 10 minutes, one login,
-  `internal/connection/resolver.go:54-55`) over Secrets.
+  `internal/connection/resolver.go:57`) over Secrets.
 - Credentials in Secrets are read at every login, so rotation needs no restart: update the Secret,
   and the pooled client is replaced on its next use.
 - One identity per connection and per environment; a development cluster never holds a connection
@@ -747,7 +749,7 @@ Follow [upgrade.md](../operate/upgrade.md), and in addition:
    writes nothing.
 4. To stop the operator touching a server while you investigate, annotate the server; nothing is
    read, written or deleted for resources that use it, and deletions keep their finalizers
-   (`internal/engine/reconciler.go:824-857`):
+   (`internal/engine/reconciler.go:258-264,1077-1097`):
 
    ```sh
    kubectl annotate openbaoservers.core.openbaoconfig.io openbao openbaoconfig.io/paused=true
@@ -762,7 +764,7 @@ The tools, from narrow to wide:
 
 | scope | tool | effect |
 |-------|------|--------|
-| one resource | `managementPolicy: Observe` in Git | reads and reports drift (`Drifted` with the differing keys), never writes or deletes, and removes the finalizer (`internal/engine/reconciler.go:284-285,799-808`) |
+| one resource | `managementPolicy: Observe` in Git | reads and reports drift (`Drifted` with the differing keys), never writes or deletes, and removes the finalizer (`internal/engine/reconciler.go:295-297,1053`) |
 | one resource | `openbaoconfig.io/paused: "true"` on it | no reads, writes or deletes |
 | one tenant | the annotation on its Namespace | the same for every resource in it |
 | one server | the annotation on the `OpenBaoServer` | the same for every resource that uses it |

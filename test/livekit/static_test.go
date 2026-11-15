@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -20,9 +21,18 @@ import (
 type exceptions struct {
 	// FullFields lists, per kind, spec fields that no full example sets, with the reason.
 	FullFields map[string]map[string]string `json:"fullFields"`
+	// EnumValues lists, per kind and spec field (dotted like fullFields), enum values that no example uses, with the
+	// reason.
+	EnumValues map[string]map[string]map[string]string `json:"enumValues"`
+	// OneOfBranches lists, per kind and exactly-one-of rule (the dotted path of the object the rule validates:
+	// "spec", "spec.auth", "spec.members[]"), branches that no example sets, with the reason.
+	OneOfBranches map[string]map[string]map[string]string `json:"oneOfBranches"`
 	// NotReady lists objects that do not reach Ready in the end-to-end run, with the reason.
 	NotReady []notReadyException `json:"notReady"`
 }
+
+// envDev scopes a notReady entry to bao server -dev: the kind e2e (OpenBao in Kubernetes on raft) requires Ready.
+const envDev = "dev"
 
 type notReadyException struct {
 	Kind string `json:"kind"`
@@ -30,7 +40,9 @@ type notReadyException struct {
 	Name string `json:"name"`
 	// Overlays are globs on the overlay (<mode>/<variant>); empty matches every overlay.
 	Overlays []string `json:"overlays"`
-	Reason   string   `json:"reason"`
+	// Env is empty (excused everywhere) or envDev.
+	Env    string `json:"env"`
+	Reason string `json:"reason"`
 }
 
 func (e notReadyException) matches(overlay, kind, name string) bool {
@@ -60,7 +72,11 @@ func loadExceptions(t testing.TB) exceptions {
 	if err != nil {
 		t.Fatal(err)
 	}
-	all := exceptions{FullFields: map[string]map[string]string{}}
+	all := exceptions{
+		FullFields:    map[string]map[string]string{},
+		EnumValues:    map[string]map[string]map[string]string{},
+		OneOfBranches: map[string]map[string]map[string]string{},
+	}
 	for _, f := range files {
 		raw, err := os.ReadFile(f)
 		if err != nil {
@@ -81,14 +97,83 @@ func loadExceptions(t testing.TB) exceptions {
 				all.FullFields[kind][field] = reason
 			}
 		}
+		mergeValueReasons(t, f, "enumValues", all.EnumValues, e.EnumValues)
+		mergeValueReasons(t, f, "oneOfBranches", all.OneOfBranches, e.OneOfBranches)
 		for _, n := range e.NotReady {
 			if n.Kind == "" || n.Reason == "" {
 				t.Fatalf("%s: notReady entry without kind or reason: %+v", f, n)
+			}
+			if n.Env != "" && n.Env != envDev {
+				t.Fatalf("%s: notReady %s env %q is neither empty nor %q", f, n.Kind, n.Env, envDev)
 			}
 		}
 		all.NotReady = append(all.NotReady, e.NotReady...)
 	}
 	return all
+}
+
+// TestNotReadyEnv fails when a notReady entry limited to bao server -dev (env: dev) matches no object that the kind
+// e2e applies (test/livekit/kind) and no entry without env excuses there, since nothing would then prove the object
+// Ready where OpenBao runs in Kubernetes.
+func TestNotReadyEnv(t *testing.T) {
+	root := repoRoot(t)
+	kit := kitDir(root)
+	exc := loadExceptions(t)
+	overlayOf := overlayDirs(t, kit)
+	objs := render(t, kustomizeBin(t, root), filepath.Join(root, "test", "livekit", "kind"))
+	for _, e := range exc.NotReady {
+		if e.Env != envDev {
+			continue
+		}
+		applied := slices.ContainsFunc(objs, func(o *unstructured.Unstructured) bool {
+			label := o.GetLabels()[labelOverlay]
+			overlay, name := overlayOf[label], strings.TrimPrefix(o.GetName(), label+"-")
+			if !e.matches(overlay, o.GetKind(), name) {
+				return false
+			}
+			return !slices.ContainsFunc(exc.NotReady, func(other notReadyException) bool {
+				return other.Env != envDev && other.matches(overlay, o.GetKind(), name)
+			})
+		})
+		if !applied {
+			t.Errorf("notReady %s %q has env: dev but matches no object that test/livekit/kind applies (none, or each "+
+				"excused by an entry without env); add its overlay there or drop env", e.Kind, e.Name)
+		}
+	}
+}
+
+// overlayDirs maps each overlay label (live.openbaoconfig.io/overlay) to its overlay, <mode>/<variant>.
+func overlayDirs(t testing.TB, kit string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	for _, o := range overlays(t, kit) {
+		for _, l := range readKustomization(t, filepath.Join(kit, o)).Labels {
+			if label := l.Pairs[labelOverlay]; label != "" {
+				out[label] = strings.TrimPrefix(o, "overlays/")
+			}
+		}
+	}
+	return out
+}
+
+func mergeValueReasons(t testing.TB, file, key string, dst, src map[string]map[string]map[string]string) {
+	t.Helper()
+	for kind, paths := range src {
+		if dst[kind] == nil {
+			dst[kind] = map[string]map[string]string{}
+		}
+		for p, values := range paths {
+			if dst[kind][p] == nil {
+				dst[kind][p] = map[string]string{}
+			}
+			for v, reason := range values {
+				if reason == "" {
+					t.Fatalf("%s: %s %s %s %s has no reason", file, key, kind, p, v)
+				}
+				dst[kind][p][v] = reason
+			}
+		}
+	}
 }
 
 // TestRender builds every overlay and checks the naming contract: references resolve inside the build or name
@@ -335,11 +420,16 @@ func TestCoverage(t *testing.T) {
 			}
 		}
 	}
+	exc := loadExceptions(t)
+	fullDocs, allDocs := kitDocs(t, kit, variantFull), kitDocs(t, kit, "")
+	knobs := knobValues(allDocs)
 	var b strings.Builder
 	b.WriteString("# Live kit coverage\n\nGenerated by `make test-livekit` (`LIVEKIT_UPDATE=1` rewrites it). " +
-		"Every built-in kind and the components that hold its minimal and full examples.\n\n" +
-		"| kind | group | minimal | full |\n|------|-------|---------|------|\n")
-	n := 0
+		"Every built-in kind, the components that hold its minimal and full examples, the spec fields its full " +
+		"examples set, the enum values its examples use, and its entries in test/livekit/exceptions.\n\n" +
+		"| kind | group | minimal | full | fields | enum values | exceptions |\n" +
+		"|------|-------|---------|------|--------|-------------|------------|\n")
+	var n, fieldsUsed, fieldsTotal, enumUsed, enumTotal, excTotal int
 	for _, k := range sortedKinds(kinds) {
 		if !k.Builtin {
 			continue
@@ -352,10 +442,31 @@ func TestCoverage(t *testing.T) {
 		if len(fulls) == 0 {
 			t.Errorf("%s: no full example in examples/live/components/*/full", k.Kind)
 		}
-		fmt.Fprintf(&b, "| `%s` | %s | %s | %s |\n", k.Kind, strings.SplitN(k.Group, ".", 2)[0],
-			strings.Join(mins, ", "), strings.Join(fulls, ", "))
+		set := fieldsSet(k, fullDocs[k.Kind])
+		fu := 0
+		for _, ok := range set {
+			if ok {
+				fu++
+			}
+		}
+		uses := enumUses(k, allDocs[k.Kind], knobs)
+		eu := 0
+		for _, u := range uses {
+			if u.used {
+				eu++
+			}
+		}
+		ex := exceptionCount(exc, k.Kind)
+		fieldsUsed += fu
+		fieldsTotal += len(set)
+		enumUsed += eu
+		enumTotal += len(uses)
+		excTotal += ex
+		fmt.Fprintf(&b, "| `%s` | %s | %s | %s | %d/%d | %d/%d | %d |\n", k.Kind, strings.SplitN(k.Group, ".", 2)[0],
+			strings.Join(mins, ", "), strings.Join(fulls, ", "), fu, len(set), eu, len(uses), ex)
 	}
-	fmt.Fprintf(&b, "\n%d built-in kinds.\n", n)
+	fmt.Fprintf(&b, "\n%d built-in kinds: %d/%d spec fields set by a full example, %d/%d enum values used by an "+
+		"example, %d exceptions.\n", n, fieldsUsed, fieldsTotal, enumUsed, enumTotal, excTotal)
 	out := filepath.Join(kit, "coverage.md")
 	if os.Getenv("LIVEKIT_UPDATE") != "" {
 		if err := os.WriteFile(out, []byte(b.String()), 0o600); err != nil {
@@ -369,51 +480,47 @@ func TestCoverage(t *testing.T) {
 	}
 }
 
+// exceptionCount counts the fullFields, enumValues, oneOfBranches and notReady entries of a kind.
+func exceptionCount(exc exceptions, kind string) int {
+	n := len(exc.FullFields[kind])
+	for _, values := range exc.EnumValues[kind] {
+		n += len(values)
+	}
+	for _, branches := range exc.OneOfBranches[kind] {
+		n += len(branches)
+	}
+	for _, e := range exc.NotReady {
+		if e.Kind == kind {
+			n++
+		}
+	}
+	return n
+}
+
 // TestFullFields fails when a spec field of a built-in kind is set by none of the kind's full examples, unless
 // an exceptions file names it with a reason. One-of alternatives are covered by further documents of the kind.
 func TestFullFields(t *testing.T) {
 	root := repoRoot(t)
 	kit := kitDir(root)
 	exc := loadExceptions(t)
-	docs := map[string][]*unstructured.Unstructured{}
-	for _, c := range components(t, kit) {
-		if c.variant != variantFull {
-			continue
-		}
-		for _, d := range c.docs {
-			docs[d.GetKind()] = append(docs[d.GetKind()], d)
-		}
-	}
+	docs := kitDocs(t, kit, variantFull)
 	for _, k := range sortedKinds(crdKinds(t, root)) {
 		if !k.Builtin {
 			continue
 		}
-		known := map[string]bool{}
+		set := fieldsSet(k, docs[k.Kind])
 		var missing []string
-		for _, p := range leafPaths(k.Spec, "") {
-			known[p] = true
-			if p == "namespace" {
-				continue
-			}
-			set := false
-			for _, d := range docs[k.Kind] {
-				if hasPath(d.Object[keySpec], strings.Split(p, ".")) {
-					set = true
-					break
-				}
-			}
-			if set {
-				if _, ok := exc.FullFields[k.Kind][p]; ok {
-					t.Errorf("%s: an exceptions file excuses spec.%s, but a full example sets it", k.Kind, p)
-				}
-				continue
-			}
-			if _, ok := exc.FullFields[k.Kind][p]; !ok {
+		for p, ok := range set {
+			_, excused := exc.FullFields[k.Kind][p]
+			switch {
+			case ok && excused:
+				t.Errorf("%s: an exceptions file excuses spec.%s, but a full example sets it", k.Kind, p)
+			case !ok && !excused:
 				missing = append(missing, p)
 			}
 		}
 		for p := range exc.FullFields[k.Kind] {
-			if !known[p] {
+			if _, known := set[p]; !known && p != "namespace" {
 				t.Errorf("%s: an exceptions file names spec.%s, which the CRD does not have", k.Kind, p)
 			}
 		}
@@ -427,6 +534,336 @@ func TestFullFields(t *testing.T) {
 			t.Errorf("an exceptions file names %s, which has no full example", kind)
 		}
 	}
+}
+
+// kitDocs returns the documents of the kit's components by kind, of one variant or, for "", of both.
+func kitDocs(t testing.TB, kit, variant string) map[string][]*unstructured.Unstructured {
+	t.Helper()
+	docs := map[string][]*unstructured.Unstructured{}
+	for _, c := range components(t, kit) {
+		if variant != "" && c.variant != variant {
+			continue
+		}
+		for _, d := range c.docs {
+			docs[d.GetKind()] = append(docs[d.GetKind()], d)
+		}
+	}
+	return docs
+}
+
+// fieldsSet returns, for every spec leaf of a kind except namespace, whether one of docs sets it.
+func fieldsSet(k *kindInfo, docs []*unstructured.Unstructured) map[string]bool {
+	out := map[string]bool{}
+	for _, p := range leafPaths(k.Spec, "") {
+		if p == "namespace" {
+			continue
+		}
+		out[p] = slices.ContainsFunc(docs, func(d *unstructured.Unstructured) bool {
+			return hasPath(d.Object[keySpec], strings.Split(p, "."))
+		})
+	}
+	return out
+}
+
+// policyKnobs are the operator's lifecycle fields and the connection kind, which the engine handles alike for every
+// kind; the lifecycle and connection-auth components and the conformance suite exercise them. A value of one counts
+// as used by every kind once any document of the kit uses it.
+var policyKnobs = []string{"creationPolicy", "deletionPolicy", "managementPolicy", "driftDetection", "connectionRef.kind"}
+
+// TestEnumValues fails when a value of an enum spec field of a built-in kind is used by no example of the kind,
+// minimal or full, unless an exceptions file names it under enumValues or excuses the whole field under fullFields.
+// The policyKnobs follow the rule above.
+func TestEnumValues(t *testing.T) {
+	root := repoRoot(t)
+	kit := kitDir(root)
+	exc := loadExceptions(t)
+	kinds := crdKinds(t, root)
+	docs := kitDocs(t, kit, "")
+	knobs := knobValues(docs)
+	var gaps []string
+	for _, k := range sortedKinds(kinds) {
+		if !k.Builtin {
+			continue
+		}
+		known := map[string]bool{}
+		var missing []string
+		for _, u := range enumUses(k, docs[k.Kind], knobs) {
+			known[u.path+"="+u.value] = true
+			_, excused := exc.EnumValues[k.Kind][u.path][u.value]
+			if _, whole := exc.FullFields[k.Kind][u.path]; whole {
+				if excused {
+					t.Errorf("%s: enumValues excuses spec.%s=%s, but fullFields already excuses the field", k.Kind, u.path, u.value)
+				}
+				continue
+			}
+			switch {
+			case u.used && excused:
+				t.Errorf("%s: an exceptions file excuses spec.%s=%s, but an example uses it", k.Kind, u.path, u.value)
+			case !u.used && !excused:
+				missing = append(missing, "spec."+u.path+"="+u.value)
+			}
+		}
+		for p, values := range exc.EnumValues[k.Kind] {
+			for v := range values {
+				if !known[p+"="+v] {
+					t.Errorf("%s: an exceptions file names spec.%s=%s, which is no enum value of the CRD", k.Kind, p, v)
+				}
+			}
+		}
+		if len(missing) > 0 {
+			gaps = append(gaps, fmt.Sprintf("%s: %s", k.Kind, strings.Join(missing, ", ")))
+		}
+	}
+	checkExceptionKinds(t, "enumValues", exc.EnumValues, kinds)
+	reportGaps(t, "enum values used by no example", gaps)
+}
+
+// TestOneOfBranches fails when a branch of an exactly-one-of rule of a built-in kind is set by no example of the
+// kind, minimal or full, unless an exceptions file names it under oneOfBranches.
+func TestOneOfBranches(t *testing.T) {
+	root := repoRoot(t)
+	kit := kitDir(root)
+	exc := loadExceptions(t)
+	kinds := crdKinds(t, root)
+	docs := kitDocs(t, kit, "")
+	var gaps []string
+	for _, k := range sortedKinds(kinds) {
+		if !k.Builtin {
+			continue
+		}
+		known := map[string]bool{}
+		var missing []string
+		for _, rule := range oneOfRules(t, k) {
+			for _, b := range rule.branches {
+				known[rule.path+"="+b] = true
+				set := branchSet(docs[k.Kind], rule.path, b)
+				_, excused := exc.OneOfBranches[k.Kind][rule.path][b]
+				switch {
+				case set && excused:
+					t.Errorf("%s: an exceptions file excuses branch %s of %s, but an example sets it", k.Kind, b, rule.path)
+				case !set && !excused:
+					missing = append(missing, rule.path+"."+b)
+				}
+			}
+		}
+		for p, branches := range exc.OneOfBranches[k.Kind] {
+			for b := range branches {
+				if !known[p+"="+b] {
+					t.Errorf("%s: an exceptions file names branch %s of %s, which is no exactly-one-of rule of the CRD", k.Kind, b, p)
+				}
+			}
+		}
+		if len(missing) > 0 {
+			gaps = append(gaps, fmt.Sprintf("%s: %s", k.Kind, strings.Join(missing, ", ")))
+		}
+	}
+	checkExceptionKinds(t, "oneOfBranches", exc.OneOfBranches, kinds)
+	reportGaps(t, "exactly-one-of branches set by no example", gaps)
+}
+
+func checkExceptionKinds(t *testing.T, key string, excused map[string]map[string]map[string]string, kinds map[string]*kindInfo) {
+	t.Helper()
+	for kind := range excused {
+		if k := kinds[kind]; k == nil || !k.Builtin {
+			t.Errorf("an exceptions file names %s under %s, which is no built-in kind", kind, key)
+		}
+	}
+}
+
+func reportGaps(t *testing.T, what string, gaps []string) {
+	t.Helper()
+	if len(gaps) > 0 {
+		t.Errorf("%d kinds have %s; add an example, or an exception with the reason to the owning component's "+
+			"exceptions file:\n%s", len(gaps), what, strings.Join(gaps, "\n"))
+	}
+}
+
+// walkSchema calls visit for a schema and every property, list item and map value schema below it, with the dotted
+// path from the root: "[]" marks list items, "{}" map values.
+func walkSchema(schema map[string]any, prefix string, visit func(p string, schema map[string]any)) {
+	visit(prefix, schema)
+	props, _ := schema["properties"].(map[string]any)
+	for k, raw := range props {
+		child, _ := raw.(map[string]any)
+		p := k
+		if prefix != "" {
+			p = prefix + "." + k
+		}
+		walkSchema(child, p, visit)
+	}
+	if items, ok := schema["items"].(map[string]any); ok {
+		walkSchema(items, prefix+"[]", visit)
+	}
+	if values, ok := schema["additionalProperties"].(map[string]any); ok {
+		walkSchema(values, prefix+"{}", visit)
+	}
+}
+
+// valuesAt returns every value at a path below v, split at dots: "[]" after a segment takes every item of the list,
+// "{}" every value of the map.
+func valuesAt(v any, segs []string) []any {
+	if len(segs) == 0 {
+		return []any{v}
+	}
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil
+	}
+	var children []any
+	if list, ok := strings.CutSuffix(segs[0], "[]"); ok {
+		children, _ = m[list].([]any)
+	} else if field, ok := strings.CutSuffix(segs[0], "{}"); ok {
+		entries, _ := m[field].(map[string]any)
+		for _, e := range entries {
+			children = append(children, e)
+		}
+	} else if child, ok := m[segs[0]]; ok {
+		children = []any{child}
+	}
+	var out []any
+	for _, c := range children {
+		out = append(out, valuesAt(c, segs[1:])...)
+	}
+	return out
+}
+
+// usedValues returns the values that docs give a dotted spec field, counting the items of a list one by one.
+func usedValues(docs []*unstructured.Unstructured, field string) map[string]bool {
+	out := map[string]bool{}
+	for _, d := range docs {
+		for _, v := range valuesAt(d.Object[keySpec], strings.Split(field, ".")) {
+			if items, ok := v.([]any); ok {
+				for _, item := range items {
+					out[fmt.Sprint(item)] = true
+				}
+				continue
+			}
+			out[fmt.Sprint(v)] = true
+		}
+	}
+	return out
+}
+
+func knobValues(docs map[string][]*unstructured.Unstructured) map[string]map[string]bool {
+	var all []*unstructured.Unstructured
+	for _, kindDocs := range docs {
+		all = append(all, kindDocs...)
+	}
+	out := map[string]map[string]bool{}
+	for _, knob := range policyKnobs {
+		out[knob] = usedValues(all, knob)
+	}
+	return out
+}
+
+// enumUse is one value of an enum spec field, dotted like leafPaths, and whether an example uses it.
+type enumUse struct {
+	path, value string
+	used        bool
+}
+
+func enumUses(k *kindInfo, docs []*unstructured.Unstructured, knobs map[string]map[string]bool) []enumUse {
+	var out []enumUse
+	walkSchema(k.Spec, "", func(p string, s map[string]any) {
+		values, ok := s["enum"].([]any)
+		if !ok {
+			return
+		}
+		// leafPaths names a list of scalars without "[]", and so do the exceptions.
+		p = strings.TrimSuffix(p, "[]")
+		used := usedValues(docs, p)
+		for _, v := range values {
+			value := fmt.Sprint(v)
+			out = append(out, enumUse{path: p, value: value, used: used[value] || knobs[p][value]})
+		}
+	})
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].path != out[j].path {
+			return out[i].path < out[j].path
+		}
+		return out[i].value < out[j].value
+	})
+	return out
+}
+
+// oneOfRule is an exactly-one-of rule: the object it validates ("spec", "spec.auth") and the fields it chooses from.
+type oneOfRule struct {
+	path     string
+	branches []string
+}
+
+var (
+	// The message controller-gen writes for the ExactlyOneOf marker.
+	markerExactlyOne = regexp.MustCompile(`^exactly one of the fields in \[(.+)\] must be set$`)
+	// The hand-written message, "set exactly one of a, b and c"; an item may describe its field ("a kubernetes
+	// providerConfig"), whose name is the last word.
+	setExactlyOne = regexp.MustCompile(`^set exactly one of (.+)$`)
+)
+
+var (
+	// A count of has() tests compared with 1: [has(self.a), ...].filter(x, x).size() == 1 or
+	// (has(self.a) ? 1 : 0) + ... == 1.
+	celCountIsOne = regexp.MustCompile(`has\(.*(\.size\(\)|\?\s*1\s*:\s*0\s*\))\s*==\s*1\b`)
+	// Exactly one of two fields: has(self.a) != has(self.b).
+	celOneOfTwo      = regexp.MustCompile(`^\s*has\([^()]+\)\s*!=\s*has\([^()]+\)\s*$`)
+	msgExactlyOneish = regexp.MustCompile(`(?i)^(set )?exactly one\b`)
+)
+
+// exactlyOneShape reports whether a CEL rule looks like an exactly-one-of rule, by its expression or its message.
+func exactlyOneShape(rule map[string]any) bool {
+	text, _ := rule["rule"].(string)
+	msg, _ := rule["message"].(string)
+	return celCountIsOne.MatchString(text) || celOneOfTwo.MatchString(text) || msgExactlyOneish.MatchString(msg)
+}
+
+// oneOfRules reads the exactly-one-of rules of a kind's spec from the messages of its CEL rules; a branch that is
+// no field of the validated object fails t, so a reworded message cannot hide a rule.
+func oneOfRules(t *testing.T, k *kindInfo) []oneOfRule {
+	t.Helper()
+	var out []oneOfRule
+	walkSchema(k.Spec, "", func(p string, s map[string]any) {
+		object := keySpec
+		if p != "" {
+			object += "." + p
+		}
+		rules, _ := s["x-kubernetes-validations"].([]any)
+		props, _ := s["properties"].(map[string]any)
+		for _, raw := range rules {
+			rule, _ := raw.(map[string]any)
+			msg, _ := rule["message"].(string)
+			var branches []string
+			if m := markerExactlyOne.FindStringSubmatch(msg); m != nil {
+				branches = strings.Fields(m[1])
+			} else if m := setExactlyOne.FindStringSubmatch(msg); m != nil {
+				for item := range strings.SplitSeq(strings.ReplaceAll(m[1], " and ", ", "), ", ") {
+					words := strings.Fields(item)
+					branches = append(branches, words[len(words)-1])
+				}
+			} else {
+				if exactlyOneShape(rule) {
+					t.Errorf("%s: the CEL rule on %s has the exactly-one-of shape, but its message matches neither "+
+						"recognised pattern, so its branches are not checked: %q", k.Kind, object, msg)
+				}
+				continue
+			}
+			for _, b := range branches {
+				if _, ok := props[b]; !ok {
+					t.Errorf("%s: the one-of rule on %s names %q, which is no field there: %q", k.Kind, object, b, msg)
+				}
+			}
+			out = append(out, oneOfRule{path: object, branches: branches})
+		}
+	})
+	sort.SliceStable(out, func(i, j int) bool { return out[i].path < out[j].path })
+	return out
+}
+
+// branchSet reports whether one of docs sets field b of object ("spec" or "spec.<dotted>").
+func branchSet(docs []*unstructured.Unstructured, object, b string) bool {
+	segs := append(strings.Split(object, ".")[1:], b)
+	return slices.ContainsFunc(docs, func(d *unstructured.Unstructured) bool {
+		return len(valuesAt(d.Object[keySpec], segs)) > 0
+	})
 }
 
 // leafPaths returns the dotted paths of every leaf below a schema; a list of objects adds "[]" to its segment and a

@@ -180,6 +180,14 @@ func TestTransitKeyWrite(t *testing.T) {
 	}
 }
 
+func TestKeyMaterialKindsAreDestructive(t *testing.T) {
+	for _, kind := range []engine.Destructive{TransitKeyAdapter{}, PKIIssuerAdapter{}, PKIKeyAdapter{}, SSHCAAdapter{}, TOTPKeyAdapter{}} {
+		if !kind.Destructive() {
+			t.Errorf("%T must need the destructive-delete annotation", kind)
+		}
+	}
+}
+
 func TestTransitKeyDelete(t *testing.T) {
 	a := TransitKeyAdapter{}
 	k := fullTransitKey()

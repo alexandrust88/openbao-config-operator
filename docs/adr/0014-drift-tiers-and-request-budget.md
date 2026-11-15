@@ -15,7 +15,7 @@ audit, groups and memberships) every 15 minutes, everything else every hour, eac
 `spec.driftInterval` overrides per object and `spec.driftDetection: Disabled` turns it off.
 `OpenBaoServer.spec.rateLimit` is one token bucket shared by every connection to that server;
 drift reads wait and spec-change reconciles go first. `openbao_drift_lag_seconds` shows the lag.
-Drift reads may go to standbys; the read after the operator's own write goes to the active node.
+Drift reads may go to standbys. The read after the operator's own write is not pinned to a node; point the server address at the active node (see the troubleshooting page) when standbys serve reads.
 
 ## Consequences
 

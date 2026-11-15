@@ -35,6 +35,6 @@ and roles behind, which keeps access open.
 ## Update (2026-11-14)
 
 The deletion default is now `Orphan` for every kind, set by a CRD default on the shared spec
-(design rule 3 in [architecture](../architecture.md#design-rules)). `Delete` is opt-in per object. A
+(design rule 6 in [architecture](../architecture.md#design-rules)). `Delete` is opt-in per object. A
 CR deleted from Git must never silently remove an auth mount or a policy. The per-kind default
 described above no longer applies.

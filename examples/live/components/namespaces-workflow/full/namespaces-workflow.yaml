@@ -61,6 +61,7 @@ spec:
   path: ns-kv
   type: kv-v2
   description: Team secrets inside the team namespace
+  listingVisibility: unauth
 ---
 apiVersion: sys.openbaoconfig.io/v1alpha1
 kind: PasswordPolicy

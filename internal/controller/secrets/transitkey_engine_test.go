@@ -3,9 +3,11 @@ package secrets
 import (
 	"context"
 	"errors"
+	"reflect"
 	"sync/atomic"
 	"testing"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -72,5 +74,64 @@ func TestTransitKeyRotatesOnceWhenReadBackFails(t *testing.T) {
 	}
 	if bao.rotations != 1 {
 		t.Errorf("rotations = %d, want 1", bao.rotations)
+	}
+}
+
+// namespacedStubClient is an engineStubClient that the engine can scope to the recorded namespace on delete.
+type namespacedStubClient struct{ *engineStubClient }
+
+func (c namespacedStubClient) WithNamespace(string) openbao.Client { return c }
+
+func (namespacedStubClient) Namespace() string { return "" }
+
+// TestTransitKeyDeleteNeedsAnnotation: with deletionPolicy Delete the key, and its deletion_allowed, stay untouched
+// until the destructive-delete annotation is set.
+func TestTransitKeyDeleteNeedsAnnotation(t *testing.T) {
+	k := fullTransitKey()
+	k.Spec.ConnectionRef = pkiConnection().ConnectionRef
+	k.Spec.DeletionPolicy = commonv1alpha1.DeletionPolicyDelete
+	k.Finalizers = []string{engine.DefaultFinalizer}
+	k.Status.Acquired, k.Status.Path = commonv1alpha1.AcquiredCreated, "transit/keys/app"
+	k.Status.ServerID = engine.ConnectionKey(k.Namespace, k.Spec.ConnectionRef)
+	k8s, scheme := outputClient(t, k, &atomic.Bool{})
+	bao := &engineStubClient{data: map[string]map[string]any{"transit/keys/app": transitGoldenRead()}}
+	req := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(k)}
+	reconcile := func() error {
+		return reconcileOnce(k8s, scheme, namespacedStubClient{bao}, TransitKeyAdapter{}, req,
+			func() *secretsv1alpha1.TransitKey { return &secretsv1alpha1.TransitKey{} })
+	}
+	if err := k8s.Delete(context.Background(), k); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := reconcile(); err != nil {
+		t.Fatal(err)
+	}
+	if len(bao.calls) != 0 {
+		t.Errorf("calls without the annotation = %v, want none", bao.calls)
+	}
+	if _, synced := outputConditions(t, k8s, k); synced == nil || synced.Reason != commonv1alpha1.ReasonDeleteGuarded {
+		t.Errorf("Synced = %+v, want reason %s", synced, commonv1alpha1.ReasonDeleteGuarded)
+	}
+
+	if err := k8s.Get(context.Background(), req.NamespacedName, k); err != nil {
+		t.Fatal(err)
+	}
+	k.Annotations = map[string]string{commonv1alpha1.AnnotationAllowDestructiveDelete: "true"}
+	if err := k8s.Update(context.Background(), k); err != nil {
+		t.Fatal(err)
+	}
+	if err := reconcile(); err != nil {
+		t.Fatal(err)
+	}
+	want := []engineStubCall{
+		{op: "write", path: "transit/keys/app/config", data: map[string]any{"deletion_allowed": true}},
+		{op: "delete", path: "transit/keys/app"},
+	}
+	if !reflect.DeepEqual(bao.calls, want) {
+		t.Errorf("calls with the annotation = %v, want %v", bao.calls, want)
+	}
+	if err := k8s.Get(context.Background(), req.NamespacedName, k); !apierrors.IsNotFound(err) {
+		t.Errorf("resource after the delete: %v, want gone", err)
 	}
 }

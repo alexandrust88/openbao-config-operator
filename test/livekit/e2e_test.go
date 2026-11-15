@@ -216,6 +216,9 @@ func modeOf(t testing.TB, dir string) string {
 type kustomizationFile struct {
 	Resources  []string `json:"resources"`
 	Components []string `json:"components"`
+	Labels     []struct {
+		Pairs map[string]string `json:"pairs"`
+	} `json:"labels"`
 }
 
 func readKustomization(t testing.TB, dir string) kustomizationFile {

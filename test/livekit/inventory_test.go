@@ -95,6 +95,18 @@ func liveInventory(t testing.TB) []coverageRow {
 			covered[kind] = append(covered[kind], overlay+":"+obj.GetName())
 		}
 	}
+	onKind := map[string][]string{}
+	overlayOf := overlayDirs(t, kitDir(root))
+	for _, obj := range render(t, kustomize, filepath.Join(root, "test", "livekit", "kind")) {
+		label := obj.GetLabels()[labelOverlay]
+		name := strings.TrimPrefix(obj.GetName(), label+"-")
+		excused := slices.ContainsFunc(exceptions.NotReady, func(e notReadyException) bool {
+			return e.Env != envDev && e.matches(overlayOf[label], obj.GetKind(), name)
+		})
+		if isOperatorKind(obj) && !excused {
+			onKind[obj.GetKind()] = append(onKind[obj.GetKind()], "kind:"+obj.GetName())
+		}
+	}
 	pluginFiles, err := os.ReadFile(filepath.Join(root, "hack/chart/plugin-crds.txt"))
 	if err != nil {
 		t.Fatal(err)
@@ -121,10 +133,14 @@ func liveInventory(t testing.TB) []coverageRow {
 			if len(r.Scenarios) > 0 {
 				t.Errorf("%s now has an unexcused overlay scenario; remove its obsolete coverage exclusion", k.Kind)
 			}
+		case len(r.Scenarios) == 0 && len(onKind[k.Kind]) > 0:
+			// Only the kind e2e applies it (test/livekit/kind.sh fails unless it is Ready), so the bao server -dev
+			// run cannot count its Ready objects.
+			r.Class, r.Evidence, r.Scenarios = "kind-overlay", "test/livekit/kind.sh", onKind[k.Kind]
 		default:
 			r.Class = "live-overlay"
 			if len(r.Scenarios) == 0 {
-				t.Errorf("%s has no unexcused scenario in the default executed overlays", k.Kind)
+				t.Errorf("%s has no unexcused scenario in the default executed overlays or in test/livekit/kind", k.Kind)
 			}
 		}
 		rows = append(rows, r)
@@ -138,8 +154,8 @@ func TestLiveInventory(t *testing.T) {
 	for _, row := range rows {
 		counts[row.Class]++
 	}
-	t.Logf("%d CRDs: %d live-overlay, %d dedicated-suite, %d plugin-excluded; inventory is not proof of a successful live run",
-		len(rows), counts["live-overlay"], counts["dedicated-suite"], counts["plugin-excluded"])
+	t.Logf("%d CRDs: %d live-overlay, %d kind-overlay, %d dedicated-suite, %d plugin-excluded; inventory is not proof of a successful live run",
+		len(rows), counts["live-overlay"], counts["kind-overlay"], counts["dedicated-suite"], counts["plugin-excluded"])
 	if path := os.Getenv("LIVEKIT_INVENTORY_OUT"); path != "" {
 		writeInventory(t, path, rows)
 	}

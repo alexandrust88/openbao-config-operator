@@ -11,6 +11,7 @@ import (
 	"net/url"
 	pathpkg "path"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -157,6 +158,12 @@ func (c *client) WithNamespace(ns string) Client {
 
 func (c *client) Namespace() string {
 	return c.ns
+}
+
+// Identity names the session (connection, server and login) and the namespace this client sends requests as. Two
+// clients with the same identity read the same data with the same token.
+func (c *client) Identity() string {
+	return strconv.FormatUint(c.s.id, 10) + "\x00" + c.ns
 }
 
 // joinNamespace appends rel to base without resolving "." or "..", so a relative namespace can never

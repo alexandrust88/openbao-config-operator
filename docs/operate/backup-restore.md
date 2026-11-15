@@ -118,9 +118,15 @@ Points to check:
 `deletionPolicy` decides what deleting a resource does in OpenBao. Every kind defaults to `Orphan`:
 the OpenBao object stays ([ADR 0015](../adr/0015-create-and-orphan-by-default.md)). `Delete` is set
 per resource. It removes the object, or resets a configuration singleton to its defaults; data holders
-such as mounts, namespaces and KV data are removed only while the resource carries the annotation
-`openbaoconfig.io/allow-destructive-delete: "true"`. Kinds whose OpenBao object cannot be deleted
-reject `Delete`.
+are removed only while the resource carries the annotation
+`openbaoconfig.io/allow-destructive-delete: "true"`. They are `SecretsMount`, `AuthMount`,
+`OpenBaoNamespace`, `KVSecret`, `RandomSecret`, `Audit`, `OpenBaoEndpoint`, the key material kinds
+`TransitKey`, `PKIIssuer`, `PKIKey`, `SSHCA` and `TOTPKey`, `MFAMethod`, and `Entity`, whose delete erases the
+MFA TOTP secrets enrolled for it. Kinds whose OpenBao object cannot be deleted reject `Delete`.
+
+Without the annotation, a data holder with `Delete` in a live Kubernetes Namespace stays `Terminating` with
+reason `DeleteGuarded`. In a terminating Namespace the operator leaves the object in OpenBao, records a Warning
+event with reason `Orphaned` and removes the finalizer, so deleting a Namespace never destroys guarded data.
 
 The operator adds the finalizer `openbaoconfig.io/finalizer` only when the effective policy is
 `Delete`, and removes it when the policy changes to `Orphan`. On deletion with `Delete` it deletes
