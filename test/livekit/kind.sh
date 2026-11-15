@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Applies the live kit's root/full overlay to the kind e2e cluster against the in-cluster OpenBao dev server, with
 # the operator installed from the chart, and fails when an object is not Ready unless test/livekit/exceptions or
-# the kind list below excuses it. Run after `make setup-test-e2e` and loading E2E_IMG into kind.
+# the kind list below excuses it. Run after `make setup-test-e2e` and loading E2E_IMG into kind; it reuses the
+# OpenBao and chart that the e2e suite leaves with E2E_KEEP=true.
 set -euo pipefail
 
 : "${E2E_IMG:?E2E_IMG must name the operator image loaded into kind}"
@@ -32,6 +33,17 @@ cd "$repo_root"
 
 bao() { kubectl -n openbao exec -i deployment/openbao -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN=root bao "$@"; }
 
+rendered=$(mktemp)
+helm_log=$(mktemp)
+trap 'rm -f -- "$rendered" "$helm_log"' EXIT
+
+# The chart rolls out while OpenBao is configured and the Secrets are created.
+"$helm" upgrade --install openbao-config-operator charts/openbao-config-operator \
+  --namespace openbao-config-operator --create-namespace \
+  --set "image.repository=${E2E_IMG%:*}" --set "image.tag=${E2E_IMG##*:}" \
+  --set "extraArgs={--drift-interval-critical=1m,--drift-interval-standard=1m}" --wait --timeout 5m >"$helm_log" 2>&1 &
+helm_pid=$!
+
 kubectl apply -f hack/e2e/openbao-dev.yaml -f test/e2e/testdata/openbao-auth.yaml
 kubectl -n openbao rollout status deployment/openbao --timeout=180s
 bao auth enable kubernetes 2>/dev/null || true
@@ -41,17 +53,17 @@ printf 'path "*" {\n  capabilities = ["create", "read", "update", "patch", "dele
 bao write "auth/kubernetes/role/$root_role" "bound_service_account_names=$root_sa" \
   "bound_service_account_namespaces=$namespace" "audience=$audience" token_policies=livekit-root token_ttl=1h >/dev/null
 
-"$helm" upgrade --install openbao-config-operator charts/openbao-config-operator \
-  --namespace openbao-config-operator --create-namespace \
-  --set "image.repository=${E2E_IMG%:*}" --set "image.tag=${E2E_IMG##*:}" \
-  --set "extraArgs={--drift-interval-critical=1m,--drift-interval-standard=1m}" --wait --timeout 5m
-
 kubectl create namespace "$namespace" --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n "$namespace" create serviceaccount "$root_sa" --dry-run=client -o yaml | kubectl apply -f -
 examples/live/create-secrets.sh --namespace "$namespace"
+helm_status=0
+wait "$helm_pid" || helm_status=$?
+cat "$helm_log"
+if [ "$helm_status" -ne 0 ]; then
+  err "helm upgrade --install failed"
+  exit 1
+fi
 
-rendered=$(mktemp)
-trap 'rm -f -- "$rendered"' EXIT
 "$kustomize" build test/livekit/kind >"$rendered"
 prefix=$("$yq" -N 'select(.kind == "OpenBaoServer") | .metadata.labels["live.openbaoconfig.io/overlay"]' "$rendered")-
 excuses=("${kind_excuses[@]}")
@@ -89,17 +101,25 @@ kubectl apply -f "$rendered" >/dev/null
 names=()
 while IFS= read -r ref; do names+=("$ref"); done < <("$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "." + (.apiVersion | split("/") | .[0]) + "/" + .metadata.name' "$rendered")
 
+# Prints the applied objects whose Ready condition is not True, one kind.group/name per line, in one API call.
+not_ready() {
+  {
+    printf 'want %s\n' "${names[@]}"
+    kubectl -n "$namespace" get "${names[@]}" --ignore-not-found \
+      -o 'jsonpath={range .items[*]}{.status.conditions[?(@.type=="Ready")].status} {.kind}.{.apiVersion}/{.metadata.name}{"\n"}{end}' |
+      sed -n 's|^True \([^/]*\)/[^/]*/|ready \1/|p' || true
+  } | awk '$1 == "want" { want[++n] = $2; next } { ok[$2] } END { for (i = 1; i <= n; i++) if (!(want[i] in ok)) print want[i] }'
+}
+
 # Done as soon as every applied object is Ready; LIVEKIT_TIMEOUT is only the upper bound.
 case $timeout in *m) limit=$((${timeout%m} * 60)) ;; *s) limit=${timeout%s} ;; *) limit=$timeout ;; esac
 deadline=$(($(date +%s) + limit))
 echo "waiting for ${#names[@]} objects (at most $timeout, or until 2m pass without progress)"
 best=-1 progress=$(date +%s)
 while :; do
-  pending=0
-  while IFS= read -r status; do
-    [ "$status" = True ] || pending=$((pending + 1))
-  done < <(kubectl -n "$namespace" get "${names[@]}" --ignore-not-found \
-    -o 'jsonpath={range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}')
+  waiting=()
+  while IFS= read -r ref; do waiting+=("$ref"); done < <(not_ready)
+  pending=${#waiting[@]}
   [ "$pending" -eq 0 ] && break
   now=$(date +%s)
   if [ "$best" -lt 0 ] || [ "$pending" -lt "$best" ]; then best=$pending progress=$now; fi
@@ -109,9 +129,9 @@ while :; do
   sleep 5
 done
 
-failed=0 ready=0
+failed=0 ready=$((${#names[@]} - pending))
 printf '\n%-26s %-44s %-22s %s\n' KIND NAME REASON NOTE
-for ref in "${names[@]}"; do
+for ref in "${waiting[@]}"; do
   kind=${ref%%.*} name=${ref##*/}
   state=$(kubectl -n "$namespace" get "$ref" -o 'jsonpath={.status.conditions[?(@.type=="Ready")].status}|{.status.conditions[?(@.type=="Ready")].reason}|{.status.conditions[?(@.type=="Ready")].message}')
   if [ "${state%%|*}" = True ]; then

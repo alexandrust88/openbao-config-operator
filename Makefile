@@ -213,6 +213,14 @@ run: manifests generate fmt vet ## Run a controller from your host.
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t ${IMG} .
 
+# --build-context builder=DIR replaces the Dockerfile's builder stage, so the image keeps the release runtime stage.
+.PHONY: docker-build-host
+docker-build-host: ## Build docker image from a manager compiled on the host with its Go build cache (kind e2e).
+	dir="$$(mktemp -d)"; trap 'rm -rf "$$dir"' EXIT; \
+	CGO_ENABLED=0 GOOS=linux GOARCH="$$(go env GOARCH)" go build -trimpath -buildvcs=false \
+		-ldflags="-s -w -buildid= -X main.version=$(VERSION) -X main.commit=$(COMMIT)" -o "$$dir/workspace/manager" ./cmd; \
+	$(CONTAINER_TOOL) build --build-context builder="$$dir" --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t ${IMG} .
+
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}

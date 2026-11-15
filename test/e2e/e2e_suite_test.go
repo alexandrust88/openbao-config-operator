@@ -19,7 +19,7 @@ const (
 	openbaoNamespace  = "openbao"
 	tenantNamespace   = "e2e-tenant"
 	// driftInterval is short so the suite can watch the operator repair drift.
-	driftInterval = "15s"
+	driftInterval = 10 * time.Second
 )
 
 var (
@@ -31,7 +31,8 @@ var (
 
 // TestE2E installs the Helm chart and an OpenBao dev server on the current kind cluster and drives a tenant
 // connection, a Policy, a KVSecret and an OpenBaoEndpoint through create, drift repair and deletion.
-// Set E2E_SKIP_IMAGE_BUILD=true when the manager image is already loaded into the cluster.
+// Set E2E_SKIP_IMAGE_BUILD=true when the manager image is already loaded into the cluster, and E2E_KEEP=true to
+// leave the chart and OpenBao installed for test/livekit/kind.sh.
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	SetDefaultEventuallyTimeout(3 * time.Minute)
@@ -71,7 +72,7 @@ var _ = BeforeSuite(func() {
 		"--namespace", operatorNamespace, "--create-namespace",
 		"--set", "image.repository="+repo, "--set", "image.tag="+tag,
 		"--set", "crds.keep=false",
-		"--set", "extraArgs={--drift-interval-critical="+driftInterval+",--drift-interval-standard="+driftInterval+"}",
+		"--set", "extraArgs={--drift-interval-critical="+driftInterval.String()+",--drift-interval-standard="+driftInterval.String()+"}",
 		"--wait", "--timeout", "5m")
 })
 
@@ -80,11 +81,16 @@ var _ = AfterSuite(func() {
 		_, _ = fmt.Fprintf(GinkgoWriter, "skipping cleanup: %v\n", err)
 		return
 	}
-	By("removing the tenant, the chart and OpenBao")
+	By("removing the tenant")
 	// Managed resources go first: deleting the namespace would remove their connection before their finalizers
 	// can clean up OpenBao, and they would block the namespace with CleanupBlocked.
 	runBestEffort("kubectl", "delete", "-f", "test/e2e/testdata/resources.yaml", "--ignore-not-found", "--wait", "--timeout=2m")
 	runBestEffort("kubectl", "delete", "-f", "test/e2e/testdata/tenant.yaml", "--ignore-not-found", "--wait", "--timeout=2m")
+	if os.Getenv("E2E_KEEP") == "true" {
+		_, _ = fmt.Fprintln(GinkgoWriter, "E2E_KEEP=true: keeping the chart and OpenBao for test/livekit/kind.sh")
+		return
+	}
+	By("removing the chart and OpenBao")
 	runBestEffort(helmBinary, "uninstall", releaseName, "--namespace", operatorNamespace, "--wait", "--timeout", "5m")
 	runBestEffort("kubectl", "delete", "namespace", operatorNamespace, "--ignore-not-found", "--wait", "--timeout=2m")
 	runBestEffort("kubectl", "delete", "-f", "hack/e2e/openbao-dev.yaml", "-f", "test/e2e/testdata/openbao-auth.yaml",

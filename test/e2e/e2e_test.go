@@ -93,7 +93,8 @@ var _ = Describe("openbao-config-operator", Ordered, func() {
 			return baoRun("read", "-field=current_version", "secret/metadata/e2e/app")
 		}
 		Expect(version()).To(Equal("2"))
-		Consistently(version).WithTimeout(40 * time.Second).WithPolling(5 * time.Second).Should(Equal("2"))
+		// Drift checks are jittered by up to +20%, so the window must hold two of the longest ones.
+		Consistently(version).WithTimeout(driftInterval * 5 / 2).WithPolling(5 * time.Second).Should(Equal("2"))
 	})
 
 	It("deletes the objects from OpenBao when the resources are deleted", func() {
