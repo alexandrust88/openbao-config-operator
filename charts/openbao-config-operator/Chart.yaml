@@ -13,6 +13,11 @@ keywords:
   - vault
   - operator
   - secrets
+  - secrets-management
+  - kubernetes-operator
+  - gitops
+  - configuration-as-code
+  - multi-tenancy
 # The release rewrites version, appVersion, artifacthub.io/images (image pinned by digest), artifacthub.io/changes and
 # artifacthub.io/prerelease (hack/release/package-chart.sh). The chart OCI artifact is signed with keyless cosign as a
 # Sigstore bundle and also as a legacy sha256-<digest>.sig tag, the layout Artifact Hub detects, so there is no
