@@ -13,12 +13,11 @@ Integration tests run each kind against `bao server -dev`: in-memory storage, a 
 node, no TLS. The e2e test (`test/e2e`) runs the manager in kind, where a namespaced connection logs
 in with Kubernetes auth through TokenRequest as the tenant ServiceAccount, under a non-root tenant
 policy, and reconciles a `Policy`, a `KVSecret` and an `OpenBaoEndpoint` through create, drift
-repair, steady state and delete. No test yet shows that a second tenant cannot write outside its
-policy; a two-tenant e2e test (`test/e2e/isolation_test.go`) is being added.
+repair, steady state and delete; a two-tenant e2e test (`test/e2e/isolation_test.go`) proves that a second tenant's writes outside its OpenBao namespace and policy, its references to another tenant's objects and its use of a server that excludes it are refused, and that none of the objects it tried to create exists in OpenBao.
 
-Exit criteria: an e2e scenario with a second tenant namespace and connection, proving that its
-writes outside its policy are refused and leave OpenBao unchanged. Storage, HA, TLS and backup
-behaviour of the server stay out of scope.
+Exit criteria: the per-kind tests run against a server with persistent storage, TLS and a
+non-root token. The second-tenant scenario is done (`test/e2e/isolation_test.go`). Storage, HA,
+TLS and backup behaviour of the server stay out of scope.
 
 ## TD-002: Compatibility with other servers was claimed but not tested
 

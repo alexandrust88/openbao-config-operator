@@ -1,0 +1,6 @@
+# The Kubernetes namespace of the platform team. Only resources in it may use the ClusterOpenBaoConnection
+# platform, which logs in to OpenBao as the operator itself.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform

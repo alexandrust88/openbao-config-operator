@@ -141,9 +141,8 @@ the metrics server (`--enable-http2`).
   signs and attests before it tags.
 - The image index, each platform image and the chart are signed with keyless cosign, using the
   workflow's GitHub OIDC identity. No signing key exists to leak.
-- SPDX and CycloneDX SBOMs and build provenance (GitHub artifact attestations from
-  `actions/attest-build-provenance`: SLSA Build L2; cosign `slsaprovenance1` statement written by the release
-  job: no SLSA level) are attached as signed attestations; the chart carries a
+- SPDX and CycloneDX SBOMs and build provenance (its two forms and their SLSA levels are in
+  [verify the release](security/hardening.md#verify-the-release)) are attached as signed attestations; the chart carries a
   CycloneDX SBOM of itself and the image it pins. Release assets are covered by a signed
   `sha256sums.txt`.
 - The released chart pins the image index by digest.

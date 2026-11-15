@@ -59,19 +59,19 @@ The retry column is what the engine does after the pass. "Drift interval" means
 | `Conflict` | `False` | `False` | another resource or cluster owns the path, or `creationPolicy: Create` found an object it does not own; the claim in status is dropped | drift interval | give the path one owner, or set `Adopt` or `CreateOrAdopt` to take an unowned object over |
 | `ConnectionNotReady` | `False` | `False` | the connection does not exist, is being deleted or is not `Ready` for its current generation | 2 s, growing to 1 min; a connection change re-queues at once | check the connection's own reason |
 | `ConnectionDenied` | `False` | `False` | the `ClusterOpenBaoConnection` does not select this namespace, or the `OpenBaoServer` no longer admits the `OpenBaoConnection` | drift interval | `allowedNamespaces` and the namespace labels |
-| `ReferenceNotReady` | `False` | `False` | a referenced Secret, key or resource is missing or not `Ready`, the OpenBao namespace does not exist yet, or OpenBao has no route for the path yet (the mount is missing) | 2 s, growing to 30 s; a referent change re-queues at once | create the referent named in the message |
+| `ReferenceNotReady` | `False` | `False` | a referenced Secret, key or resource is missing or not `Ready`, the OpenBao namespace does not exist yet, or OpenBao has no route for the path yet (the mount is missing) | 2 s, growing to 30 s; a referent change re-queues at once | create the referent named in the message, or wait for the `OpenBaoNamespace` or mount resource that creates it |
 | `PermissionDenied` | `False` if no `Ready` yet | `False` | OpenBao answered 403: the connection's policy does not allow the request | backoff | extend the OpenBao policy of the connection identity ([OpenBao policy](../operate/openbao-policy.md)) |
-| `ReconcileError` | `False` if no `Ready` yet | `False` | OpenBao or Kubernetes returned another error | backoff | read the message; a 400 is usually an invalid value |
-| `InvalidSpec` | `False` | `False` | the spec, or a Secret it references, passed the schema but can never work as written | none until the spec or a referenced Secret changes | fix the spec or the Secret |
+| `ReconcileError` | `False` if no `Ready` yet | `False` | OpenBao or Kubernetes returned another error | backoff | read the message; a 400 is usually an invalid value ([common OpenBao errors](../operate/troubleshooting.md#common-openbao-errors)) |
+| `InvalidSpec` | `False` | `False` | the spec, or a Secret it references, passed the schema but can never work as written, such as a `spec.namespace` that starts with `root` or a payload that is not a JSON object | none until the spec or a referenced Secret changes | fix the spec or the Secret |
 | `RootOnlyKind` | `False` | `False` | a root-only kind (`Audit`, `AuditRequestHeader`, `RateLimitQuota`, `QuotaConfig`, `Plugin`, `CORSConfig`, `UIHeader`, `Logger`, `RaftAutopilot`) resolves to a child OpenBao namespace; refused before any OpenBao call | none until the spec changes | use a connection based in the root namespace and no `spec.namespace` |
-| `Unsupported` | `False` | `False` | the server cannot serve the kind, for example the plugin or mount is missing | drift interval | mount the plugin or engine, or remove the resource |
+| `Unsupported` | `False` | `False` | the server cannot serve the kind, for example the plugin, the mount or raft storage is missing | drift interval | mount the plugin or engine, or remove the resource |
 | `PluginNotRegistered` | `False` | `False` | a mount needs a plugin that is not in the server's catalog | drift interval | register the plugin (`Plugin` kind) |
-| `NamespaceChanged` | `False` | `False` | the object was acquired in one OpenBao namespace and the connection now resolves to another; nothing is written | drift interval | restore the connection's `namespace`, or recreate the resource |
+| `NamespaceChanged` | `False` | `False` | the object was acquired in one OpenBao namespace and the connection now resolves to another; nothing is written | drift interval | restore the connection's `namespace`, or recreate the resource ([NamespaceChanged](../operate/troubleshooting.md#namespacechanged)) |
 | `ServerChanged` | `False` | `False` | the object was acquired on another OpenBao cluster than the one the connection reaches now; nothing is written or deleted | drift interval; when detected right before a create, only `Synced` is set and the pass is retried with backoff | restore the connection, or release the resource ([architecture](../architecture.md#ownership)) |
 | `OutOfSync` | `False` | `False` | a write succeeded but the read after it returned different values | backoff from 2 s, capped at the drift interval | the message names the keys; write them as OpenBao returns them, or report the kind |
 | `WriteBudgetExceeded` | `False` if no `Ready` yet | `False` | the server's write budget (default 60 rewrites per minute) is spent; this rewrite waits | when the budget frees, plus a random delay of up to 1 min | nothing; investigate if it persists ([observability](../operate/observability.md)) |
-| `DeleteGuarded` | `False`, except during deletion | `False` | deleting, or recreating after a create-only change, a destructive object (`SecretsMount`, `AuthMount`, `OpenBaoNamespace`, `KVSecret`, `RandomSecret`, `Audit`, `OpenBaoEndpoint`, `TransitKey`, `PKIIssuer`, `PKIKey`, `SSHCA`, `TOTPKey`, `MFAMethod`, `Entity`) needs the annotation `openbaoconfig.io/allow-destructive-delete: "true"`; a deletion in a terminating Kubernetes Namespace is orphaned instead (`Orphaned` event) | drift interval, or no requeue during deletion; the annotation change re-queues at once | set the annotation if the data may go, or set `deletionPolicy: Orphan` to keep it |
-| `CleanupBlocked` | | `False` | `deletionPolicy: Delete` could not delete the OpenBao object; the finalizer stays | backoff | the message; usually the connection or its credential is gone |
+| `DeleteGuarded` | `False`, except during deletion | `False` | deleting, or recreating after a create-only change, a [destructive kind](../kinds.md) needs the annotation `openbaoconfig.io/allow-destructive-delete: "true"`; a deletion in a terminating Kubernetes Namespace is orphaned instead (`Orphaned` event) | drift interval, or no requeue during deletion; the annotation change re-queues at once | set the annotation if the data may go, or set `deletionPolicy: Orphan` to keep it ([stuck finalizers](../operate/troubleshooting.md#stuck-finalizers)) |
+| `CleanupBlocked` | | `False` | `deletionPolicy: Delete` could not delete the OpenBao object; the finalizer stays | backoff | the message; usually the connection or its credential is gone ([stuck finalizers](../operate/troubleshooting.md#stuck-finalizers)) |
 | `ReconcileInProgress` | | `False` | OpenBao runs an asynchronous operation, such as a namespace deletion | every 10 s | wait |
 | `SecretNotOwned` | `False` | `False` | the output Secret named in `writeSecretRef` exists and is not controlled by this resource; nothing is written to OpenBao | drift interval | rename `writeSecretRef` or delete the foreign Secret |
 | `OutputNotDelivered` | `False` | `False` | a value OpenBao returned once is not in the output Secret | 2 s, growing to 30 s | the message names the Secret and how to rotate |
@@ -87,20 +87,20 @@ A blank cell means the pass does not change that condition. `Orphaned` is an eve
 condition. Both controllers probe every 1 to 1.2 minutes and on changes of the objects
 they watch, and write the status only when it changed.
 
-| kind | reason | meaning |
-|------|--------|---------|
-| `OpenBaoServer` | `Available` | reachable, initialised and unsealed |
-| `OpenBaoServer` | `Unreachable` | `sys/seal-status` or `sys/health` failed: DNS, network, TLS or the address |
-| `OpenBaoServer` | `Sealed` | the server is sealed or not initialised |
-| `OpenBaoServer` | `ReferenceNotReady` | the CA bundle Secret, ConfigMap or key does not exist |
-| `OpenBaoServer` | `InvalidSpec` | `allowedNamespaces` is not a valid selector, an `http://` address without `allowInsecureHTTP`, or another unusable value |
-| connection | `Available` | the server is `Ready`, admits the connection, and login and `auth/token/lookup-self` succeeded |
-| connection | `ServerNotReady` | the `OpenBaoServer` is missing or not `Ready` for its generation; the message carries the server's reason |
-| connection | `ConnectionDenied` | the server does not select the connection's namespace, an audience is not in `allowedAudiences`, or an audience is one the Kubernetes API server accepts |
-| connection | `CredentialsNotFound` | a referenced Secret, key or token file does not exist |
-| connection | `AuthenticationFailed` | the login or the token lookup failed |
-| connection | `ReferenceNotReady` | the connection's OpenBao namespace does not exist yet; retried from 2 s, growing to 30 s |
-| connection | `InvalidSpec` | the spec cannot be turned into a client configuration |
+| kind | reason | meaning | what to check |
+|------|--------|---------|---------------|
+| `OpenBaoServer` | `Available` | reachable, initialised and unsealed | nothing |
+| `OpenBaoServer` | `Unreachable` | `sys/seal-status` or `sys/health` failed: DNS, network, TLS or the address | the `address`, the NetworkPolicy egress to OpenBao, the CA bundle (`x509` in the message) |
+| `OpenBaoServer` | `Sealed` | the server is sealed or not initialised | unseal OpenBao; resources wait meanwhile |
+| `OpenBaoServer` | `ReferenceNotReady` | the CA bundle Secret, ConfigMap or key does not exist | the `caBundle` reference |
+| `OpenBaoServer` | `InvalidSpec` | `allowedNamespaces` is not a valid selector, an `http://` address without `allowInsecureHTTP`, or another unusable value | the message |
+| connection | `Available` | the server is `Ready`, admits the connection, and login and `auth/token/lookup-self` succeeded | nothing |
+| connection | `ServerNotReady` | the `OpenBaoServer` is missing or not `Ready` for its generation; the message carries the server's reason | `kubectl get openbaoserver <name>` and the server reasons above |
+| connection | `ConnectionDenied` | the server does not select the connection's namespace, an audience is not in `allowedAudiences`, or an audience is one the Kubernetes API server accepts | the server's `allowedNamespaces` against the namespace labels, and `allowedAudiences` against the connection's `audiences` |
+| connection | `CredentialsNotFound` | a referenced Secret, key or token file does not exist | the names, keys and namespaces in `spec.auth`; for a file, the volume mount |
+| connection | `AuthenticationFailed` | the login or the token lookup failed | the message; the OpenBao role, the audience, the ServiceAccount, `authNamespace` ([common OpenBao errors](../operate/troubleshooting.md#common-openbao-errors)) |
+| connection | `ReferenceNotReady` | the connection's OpenBao namespace does not exist yet; retried from 2 s, growing to 30 s | `bao namespace list` in the parent namespace; the `OpenBaoNamespace` that creates it |
+| connection | `InvalidSpec` | the spec cannot be turned into a client configuration | the message |
 
 Field reference for these kinds: [connections](connections.md).
 
@@ -145,7 +145,7 @@ and `serverID` too while the resource holds a path.
 | `conditions` | yes | yes | `Ready` only |
 | `observedGeneration` | yes | yes | the generation last probed or checked |
 | `version` | yes | copied from the server | OpenBao version reported by `sys/health` |
-| `sealed` | yes | copied from the server | `true` when sealed or not initialised |
+| `sealed` | yes | copied from the server | `true` when sealed or not initialised; no connection to the server is `Ready` then |
 | `standby` | yes | copied from the server | `true` when the probed node is a standby |
 | `authenticated` | | yes | the last login and `auth/token/lookup-self` succeeded |
 | `lastProbeTime` | yes | yes | when a probe last changed the status |

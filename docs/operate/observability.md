@@ -110,7 +110,8 @@ kubectl get openbaoconnections,clusteropenbaoconnections -A -o custom-columns=NS
 
 The manager also serves the standard controller-runtime and Go metrics. The ones the chart's
 alerts use are `controller_runtime_reconcile_total{controller,result}`,
-`controller_runtime_reconcile_errors_total{controller}` and `up`. Controller names are
+`controller_runtime_reconcile_errors_total{controller}` and `up`; `workqueue_depth{name}` shows the backlog
+per controller. Controller names are
 `<kind>.<group>` in lower case for managed kinds (for example `policy.sys.openbaoconfig.io`), and
 `openbaoserver`, `openbaoconnection` and `clusteropenbaoconnection` for the core controllers.
 

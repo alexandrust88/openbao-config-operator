@@ -28,6 +28,17 @@ make test-e2e     # kind cluster, operator image, e2e tests
 `make manifests generate` regenerates CRDs, RBAC and deepcopy code. Commit the generated files;
 CI fails when regenerating produces a diff.
 
+To try an unreleased change on a kind cluster, for example the one the
+[quickstart](docs/get-started/quickstart.md) creates, build the image and install the chart from the clone:
+
+```sh
+make docker-build IMG=openbao-config-operator:dev
+kind load docker-image openbao-config-operator:dev --name openbao-quickstart
+helm upgrade --install openbao-config-operator charts/openbao-config-operator \
+  --namespace openbao-config-operator --create-namespace \
+  --set image.repository=openbao-config-operator --set image.tag=dev
+```
+
 ## Pull requests
 
 - Keep a pull request to one change. Do not mix refactors or reformatting with features.

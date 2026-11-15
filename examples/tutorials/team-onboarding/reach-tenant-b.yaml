@@ -1,0 +1,15 @@
+# A tenant-a attempt to write a policy through tenant-b's connection. The resource must live in the Kubernetes
+# namespace tenant-b, where the tenant-a admin has no rights, so the API server refuses it.
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: reach-tenant-b
+  namespace: tenant-b
+spec:
+  connectionRef:
+    name: openbao
+  name: team-tenant-a
+  policy: |
+    path "+/secret/data/*" {
+      capabilities = ["read"]
+    }

@@ -94,10 +94,8 @@ Grant these only to the platform team or its GitOps identity:
 | `update`, `patch` on `*/status` of managed kinds | `status.path` steers deletes; the chart's roles grant only `get` (`templates/_helpers.tpl:85-91`) |
 
 RBAC cannot restrict annotations. The engine requires `openbaoconfig.io/allow-destructive-delete`
-before deleting the objects of every kind that reports `Destructive()`: mounts (`SecretsMount`, `AuthMount`),
-`OpenBaoNamespace`, KV data (`KVSecret`, `RandomSecret`), `Audit`, `OpenBaoEndpoint`, key material (`TransitKey`,
-`PKIIssuer`, `PKIKey`, `SSHCA`, `TOTPKey`), `MFAMethod` and `Entity` (for example
-`internal/controller/core/openbaoendpoint.go:60`). If tenants must not delete data at all, add an
+before deleting the objects of every kind that reports `Destructive()`, listed in the
+[kind catalogue](../kinds.md) (for example `internal/controller/core/openbaoendpoint.go:60`). If tenants must not delete data at all, add an
 admission rule that allows that annotation only for platform subjects, in the same way as
 [R-CONFIG-03](#r-config-03-forbid-the-escape-hatches-in-production).
 

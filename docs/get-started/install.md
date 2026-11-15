@@ -23,8 +23,9 @@ verified chart pulls the verified image. Verify before you install:
 
 ### Verify the chart signature
 
-The chart is also signed with the project's GPG key (Helm provenance). Releases up to v0.2.0 have
-no signature file. Download the public key, check that its fingerprint matches the one Artifact Hub
+Releases after v0.2.0 also sign the chart with the project's GPG key (Helm provenance): the
+release page lists `openbao-config-operator-<version>.tgz.prov` next to the chart. For v0.2.0 and
+earlier there is no signature file, so skip this section: `--verify` fails for them. Download the public key, check that its fingerprint matches the one Artifact Hub
 shows for the chart, and convert it to the binary keyring Helm reads:
 
 ```bash
@@ -64,7 +65,8 @@ manifest without values.
     The same chart is served from a classic Helm repository on this site, for tools without OCI
     support. The repository lists only charts that match their release's signed checksums, but
     `helm install` from it checks no signature unless you add `--verify` (see
-    [Verify the chart signature](#verify-the-chart-signature)), so verify the chart first.
+    [Verify the chart signature](#verify-the-chart-signature)), so verify the chart first when
+    the release has a signature file.
 
     ```bash
     helm repo add openbao-config-operator https://alexandrust88.github.io/openbao-config-operator/charts
@@ -135,23 +137,114 @@ Next, [connect the operator to OpenBao](connect.md).
 
 ## Uninstall
 
-`helm uninstall` with the default `crds.keep=true` removes the manager but keeps the CRDs, the
-custom resources, the hash-key Secret and every OpenBao object. Resources that carry the
-finalizer cannot be deleted until a manager runs again. Decide first what should happen in
-OpenBao:
+Follow the steps in order, and keep the manager running until step 6. These finalizers are
+released only by a running manager:
 
-- To remove the operator and leave OpenBao untouched, set `deletionPolicy: Orphan` on every
-  resource and wait until no resource carries the finalizer `openbaoconfig.io/finalizer`.
-- To remove the operator and its configuration, delete the resources while the manager runs and
-  wait until they are gone.
+| finalizer | on | released when |
+|-----------|----|---------------|
+| `openbaoconfig.io/finalizer` | a resource with `deletionPolicy: Delete` | the manager has deleted its OpenBao object, or left it on purpose |
+| `openbaoconfig.io/in-use` | an `AccessLevel` | no `AccessGrant` or `AccessLayout` cites it |
+| `openbaoconfig.io/connection-in-use` | an `OpenBaoConnection` or `ClusterOpenBaoConnection` | no resource that still carries `openbaoconfig.io/finalizer` uses it |
+| `openbaoconfig.io/server-in-use` | an `OpenBaoServer` | no connection references it |
 
-Then uninstall:
+Without a manager, the objects that carry them stay `Terminating`, and so do their CRDs.
+
+Before you start:
+
+- The commands need `kubectl` with cluster-admin rights and `jq`. Every kind of the operator is in
+  the category `openbao`, so `kubectl get openbao --all-namespaces` lists all of its objects.
+- If a GitOps tool applies the resources, make the changes in Git and remove the resources from
+  Git, or suspend its sync, so that it does not undo the steps.
+- Remove the annotation `openbaoconfig.io/paused` from resources, Namespaces and `OpenBaoServer`s.
+  The manager does not delete a paused resource and keeps its finalizer.
+
+### 1. Choose what stays in OpenBao
+
+`deletionPolicy` decides what happens to the OpenBao object of a resource when you delete the
+resource.
+
+=== "Keep the OpenBao configuration"
+
+    Set `deletionPolicy: Orphan` on every resource, in Git or with this command, which patches
+    every resource that has `Delete`:
+
+    ```bash
+    --8<-- "hack/docs/uninstall.sh:orphan"
+    ```
+
+    Every OpenBao object stays when you delete the resources.
+
+=== "Remove the OpenBao configuration"
+
+    Keep `deletionPolicy: Delete` on the resources whose OpenBao objects should go. The
+    [destructive kinds](../kinds.md), such as `SecretsMount`, `AuthMount`, `OpenBaoNamespace` and
+    `KVSecret`, delete only with the annotation `openbaoconfig.io/allow-destructive-delete: "true"`;
+    without it, their deletion waits with the reason `DeleteGuarded`. This command annotates every
+    resource that has `Delete`; the annotation has no effect on the other kinds:
+
+    ```bash
+    --8<-- "hack/docs/uninstall.sh:destructive"
+    ```
+
+    Kinds whose OpenBao object cannot be deleted, such as the auth method configurations, reject
+    `Delete`; their objects go with the mount or namespace that holds them, or stay.
+
+To remove some configuration and keep the rest, run the keep command, set `Delete` again on the
+resources whose objects should go, and then run the remove command. A resource you change to
+`Delete` is protected only once it carries the finalizer `openbaoconfig.io/finalizer`, which the
+manager adds within seconds; if you delete it before that, its object stays in OpenBao.
+
+Deleting the Kubernetes Namespaces is no shortcut: in a terminating Namespace, a destructive
+resource without the annotation, and a resource whose connection is already gone, leave their
+objects in OpenBao.
+
+### 2. Delete the resources
+
+Delete every resource except the connections and the servers. The command waits until they are
+gone, for up to 10 minutes:
+
+```bash
+--8<-- "hack/docs/uninstall.sh:delete-resources"
+```
+
+If it times out, `kubectl get openbao --all-namespaces` shows what is left, and the `Synced`
+condition of each one says why ([Stuck finalizers](../operate/troubleshooting.md#stuck-finalizers)).
+
+### 3. Delete the connections
+
+A connection that a resource still needs keeps its finalizer, so delete the connections only
+after step 2:
+
+```bash
+--8<-- "hack/docs/uninstall.sh:delete-connections"
+```
+
+### 4. Delete the servers
+
+```bash
+--8<-- "hack/docs/uninstall.sh:delete-servers"
+```
+
+### 5. Check that nothing is left
+
+```bash
+--8<-- "hack/docs/uninstall.sh:check"
+```
+
+```text title="Expected output"
+No resources found
+```
+
+### 6. Remove the manager
 
 === "Helm"
 
     ```bash
-    helm uninstall openbao-config-operator --namespace openbao-config-operator
+    --8<-- "hack/docs/uninstall.sh:helm-uninstall"
     ```
+
+    With the default `crds.keep=true`, this removes the manager and keeps the CRDs and the
+    hash-key Secret.
 
 === "install.yaml"
 
@@ -160,11 +253,21 @@ Then uninstall:
       -f https://github.com/alexandrust88/openbao-config-operator/releases/download/@TAG@/install.yaml
     ```
 
-    Run it only after the step above: it also deletes the CRDs, and with them every remaining
-    custom resource of the operator.
+    This also deletes the CRDs, so step 7 is done.
 
-[Backup and restore](../operate/backup-restore.md#uninstall-and-crd-deletion) explains the
-uninstall in detail.
+### 7. Delete the CRDs
+
+```bash
+--8<-- "hack/docs/uninstall.sh:crds"
+```
+
+[Backup and restore](../operate/backup-restore.md#uninstall-and-crd-deletion) explains what deleting the CRDs
+does in OpenBao.
+
+!!! tip "Tested in CI"
+    `hack/docs/uninstall.sh` runs these steps at the end of the [tutorials](../tutorials/index.md):
+    it removes the OpenBao configuration of `tenant-b`, keeps the rest, and checks both in OpenBao
+    after the manager and the CRDs are gone.
 
 ## CRDs
 

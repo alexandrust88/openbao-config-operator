@@ -17,6 +17,7 @@ REPO_LINK = apiref.REPO_LINK
 # Example sets that are not one kind per file; listed when the directory exists.
 OTHER_SETS = [
     ("examples/quickstart", "the manifests of the quickstart tutorial"),
+    ("examples/tutorials", "the manifests of the role-based tutorials, in the order they build on each other"),
     ("examples/policies/templated", "templated ACL policies, in the order they build on each other"),
     ("examples/live", "the live kit: kustomize overlays that apply every kind to a real OpenBao, by login mode"),
     ("examples/self-init", "an OpenBao self-init configuration and its verification script"),

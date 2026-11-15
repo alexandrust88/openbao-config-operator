@@ -57,7 +57,7 @@ docs/                          architecture, kind catalogue, ADRs, backlog, tech
 ## Adding a kind
 
 1. Find the row in [docs/kinds.md](docs/kinds.md): name, group, path, availability, phase.
-   `vault-enterprise-only`, `not-in-openbao` and `action-not-config` rows get no typed kind.
+   `not-in-openbao` and `action-not-config` rows get no typed kind.
 2. Read the real wire shape in the OpenBao source and with `bao read -format=json` against
    `bao server -dev`. List write-only, create-only, renamed-on-read, unordered and duration fields
    before writing types.
@@ -176,3 +176,21 @@ Keep these categories separate: product promises and design in the architecture,
 ADRs, planned outcomes in the backlog, unresolved shortcomings in
 the tech-debt register, and implementation detail in code and tests. Update or remove stale
 guidance instead of appending exceptions.
+
+## References
+
+Read these before changing the engine, an adapter or an API type; this file and `docs/architecture.md` win where
+they are stricter.
+
+- [Kubebuilder book](https://book.kubebuilder.io), and its
+  [good practices](https://book.kubebuilder.io/reference/good-practices.html) (idempotent reconciliation, status
+  conditions) and [markers reference](https://book.kubebuilder.io/reference/markers.html).
+- [controller-runtime FAQ](https://github.com/kubernetes-sigs/controller-runtime/blob/main/FAQ.md): common
+  patterns and questions.
+- [Kubernetes API conventions](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md)
+  and the [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
+- [Logging conventions](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md#message-style-guidelines):
+  message style and verbosity levels.
+- Source: [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime),
+  [controller-tools](https://github.com/kubernetes-sigs/controller-tools),
+  [Kubebuilder](https://github.com/kubernetes-sigs/kubebuilder).

@@ -76,8 +76,8 @@ test-docs: setup-envtest ## Dry-run every manifest in examples/, examples-genera
 	KUBEBUILDER_ASSETS="$(shell "$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(LOCALBIN)" -p path)" go test -tags docs ./test/docs/... -count=1 $(TEST_DOCS_FLAGS)
 
 .PHONY: docs-lint
-docs-lint: ## Shellcheck the quickstart script that the docs include (shellcheck from PATH or SHELLCHECK).
-	"$${SHELLCHECK:-shellcheck}" hack/docs/quickstart.sh
+docs-lint: ## Shellcheck the quickstart, tutorial and uninstall scripts that the docs include (shellcheck from PATH or SHELLCHECK).
+	"$${SHELLCHECK:-shellcheck}" hack/docs/quickstart.sh hack/docs/tutorials.sh hack/docs/tutorial-*.sh hack/docs/uninstall.sh
 
 .PHONY: api-coverage
 api-coverage: ## Check api-coverage/classification.yaml against the OpenAPI snapshots and regenerate docs/api-coverage.md.

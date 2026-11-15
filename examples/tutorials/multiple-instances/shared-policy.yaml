@@ -1,0 +1,37 @@
+# One policy, ops-read, on both OpenBao servers: a resource names one connection, so each server gets its own
+# resource with the same spec.name and policy.
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: ops-read-instance-1
+  namespace: platform
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: platform
+  name: ops-read
+  policy: |
+    path "sys/mounts" {
+      capabilities = ["read"]
+    }
+    path "sys/auth" {
+      capabilities = ["read"]
+    }
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: ops-read-instance-2
+  namespace: platform
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: platform-2
+  name: ops-read
+  policy: |
+    path "sys/mounts" {
+      capabilities = ["read"]
+    }
+    path "sys/auth" {
+      capabilities = ["read"]
+    }

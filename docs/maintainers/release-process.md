@@ -144,10 +144,10 @@ signed; their cosign signatures still verify.
    convention: nothing checks the tag signature (see [github-settings.md](github-settings.md#release-tags-signed-tag-ruleset-optional)).
 7. **Watch the release workflow and approve its jobs.** It runs CI and e2e, checks the version, refuses to
    overwrite an existing release (and stops when it cannot tell), builds the multi-arch image, scans it, signs the
-   image, chart and checksums with keyless cosign, signs the chart with the GPG chart signing key, attests the SBOMs and the provenance (GitHub artifact
-   attestations, SLSA Build L2, and a cosign `slsaprovenance1` statement written by the release job, which has no
-   SLSA level; nothing reaches Build L3), and creates the GitHub release with the generated notes. The `image`,
-   `chart`, `ocm` and `assets` jobs each wait for an approval in the `release` environment; before the first
+   image, chart and checksums with keyless cosign, signs the chart with the GPG chart signing key, attests the
+   SBOMs and the provenance ([forms and SLSA levels](../security/hardening.md#verify-the-release)), and creates
+   the GitHub release with the generated notes. The `image`, `chart`, `ocm` and `assets` jobs each wait for an
+   approval in the `release` environment; before the first
    approval, check that the run's commit is the one from step 6. The tag push also runs `release-please` once more,
    which marks the release pull request `autorelease: tagged` so the next release pull request can open.
 
@@ -235,25 +235,18 @@ This matches [SECURITY.md](../../SECURITY.md#supported-versions); change both to
 
 ### OpenBao versions
 
-OpenBao has no long-term-support releases, so the operator follows the upstream minors:
-
-- Each operator minor supports the OpenBao minors that have an API snapshot in [`api-coverage/`](../../api-coverage/)
-  and are listed in its release notes. Today that is 2.6 and 2.7 (minimum 2.6, see
-  [architecture](../architecture.md#scope)); the integration suite runs against the pinned 2.7.2 (`BAO_VERSION` in
-  the Makefile), and 2.6 is covered by its API snapshot only.
-- When OpenBao releases a new minor: add its snapshot with `hack/apicoverage/snapshot.sh`, classify the new paths,
-  run `make test-integration` against it, move the pin, and ship support in the next operator minor. Target: within
-  six weeks of the OpenBao release.
-- An OpenBao minor is dropped in the first operator minor after upstream stops releasing fixes for it, announced in
-  the release notes of the operator minor before.
-- No version-branching shims in adapters: a feature an older OpenBao lacks reports `Unsupported`.
+OpenBao has no long-term-support releases, so the operator follows the upstream minors. Which minors an operator
+minor supports, and when a minor is added or dropped, is stated once in
+[compatibility](../reference/compatibility.md#openbao). When OpenBao releases a new minor: add its snapshot with
+`hack/apicoverage/snapshot.sh`, classify the new paths, run `make test-integration` against it, move the pin
+(`BAO_VERSION` in the Makefile), and ship support in the next operator minor. Announce a dropped minor in the
+release notes of the operator minor before.
 
 ### Kubernetes versions
 
-The chart requires Kubernetes 1.31 or later (`kubeVersion`): CRD rules use the CEL IP/CIDR library, which the API server accepts in new CRD expressions only from 1.31. Tests run on the
-envtest version that matches `k8s.io/api` in `go.mod` (1.35 today) and on kind in the e2e workflow. The project
-supports the Kubernetes minors that are supported upstream when the operator minor is released, and raises the
-chart's `kubeVersion` only in a minor release, with a release note.
+The supported Kubernetes versions and when the chart's `kubeVersion` may move are in
+[compatibility](../reference/compatibility.md#kubernetes); raise `kubeVersion` only in a minor release, with a
+release note.
 
 ## Deprecation policy
 

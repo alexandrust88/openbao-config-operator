@@ -205,8 +205,7 @@ What a tenant cannot do:
 
 These are the controls in the code. What the tests prove today is narrower: the e2e test in `test/e2e` runs a
 tenant connection under a non-root policy, and the [known limitations](reference/limitations.md#verification)
-list what is not proven end to end, such as a second tenant being refused outside its policy; a two-tenant e2e
-test (`test/e2e/isolation_test.go`) is being added. The default install also holds cluster-wide Secret and
+list what is not proven end to end; a two-tenant e2e test (`test/e2e/isolation_test.go`) proves that a second tenant's writes outside its OpenBao namespace and policy, its references to another tenant's objects and its use of a server that excludes it are refused, and that none of the objects it tried to create exists in OpenBao. The default install also holds cluster-wide Secret and
 TokenRequest rights ([security model](#security-model), RR-01).
 
 `OpenBaoServer` status reports `Ready`, `version`, `sealed` and `standby` from the unauthenticated
@@ -288,16 +287,11 @@ setting to its default.
 
 ### Common status
 
-| field | meaning |
-|-------|---------|
-| `conditions` | `Ready` (the object matches the spec) and `Synced` (the last reconcile succeeded), each with a typed reason and `observedGeneration` |
-| `observedGeneration` | generation of the last reconcile |
-| `path` | full OpenBao path including the namespace, so deletion works after the spec changes |
-| `namespace` | absolute OpenBao namespace the object was written in; a change stalls with `NamespaceChanged` |
-| `serverID` | cluster id (from `sys/health`) of the OpenBao server the object was claimed or acquired on; a change stalls with `ServerChanged` |
-| `acquired` | `Created` or `Adopted`; set once the object is ours |
-| `writeOnlyHash` | HMAC-SHA256 of the write-only inputs under a key derived from the operator's hash key and the resource's UID, group and kind, so equal inputs of two resources hash differently; a change forces a write |
-| `id` | server-generated ID (entity, group, alias, accessor) |
+Every kind embeds `common.ResourceStatus`: the conditions `Ready` and `Synced`, `observedGeneration`, the full
+OpenBao `path`, the absolute `namespace`, the `serverID` the object was acquired on, `acquired`, `writeOnlyHash`,
+`id` and `rotationNonce`. Each field is defined in
+[status and events](reference/status-and-events.md#common-to-every-managed-kind); the rules below are why they
+exist.
 
 Observing never acquires, transfers, relinquishes or preserves ownership: under `managementPolicy:
 Observe` the engine leaves `acquired`, `path`, `namespace` and claims as they are, and `serverID`
@@ -495,11 +489,9 @@ purpose, release it: clear its status (`kubectl patch <kind> <name> --subresourc
   object: another server (`ServerChanged`) or a marker naming another cluster or resource (`Conflict`) leaves the
   object in OpenBao, removes the finalizer and records a Warning event. The same applies when an older
   resource owns the path.
-- Destructive kinds (`SecretsMount`, `AuthMount`, `OpenBaoNamespace`, `KVSecret`, `RandomSecret`, `Audit`,
-  `OpenBaoEndpoint`, `TransitKey`, `PKIIssuer`, `PKIKey`, `SSHCA`, `TOTPKey`, `MFAMethod`, `Entity`) delete only
-  with the annotation `openbaoconfig.io/allow-destructive-delete: "true"`; otherwise, in a live Namespace, the
-  finalizer holds with reason `DeleteGuarded`. The same annotation gates an update that would recreate the object
-  ([ADR 0013](adr/0013-destructive-delete-guard.md)).
+- [Destructive kinds](kinds.md) delete only with the annotation `openbaoconfig.io/allow-destructive-delete: "true"`;
+  otherwise, in a live Namespace, the finalizer holds with reason `DeleteGuarded`. The same annotation gates an
+  update that would recreate the object ([ADR 0013](adr/0013-destructive-delete-guard.md)).
 - `AccessLayout` keeps its human-access guard; `AccessLevel` cannot be deleted while cited.
 
 ### References
@@ -723,6 +715,6 @@ exceptions. Remaining gaps: integration against every supported OpenBao minor an
 - Images are multi-arch (amd64, arm64) and distroless, published to ghcr.io and tagged by version
   and digest.
 - A `v*` tag triggers a GitHub release with the image, the Helm chart (OCI) and `install.yaml`,
-  signed with keyless cosign and carrying an SBOM attestation and build provenance (GitHub artifact
-  attestations: SLSA Build L2; cosign `slsaprovenance1` statement written by the release job: no SLSA level).
+  signed with keyless cosign and carrying an SBOM attestation and build provenance (forms and SLSA levels in
+  [verify the release](security/hardening.md#verify-the-release)).
 - Workflow actions are pinned by SHA; Renovate keeps those pins and Go modules current.

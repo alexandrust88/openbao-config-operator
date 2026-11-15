@@ -1,0 +1,98 @@
+# The OpenBao side of tenant-b, created by the platform: the OpenBao namespace tenant-b, a Kubernetes auth method inside it, and
+# the role operator that lets the ServiceAccount openbao-config of the Kubernetes namespace tenant-b log in with the
+# policy tenant-admin. The policy keeps the tenant inside its OpenBao namespace: child namespaces and their secrets engines, team-* policies, and team-* roles that bind only ServiceAccounts of its own Kubernetes namespace.
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: OpenBaoNamespace
+metadata:
+  name: tenant-b
+  namespace: platform
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: platform
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: tenant-b-kubernetes
+  namespace: platform
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: platform
+  namespace: tenant-b
+  path: kubernetes
+  type: kubernetes
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthConfig
+metadata:
+  name: tenant-b-kubernetes
+  namespace: platform
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: platform
+  namespace: tenant-b
+  mountPath: kubernetes
+  kubernetesHost: https://kubernetes.default.svc
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: tenant-b-admin
+  namespace: platform
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: platform
+  namespace: tenant-b
+  name: tenant-admin
+  policy: |
+    path "sys/namespaces/*" {
+      capabilities = ["create", "read", "update", "patch", "delete"]
+    }
+    path "+/sys/mounts" {
+      capabilities = ["read"]
+    }
+    path "+/sys/mounts/*" {
+      capabilities = ["create", "read", "update", "delete"]
+    }
+    path "+/secret/data/*" {
+      capabilities = ["create", "read", "update"]
+    }
+    path "+/secret/metadata/*" {
+      capabilities = ["read", "delete"]
+    }
+    path "sys/policies/acl/team-*" {
+      capabilities = ["create", "read", "update", "delete"]
+    }
+    path "auth/kubernetes/role/team-*" {
+      capabilities = ["create", "read", "update", "delete"]
+      allowed_parameters = {
+        "bound_service_account_namespaces"         = [["tenant-b"]]
+        "bound_service_account_namespace_selector" = [""]
+        "*"                                        = []
+      }
+    }
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthRole
+metadata:
+  name: tenant-b-operator
+  namespace: platform
+spec:
+  connectionRef:
+    kind: ClusterOpenBaoConnection
+    name: platform
+  namespace: tenant-b
+  mountPath: kubernetes
+  name: operator
+  boundServiceAccountNames:
+    - openbao-config
+  boundServiceAccountNamespaces:
+    - tenant-b
+  audience: openbao
+  tokenPolicies:
+    - tenant-admin
+  tokenTTL: 1h

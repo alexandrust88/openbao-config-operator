@@ -18,7 +18,7 @@ OpenBao community spaces rather than a separate one, and announced in Discussion
 
 You do not need to write Go to help.
 
-- **Use it and tell us.** Try the [quick start](../../README.md#quick-start), and post what worked and what did
+- **Use it and tell us.** Try the [quickstart](../get-started/quickstart.md), and post what worked and what did
   not in Discussions. Reports from real OpenBao setups are the most valuable input the project gets.
 - **Answer questions** in Discussions Q&A.
 - **Improve the docs.** Every page has a source file under `docs/`; fix what confused you.

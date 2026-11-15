@@ -1,0 +1,9 @@
+# The second OpenBao. allowedNamespaces is unset, so no OpenBaoConnection may use it: only the platform's
+# ClusterOpenBaoConnection platform-2 reaches it.
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoServer
+metadata:
+  name: openbao-2
+spec:
+  address: http://openbao.openbao-2.svc:8200
+  allowInsecureHTTP: true

@@ -1,0 +1,35 @@
+# One connection per tenant, created by the platform because tenants cannot create connections. Each one is based in
+# the tenant's OpenBao namespace and logs in there as the tenant's ServiceAccount openbao-config.
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoConnection
+metadata:
+  name: openbao
+  namespace: tenant-a
+spec:
+  serverRef:
+    name: openbao
+  namespace: tenant-a
+  auth:
+    kubernetes:
+      role: operator
+      serviceAccountRef:
+        name: openbao-config
+      audiences:
+        - openbao
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoConnection
+metadata:
+  name: openbao
+  namespace: tenant-b
+spec:
+  serverRef:
+    name: openbao
+  namespace: tenant-b
+  auth:
+    kubernetes:
+      role: operator
+      serviceAccountRef:
+        name: openbao-config
+      audiences:
+        - openbao

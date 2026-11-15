@@ -21,106 +21,24 @@ kubectl get lease -n openbao-config-operator openbao-config-operator.openbaoconf
   -o jsonpath='{.spec.holderIdentity}'
 ```
 
-## Conditions
+## Conditions and reasons
 
-Every resource kind has two conditions:
-
-| condition | `True` means | `False` means |
-|-----------|--------------|---------------|
-| `Ready` | the OpenBao object matched the spec at the last successful reconcile | the object is missing, differs, or cannot be reached; the reason says why |
-| `Synced` | the last reconcile succeeded | the last reconcile failed or is waiting; the reason and message say why |
-
-When the operator waits for something outside its control (a connection, a reference, a policy
-choice), it sets both conditions to `False` with the same reason and retries without error
-backoff. When a reconcile fails with an error, it sets only `Synced=False` with `ReconcileError`
-and retries with exponential backoff; `Ready` keeps its last value, so a resource can be
-`Ready=True` and `Synced=False` while OpenBao refuses a change.
-
-`status.observedGeneration` lower than `metadata.generation` means the operator has not processed
-the latest spec yet.
-
-## Resource reasons
-
-The most common reasons are below. Every reason, its retry and the events are listed in
-[status and events](../reference/status-and-events.md).
-
-| reason | condition | meaning | what to check |
-|--------|-----------|---------|---------------|
-| `Available` | `Ready=True` | the object matches the spec | nothing |
-| `ReconcileSuccess` | `Synced=True` | the last reconcile succeeded | nothing |
-| `ReconcileError` | `Synced` | OpenBao or Kubernetes returned an error | the message: a 400 is an invalid value; see [common OpenBao errors](#common-openbao-errors) |
-| `PermissionDenied` | `Synced` | OpenBao answered 403: the connection's token is valid but its policy denies the request | the path in the message against the connection identity's policy ([openbao-policy.md](openbao-policy.md)) |
-| `ConnectionNotReady` | both | the connection does not exist or is not `Ready` for its current generation; retried with a backoff from 2 seconds to 1 minute, and sooner when the connection changes | `kubectl get openbaoconnection <name>` and its reason ([connection reasons](#connection-reasons)) |
-| `ConnectionDenied` | both | the `ClusterOpenBaoConnection`'s `allowedNamespaces` does not match this namespace, or the selector is invalid | the namespace labels and the selector |
-| `ReferenceNotReady` | both | a referenced Secret, key or resource is missing or not `Ready`, or the OpenBao namespace does not exist yet; retried with a backoff from 2 to 30 seconds | the referent named in the message; the `OpenBaoNamespace` that creates the namespace |
-| `Conflict` | both | `creationPolicy: Create` and the object already exists and is not ours | adopt it (`CreateOrAdopt` or `Adopt`) if it should be managed, or rename |
-| `NotFound` | both | `creationPolicy: Adopt` and the object does not exist | the name, mount path and `spec.namespace`; use `CreateOrAdopt` to create it |
-| `Unsupported` | both | the server cannot serve the kind: the plugin or auth method is not mounted, or raft storage is missing | the mount and the connection's `namespace`; a root-only kind in a child namespace reports `RootOnlyKind` instead |
-| `InvalidSpec` | both | the spec, or a Secret it references, passed the CRD schema but can never work as written, such as a `spec.namespace` that starts with `root` or a payload that is not a JSON object | the message; fix the spec or the Secret. Errors raised by a kind's adapter are not retried until the spec or the Secret changes |
-| `NamespaceChanged` | both | the object was acquired in one OpenBao namespace, but the connection now resolves to another | restore the connection's `namespace`, or recreate the resource ([below](#namespacechanged)) |
-| `ReconcileInProgress` | `Synced` | an asynchronous OpenBao operation runs, such as a namespace deletion; polled every 10 seconds | wait; check the operation in OpenBao if it never ends |
-| `CleanupBlocked` | `Synced` | deletion with `deletionPolicy: Delete` failed; the finalizer stays | the message; usually the connection or its credential is gone ([stuck finalizers](#stuck-finalizers)) |
-| `DeleteGuarded` | `Synced`; `Ready` too outside deletion | deleting a destructive resource with `deletionPolicy: Delete`, or recreating it after a create-only change, waits for `openbaoconfig.io/allow-destructive-delete: "true"`; in a terminating Kubernetes Namespace the deletion is orphaned instead (`Orphaned` event) | to destroy the data, annotate the resource (`kubectl annotate <kind> <name> -n <ns> openbaoconfig.io/allow-destructive-delete=true`); to keep it, set `deletionPolicy: Orphan` ([stuck finalizers](#stuck-finalizers)) |
-| `OutOfSync` | both | a write succeeded but the read after it returned different values; retried with a backoff capped at the drift interval | the keys named in the message; write them in the form OpenBao returns them, or report the kind |
-| `InUse` | `Ready` | `AccessLevel` only: deletion waits while an `AccessGrant` or `AccessLayout` cites the level | delete or change the citing resources first |
-
-## Connection reasons
-
-A connection has only the `Ready` condition.
-
-| reason | meaning | what to check |
-|--------|---------|---------------|
-| `Available` | connected and authenticated | nothing |
-| `CredentialsNotFound` | a referenced Secret, key or token file does not exist | the names, keys and namespaces in `spec.auth`; for a file, the volume mount |
-| `InvalidSpec` | the spec cannot be turned into a client | the message |
-| `ReferenceNotReady` | the connection's OpenBao `namespace` does not exist yet | `bao namespace list` in the parent namespace; the `OpenBaoNamespace` that creates it |
-| `ServerNotReady` | the `OpenBaoServer` in `serverRef` is missing or not `Ready` | `kubectl get openbaoserver <name>`: `Unreachable` (DNS, the `address`, the NetworkPolicy egress to OpenBao, the CA bundle, `x509` in the message), `Sealed` (unseal OpenBao; resources wait meanwhile), `ReferenceNotReady` (the CA bundle Secret or ConfigMap) |
-| `ConnectionDenied` | the server does not admit this `OpenBaoConnection` | the server's `allowedNamespaces` against the namespace labels, and `allowedAudiences` against the connection's `audiences`; an API server audience is always refused |
-| `AuthenticationFailed` | the login or the `auth/token/lookup-self` check failed | the message; the OpenBao role, the audience, the ServiceAccount, `authNamespace` ([below](#common-openbao-errors)) |
-
-`status.authenticated`, `status.sealed`, `status.standby` and `status.version` give more detail.
-The operator probes every minute.
+Every managed resource has the conditions `Ready` and `Synced`; a connection or server has `Ready` only. Read the
+reason and message with `kubectl describe`, then look the reason up in status and events: the
+[resource reasons](../reference/status-and-events.md#reasons) and the
+[connection and server reasons](../reference/status-and-events.md#conditions-of-connections-and-servers) give the
+meaning, the retry and what to check for each. A resource can show `Ready=True` and `Synced=False` while OpenBao
+refuses a change; [observedGeneration](../reference/status-and-events.md#observedgeneration) explains why.
 
 ## Debug logging
 
-Raise the log level through the chart:
-
-```yaml
-extraArgs:
-  - --zap-log-level=debug
-```
-
-Logs name paths, kinds and the keys that differed. They never contain tokens, secret values or
-OpenBao response bodies, so debug logs are safe to share. Turn debug off again afterwards; it is
-verbose at scale.
+Raise the log level with `--zap-log-level=debug` in the chart's `extraArgs`; [observability](observability.md#logs)
+lists every log flag and what the logs never contain. Turn debug off again afterwards; it is verbose at scale.
 
 ## Metrics
 
-| metric | labels | use |
-|--------|--------|-----|
-| `openbao_requests_total` | `connection`, `method` (`GET`, `PUT`, `POST`, `DELETE`, `LIST`), `code` (HTTP status, or `error` for a transport failure) | error rates per connection: `403` policy gaps, `5xx` server trouble, `error` network or TLS |
-| `openbao_request_duration_seconds` | `connection`, `method` | OpenBao latency |
-| `openbao_writes_total` | `kind` | writes to OpenBao; a steady non-zero rate means something fights the operator or a spec never converges |
-| `controller_runtime_reconcile_errors_total` | `controller` | failing reconciles per kind |
-| `controller_runtime_reconcile_total` | `controller`, `result` | reconcile volume |
-| `workqueue_depth` | `name` | backlog per controller |
-
-The `connection` label is the connection's UID. Map it to a name with:
-
-```sh
-kubectl get openbaoconnections -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,UID:.metadata.uid
-kubectl get clusteropenbaoconnections -o custom-columns=NAME:.metadata.name,UID:.metadata.uid
-```
-
-Controller names are `<kind>.<group>` in lower case, such as `policy.sys.openbaoconfig.io`, and
-`openbaoconnection` and `clusteropenbaoconnection` for the connections.
-
-To find the kind behind steady-state writes:
-
-```promql
-topk(5, rate(openbao_writes_total[30m]))
-```
-
+The metrics and their labels, how to map the `connection` label to a connection, and example queries, including
+the one that finds the kind behind steady-state writes, are in [observability](observability.md#operator-metrics).
 Then look for `Updated` events on that kind; each one names the keys that differed.
 
 ## Common OpenBao errors

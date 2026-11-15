@@ -27,7 +27,7 @@ YAML to Git, let Argo CD or Flux apply it, and the operator converges OpenBao, r
 It does not deploy, initialise, unseal or upgrade OpenBao, and it does not copy secret values into Kubernetes
 (use [External Secrets Operator](https://external-secrets.io) for that).
 
-> **Status: alpha.** v0.1.0 and v0.1.1 are released (image, Helm chart and `install.yaml`). The API is `v1alpha1`;
+> **Status: alpha.** v0.2.0 is the latest release (image, Helm chart and `install.yaml`). The API is `v1alpha1`;
 > the API group domain `openbaoconfig.io` is final ([ADR 0008](docs/adr/0008-provisional-api-group-domain.md)).
 > Read the [risks](#risks) and the [known limitations](docs/reference/limitations.md) before you rely on it; the
 > [roadmap](docs/maintainers/roadmap.md) says what comes next.
@@ -35,7 +35,7 @@ It does not deploy, initialise, unseal or upgrade OpenBao, and it does not copy 
 ## Today and its limits
 
 Platform teams that run OpenBao for many tenants want its configuration in Git, reviewed and reconciled like
-everything else in the cluster. Several tools already manage Vault-style configuration declaratively. They differ
+everything else in the cluster. Several tools already manage this configuration declaratively. They differ
 in model more than in quality:
 
 | tool | model | tenant boundary | drift and ownership |
@@ -45,12 +45,11 @@ in model more than in quality:
 | Crossplane managed resources for Vault | Crossplane managed resources generated from the Terraform provider, with compositions on top | the credentials of the `ProviderConfig` a resource references | Crossplane re-reads and corrects managed resources; the external name links a resource to its object |
 | bank-vaults configurer | one configuration document applied by the configurer, next to the bank-vaults init and unseal tooling | one privileged identity for the whole document | the document owns what it lists; with its purge option enabled, the configurer also removes configuration the document does not list |
 
-The gap: we know of none that combines typed resources built for OpenBao (its namespaces, self-init and OpenBao-only
-kinds) with tenants that configure OpenBao from their own Kubernetes namespace under their own OpenBao identity,
-while the platform alone decides which server they reach. This operator adds, per OpenBao path, one owning
-resource with conflict detection and a binding to one server, drift checks in two tiers inside a per-server
-request budget with no writes at rest, and an `Observe` mode and import tool for servers that already have
-configuration. All of it runs on one generic engine; each kind adds a small adapter.
+The gap: none of these is built for OpenBao and its namespaces, lets tenants configure OpenBao from their own
+namespace as their own identity while the platform alone decides the server, and gives each OpenBao path one owner
+with drift repair that stays silent at rest. External Secrets Operator delivers secret values and configures
+nothing. [Why this operator exists](docs/concepts/why.md) compares them in detail, including where the other tools
+are the better choice.
 
 ## Risks
 
@@ -78,9 +77,9 @@ configuration. All of it runs on one generic engine; each kind adds a small adap
   through TokenRequest, never as the operator, so the tenant's OpenBao policy is the limit
   ([ADR 0003](docs/adr/0003-connections-and-tenant-boundary.md),
   [ADR 0010](docs/adr/0010-openbaoserver-owns-address-and-audiences.md)). The [e2e tests](test/e2e) exercise
-  tenant connections; the [known limitations](docs/reference/limitations.md#verification) list what is not proven
-  yet (a two-tenant e2e test, `test/e2e/isolation_test.go`, is being added), and the default install is
-  cluster-wide (RR-01 in the [threat model](docs/security/threat-model.md)).
+  tenant connections and a [two-tenant isolation test](test/e2e/isolation_test.go); the
+  [known limitations](docs/reference/limitations.md#verification) list what is not proven yet, and the default
+  install is cluster-wide (RR-01 in the [threat model](docs/security/threat-model.md)).
 - **Silent at rest.** A steady-state reconcile reads and never writes; `openbao_writes_total` stays flat. The load
   test shows zero OpenBao and Kubernetes writes over three drift intervals at 5,000 objects
   ([load testing](docs/operate/load-testing.md#steady-state)).
@@ -105,134 +104,11 @@ configuration. All of it runs on one generic engine; each kind adds a small adap
 
 ## Quick start
 
-Try it on a local [kind](https://kind.sigs.k8s.io) cluster with a small OpenBao cluster. You need kind,
-kubectl, Helm and Docker, and a clone of this repository.
-
-**1. A cluster and a three-node OpenBao** with TLS from a throwaway CA (fixed test seal key and admin AppRole, for
-trying out only):
-
-```sh
-kind create cluster --name obco
-hack/e2e/tls.sh
-kubectl apply -f hack/e2e/openbao.yaml -f test/e2e/testdata/openbao-auth.yaml
-kubectl -n openbao rollout status statefulset/openbao
-```
-
-**2. On the OpenBao side**, Kubernetes auth is already enabled; let the ServiceAccount `team-a/openbao-config` manage
-policies (in a real server, scope this policy to what the tenant may configure):
-
-```sh
-kubectl -n openbao exec -i openbao-0 -- sh -s <<'EOF'
-export BAO_TOKEN=$(bao write -field=token auth/approle/login role_id="$E2E_ROLE_ID" secret_id="$E2E_SECRET_ID")
-printf 'path "sys/policies/acl/*" { capabilities = ["create", "read", "update", "delete", "list"] }\n' |
-  bao policy write team-a-config -
-bao write auth/kubernetes/role/team-a-config \
-  bound_service_account_names=openbao-config bound_service_account_namespaces=team-a \
-  audience=openbao token_policies=team-a-config token_ttl=15m
-EOF
-```
-
-**3. Install the operator** from the Helm repository (the same signed chart is also published as an OCI
-artifact, see the [install guide](docs/get-started/install.md)):
-
-```sh
-helm repo add openbao-config-operator https://alexandrust88.github.io/openbao-config-operator/charts
-helm install openbao-config-operator openbao-config-operator/openbao-config-operator \
-  --namespace openbao-config-operator --create-namespace --wait
-```
-
-To try a change that is not released yet, build the image and install the chart from the clone instead:
-
-```sh
-make docker-build IMG=openbao-config-operator:dev
-kind load docker-image openbao-config-operator:dev --name obco
-helm install openbao-config-operator charts/openbao-config-operator \
-  --namespace openbao-config-operator --create-namespace \
-  --set image.repository=openbao-config-operator --set image.tag=dev
-```
-
-**4. Declare the server, a tenant connection and a policy:**
-
-```sh
-kubectl apply -f - <<'EOF'
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoServer
-metadata:
-  name: openbao
-spec:
-  address: https://openbao-active.openbao.svc:8200
-  caBundle:
-    configMapRef:
-      name: openbao-ca
-      namespace: openbao
-      key: ca.crt
-  allowedNamespaces:
-    matchLabels:
-      openbaoconfig.io/tenant: "true"
-  allowedAudiences:
-    - openbao
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: team-a
-  labels:
-    openbaoconfig.io/tenant: "true"
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: openbao-config
-  namespace: team-a
----
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
-metadata:
-  name: openbao
-  namespace: team-a
-spec:
-  serverRef:
-    name: openbao
-  auth:
-    kubernetes:
-      role: team-a-config
-      serviceAccountRef:
-        name: openbao-config
-      audiences:
-        - openbao
----
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
-metadata:
-  name: app-read
-  namespace: team-a
-spec:
-  connectionRef:
-    name: openbao
-  driftInterval: 30s
-  policy: |
-    path "secret/data/app/*" {
-      capabilities = ["read"]
-    }
-EOF
-kubectl get openbao -n team-a
-```
-
-The `openbao-active` Service routes to the active node only, and `caBundle` trusts the CA from step 1.
-`driftInterval: 30s` makes the demo fast; the default for policies is 15 minutes. `Ready=True` means the policy in
-OpenBao matches the spec, and `Synced=True` that the last reconcile succeeded.
-
-**5. Watch drift repair.** Change the policy behind the operator's back, then read it again after half a minute:
-
-```sh
-kubectl -n openbao exec openbao-0 -- \
-  sh -c 'echo "path \"*\" { capabilities = [\"sudo\"] }" | BAO_TOKEN=$E2E_TOKEN bao policy write app-read -'
-sleep 40
-kubectl -n openbao exec openbao-0 -- sh -c 'BAO_TOKEN=$E2E_TOKEN bao policy read app-read'
-kubectl describe policy.sys.openbaoconfig.io app-read -n team-a
-```
-
-The events name the keys that differed (never their values). Clean up with `kind delete cluster --name obco`.
+The [quickstart](docs/get-started/quickstart.md) installs the operator and a dev OpenBao on a local
+[kind](https://kind.sigs.k8s.io) cluster and reconciles a first policy in a few minutes; CI runs every command on
+that page. The [tutorials](docs/tutorials/index.md) then walk through the platform owner, tenant onboarding and
+team onboarding roles, and the [install guide](docs/get-started/install.md) covers production installs from the
+Helm repository or the signed OCI chart.
 
 ## Architecture
 
@@ -274,13 +150,7 @@ requeues; each kind contributes a small adapter with its path, payload and compa
 
 ## Compatibility
 
-| component | supported |
-|-----------|-----------|
-| OpenBao | 2.6 and 2.7 only ([ADR 0009](docs/adr/0009-openbao-only-target.md)); integration-tested on 2.7.2 only, 2.6 is API-compatible per its OpenAPI snapshot until a scheduled run on every supported minor exists ([support window](docs/maintainers/release-process.md#openbao-versions)) |
-| Kubernetes | 1.31 or later (chart `kubeVersion`); tested on envtest 1.35 and kind |
-
-Kinds that need an OpenBao external plugin (cloud methods, LDAP, Kerberos, RADIUS) are experimental, disabled by
-default behind `--enable-plugin-kinds`, and report `Unsupported` until the plugin is mounted.
+Supported OpenBao, Kubernetes and Helm versions are listed in the [compatibility reference](docs/reference/compatibility.md).
 
 ## Documentation
 
