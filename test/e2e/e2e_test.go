@@ -27,6 +27,9 @@ var _ = Describe("openbao-config-operator", Ordered, func() {
 		for _, args := range [][]string{
 			{"-n", operatorNamespace, "logs", "-l", "app.kubernetes.io/name=openbao-config-operator",
 				"--all-containers", "--prefix", "--tail=200"},
+			{"-n", openbaoNamespace, "get", "pods,pvc,services,endpointslices", "-o", "wide"},
+			{"-n", openbaoNamespace, "logs", "-l", "app.kubernetes.io/name=openbao",
+				"--all-containers", "--prefix", "--tail=200"},
 			{"get", "openbao", "-A", "-o", "yaml"},
 			{"get", "events", "-A", "--sort-by=.lastTimestamp"},
 		} {
@@ -34,6 +37,8 @@ var _ = Describe("openbao-config-operator", Ordered, func() {
 			_, _ = fmt.Fprintf(GinkgoWriter, "kubectl %s:\n%s\n", strings.Join(args, " "), out)
 		}
 	})
+
+	It("verifies TLS identity and active Service routing", testVerifiedTLS)
 
 	It("runs a highly available manager", func() {
 		Eventually(func() (string, error) {
@@ -96,6 +101,10 @@ var _ = Describe("openbao-config-operator", Ordered, func() {
 		// Drift checks are jittered by up to +20%, so the window must hold two of the longest ones.
 		Consistently(version).WithTimeout(driftInterval * 5 / 2).WithPolling(5 * time.Second).Should(Equal("2"))
 	})
+
+	It("retains data and resumes reconciliation after active OpenBao pod deletion", testOpenBaoFailover)
+
+	It("resumes reconciliation after manager leader deletion", testManagerFailover)
 
 	It("deletes the objects from OpenBao when the resources are deleted", func() {
 		mustRun("kubectl", "-n", tenantNamespace, "delete", "--wait", "--timeout=2m",

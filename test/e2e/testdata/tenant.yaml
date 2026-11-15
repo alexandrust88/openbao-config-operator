@@ -14,8 +14,12 @@ kind: OpenBaoServer
 metadata:
   name: openbao-e2e
 spec:
-  address: http://openbao.openbao.svc:8200
-  allowInsecureHTTP: true
+  address: https://openbao-active.openbao.svc:8200
+  caBundle:
+    configMapRef:
+      name: openbao-ca
+      namespace: openbao
+      key: ca.crt
   allowedNamespaces:
     matchLabels:
       kubernetes.io/metadata.name: e2e-tenant

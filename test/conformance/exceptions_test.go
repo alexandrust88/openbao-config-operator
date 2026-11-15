@@ -48,7 +48,11 @@ func confLoadExceptions(t *testing.T, root string) map[string]string {
 		default:
 			t.Fatalf("exceptions.yaml: entry %+v: unknown test %q", e, e.Test)
 		}
-		out[e.Kind+"/"+e.Field+e.Test] = e.Reason
+		key := e.Kind + "/" + e.Field + e.Test
+		if _, exists := out[key]; exists {
+			t.Fatalf("exceptions.yaml: duplicate %s", key)
+		}
+		out[key] = e.Reason
 	}
 	return out
 }

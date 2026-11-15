@@ -25,7 +25,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
-      - run: make fmt-check vet
+      - run: make fmt-check vet mod-check
       - run: go vet -tags conformance,load ./test/...
       - run: make lint-config lint
 
@@ -135,10 +135,25 @@ jobs:
         run: command -v htpasswd || { sudo apt-get update && sudo apt-get install -y --no-install-recommends apache2-utils; }
       - run: make live-render
       - run: make bao
-      - run: make test-livekit
+      - name: Run the live kit
+        env:
+          LIVEKIT_LOG_DIR: ${{ runner.temp }}/livekit/logs
+          LIVEKIT_OUT: ${{ runner.temp }}/livekit/e2e.md
+        run: |
+          mkdir -p "$RUNNER_TEMP/livekit"
+          make test-livekit 2>&1 | tee "$RUNNER_TEMP/livekit/tests.log"
+          test -s "$LIVEKIT_OUT"
+          test -s "$LIVEKIT_OUT.coverage.json"
       - name: End-to-end summary
         if: always()
-        run: if [ -f .tmp/livekit/e2e.md ]; then cat .tmp/livekit/e2e.md >>"$GITHUB_STEP_SUMMARY"; fi
+        run: if [ -f "$RUNNER_TEMP/livekit/e2e.md" ]; then cat "$RUNNER_TEMP/livekit/e2e.md" >>"$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: livekit-results
+          path: ${{ runner.temp }}/livekit
+          retention-days: 14
+          if-no-files-found: error
 
   verify-generated:
     runs-on: ubuntu-24.04

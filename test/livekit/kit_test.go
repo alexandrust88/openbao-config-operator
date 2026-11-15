@@ -216,11 +216,14 @@ func crdKinds(t testing.TB, root string) map[string]*kindInfo {
 			t.Fatalf("%s: %v", f, err)
 		}
 		if len(crd.Spec.Versions) == 0 {
-			continue
+			t.Fatalf("%s: CRD has no versions", f)
 		}
 		props, _ := crd.Spec.Versions[0].Schema.OpenAPIV3Schema["properties"].(map[string]any)
 		spec, _ := props[keySpec].(map[string]any)
 		a := avail[crd.Spec.Names.Kind]
+		if !strings.HasPrefix(a, "builtin") && !strings.HasPrefix(a, "external-plugin") {
+			t.Fatalf("%s: missing or unknown availability %q in docs/kinds.md", crd.Spec.Names.Kind, a)
+		}
 		out[crd.Spec.Names.Kind] = &kindInfo{
 			Kind:       crd.Spec.Names.Kind,
 			Group:      crd.Spec.Group,

@@ -11,7 +11,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: e2e-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -29,6 +29,16 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
+
+      - name: Check the complete live inventory
+        env:
+          LIVEKIT_INVENTORY_OUT: ${{ runner.temp }}/e2e/inventory.json
+        run: |
+          mkdir -p "$RUNNER_TEMP/e2e"
+          make kustomize
+          go test -tags integration ./test/livekit -run '^TestLiveInventory$' -count=1 -json \
+            | tee "$RUNNER_TEMP/e2e/inventory.jsonl"
+          jq -se 'any(.[]; .Test == "TestLiveInventory" and .Action == "pass")' "$RUNNER_TEMP/e2e/inventory.jsonl"
 
       # kind boots its node and the live kit tools install while the manager and the suite compile with the job's
       # Go build cache; the release image is still built from the Dockerfile builder stage.
@@ -49,22 +59,47 @@ jobs:
         env:
           E2E_SKIP_IMAGE_BUILD: "true"
           E2E_KEEP: "true"
-        run: make test-e2e-run
+        run: |
+          mkdir -p "$RUNNER_TEMP/e2e"
+          KIND="$PWD/bin/kind" HELM="$PWD/bin/helm" go test -tags=e2e ./test/e2e/ -count=1 -timeout 25m -v -ginkgo.v \
+            -ginkgo.fail-on-empty -ginkgo.fail-on-pending -ginkgo.junit-report="$RUNNER_TEMP/e2e/junit.xml" \
+            2>&1 | tee "$RUNNER_TEMP/e2e/tests.log"
+          python3 - "$RUNNER_TEMP/e2e/junit.xml" <<'PYTHON'
+          import sys, xml.etree.ElementTree as ET
+          cases = ET.parse(sys.argv[1]).getroot().findall(".//testcase")
+          assert cases, "no e2e cases executed"
+          assert not any(c.find("skipped") is not None for c in cases), "e2e cases were skipped"
+          PYTHON
 
       # Reuses the OpenBao and chart that the suite keeps with E2E_KEEP.
       - name: Apply the live kit in every connection mode
+        env:
+          LIVEKIT_OUT: ${{ runner.temp }}/e2e/livekit
         run: |
           command -v htpasswd || { sudo apt-get update && sudo apt-get install -y --no-install-recommends apache2-utils; }
-          test/livekit/kind.sh
+          test/livekit/kind.sh 2>&1 | tee "$RUNNER_TEMP/e2e/livekit.log"
 
       - name: Diagnostics
         if: failure()
         run: |
-          kubectl get pods -A -o wide || true
-          kubectl get events -A --sort-by=.lastTimestamp | tail -n 100 || true
-          for ns in openbao-config-operator openbao-config-operator-system openbao openbao-live; do
-            kubectl -n "$ns" logs --all-containers --prefix --tail=200 -l app.kubernetes.io/name || true
-          done
+          mkdir -p "$RUNNER_TEMP/e2e"
+          {
+            kubectl get pods -A -o wide || true
+            kubectl get events -A --sort-by=.lastTimestamp | tail -n 100 || true
+            for ns in openbao-config-operator openbao-config-operator-system openbao openbao-live; do
+              kubectl -n "$ns" logs --all-containers --prefix --tail=200 -l app.kubernetes.io/name || true
+            done
+          } 2>&1 | tee "$RUNNER_TEMP/e2e/diagnostics.log"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: e2e-results
+          path: |
+            ${{ runner.temp }}/e2e
+            ${{ runner.temp }}/setup.log
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Delete kind cluster
         if: always()

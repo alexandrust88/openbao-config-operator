@@ -76,21 +76,21 @@ All of it runs on one generic engine; each kind adds a small adapter.
 Try it on a local [kind](https://kind.sigs.k8s.io) cluster with a small OpenBao cluster. You need kind,
 kubectl, Helm and Docker, and a clone of this repository.
 
-**1. A cluster and a three-node OpenBao** (fixed test seal key and admin AppRole, for trying out only):
+**1. A cluster and a three-node OpenBao** with TLS from a throwaway CA (fixed test seal key and admin AppRole, for
+trying out only):
 
 ```sh
 kind create cluster --name obco
-kubectl apply -f hack/e2e/openbao.yaml
+hack/e2e/tls.sh
+kubectl apply -f hack/e2e/openbao.yaml -f test/e2e/testdata/openbao-auth.yaml
 kubectl -n openbao rollout status statefulset/openbao
-kubectl create clusterrolebinding openbao-tokenreview \
-  --clusterrole=system:auth-delegator --serviceaccount=openbao:default
 ```
 
 **2. On the OpenBao side**, Kubernetes auth is already enabled; let the ServiceAccount `team-a/openbao-config` manage
 policies (in a real server, scope this policy to what the tenant may configure):
 
 ```sh
-kubectl -n openbao exec -i openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 sh -s <<'EOF'
+kubectl -n openbao exec -i openbao-0 -- sh -s <<'EOF'
 export BAO_TOKEN=$(bao write -field=token auth/approle/login role_id="$E2E_ROLE_ID" secret_id="$E2E_SECRET_ID")
 printf 'path "sys/policies/acl/*" { capabilities = ["create", "read", "update", "delete", "list"] }\n' |
   bao policy write team-a-config -
@@ -128,8 +128,12 @@ kind: OpenBaoServer
 metadata:
   name: openbao
 spec:
-  address: http://openbao.openbao.svc:8200
-  allowInsecureHTTP: true
+  address: https://openbao-active.openbao.svc:8200
+  caBundle:
+    configMapRef:
+      name: openbao-ca
+      namespace: openbao
+      key: ca.crt
   allowedNamespaces:
     matchLabels:
       openbaoconfig.io/tenant: "true"
@@ -182,17 +186,17 @@ EOF
 kubectl get openbao -n team-a
 ```
 
-`allowInsecureHTTP` is only for the dev server; real servers use `https://` and `caBundle`. `driftInterval: 30s`
-makes the demo fast; the default for policies is 15 minutes. `Ready=True` means the policy in OpenBao matches the
-spec, and `Synced=True` that the last reconcile succeeded.
+The `openbao-active` Service routes to the active node only, and `caBundle` trusts the CA from step 1.
+`driftInterval: 30s` makes the demo fast; the default for policies is 15 minutes. `Ready=True` means the policy in
+OpenBao matches the spec, and `Synced=True` that the last reconcile succeeded.
 
 **5. Watch drift repair.** Change the policy behind the operator's back, then read it again after half a minute:
 
 ```sh
-kubectl -n openbao exec deploy/openbao -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN=root \
-  sh -c 'echo "path \"*\" { capabilities = [\"sudo\"] }" | bao policy write app-read -'
+kubectl -n openbao exec openbao-0 -- \
+  sh -c 'echo "path \"*\" { capabilities = [\"sudo\"] }" | BAO_TOKEN=$E2E_TOKEN bao policy write app-read -'
 sleep 40
-kubectl -n openbao exec deploy/openbao -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN=root bao policy read app-read
+kubectl -n openbao exec openbao-0 -- sh -c 'BAO_TOKEN=$E2E_TOKEN bao policy read app-read'
 kubectl describe policy.sys.openbaoconfig.io app-read -n team-a
 ```
 

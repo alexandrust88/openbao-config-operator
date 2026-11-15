@@ -349,6 +349,7 @@ func stateOf(cur *unstructured.Unstructured) objState {
 	gen := cur.GetGeneration()
 	observed, _, _ := unstructured.NestedInt64(cur.Object, "status", "observedGeneration")
 	var s objState
+	synced := false
 	conds, _, _ := unstructured.NestedSlice(cur.Object, "status", "conditions")
 	found := false
 	for _, c := range conds {
@@ -359,16 +360,22 @@ func stateOf(cur *unstructured.Unstructured) objState {
 		switch {
 		case cond["type"] == "Ready":
 			found = true
-			s.ready = cond["status"] == "True" && observed == gen && (condGen == 0 || condGen == gen)
+			s.ready = cond["status"] == "True" && observed == gen && condGen == gen
 			if s.reason == "" {
 				s.reason, s.message = reason, message
 			}
 		case cond["type"] == "Synced" && cond["status"] == "False" && condGen == gen:
 			s.reason, s.message = reason, message
+		case cond["type"] == "Synced" && cond["status"] == "True" && condGen == gen:
+			synced = true
 		}
 	}
 	if !found {
 		s.reason, s.message = "NoStatus", "no Ready condition"
+	}
+	policy, _, _ := unstructured.NestedString(cur.Object, keySpec, "managementPolicy")
+	if managed(cur) && policy != "Observe" && !synced {
+		s.ready = false
 	}
 	return s
 }

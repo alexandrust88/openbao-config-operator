@@ -19,15 +19,47 @@ a pass.
 | `make govulncheck` | No known vulnerability is reachable from the code | Only covers vulnerabilities in the Go vulnerability database |
 | `make helm-lint` | The chart lints in strict mode and renders with default values | Does not install the chart |
 | `make validate-manifests` | The kustomize and Helm output validates against the Kubernetes schemas | Custom resources without a published schema are skipped |
-| `make check` | `fmt-check`, `vet`, `lint`, `test` and `verify-generated`: the pull request gate without integration and e2e | Starts no OpenBao and no cluster |
+| `make check` | `fmt-check`, `vet`, `mod-check`, `lint`, `test`, `verify-generated`, `api-coverage`, `helm-lint` and `validate-manifests`: the fast subset of the pull request gate | Starts no OpenBao and no cluster |
 | `make api-coverage` | Every writable path of each OpenAPI snapshot in `api-coverage/` (2.6 and 2.7) has exactly one class with a reason, every typed kind named there has a CRD, and `docs/api-coverage.md` is regenerated; CI fails when the report changes | Path level only: a new request field on a typed path is not detected ([BL-014](backlog.md#bl-014-detect-openbao-api-changes-automatically)) |
 | `make test-samples` | Every generated sample in `examples-generated/` passes server-side validation, CEL included, against envtest with the real CRDs | No OpenBao; not run by a CI workflow |
 | `bin/helm unittest charts/openbao-config-operator` | The chart's unit tests in `charts/openbao-config-operator/tests` pass: CRDs, deployment, RBAC, plugin kinds and resources render as asserted | Rendering only; no install. CI installs the helm-unittest plugin before this step; locally install it yourself |
 | `make test-namespaces` | Every built-in kind through each connection mode (root, child through `spec.namespace`, connection based in a child, AppRole login inside a child) against one `bao server -dev` per mode and the manager built from `./cmd`; logins pointed outside their namespace are refused without a write, and the audit log shows where each object was written | Dev mode only; skips locally without `bao` (fails in CI) |
-| `make test-conformance` | Every built-in kind passes the no-write test (examples applied, a further drift pass writes nothing) and the default test (minimal spec, then each optional field set and removed) against `bao server -dev` and the manager built from `./cmd` | Runs on push to `main`, nightly and on demand, not on pull requests; kinds in `test/conformance/exceptions.yaml` are `n/a` for the named test |
-| `make test-livekit` | The live kit in `examples/live` renders with kustomize, every built-in kind has a minimal and a full example that sets every spec field, every rendered object passes server-side validation, and the root and child overlays reach `Ready` against `bao server -dev` | Logins are rewritten to AppRole, so the kit's Kubernetes auth is not exercised; not run by a CI workflow |
-| `make test-e2e` | In a kind cluster, the suite deploys an OpenBao dev server and installs the Helm chart; the manager runs with two ready replicas and a leader lease; a namespaced `OpenBaoConnection` logs in with Kubernetes auth as the tenant ServiceAccount; a `Policy`, a `KVSecret` and an `OpenBaoEndpoint` are written to OpenBao; a policy deleted in OpenBao is restored; a rotated source Secret is rewritten; the KV version stays unchanged for 40 seconds in steady state; deleting the resources removes the objects from OpenBao | Dev mode OpenBao; no second tenant, so it does not prove that a tenant cannot write outside its policy; needs Docker and kind, and deletes its kind cluster afterwards |
-| `go test ./<package> -run '^$' -fuzz '^<FuzzTest>$' -fuzztime 1m` | The fuzz targets hold for generated input: OpenBao paths, login paths and namespaces (`internal/openbao`), JWT audience parsing (`internal/connection`), the ownership path, field comparison and write-only hashing (`internal/engine`), and import names (`internal/importer`) | Only the seed corpora run, as part of `make test`; no CI job fuzzes |
+| `make test-conformance` | Every built-in kind passes the no-write test (examples applied, a further drift pass writes nothing) and the default test (minimal spec, then each optional field set and removed) against `bao server -dev` and the manager built from `./cmd` | Runs on push to `main`, weekly and on demand, not on pull requests; kinds in `test/conformance/exceptions.yaml` are `n/a` for the named test |
+| `make test-livekit` | The live kit in `examples/live` renders with kustomize, every built-in kind has a minimal and a full example that sets every spec field, every rendered object passes server-side validation, and the root and child overlays reach `Ready` against `bao server -dev` | Logins are rewritten to AppRole, so this job does not exercise Kubernetes auth; runs in the pull request CI. Explicit prerequisite exceptions are not live passes |
+| `make test-e2e` | In a disposable kind cluster, installs the Helm chart and a three-node self-initialising OpenBao Raft cluster with TLS and PVCs; exercises Kubernetes authentication, configuration writes, drift repair, source Secret rotation, steady state and deletion; checks TLS rejection, active-Service routing, OpenBao pod replacement with retained PVC/data, and manager leader failover | Needs Docker and kind. This command runs the focused Go suite; the CI workflow also runs `test/livekit/kind.sh` across connection modes. A compiled suite is not evidence of a successful cluster run |
+| `go test ./<package> -run '^$' -fuzz '^<FuzzTest>$' -fuzztime 1m` | The fuzz targets hold for generated input: OpenBao paths, login paths and namespaces (`internal/openbao`), JWT audience parsing (`internal/connection`), the ownership path, field comparison and write-only hashing (`internal/engine`), and import names (`internal/importer`) | Seed corpora run in `make test`; the weekly and on-demand fuzz workflow explores new inputs |
+
+## Live CRD coverage
+
+`go test -tags integration ./test/livekit -run '^TestLiveInventory$' -count=1 -v`
+checks the rendered overlays that the default live run actually executes against the CRD catalogue.
+An example file alone does not count. The inventory currently classifies all 120 CRDs:
+
+- 61 kinds must have an executable overlay scenario without a prerequisite exception.
+- Seven built-in kinds use dedicated integration fixtures. `DatabaseConnection`, `DatabaseRole`,
+  `RabbitMQConfig` and `RabbitMQRole` have integration scenarios outside the default overlays.
+  `DatabaseStaticRole` needs PostgreSQL,
+  `Plugin` needs a plugin executable and checksum for registration, and `RaftAutopilot` needs Raft storage.
+  `test/livekit/coverage-exclusions.yaml` names the test functions and their prerequisites; the
+  inventory check verifies that those functions exist. Registration does not prove an external
+  plugin can run.
+- 52 external-plugin kinds require plugins and backends absent from the pinned OpenBao binary.
+  Schema and payload checks cover these kinds, but do not constitute live coverage.
+
+The full `make test-livekit` run requires at least one current Ready object for every overlay-covered
+kind. Managed objects also need current `Synced=True`, except in Observe mode, where drift
+may legitimately produce `Synced=False`. Readiness checks reject stale conditions from an earlier generation. Restricting the overlays
+is useful for diagnosis, but does not prove complete coverage. Per-object prerequisite exceptions
+remain visible in the reports; they are not successful reconciliations.
+
+The live-kit CI job retains its runtime coverage in `e2e.md.coverage.json`, alongside the
+per-object summary and logs. Missing reports fail the job.
+
+The kind workflow exercises the full-field overlays through Kubernetes authentication against the
+TLS active-node Service. Its result artifacts retain test logs, JUnit results and live-kit reports.
+CI rejects an empty or skipped focused e2e suite. The conformance workflow retains its matrix and
+logs and rejects a skipped matrix suite. Live evidence still requires the corresponding jobs to
+finish successfully; inventory, compilation and workflow linting cannot substitute for that run.
 
 ## Scoped checks
 
