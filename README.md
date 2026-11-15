@@ -73,26 +73,25 @@ All of it runs on one generic engine; each kind adds a small adapter.
 
 ## Quick start
 
-Try it on a local [kind](https://kind.sigs.k8s.io) cluster with an in-memory OpenBao dev server. You need kind,
+Try it on a local [kind](https://kind.sigs.k8s.io) cluster with a small OpenBao cluster. You need kind,
 kubectl, Helm and Docker, and a clone of this repository.
 
-**1. A cluster and an OpenBao dev server** (root token `root`, for trying out only):
+**1. A cluster and a three-node OpenBao** (fixed test seal key and admin AppRole, for trying out only):
 
 ```sh
 kind create cluster --name obco
-kubectl apply -f hack/e2e/openbao-dev.yaml
-kubectl -n openbao rollout status deploy/openbao
+kubectl apply -f hack/e2e/openbao.yaml
+kubectl -n openbao rollout status statefulset/openbao
 kubectl create clusterrolebinding openbao-tokenreview \
   --clusterrole=system:auth-delegator --serviceaccount=openbao:default
 ```
 
-**2. On the OpenBao side**, enable Kubernetes auth and let the ServiceAccount `team-a/openbao-config` manage
+**2. On the OpenBao side**, Kubernetes auth is already enabled; let the ServiceAccount `team-a/openbao-config` manage
 policies (in a real server, scope this policy to what the tenant may configure):
 
 ```sh
-kubectl -n openbao exec -i deploy/openbao -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN=root sh -s <<'EOF'
-bao auth enable kubernetes
-bao write auth/kubernetes/config kubernetes_host=https://kubernetes.default.svc
+kubectl -n openbao exec -i openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 sh -s <<'EOF'
+export BAO_TOKEN=$(bao write -field=token auth/approle/login role_id="$E2E_ROLE_ID" secret_id="$E2E_SECRET_ID")
 printf 'path "sys/policies/acl/*" { capabilities = ["create", "read", "update", "delete", "list"] }\n' |
   bao policy write team-a-config -
 bao write auth/kubernetes/role/team-a-config \

@@ -17,6 +17,7 @@ const (
 	operatorNamespace = "openbao-config-operator"
 	releaseName       = "openbao-config-operator"
 	openbaoNamespace  = "openbao"
+	openbaoReplicas   = 3
 	tenantNamespace   = "e2e-tenant"
 	// driftInterval is short so the suite can watch the operator repair drift.
 	driftInterval = 10 * time.Second
@@ -29,7 +30,7 @@ var (
 	helmBinary   = envOr("HELM", "helm")
 )
 
-// TestE2E installs the Helm chart and an OpenBao dev server on the current kind cluster and drives a tenant
+// TestE2E installs the Helm chart and a three-node OpenBao on the current kind cluster and drives a tenant
 // connection, a Policy, a KVSecret and an OpenBaoEndpoint through create, drift repair and deletion.
 // Set E2E_SKIP_IMAGE_BUILD=true when the manager image is already loaded into the cluster, and E2E_KEEP=true to
 // leave the chart and OpenBao installed for test/livekit/kind.sh.
@@ -49,22 +50,14 @@ var _ = BeforeSuite(func() {
 		mustRun(kindBinary, "load", "docker-image", managerImage, "--name", kindCluster)
 	}
 
-	By("deploying the OpenBao dev server")
-	mustRun("kubectl", "apply", "-f", "hack/e2e/openbao-dev.yaml", "-f", "test/e2e/testdata/openbao-auth.yaml")
-	mustRun("kubectl", "-n", openbaoNamespace, "rollout", "status", "deployment/openbao", "--timeout=180s")
+	By("deploying OpenBao, which initializes kubernetes auth and the tenant policy itself")
+	mustRun("kubectl", "apply", "-f", "hack/e2e/openbao.yaml", "-f", "test/e2e/testdata/openbao-auth.yaml")
+	mustRun("kubectl", "-n", openbaoNamespace, "rollout", "status", "statefulset/openbao", "--timeout=300s")
+	Eventually(activeNodes).Should(Equal(1))
 
-	By("configuring kubernetes auth and the tenant policy in OpenBao")
-	bao("auth", "enable", "kubernetes")
-	bao("write", "auth/kubernetes/config", "kubernetes_host=https://kubernetes.default.svc")
-	policy, err := os.ReadFile(projectPath("test/e2e/testdata/tenant-policy.hcl"))
-	Expect(err).NotTo(HaveOccurred())
-	baoStdin(string(policy), "policy", "write", "e2e-tenant", "-")
-	bao("write", "auth/kubernetes/role/e2e-tenant",
-		"bound_service_account_names=obco-tenant",
-		"bound_service_account_namespaces="+tenantNamespace,
-		"audience=openbao",
-		"token_policies=e2e-tenant",
-		"token_ttl=10m")
+	By("logging in to OpenBao with the admin AppRole")
+	baoToken = strings.TrimSpace(mustRun("kubectl", "-n", openbaoNamespace, "exec", "statefulset/openbao", "--",
+		"sh", "-c", `BAO_ADDR=http://127.0.0.1:8200 bao write -field=token auth/approle/login role_id="$E2E_ROLE_ID" secret_id="$E2E_SECRET_ID"`))
 
 	By("installing the Helm chart")
 	repo, tag := splitImage(managerImage)
@@ -93,7 +86,7 @@ var _ = AfterSuite(func() {
 	By("removing the chart and OpenBao")
 	runBestEffort(helmBinary, "uninstall", releaseName, "--namespace", operatorNamespace, "--wait", "--timeout", "5m")
 	runBestEffort("kubectl", "delete", "namespace", operatorNamespace, "--ignore-not-found", "--wait", "--timeout=2m")
-	runBestEffort("kubectl", "delete", "-f", "hack/e2e/openbao-dev.yaml", "-f", "test/e2e/testdata/openbao-auth.yaml",
+	runBestEffort("kubectl", "delete", "-f", "hack/e2e/openbao.yaml", "-f", "test/e2e/testdata/openbao-auth.yaml",
 		"--ignore-not-found", "--wait", "--timeout=2m")
 })
 

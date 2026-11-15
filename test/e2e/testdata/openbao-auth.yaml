@@ -1,4 +1,4 @@
-# Lets the OpenBao dev server review ServiceAccount tokens for its kubernetes auth method.
+# Lets OpenBao review ServiceAccount tokens for its kubernetes auth methods.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:

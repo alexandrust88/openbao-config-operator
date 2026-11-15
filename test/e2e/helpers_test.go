@@ -59,10 +59,29 @@ func mustRun(name string, args ...string) string {
 	return out
 }
 
-// baoArgs runs the bao CLI inside the OpenBao dev pod with the fixed dev root token.
+// baoToken is the admin token of the AppRole that OpenBao creates when it initializes itself.
+var baoToken string
+
+// baoArgs runs the bao CLI inside an OpenBao pod with the admin token.
 func baoArgs(args ...string) []string {
-	return append([]string{"-n", openbaoNamespace, "exec", "-i", "deployment/openbao", "--",
-		"env", "BAO_ADDR=http://127.0.0.1:8200", "BAO_TOKEN=root", "bao"}, args...)
+	return append([]string{"-n", openbaoNamespace, "exec", "-i", "statefulset/openbao", "--",
+		"env", "BAO_ADDR=http://127.0.0.1:8200", "BAO_TOKEN=" + baoToken, "bao"}, args...)
+}
+
+// activeNodes counts the OpenBao pods that report themselves as the raft leader.
+func activeNodes() (int, error) {
+	active := 0
+	for i := range openbaoReplicas {
+		out, err := run("kubectl", "-n", openbaoNamespace, "exec", fmt.Sprintf("openbao-%d", i), "--",
+			"env", "BAO_ADDR=http://127.0.0.1:8200", "bao", "read", "-field=is_self", "sys/leader")
+		if err != nil {
+			return 0, err
+		}
+		if strings.TrimSpace(out) == "true" {
+			active++
+		}
+	}
+	return active, nil
 }
 
 func baoRun(args ...string) (string, error) {
@@ -73,11 +92,6 @@ func bao(args ...string) string {
 	out, err := baoRun(args...)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 	return out
-}
-
-func baoStdin(stdin string, args ...string) {
-	_, err := runStdin(stdin, "kubectl", baoArgs(args...)...)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 }
 
 // splitImage splits repo:tag; a registry port is not mistaken for the tag.

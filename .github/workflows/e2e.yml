@@ -52,7 +52,7 @@ jobs:
         run: make test-e2e-run
 
       # Reuses the OpenBao and chart that the suite keeps with E2E_KEEP.
-      - name: Apply the live kit root overlay
+      - name: Apply the live kit in every connection mode
         run: |
           command -v htpasswd || { sudo apt-get update && sudo apt-get install -y --no-install-recommends apache2-utils; }
           test/livekit/kind.sh

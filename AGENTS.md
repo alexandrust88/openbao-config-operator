@@ -147,7 +147,7 @@ make test-e2e              # kind and Docker; creates and deletes a local kind c
 - A namespaced connection never logs in with the operator's own ServiceAccount.
 - Never `RequeueAfter` together with a non-nil error.
 - Pinned OpenBao: `BAO_VERSION` in the Makefile and the image tag and digest in
-  `hack/e2e/openbao-dev.yaml` move together, never to a mutable tag. No version-branching shims
+  `hack/e2e/openbao.yaml` move together, never to a mutable tag. No version-branching shims
   in adapters; a missing feature reports `Unsupported`.
 - Keep live tests narrow: each test starts its own `bao server -dev` on a free local port, skips
   cleanly when `bao` or the envtest binaries are absent, and stops the server on cleanup. Add an

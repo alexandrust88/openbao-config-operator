@@ -1,0 +1,406 @@
+# Three-node OpenBao on raft storage for the kind e2e tests only, auto-unsealed with a static key and initialized
+# declaratively by the first pod. The seal key, AppRole ids and token in the Secret are fixed test values.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openbao
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openbao-e2e
+  namespace: openbao
+type: Opaque
+stringData:
+  seal-key: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+  role-id: e2e-admin-role-id
+  secret-id: e2e-admin-secret-id-not-real
+  token: e2e-admin-token-not-real
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openbao
+  namespace: openbao
+data:
+  server.hcl: |
+    disable_mlock = true
+    ui = false
+    unsafe_allow_api_audit_creation = true
+
+    listener "tcp" {
+      address         = "0.0.0.0:8200"
+      cluster_address = "0.0.0.0:8201"
+      tls_disable     = true
+    }
+
+    storage "raft" {
+      path = "/openbao/data"
+      retry_join {
+        leader_api_addr = "http://openbao-0.openbao-internal:8200"
+      }
+      retry_join {
+        leader_api_addr = "http://openbao-1.openbao-internal:8200"
+      }
+      retry_join {
+        leader_api_addr = "http://openbao-2.openbao-internal:8200"
+      }
+    }
+
+    seal "static" {
+      current_key_id = "e2e-1"
+      current_key    = "env://BAO_SEAL_KEY"
+    }
+  init.hcl: |
+    initialize "admin" {
+      request "admin-policy" {
+        operation = "update"
+        path      = "sys/policies/acl/admin"
+        data = {
+          policy = <<-EOT
+            path "*" {
+              capabilities = ["create", "read", "update", "patch", "delete", "list", "sudo"]
+            }
+          EOT
+        }
+      }
+      request "approle-mount" {
+        operation = "update"
+        path      = "sys/auth/approle"
+        data      = { type = "approle" }
+      }
+      request "approle-role" {
+        operation = "update"
+        path      = "auth/approle/role/admin"
+        data      = { token_policies = ["admin"], token_ttl = "4h", token_max_ttl = "8h" }
+      }
+      request "approle-role-id" {
+        operation = "update"
+        path      = "auth/approle/role/admin/role-id"
+        data = {
+          role_id = { eval_type = "string", eval_source = "env", env_var = "E2E_ROLE_ID", require_present = true }
+        }
+      }
+      request "approle-secret-id" {
+        operation = "update"
+        path      = "auth/approle/role/admin/custom-secret-id"
+        data = {
+          secret_id = { eval_type = "string", eval_source = "env", env_var = "E2E_SECRET_ID", require_present = true }
+        }
+      }
+      request "admin-token" {
+        operation = "update"
+        path      = "auth/token/create-orphan"
+        data = {
+          id       = { eval_type = "string", eval_source = "env", env_var = "E2E_TOKEN", require_present = true }
+          policies = ["admin"]
+        }
+      }
+    }
+    
+    initialize "kubernetes" {
+      request "mount" {
+        operation = "update"
+        path      = "sys/auth/kubernetes"
+        data      = { type = "kubernetes" }
+      }
+      request "config" {
+        operation = "update"
+        path      = "auth/kubernetes/config"
+        data      = { kubernetes_host = "https://kubernetes.default.svc" }
+      }
+      request "team-a-policy" {
+        operation = "update"
+        path      = "sys/policies/acl/team-a"
+        data = {
+          policy = <<-EOT
+            path "team-a/*" {
+              capabilities = ["create", "read", "update", "patch", "delete", "list", "sudo"]
+            }
+          EOT
+        }
+      }
+      request "e2e-tenant-policy" {
+        operation = "update"
+        path      = "sys/policies/acl/e2e-tenant"
+        data = {
+          policy = <<-EOT
+            path "sys/policies/acl/e2e-*" {
+              capabilities = ["create", "read", "update", "delete"]
+            }
+            path "sys/policies/password/e2e-*" {
+              capabilities = ["create", "read", "update", "delete"]
+            }
+            path "secret/data/e2e/*" {
+              capabilities = ["create", "read", "update", "delete"]
+            }
+            path "secret/metadata/e2e/*" {
+              capabilities = ["read", "delete"]
+            }
+          EOT
+        }
+      }
+      request "root-role" {
+        operation = "update"
+        path      = "auth/kubernetes/role/openbao-config-operator-root"
+        data = {
+          bound_service_account_names      = ["openbao-config-operator-root"]
+          bound_service_account_namespaces = ["openbao-live"]
+          audience                         = "openbao-config-operator"
+          token_policies                   = ["admin"]
+          token_ttl                        = "1h"
+        }
+      }
+      request "tenant-role" {
+        operation = "update"
+        path      = "auth/kubernetes/role/openbao-config-operator-team-a"
+        data = {
+          bound_service_account_names      = ["openbao-config-operator-team-a"]
+          bound_service_account_namespaces = ["openbao-live"]
+          audience                         = "openbao-config-operator"
+          token_policies                   = ["team-a"]
+          token_ttl                        = "1h"
+        }
+      }
+      request "operator-role" {
+        operation = "update"
+        path      = "auth/kubernetes/role/openbao-config-operator"
+        data = {
+          bound_service_account_names      = ["openbao-config-operator"]
+          bound_service_account_namespaces = ["openbao-config-operator"]
+          audience                         = "openbao-config-operator"
+          token_policies                   = ["admin"]
+          token_ttl                        = "1h"
+        }
+      }
+      request "e2e-tenant-role" {
+        operation = "update"
+        path      = "auth/kubernetes/role/e2e-tenant"
+        data = {
+          bound_service_account_names      = ["obco-tenant"]
+          bound_service_account_namespaces = ["e2e-tenant"]
+          audience                         = "openbao"
+          token_policies                   = ["e2e-tenant"]
+          token_ttl                        = "10m"
+        }
+      }
+    }
+    
+    initialize "jwt" {
+      request "mount" {
+        operation = "update"
+        path      = "sys/auth/jwt-k8s"
+        data      = { type = "jwt" }
+      }
+      request "role" {
+        operation = "update"
+        path      = "auth/jwt-k8s/role/openbao-config-operator"
+        data = {
+          role_type       = "jwt"
+          user_claim      = "sub"
+          bound_audiences = ["openbao-config-operator"]
+          bound_claims = {
+            sub = [
+              "system:serviceaccount:openbao-live:openbao-config-operator-root",
+              "system:serviceaccount:openbao-config-operator:openbao-config-operator",
+            ]
+          }
+          token_policies = ["admin"]
+          token_ttl      = "1h"
+        }
+      }
+      # The kubernetes provider fetches the key set from the API server at write time, which works in a pod only.
+      request "config" {
+        operation     = "update"
+        path          = "auth/jwt-k8s/config"
+        data          = { provider_config = { provider = "kubernetes" } }
+        allow_failure = true
+      }
+    }
+    
+    initialize "namespaces" {
+      request "secret-mount" {
+        operation = "update"
+        path      = "sys/mounts/secret"
+        data      = { type = "kv", options = { version = "2" } }
+      }
+      request "team-a" {
+        operation = "update"
+        path      = "sys/namespaces/team-a"
+      }
+      request "team-b" {
+        operation = "update"
+        path      = "sys/namespaces/team-b"
+      }
+      request "team-a-admin-policy" {
+        operation = "update"
+        path      = "team-a/sys/policies/acl/admin"
+        data = {
+          policy = <<-EOT
+            path "*" {
+              capabilities = ["create", "read", "update", "patch", "delete", "list", "sudo"]
+            }
+          EOT
+        }
+      }
+      request "team-a-kubernetes-mount" {
+        operation = "update"
+        path      = "team-a/sys/auth/kubernetes"
+        data      = { type = "kubernetes" }
+      }
+      request "team-a-kubernetes-config" {
+        operation = "update"
+        path      = "team-a/auth/kubernetes/config"
+        data      = { kubernetes_host = "https://kubernetes.default.svc" }
+      }
+      request "team-a-child-role" {
+        operation = "update"
+        path      = "team-a/auth/kubernetes/role/openbao-config-operator"
+        data = {
+          bound_service_account_names      = ["openbao-config-operator-team-a"]
+          bound_service_account_namespaces = ["openbao-live"]
+          audience                         = "openbao-config-operator"
+          token_policies                   = ["admin"]
+          token_ttl                        = "1h"
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: openbao
+  namespace: openbao
+  labels:
+    app.kubernetes.io/name: openbao
+spec:
+  serviceName: openbao-internal
+  replicas: 3
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openbao
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: openbao
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: openbao
+          image: ghcr.io/openbao/openbao:2.7.2@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              # Only the first pod loads the initialize stanzas: every node that loads them initializes its own cluster.
+              if [ "${BAO_RAFT_NODE_ID##*-}" = 0 ]; then set -- -config=/openbao/config/init.hcl; fi
+              exec bao server -config=/openbao/config/server.hcl "$@"
+          env:
+            - name: BAO_RAFT_NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: BAO_API_ADDR
+              value: http://$(POD_IP):8200
+            - name: BAO_CLUSTER_ADDR
+              value: https://$(BAO_RAFT_NODE_ID).openbao-internal:8201
+            - name: BAO_SEAL_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openbao-e2e
+                  key: seal-key
+            - name: E2E_ROLE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: openbao-e2e
+                  key: role-id
+            - name: E2E_SECRET_ID
+              valueFrom:
+                secretKeyRef:
+                  name: openbao-e2e
+                  key: secret-id
+            - name: E2E_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: openbao-e2e
+                  key: token
+          ports:
+            - name: http
+              containerPort: 8200
+            - name: cluster
+              containerPort: 8201
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health?standbyok=true
+              port: http
+            periodSeconds: 2
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /openbao/config
+              readOnly: true
+            - name: data
+              mountPath: /openbao/data
+      volumes:
+        - name: config
+          configMap:
+            name: openbao
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openbao-internal
+  namespace: openbao
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: openbao
+  ports:
+    - name: http
+      port: 8200
+      targetPort: http
+    - name: cluster
+      port: 8201
+      targetPort: cluster
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openbao
+  namespace: openbao
+spec:
+  selector:
+    app.kubernetes.io/name: openbao
+  ports:
+    - name: http
+      port: 8200
+      targetPort: http

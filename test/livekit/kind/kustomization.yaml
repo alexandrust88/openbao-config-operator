@@ -1,12 +1,16 @@
-# The root/full overlay against the in-cluster OpenBao dev server of the kind e2e job (hack/e2e/openbao-dev.yaml),
-# which listens on plain HTTP.
+# The overlays of every connection mode (root, root-to-child and optional through all/full, child and
+# child-connection-root-login) against the in-cluster OpenBao of the kind e2e job (hack/e2e/openbao.yaml), which
+# listens on plain HTTP.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../../../examples/live/overlays/root/full
+  - ../../../examples/live/overlays/all/full
+  - ../../../examples/live/overlays/child/full
+  - ../../../examples/live/overlays/child-connection-root-login/full
 patches:
   - target:
       kind: OpenBaoServer
+      name: .*-(openbao-server|conn-server-secret-ca)
     patch: |-
       - op: replace
         path: /spec/address

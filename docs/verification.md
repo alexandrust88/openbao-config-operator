@@ -61,5 +61,5 @@ Generate with controller-gen scoped to your group, as described in [AGENTS.md](.
 - Live tests use a local `bao server -dev` or the disposable kind cluster. Never point them at a
   shared or production OpenBao or Kubernetes cluster.
 - Bumping the pinned OpenBao release (`BAO_VERSION` in the Makefile and the image in
-  `hack/e2e/openbao-dev.yaml`): run `make test-integration` and record any changed wire shape in
+  `hack/e2e/openbao.yaml`): run `make test-integration` and record any changed wire shape in
   the affected adapter tests.
