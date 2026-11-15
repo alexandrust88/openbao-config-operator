@@ -31,6 +31,8 @@ for file in install.yaml crds.yaml; do [ -f "$dist/$file" ] || die "$dist/$file 
 for pattern in '*.spdx.json' '*.cdx.json'; do
   compgen -G "$dist/$pattern" >/dev/null || die "$dist has no $pattern SBOM"
 done
+# ocm resolves input paths against the constructor's directory, not the working directory.
+dist=$(cd "$dist" && pwd)
 
 # The subst templater leaves an unset variable empty; every value is passed explicitly and checked above.
 "$ocm" add componentversions --create --force --file "$ctf" "$repo_root/release/component-constructor.yaml" \
@@ -59,7 +61,7 @@ jq -e --arg version "$VERSION" --arg image "$IMAGE@$IMAGE_DIGEST" --arg chart "$
 ref="${OCM_REPO#http://}/component-descriptors/$name:$VERSION"
 if out=$("$crane" digest "$ref" 2>&1); then
   die "$ref already exists ($out); component versions are immutable, tag a new version"
-elif ! grep -qE 'MANIFEST_UNKNOWN|NAME_UNKNOWN|404' <<<"$out"; then
+elif ! grep -qE 'MANIFEST_UNKNOWN|NAME_UNKNOWN|DENIED|404' <<<"$out"; then
   die "cannot check whether $ref exists: $out"
 fi
 "$ocm" transfer ctf "$ctf" "$OCM_REPO" >&2
