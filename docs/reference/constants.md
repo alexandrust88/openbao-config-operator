@@ -71,7 +71,7 @@ Creates, adoptions, spec changes and changed input Secrets are not charged; the
 | value | default | source | effect |
 |-------|---------|--------|--------|
 | `clusterIDTTL` | 1 min | `internal/openbao/clusterid.go:14` | how long a client trusts the cluster id from `sys/health`; it is read again past the cache right before a create, a recreate and a delete |
-| `--cluster-id` | the UID of the `kube-system` Namespace | `cmd/main.go:117`, `:174-176`, `:256-262` | written into ownership markers. A rebuilt Kubernetes cluster has a new `kube-system` UID, so markers written before the rebuild name another cluster and marked kinds (entities, groups, namespaces) report `Conflict`; a fixed `--cluster-id` survives the rebuild |
+| `--cluster-id` | the UID of the `kube-system` Namespace | `cmd/main.go:117`, `:178-180`, `:260-266` | written into ownership markers. A rebuilt Kubernetes cluster has a new `kube-system` UID, so markers written before the rebuild name another cluster and marked kinds (entities, groups, namespaces) report `Conflict`; a fixed `--cluster-id` survives the rebuild |
 | `probeInterval` | 1 min plus up to 20 % | `internal/controller/core/connection_controller.go:36`, `:189`; `internal/controller/core/server_controller.go:71` | re-check of every `OpenBaoServer` and connection |
 | namespace retry | 2 s to 30 s | `internal/controller/core/connection_controller.go:45-46` | retry while a connection's OpenBao namespace does not exist yet |
 | `inUseRecheck` | 5 s | `internal/controller/core/inuse.go:28` | recheck of a connection or server held by its in-use finalizer |
@@ -90,3 +90,4 @@ Creates, adoptions, spec changes and changed input Secrets are not charged; the
 | `--max-concurrent-reconciles` | 4 | `cmd/main.go:108` | workers per kind |
 | `--max-concurrent-reconciles-high-volume` | 8 | `cmd/main.go:109` | workers of the kinds that usually have many objects (roles, policies, entities, groups) |
 | `--leader-elect` | `true` | `cmd/main.go:94` | creates are serialised only within one process, so several replicas need it |
+| `GracefulShutdownTimeout` | 5 s | `cmd/main.go:164-165` | after SIGTERM in-flight reconciles get 5 s to return, within the chart's 10 s `terminationGracePeriodSeconds`; the leader then releases its lease (`LeaderElectionReleaseOnCancel`), so the next pod takes over without waiting for the lease to expire |

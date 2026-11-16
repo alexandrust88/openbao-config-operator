@@ -159,6 +159,10 @@ func run() error {
 		LeaderElectionNamespace: operatorNamespace,
 		Cache:                   cacheOpts,
 		Client:                  clientOptions(),
+
+		// Within the pod's 10 s grace period, so the lease is released before SIGKILL; main exits once Start returns.
+		LeaderElectionReleaseOnCancel: true,
+		GracefulShutdownTimeout:       new(5 * time.Second),
 	})
 	if err != nil {
 		return fmt.Errorf("create manager: %w", err)

@@ -68,7 +68,7 @@ The chart then moves the Secret, ConfigMap, token and Event rules, and every rul
 managed kind with its `status` and `finalizers`, into a Role per listed namespace plus the release
 namespace (`templates/rbac/manager.yaml:30-58`). The ClusterRole keeps only the cluster-scoped
 kinds (`openbaoservers`, `clusteropenbaoconnections`), Namespace reads and the OIDC discovery URL.
-The manager caches only those namespaces and lists live only inside them (`cmd/main.go:228-240`,
+The manager caches only those namespaces and lists live only inside them (`cmd/main.go:232-244`,
 `internal/engine/ownership.go:326-333`). Resources in other namespaces are not reconciled, and the
 manager cannot read or patch them. Adding a tenant means a chart upgrade, which is the point:
 enrolment becomes a reviewed change.
@@ -577,7 +577,7 @@ spec:
 | setting | value | why |
 |---------|-------|-----|
 | `apiServerAudiences` | every audience in the API server's `--api-audiences` | the operator always refuses the built-in audiences (including `rke2` and `k3s`) and the discovered issuer (`internal/connection/audiences.go:17-23,29-54`), but not other custom audiences |
-| `extraArgs: ["--cluster-id=<name>"]` | a stable name per cluster | the ownership marker carries it, so a second cluster writing the same OpenBao namespace gets `Conflict`; the default is the `kube-system` UID, which changes when a cluster is rebuilt (`cmd/main.go:174-176`) |
+| `extraArgs: ["--cluster-id=<name>"]` | a stable name per cluster | the ownership marker carries it, so a second cluster writing the same OpenBao namespace gets `Conflict`; the default is the `kube-system` UID, which changes when a cluster is rebuilt (`cmd/main.go:178-180`) |
 | `pluginKinds.enabled` | `false` unless you use those plugins | fewer CRDs, fewer controllers, smaller RBAC |
 | `metrics.certSecret` and `serviceMonitor.tlsConfig` | a certificate from your CA, and that CA and `serverName` in the ServiceMonitor | the default ServiceMonitor skips TLS verification of the self-signed certificate (`values.yaml:104-105`); with `metrics.certSecret` the chart refuses to render without `ca` (or `caFile`) and `serverName`, or with `insecureSkipVerify` |
 | `--write-budget-per-minute` | default 60; lower for a small OpenBao | caps drift repairs and default-change rewrites per server during upgrades; changed write-only inputs (Secret or hash-key rotation) are exempt and paced only by `rateLimit` |

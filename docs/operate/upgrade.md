@@ -87,7 +87,8 @@ kubectl apply --server-side -f crds.yaml
 
 ## Upgrading to 0.3.1
 
-v0.3.1 changes no manager code or CRD. The chart's values schema is stricter, so `helm upgrade` fails on values
+v0.3.1 changes no CRD. The manager now releases its leader election lease when it stops, so a rollout hands
+over at once. The chart's values schema is stricter, so `helm upgrade` fails on values
 that earlier charts accepted:
 
 - `securityContext.privileged: true`, `allowPrivilegeEscalation: true`, `runAsNonRoot: false`, entries in

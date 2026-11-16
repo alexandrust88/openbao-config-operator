@@ -31,6 +31,9 @@ upgrade ([upgrading to 0.3.1](docs/operate/upgrade.md#upgrading-to-031)).
 
 ### Fixes
 
+- The manager stops within the pod's 10 s termination grace period (graceful shutdown 5 s, was 30 s) and
+  releases the leader election lease on shutdown, so a rollout hands over leadership at once instead of waiting
+  for the lease to expire ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
 - The alerts' `runbook_url` points at the documentation site ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
 - `hack/release/verify-release.sh` stops with "needs Helm v4" instead of a key parse error under Helm 3, and the
   release notes link the verification guide ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
