@@ -384,3 +384,43 @@ spec:
   policyRefs:
     - name: cert-device-read
   tokenType: default
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: CertAuthCRL
+metadata:
+  name: cert-crl-url
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: cert
+  name: team_ca
+  url: https://example.com/ca.crl
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: CertAuthCRL
+metadata:
+  name: cert-crl-pem
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: cert
+  name: team_pem
+  crl: |
+    -----BEGIN X509 CRL-----
+    MIG3MGACAQEwCgYIKoZIzj0EAwIwABcNMjYxMTE2MTAzODQ2WhcNMjYxMTE3MTAz
+    ODQ2WqAvMC0wHwYDVR0jBBgwFoAU7xwkWwOR9+o7qHZ58wPaWG8ARyMwCgYDVR0U
+    BAMCAQEwCgYIKoZIzj0EAwIDRwAwRAIgFWHBRwqJ8at32iHshO0zV4jtilTY598l
+    UC40LlYDsuoCIA70OMlKXSLm8DnTkuUcmQwDbc1cr5twjFkUn8MSfzlp
+    -----END X509 CRL-----

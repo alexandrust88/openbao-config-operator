@@ -221,15 +221,19 @@ def field_table(schema):
             walk(schema["properties"][name], name, name in needed, rows)
     lines = [
         "<table>",
-        "<thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Validation</th><th>Description</th></tr></thead>",
+        "<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th><th>Validation</th></tr></thead>",
         "<tbody>",
     ]
     for row in rows:
-        kind = esc(row["type"]) + ("<br><strong>required</strong>" if row["required"] else "")
+        kind = esc(row["type"])
+        required = "yes" if row["required"] else "no"
         default = code(row["default"]) if row["default"] else ""
+        validation = "<br>".join(row["validation"])
+        if validation:
+            validation = f"<details><summary>Constraints</summary>{validation}</details>"
         lines.append(
-            f"<tr><td>{code(row['path'])}</td><td>{kind}</td><td>{default}</td>"
-            f"<td>{'<br>'.join(row['validation'])}</td><td>{describe(row['description'])}</td></tr>"
+            f"<tr><td>{code(row['path'])}</td><td>{kind}</td><td>{required}</td><td>{default}</td>"
+            f"<td>{describe(row['description'])}</td><td>{validation}</td></tr>"
         )
     lines += ["</tbody>", "</table>"]
     return "\n".join(lines)
@@ -261,7 +265,10 @@ def kind_section(crd, root=ROOT):
             out += [f"<div>{description}</div>", ""]
         if version.get("storage"):
             out += example_section(root, crd, heading)
-        out += [f"{heading} Fields", ""]
+            notes = root / "hack/docs/resource-notes" / f"{names['kind'].lower()}.md"
+            if notes.is_file():
+                out += [f"{heading} Behaviour and permissions", "", notes.read_text().strip(), ""]
+        out += [f"{heading} Fields", "", "Defaults below are CRD schema defaults. A blank cell does not imply zero, false or an empty value; see the field description for omission behaviour. Required fields inside an optional object apply only when that object is set.", ""]
         if rules(schema):
             out += ["<div><strong>Object validation:</strong><br>" + "<br>".join(rules(schema)) + "</div>", ""]
         out += [field_table(schema), ""]

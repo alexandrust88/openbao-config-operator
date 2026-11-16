@@ -14,6 +14,54 @@ resources:
     crdVersion: v1
     namespaced: true
   domain: openbaoconfig.io
+  group: secrets
+  kind: TransitKeyConfig
+  path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: openbaoconfig.io
+  group: secrets
+  kind: TransitCacheConfig
+  path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: openbaoconfig.io
+  group: secrets
+  kind: PKIKeyConfig
+  path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: openbaoconfig.io
+  group: secrets
+  kind: PKICELRole
+  path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: openbaoconfig.io
+  group: secrets
+  kind: KVSecretMetadata
+  path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: openbaoconfig.io
+  group: auth
+  kind: CertAuthCRL
+  path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: openbaoconfig.io
   group: access
   kind: AccessGrant
   path: github.com/alexandrust88/openbao-config-operator/api/access/v1alpha1

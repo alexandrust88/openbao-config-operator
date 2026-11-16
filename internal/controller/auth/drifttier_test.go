@@ -24,6 +24,7 @@ func TestAuthKindsAreAccessCritical(t *testing.T) {
 		"AzureAuthConfigAdapter":        AzureAuthConfigAdapter{},
 		"AzureAuthRoleAdapter":          AzureAuthRoleAdapter{},
 		"CertAuthConfigAdapter":         CertAuthConfigAdapter{},
+		"CertAuthCRLAdapter":            CertAuthCRLAdapter{},
 		"CertAuthRoleAdapter":           CertAuthRoleAdapter{},
 		"CFAuthConfigAdapter":           CFAuthConfigAdapter{},
 		"CFAuthRoleAdapter":             CFAuthRoleAdapter{},

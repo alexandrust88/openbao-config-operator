@@ -67,8 +67,8 @@ are the better choice.
 
 ## Highlights
 
-- **68 built-in kinds** (64 typed OpenBao kinds plus the server, connection and `OpenBaoEndpoint` kinds), every one
-  reconciled against a real `bao server -dev` in CI ([kind catalogue](docs/kinds.md)). Built-in kinds cover 87.0%
+- **74 built-in kinds** (70 typed OpenBao kinds plus the server, two connection kinds and `OpenBaoEndpoint`), every one
+  reconciled against a real `bao server -dev` in CI ([kind catalogue](docs/kinds.md)). Built-in kinds cover 92.2%
   of the configuration paths of OpenBao 2.7.2, measured per release in CI ([API coverage](docs/api-coverage.md)).
   52 further kinds for external plugins are experimental, off by default and not run against a server.
 - **`OpenBaoEndpoint` escape hatch** for every path without a typed kind, with the same drift, ownership and

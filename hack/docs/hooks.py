@@ -91,7 +91,8 @@ def on_config(config):
     if not (docs / "index.md").exists():
         generated["index.md"] = (ROOT / "README.md").read_text()
         sources["index.md"] = "README.md"
-    if not (docs / "adr/index.md").exists():
+    # README.md is the hand-written index; the generated status table only fills in when it is absent.
+    if not (docs / "adr/index.md").exists() and not (docs / "adr/README.md").exists():
         generated["adr/index.md"] = adr_index(docs)
     generated.update(apiref.render(ROOT / "config/crd/bases"))
     generated.update(examplesref.pages(ROOT))
@@ -100,9 +101,23 @@ def on_config(config):
 
 
 def expand(nav, docs):
-    """Turn a nav value ending in '/' into the index page plus every other page of that directory."""
+    """Turn a nav value ending in '/' into the index page plus every other page of that directory.
+
+    A directory entry inside a list is flattened into that list, and a page already named there is kept once.
+    """
     if isinstance(nav, list):
-        return [expand(item, docs) for item in nav]
+        flat = []
+        seen = set()
+        for item in nav:
+            expanded = expand(item, docs)
+            items = expanded if isinstance(expanded, list) else [expanded]
+            for page in items:
+                if isinstance(page, str):
+                    if page in seen:
+                        continue
+                    seen.add(page)
+                flat.append(page)
+        return flat
     if isinstance(nav, dict):
         return {title: expand(value, docs) for title, value in nav.items()}
     if isinstance(nav, str) and nav.endswith("/"):

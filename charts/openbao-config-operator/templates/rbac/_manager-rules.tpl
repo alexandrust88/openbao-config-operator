@@ -117,6 +117,7 @@
     - azureauthconfigs
     - azureauthroles
     - certauthconfigs
+    - certauthcrls
     - certauthroles
     - cfauthconfigs
     - cfauthroles
@@ -165,6 +166,7 @@
     - azureauthconfigs/finalizers
     - azureauthroles/finalizers
     - certauthconfigs/finalizers
+    - certauthcrls/finalizers
     - certauthroles/finalizers
     - cfauthconfigs/finalizers
     - cfauthroles/finalizers
@@ -209,6 +211,7 @@
     - azureauthconfigs/status
     - azureauthroles/status
     - certauthconfigs/status
+    - certauthcrls/status
     - certauthroles/status
     - cfauthconfigs/status
     - cfauthroles/status
@@ -359,6 +362,7 @@
     - kubernetessecretsconfigs
     - kubernetessecretsroles
     - kvconfigs
+    - kvsecretmetadata
     - kvsecrets
     - ldapsecretsconfigs
     - ldapsecretsdynamicroles
@@ -369,8 +373,10 @@
     - nomadsecretsroles
     - pkiacmeconfigs
     - pkiautotidies
+    - pkicelroles
     - pkiconfigs
     - pkiissuers
+    - pkikeyconfigs
     - pkikeys
     - pkiroles
     - quaysecretsconfigs
@@ -384,6 +390,8 @@
     - terraformcloudsecretsconfigs
     - terraformcloudsecretsroles
     - totpkeys
+    - transitcacheconfigs
+    - transitkeyconfigs
     - transitkeys
   verbs:
     - get
@@ -412,6 +420,7 @@
     - kubernetessecretsconfigs/finalizers
     - kubernetessecretsroles/finalizers
     - kvconfigs/finalizers
+    - kvsecretmetadata/finalizers
     - kvsecrets/finalizers
     - ldapsecretsconfigs/finalizers
     - ldapsecretsdynamicroles/finalizers
@@ -422,8 +431,10 @@
     - nomadsecretsroles/finalizers
     - pkiacmeconfigs/finalizers
     - pkiautotidies/finalizers
+    - pkicelroles/finalizers
     - pkiconfigs/finalizers
     - pkiissuers/finalizers
+    - pkikeyconfigs/finalizers
     - pkikeys/finalizers
     - pkiroles/finalizers
     - quaysecretsconfigs/finalizers
@@ -437,6 +448,8 @@
     - terraformcloudsecretsconfigs/finalizers
     - terraformcloudsecretsroles/finalizers
     - totpkeys/finalizers
+    - transitcacheconfigs/finalizers
+    - transitkeyconfigs/finalizers
     - transitkeys/finalizers
   verbs:
     - update
@@ -461,6 +474,7 @@
     - kubernetessecretsconfigs/status
     - kubernetessecretsroles/status
     - kvconfigs/status
+    - kvsecretmetadata/status
     - kvsecrets/status
     - ldapsecretsconfigs/status
     - ldapsecretsdynamicroles/status
@@ -471,8 +485,10 @@
     - nomadsecretsroles/status
     - pkiacmeconfigs/status
     - pkiautotidies/status
+    - pkicelroles/status
     - pkiconfigs/status
     - pkiissuers/status
+    - pkikeyconfigs/status
     - pkikeys/status
     - pkiroles/status
     - quaysecretsconfigs/status
@@ -486,6 +502,8 @@
     - terraformcloudsecretsconfigs/status
     - terraformcloudsecretsroles/status
     - totpkeys/status
+    - transitcacheconfigs/status
+    - transitkeyconfigs/status
     - transitkeys/status
   verbs:
     - get

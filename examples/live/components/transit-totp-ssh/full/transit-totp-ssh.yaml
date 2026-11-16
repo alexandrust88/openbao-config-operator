@@ -933,3 +933,35 @@ spec:
   allowedUsers:
     - ubuntu
   algorithmSigner: rsa-sha2-512
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitCacheConfig
+metadata:
+  name: transit-cache
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  size: 100
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKeyConfig
+metadata:
+  name: transit-key-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: transit
+  disableUpsert: true

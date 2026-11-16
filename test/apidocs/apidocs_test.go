@@ -123,7 +123,12 @@ func checkDescription(path, desc string, goNames map[string]bool, problems *[]st
 			*problems = append(*problems, fmt.Sprintf("%s: description contains Go syntax %q", path, s))
 		}
 	}
-	for _, w := range word.FindAllString(placeholder.ReplaceAllString(desc, ""), -1) {
+	userSyntax := placeholder.ReplaceAllString(desc, "")
+	// PKI CEL uses this OpenBao constructor field, which is also a Go API field name.
+	if strings.HasPrefix(path, "PKICELRole") {
+		userSyntax = strings.ReplaceAll(userSyntax, "PKIX.Name{CommonName:", "PKIX.Name{")
+	}
+	for _, w := range word.FindAllString(userSyntax, -1) {
 		if goNames[w] {
 			*problems = append(*problems, fmt.Sprintf("%s: description contains Go identifier %q", path, w))
 		}

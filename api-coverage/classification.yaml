@@ -44,7 +44,7 @@
 "/auth/{approle_mount_path}/tidy/secret-id": {action: "tidies expired secret IDs"}
 "/auth/{cert_mount_path}/certs/{name}": {typed: "CertAuthRole"}
 "/auth/{cert_mount_path}/config": {typed: "CertAuthConfig"}
-"/auth/{cert_mount_path}/crls/{name}": {endpoint-only: "no typed kind yet: CRL used by cert auth"}
+"/auth/{cert_mount_path}/crls/{name}": {typed: "CertAuthCRL"}
 "/auth/{cert_mount_path}/login": {action: "login"}
 "/auth/{jwt_mount_path}/cel/login": {action: "login"}
 "/auth/{jwt_mount_path}/cel/role/{name}": {typed: "JWTCELRole"}
@@ -134,9 +134,9 @@
 "/sys/control-group/authorize": {action: "control group request or authorisation"}
 "/sys/control-group/request": {action: "control group request or authorisation"}
 "/sys/decode-token": {action: "decodes an encoded token"}
-"/sys/external-keys/configs/{config}": {endpoint-only: "unreviewed"}
-"/sys/external-keys/configs/{config}/keys/{key}": {endpoint-only: "unreviewed"}
-"/sys/external-keys/configs/{config}/keys/{key}/grants/{mount}": {endpoint-only: "unreviewed"}
+"/sys/external-keys/configs/{config}": {endpoint-only: "needs a KMS plugin; bao server -dev does not load one"}
+"/sys/external-keys/configs/{config}/keys/{key}": {endpoint-only: "needs a KMS plugin; bao server -dev does not load one"}
+"/sys/external-keys/configs/{config}/keys/{key}/grants/{mount}": {endpoint-only: "needs a KMS plugin; bao server -dev does not load one"}
 "/sys/generate-root": {action: "root token generation"}
 "/sys/generate-root-token/attempt": {action: "root token generation"}
 "/sys/generate-root-token/update": {action: "root token generation"}
@@ -223,7 +223,7 @@
 "/{kv_mount_path}/{path}": {typed: "KVSecret"}
 "/{ldap_mount_path}/config": {typed: "LDAPSecretsConfig"}
 "/{ldap_mount_path}/library/manage/{name}/check-in": {action: "checks a library account in or out"}
-"/{ldap_mount_path}/library/{name}": {endpoint-only: "no typed kind yet: service account library set"}
+"/{ldap_mount_path}/library/{name}": {endpoint-only: "external plugin library set; not tested until the plugin is in CI"}
 "/{ldap_mount_path}/library/{name}/check-in": {action: "checks a library account in or out"}
 "/{ldap_mount_path}/library/{name}/check-out": {action: "checks a library account in or out"}
 "/{ldap_mount_path}/role/{name}": {typed: "LDAPSecretsDynamicRole"}
@@ -232,7 +232,7 @@
 "/{ldap_mount_path}/static-role/{name}": {typed: "LDAPSecretsStaticRole"}
 "/{openldap_mount_path}/config": {typed: "LDAPSecretsConfig"}
 "/{openldap_mount_path}/library/manage/{name}/check-in": {action: "checks a library account in or out"}
-"/{openldap_mount_path}/library/{name}": {endpoint-only: "no typed kind yet: service account library set"}
+"/{openldap_mount_path}/library/{name}": {endpoint-only: "external plugin library set; not tested until the plugin is in CI"}
 "/{openldap_mount_path}/library/{name}/check-in": {action: "checks a library account in or out"}
 "/{openldap_mount_path}/library/{name}/check-out": {action: "checks a library account in or out"}
 "/{openldap_mount_path}/role/{name}": {typed: "LDAPSecretsDynamicRole"}
@@ -251,7 +251,7 @@
 "/{pki_mount_path}/acme/orders": {action: "ACME protocol endpoint"}
 "/{pki_mount_path}/acme/revoke-cert": {action: "ACME protocol endpoint"}
 "/{pki_mount_path}/cel/issue/{role}": {action: "issues or signs a certificate"}
-"/{pki_mount_path}/cel/roles/{name}": {endpoint-only: "no typed kind yet: CEL-based PKI role"}
+"/{pki_mount_path}/cel/roles/{name}": {typed: "PKICELRole"}
 "/{pki_mount_path}/cel/sign/{role}": {action: "issues or signs a certificate"}
 "/{pki_mount_path}/config/acme": {typed: "PKIACMEConfig"}
 "/{pki_mount_path}/config/auto-tidy": {typed: "PKIAutoTidy"}
@@ -259,7 +259,7 @@
 "/{pki_mount_path}/config/cluster": {typed: "PKIConfig"}
 "/{pki_mount_path}/config/crl": {typed: "PKIConfig"}
 "/{pki_mount_path}/config/issuers": {typed: "PKIConfig"}
-"/{pki_mount_path}/config/keys": {endpoint-only: "no typed kind yet: default signing key; PKIConfig covers cluster, crl, issuers and urls"}
+"/{pki_mount_path}/config/keys": {typed: "PKIKeyConfig"}
 "/{pki_mount_path}/config/urls": {typed: "PKIConfig"}
 "/{pki_mount_path}/eab/{key_id}": {action: "deletes an unused ACME EAB token"}
 "/{pki_mount_path}/intermediate/cross-sign": {action: "cross-signs or imports a signed intermediate"}
@@ -340,14 +340,14 @@
 "/{secret_mount_path}/data/{path}": {typed: "KVSecret"}
 "/{secret_mount_path}/delete/{path}": {action: "deletes, destroys or restores secret versions"}
 "/{secret_mount_path}/destroy/{path}": {action: "deletes, destroys or restores secret versions"}
-"/{secret_mount_path}/metadata/{path}": {endpoint-only: "no typed kind yet: per-secret metadata (max_versions, custom_metadata); KVSecret only deletes through it"}
+"/{secret_mount_path}/metadata/{path}": {typed: "KVSecretMetadata"}
 "/{secret_mount_path}/undelete/{path}": {action: "deletes, destroys or restores secret versions"}
 "/{ssh_mount_path}/config/ca": {typed: "SSHCA"}
 "/{ssh_mount_path}/config/issuers": {typed: "SSHCA"}
-"/{ssh_mount_path}/config/zeroaddress": {endpoint-only: "no typed kind yet: roles that default to the zero address"}
+"/{ssh_mount_path}/config/zeroaddress": {endpoint-only: "allowlist of roles that may use any source address; set it with OpenBaoEndpoint"}
 "/{ssh_mount_path}/creds/{role}": {action: "issues or signs credentials"}
 "/{ssh_mount_path}/issue/{role}": {action: "issues or signs credentials"}
-"/{ssh_mount_path}/issuer/{issuer_ref}": {endpoint-only: "no typed kind yet: named SSH issuer; SSHCA manages the default issuer through config/ca"}
+"/{ssh_mount_path}/issuer/{issuer_ref}": {endpoint-only: "renames or deletes an issuer; SSHCA owns the default CA through config/ca"}
 "/{ssh_mount_path}/issuers/import": {action: "imports an SSH issuer"}
 "/{ssh_mount_path}/issuers/import/{issuer_name}": {action: "imports an SSH issuer"}
 "/{ssh_mount_path}/lookup": {action: "looks up roles or verifies an OTP"}
@@ -357,8 +357,8 @@
 "/{ssh_mount_path}/verify": {action: "looks up roles or verifies an OTP"}
 "/{totp_mount_path}/code/{name}": {action: "generates or validates a code"}
 "/{totp_mount_path}/keys/{name}": {typed: "TOTPKey"}
-"/{transit_mount_path}/cache-config": {endpoint-only: "no typed kind yet: transit mount-wide setting"}
-"/{transit_mount_path}/config/keys": {endpoint-only: "no typed kind yet: transit mount-wide setting"}
+"/{transit_mount_path}/cache-config": {typed: "TransitCacheConfig"}
+"/{transit_mount_path}/config/keys": {typed: "TransitKeyConfig"}
 "/{transit_mount_path}/datakey/{plaintext}/{name}": {action: "cryptographic operation"}
 "/{transit_mount_path}/decrypt/{name}": {action: "cryptographic operation"}
 "/{transit_mount_path}/derive-key/{name}": {action: "cryptographic operation"}

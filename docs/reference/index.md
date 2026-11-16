@@ -24,4 +24,4 @@ Related pages outside this section:
 | [Observability](../operate/observability.md) | metrics, labels, example queries and alert rules, log flags |
 | [Troubleshooting](../operate/troubleshooting.md) | symptoms, checks and fixes |
 | [Architecture](../architecture.md) | the design rules the engine enforces |
-| [Decisions (ADRs)](../adr/index.md) | why the design is the way it is |
+| [Decisions (ADRs)](../adr/README.md) | why the design is the way it is |

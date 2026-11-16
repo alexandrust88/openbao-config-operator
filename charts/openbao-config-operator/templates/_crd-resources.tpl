@@ -14,6 +14,7 @@
 - {"group":"auth.openbaoconfig.io","plural":"azureauthconfigs","scope":"Namespaced","plugin":true}
 - {"group":"auth.openbaoconfig.io","plural":"azureauthroles","scope":"Namespaced","plugin":true}
 - {"group":"auth.openbaoconfig.io","plural":"certauthconfigs","scope":"Namespaced"}
+- {"group":"auth.openbaoconfig.io","plural":"certauthcrls","scope":"Namespaced"}
 - {"group":"auth.openbaoconfig.io","plural":"certauthroles","scope":"Namespaced"}
 - {"group":"auth.openbaoconfig.io","plural":"cfauthconfigs","scope":"Namespaced","plugin":true}
 - {"group":"auth.openbaoconfig.io","plural":"cfauthroles","scope":"Namespaced","plugin":true}
@@ -78,6 +79,7 @@
 - {"group":"secrets.openbaoconfig.io","plural":"kubernetessecretsconfigs","scope":"Namespaced"}
 - {"group":"secrets.openbaoconfig.io","plural":"kubernetessecretsroles","scope":"Namespaced"}
 - {"group":"secrets.openbaoconfig.io","plural":"kvconfigs","scope":"Namespaced"}
+- {"group":"secrets.openbaoconfig.io","plural":"kvsecretmetadata","scope":"Namespaced"}
 - {"group":"secrets.openbaoconfig.io","plural":"kvsecrets","scope":"Namespaced"}
 - {"group":"secrets.openbaoconfig.io","plural":"ldapsecretsconfigs","scope":"Namespaced","plugin":true}
 - {"group":"secrets.openbaoconfig.io","plural":"ldapsecretsdynamicroles","scope":"Namespaced","plugin":true}
@@ -88,8 +90,10 @@
 - {"group":"secrets.openbaoconfig.io","plural":"nomadsecretsroles","scope":"Namespaced","plugin":true}
 - {"group":"secrets.openbaoconfig.io","plural":"pkiacmeconfigs","scope":"Namespaced"}
 - {"group":"secrets.openbaoconfig.io","plural":"pkiautotidies","scope":"Namespaced"}
+- {"group":"secrets.openbaoconfig.io","plural":"pkicelroles","scope":"Namespaced"}
 - {"group":"secrets.openbaoconfig.io","plural":"pkiconfigs","scope":"Namespaced"}
 - {"group":"secrets.openbaoconfig.io","plural":"pkiissuers","scope":"Namespaced"}
+- {"group":"secrets.openbaoconfig.io","plural":"pkikeyconfigs","scope":"Namespaced"}
 - {"group":"secrets.openbaoconfig.io","plural":"pkikeys","scope":"Namespaced"}
 - {"group":"secrets.openbaoconfig.io","plural":"pkiroles","scope":"Namespaced"}
 - {"group":"secrets.openbaoconfig.io","plural":"quaysecretsconfigs","scope":"Namespaced","plugin":true}
@@ -103,6 +107,8 @@
 - {"group":"secrets.openbaoconfig.io","plural":"terraformcloudsecretsconfigs","scope":"Namespaced","plugin":true}
 - {"group":"secrets.openbaoconfig.io","plural":"terraformcloudsecretsroles","scope":"Namespaced","plugin":true}
 - {"group":"secrets.openbaoconfig.io","plural":"totpkeys","scope":"Namespaced"}
+- {"group":"secrets.openbaoconfig.io","plural":"transitcacheconfigs","scope":"Namespaced"}
+- {"group":"secrets.openbaoconfig.io","plural":"transitkeyconfigs","scope":"Namespaced"}
 - {"group":"secrets.openbaoconfig.io","plural":"transitkeys","scope":"Namespaced"}
 - {"group":"sys.openbaoconfig.io","plural":"auditrequestheaders","scope":"Namespaced"}
 - {"group":"sys.openbaoconfig.io","plural":"audits","scope":"Namespaced"}

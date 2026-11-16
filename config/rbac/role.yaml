@@ -77,6 +77,7 @@ rules:
   - azureauthconfigs
   - azureauthroles
   - certauthconfigs
+  - certauthcrls
   - certauthroles
   - cfauthconfigs
   - cfauthroles
@@ -125,6 +126,7 @@ rules:
   - azureauthconfigs/finalizers
   - azureauthroles/finalizers
   - certauthconfigs/finalizers
+  - certauthcrls/finalizers
   - certauthroles/finalizers
   - cfauthconfigs/finalizers
   - cfauthroles/finalizers
@@ -169,6 +171,7 @@ rules:
   - azureauthconfigs/status
   - azureauthroles/status
   - certauthconfigs/status
+  - certauthcrls/status
   - certauthroles/status
   - cfauthconfigs/status
   - cfauthroles/status
@@ -325,6 +328,7 @@ rules:
   - kubernetessecretsconfigs
   - kubernetessecretsroles
   - kvconfigs
+  - kvsecretmetadata
   - kvsecrets
   - ldapsecretsconfigs
   - ldapsecretsdynamicroles
@@ -335,8 +339,10 @@ rules:
   - nomadsecretsroles
   - pkiacmeconfigs
   - pkiautotidies
+  - pkicelroles
   - pkiconfigs
   - pkiissuers
+  - pkikeyconfigs
   - pkikeys
   - pkiroles
   - quaysecretsconfigs
@@ -350,6 +356,8 @@ rules:
   - terraformcloudsecretsconfigs
   - terraformcloudsecretsroles
   - totpkeys
+  - transitcacheconfigs
+  - transitkeyconfigs
   - transitkeys
   verbs:
   - get
@@ -378,6 +386,7 @@ rules:
   - kubernetessecretsconfigs/finalizers
   - kubernetessecretsroles/finalizers
   - kvconfigs/finalizers
+  - kvsecretmetadata/finalizers
   - kvsecrets/finalizers
   - ldapsecretsconfigs/finalizers
   - ldapsecretsdynamicroles/finalizers
@@ -388,8 +397,10 @@ rules:
   - nomadsecretsroles/finalizers
   - pkiacmeconfigs/finalizers
   - pkiautotidies/finalizers
+  - pkicelroles/finalizers
   - pkiconfigs/finalizers
   - pkiissuers/finalizers
+  - pkikeyconfigs/finalizers
   - pkikeys/finalizers
   - pkiroles/finalizers
   - quaysecretsconfigs/finalizers
@@ -403,6 +414,8 @@ rules:
   - terraformcloudsecretsconfigs/finalizers
   - terraformcloudsecretsroles/finalizers
   - totpkeys/finalizers
+  - transitcacheconfigs/finalizers
+  - transitkeyconfigs/finalizers
   - transitkeys/finalizers
   verbs:
   - update
@@ -427,6 +440,7 @@ rules:
   - kubernetessecretsconfigs/status
   - kubernetessecretsroles/status
   - kvconfigs/status
+  - kvsecretmetadata/status
   - kvsecrets/status
   - ldapsecretsconfigs/status
   - ldapsecretsdynamicroles/status
@@ -437,8 +451,10 @@ rules:
   - nomadsecretsroles/status
   - pkiacmeconfigs/status
   - pkiautotidies/status
+  - pkicelroles/status
   - pkiconfigs/status
   - pkiissuers/status
+  - pkikeyconfigs/status
   - pkikeys/status
   - pkiroles/status
   - quaysecretsconfigs/status
@@ -452,6 +468,8 @@ rules:
   - terraformcloudsecretsconfigs/status
   - terraformcloudsecretsroles/status
   - totpkeys/status
+  - transitcacheconfigs/status
+  - transitkeyconfigs/status
   - transitkeys/status
   verbs:
   - get

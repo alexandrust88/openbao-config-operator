@@ -35,9 +35,9 @@ a pass.
 
 `go test -tags integration ./test/livekit -run '^TestLiveInventory$' -count=1 -v`
 checks the rendered overlays that the default live run actually executes against the CRD catalogue.
-An example file alone does not count. The inventory currently classifies all 120 CRDs:
+An example file alone does not count. `TestLiveInventory` currently classifies all 126 CRDs:
 
-- 61 kinds must have an executable overlay scenario without a prerequisite exception.
+- 67 kinds must have an executable overlay scenario without a prerequisite exception.
 - Three kinds, `DatabaseConnection`, `DatabaseRole` and `DatabaseStaticRole`, need PostgreSQL, so only the kind
   e2e run (`test/livekit/kind.sh`, which starts PostgreSQL) applies their overlays.
 - Four built-in kinds use dedicated integration fixtures. `RabbitMQConfig` and `RabbitMQRole` have integration

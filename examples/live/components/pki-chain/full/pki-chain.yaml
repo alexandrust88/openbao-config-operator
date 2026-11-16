@@ -1362,3 +1362,61 @@ spec:
   mountPath: pki-root
   enabled: true
   eabPolicy: always-required
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKICELRole
+metadata:
+  name: pki-cel
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-root
+  name: pki-cel
+  celProgram:
+    expression: "success ? output : err"
+    variables:
+      - name: require_ip_sans
+        expression: size(request.ip_sans) > 0
+      - name: success
+        expression: request.common_name == 'example.com' && require_ip_sans
+      - name: cert
+        expression: 'CertTemplate{Subject: PKIX.Name{CommonName: request.common_name, Country: ["ZW", "US"]}}'
+      - name: output
+        expression: "ValidationOutput{template: cert}"
+      - name: err
+        expression: "'Request should have atleast 1 IP SAN.'"
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKey
+metadata:
+  name: pki-root-key
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  mountPath: pki-root
+  name: pki-root-key
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: PKIKeyConfig
+metadata:
+  name: pki-default-key
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: pki-root
+  defaultKey: pki-root-key

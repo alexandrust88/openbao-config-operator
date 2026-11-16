@@ -155,3 +155,16 @@
 - kind: OpenBaoEndpoint
   field: spec.dataSecretRef
   reason: the only example value is the generated example's Secret, which holds no JSON object for this endpoint; merging a Secret over data is covered by the adapter unit tests
+
+- kind: PKICELRole
+  test: optional-fields
+  reason: celProgram is required; the optional name and mountPath select immutable identity, and nested program updates are exercised by TestIntegrationConfigGaps
+- kind: PKIKeyConfig
+  test: optional-fields
+  reason: defaultKey is required and mountPath is immutable; there is no optional mutable setting
+- kind: CertAuthCRL
+  field: spec.url
+  reason: switching from embedded PEM to a URL requires removing crl in the same update; the paired transition uses a local CRL server in TestIntegrationConfigGaps
+- kind: CertAuthCRL
+  test: optional-fields
+  reason: the minimal spec needs one of crl or url; neither can be removed independently, and TestIntegrationConfigGaps tests paired PEM-to-URL updates

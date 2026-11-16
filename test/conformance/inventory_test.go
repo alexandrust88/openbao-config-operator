@@ -25,6 +25,11 @@ func TestConformanceInventory(t *testing.T) {
 			continue
 		}
 		builtin++
+		if k.property("mountPath") != nil {
+			if _, ok := confMountTypes[k.Kind]; !ok {
+				t.Errorf("%s: mountPath has no conformance mount mapping", k.Kind)
+			}
+		}
 		if len(k.own(true)) == 0 {
 			t.Errorf("%s: builtin has no executable conformance example or fixture", k.Kind)
 		}

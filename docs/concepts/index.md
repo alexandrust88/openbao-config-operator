@@ -3,7 +3,8 @@
 This page explains the mental model behind the operator: what it manages, how a tenant reaches
 OpenBao, how one reconcile works and how the operator decides that an OpenBao object is its own.
 [Architecture](../architecture.md) is the source of truth for the design; read this page first,
-then the full design when you need the detail. Exact condition reasons, status fields and events
+then the full design when you need the detail. The [decisions](../adr/README.md) list each choice
+in one sentence. Exact condition reasons, status fields and events
 are listed in [status and events](../reference/status-and-events.md).
 
 ## What the operator does

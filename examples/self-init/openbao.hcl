@@ -42,8 +42,14 @@ initialize "openbao-config-operator" {
         path "sys/mounts"   { capabilities = ["read"] }
         path "sys/mounts/*" { capabilities = ["create", "read", "update", "delete"] }
 
-        path "auth/kubernetes/config" { capabilities = ["read"] }
         path "auth/kubernetes/role/*" { capabilities = ["create", "read", "update", "delete"] }
+
+        # Bootstrap administration uses a separate identity, so CRs cannot disable their own login.
+        path "sys/policies/acl/openbao-config-operator" { capabilities = ["deny"] }
+        path "sys/auth/kubernetes"                     { capabilities = ["deny"] }
+        path "sys/auth/kubernetes/*"                   { capabilities = ["deny"] }
+        path "auth/kubernetes/config"                  { capabilities = ["deny"] }
+        path "auth/kubernetes/role/openbao-config-operator" { capabilities = ["deny"] }
 
         path "identity/entity/name/*" { capabilities = ["create", "read", "update", "delete"] }
         path "identity/group/name/*"  { capabilities = ["create", "read", "update", "delete"] }

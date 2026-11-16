@@ -24,8 +24,8 @@ release (for example AWS, GCP, or LDAP on 2.7) are outside that release's snapsh
 
 | OpenBao | writable paths | typed | Endpoint only | unreviewed | action | typed share of configuration |
 |---------|----------------|-------|---------------|------------|--------|------------------------------|
-| 2.6.5 | 377 | 114 (30.2%) | 14 (3.7%) | 0 (0.0%) | 249 (66.0%) | 89.1% |
-| 2.7.2 | 352 | 100 (28.4%) | 12 (3.4%) | 3 (0.9%) | 237 (67.3%) | 87.0% |
+| 2.6.5 | 377 | 120 (31.8%) | 8 (2.1%) | 0 (0.0%) | 249 (66.0%) | 93.8% |
+| 2.7.2 | 352 | 106 (30.1%) | 9 (2.6%) | 0 (0.0%) | 237 (67.3%) | 92.2% |
 
 Typed share of configuration is typed / (typed + Endpoint only + unreviewed): actions are not
 configuration and are left out.
@@ -37,20 +37,14 @@ for a typed kind.
 
 | path | OpenBao | reason |
 |------|---------|--------|
-| `/auth/{cert_mount_path}/crls/{name}` | 2.6, 2.7 | no typed kind yet: CRL used by cert auth |
 | `/cubbyhole/{path}` | 2.6, 2.7 | token-scoped storage: data written there is visible only to the operator's own token |
-| `/sys/external-keys/configs/{config}` | 2.7 | unreviewed |
-| `/sys/external-keys/configs/{config}/keys/{key}` | 2.7 | unreviewed |
-| `/sys/external-keys/configs/{config}/keys/{key}/grants/{mount}` | 2.7 | unreviewed |
+| `/sys/external-keys/configs/{config}` | 2.7 | needs a KMS plugin; bao server -dev does not load one |
+| `/sys/external-keys/configs/{config}/keys/{key}` | 2.7 | needs a KMS plugin; bao server -dev does not load one |
+| `/sys/external-keys/configs/{config}/keys/{key}/grants/{mount}` | 2.7 | needs a KMS plugin; bao server -dev does not load one |
 | `/sys/loggers` | 2.6, 2.7 | sets the level of every logger at once; Logger manages one named logger |
 | `/sys/raw` | 2.6, 2.7 | raw storage access, break-glass only; deliberately untyped |
 | `/sys/raw/{path}` | 2.6, 2.7 | raw storage access, break-glass only; deliberately untyped |
-| `/{ldap_mount_path}/library/{name}` | 2.6 | no typed kind yet: service account library set |
-| `/{openldap_mount_path}/library/{name}` | 2.6 | no typed kind yet: service account library set |
-| `/{pki_mount_path}/cel/roles/{name}` | 2.6, 2.7 | no typed kind yet: CEL-based PKI role |
-| `/{pki_mount_path}/config/keys` | 2.6, 2.7 | no typed kind yet: default signing key; PKIConfig covers cluster, crl, issuers and urls |
-| `/{secret_mount_path}/metadata/{path}` | 2.6, 2.7 | no typed kind yet: per-secret metadata (max_versions, custom_metadata); KVSecret only deletes through it |
-| `/{ssh_mount_path}/config/zeroaddress` | 2.6, 2.7 | no typed kind yet: roles that default to the zero address |
-| `/{ssh_mount_path}/issuer/{issuer_ref}` | 2.6, 2.7 | no typed kind yet: named SSH issuer; SSHCA manages the default issuer through config/ca |
-| `/{transit_mount_path}/cache-config` | 2.6, 2.7 | no typed kind yet: transit mount-wide setting |
-| `/{transit_mount_path}/config/keys` | 2.6, 2.7 | no typed kind yet: transit mount-wide setting |
+| `/{ldap_mount_path}/library/{name}` | 2.6 | external plugin library set; not tested until the plugin is in CI |
+| `/{openldap_mount_path}/library/{name}` | 2.6 | external plugin library set; not tested until the plugin is in CI |
+| `/{ssh_mount_path}/config/zeroaddress` | 2.6, 2.7 | allowlist of roles that may use any source address; set it with OpenBaoEndpoint |
+| `/{ssh_mount_path}/issuer/{issuer_ref}` | 2.6, 2.7 | renames or deletes an issuer; SSHCA owns the default CA through config/ca |

@@ -67,3 +67,23 @@ spec:
   mountPath: ssh
   keyType: ca
   allowUserCertificates: true
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitCacheConfig
+metadata:
+  name: transit-cache
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  mountPath: transit
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKeyConfig
+metadata:
+  name: transit-key-config
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  mountPath: transit
