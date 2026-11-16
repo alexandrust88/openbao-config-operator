@@ -46,8 +46,11 @@ var _ = BeforeSuite(func() {
 	if os.Getenv("E2E_SKIP_IMAGE_BUILD") != "true" {
 		By("building the manager image")
 		mustRun("docker", "build", "-t", managerImage, ".")
+		builtImage := managerImage
+		managerImage = tagBuiltImage(managerImage)
 		By("loading the manager image into kind")
-		mustRun(kindBinary, "load", "docker-image", managerImage, "--name", kindCluster)
+		// Keep the caller's tag available for a subsequent live-kit run.
+		mustRun(kindBinary, "load", "docker-image", builtImage, managerImage, "--name", kindCluster)
 	}
 
 	By("deploying OpenBao with TLS, which initializes kubernetes auth and the tenant policy itself")
@@ -65,7 +68,7 @@ var _ = BeforeSuite(func() {
 	repo, tag := splitImage(managerImage)
 	mustRun(helmBinary, "upgrade", "--install", releaseName, "charts/openbao-config-operator",
 		"--namespace", operatorNamespace, "--create-namespace",
-		"--set", "image.repository="+repo, "--set", "image.tag="+tag,
+		"--set", "image.repository="+repo, "--set", "image.tag="+tag, "--set-string", "image.digest=",
 		"--set", "crds.keep=false",
 		"--set", "extraArgs={--drift-interval-critical="+driftInterval.String()+",--drift-interval-standard="+driftInterval.String()+"}",
 		"--wait", "--timeout", "5m")

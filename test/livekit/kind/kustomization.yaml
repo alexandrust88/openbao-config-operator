@@ -1,5 +1,5 @@
 # The overlays of every connection mode (root, root-to-child and optional through all/full, child and
-# child-connection-root-login, plus root-minimal) against the active node of the in-cluster OpenBao of the kind e2e job
+# child-connection-root-login, plus the root and child minimal Kubernetes components) against the active node of the in-cluster OpenBao of the kind e2e job
 # (hack/e2e/openbao.yaml). kind.sh copies its CA into the kit's openbao-ca ConfigMap and live-connection-auth-ca Secret.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -8,6 +8,7 @@ resources:
   - ../../../examples/live/overlays/child/full
   - ../../../examples/live/overlays/child-connection-root-login/full
   - root-minimal
+  - child-minimal
 patches:
   - target:
       kind: OpenBaoServer

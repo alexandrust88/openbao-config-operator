@@ -1,0 +1,136 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Plugin
+metadata:
+  name: lab-auth-ldap
+  namespace: {{ .Values.configNamespace | quote }}
+spec:
+  driftInterval: 30s
+  connectionRef: {name: {{ .Values.connection | quote }}}
+  type: auth
+  name: lab-auth-ldap
+  command: {{ .Values.plugin.command | quote }}
+  version: {{ .Values.plugin.version | quote }}
+  sha256: {{ required "plugin.sha256 must identify the baked LDAP plugin executable" .Values.plugin.sha256 | quote }}
+  deletionPolicy: Orphan
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: lab-ldap
+  namespace: {{ .Values.configNamespace | quote }}
+spec:
+  driftInterval: 30s
+  connectionRef: {name: {{ .Values.connection | quote }}}
+  path: lab-ldap
+  type: lab-auth-ldap
+  pluginRef: {name: lab-auth-ldap}
+  deletionPolicy: Orphan
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: LDAPAuthConfig
+metadata:
+  name: lab-ldap
+  namespace: {{ .Values.configNamespace | quote }}
+spec:
+  driftInterval: 30s
+  connectionRef: {name: {{ .Values.connection | quote }}}
+  mountPath: lab-ldap
+  creationPolicy: CreateOrAdopt
+  url: {{ printf "ldaps://lab-ldap.%s.svc:6360" .Release.Namespace | quote }}
+  certificate: {{ required "directory.certificate must trust the LDAPS certificate" .Values.directory.certificate | quote }}
+  bindDN: cn=admin,ou=people,dc=example,dc=org
+  bindPassSecretRef: {name: lab-ldap-bind, key: password}
+  userDN: ou=people,dc=example,dc=org
+  userAttr: uid
+  userFilter: {{ "(&(uid={{.Username}})(objectClass=person))" | quote }}
+  groupDN: ou=groups,dc=example,dc=org
+  groupAttr: cn
+  groupFilter: {{ "(&(member={{.UserDN}})(objectclass=groupOfUniqueNames))" | quote }}
+  discoverDN: false
+  denyNullBind: true
+  insecureTLS: false
+  tokenTTL: 5m
+  tokenMaxTTL: 15m
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: lab-ldap-group
+  namespace: {{ .Values.configNamespace | quote }}
+spec:
+  driftInterval: 30s
+  connectionRef: {name: {{ .Values.connection | quote }}}
+  name: lab-ldap-group
+  policy: 'path "lab-ldap-data/data/group" { capabilities = ["read"] }'
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: lab-ldap-user
+  namespace: {{ .Values.configNamespace | quote }}
+spec:
+  driftInterval: 30s
+  connectionRef: {name: {{ .Values.connection | quote }}}
+  name: lab-ldap-user
+  policy: 'path "lab-ldap-data/data/user" { capabilities = ["read"] }'
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: LDAPAuthGroup
+metadata:
+  name: lab-ldap-admins
+  namespace: {{ .Values.configNamespace | quote }}
+spec:
+  driftInterval: 30s
+  connectionRef: {name: {{ .Values.connection | quote }}}
+  mountPath: lab-ldap
+  name: lldap_admin
+  policies: [lab-ldap-group]
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: LDAPAuthUser
+metadata:
+  name: lab-ldap-admin
+  namespace: {{ .Values.configNamespace | quote }}
+spec:
+  driftInterval: 30s
+  connectionRef: {name: {{ .Values.connection | quote }}}
+  mountPath: lab-ldap
+  name: admin
+  policies: [lab-ldap-user]
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: lab-ldap-data
+  namespace: {{ .Values.configNamespace | quote }}
+spec:
+  connectionRef: {name: {{ .Values.connection | quote }}}
+  driftInterval: 30s
+  path: lab-ldap-data
+  type: kv
+  options: {version: "2"}
+  deletionPolicy: Orphan
+{{- range $name := list "group" "user" "forbidden" }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lab-ldap-data-{{ $name }}
+  namespace: {{ $.Values.configNamespace | quote }}
+stringData:
+  value: {{ printf "lab-ldap-%s-fixture" $name | quote }}
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVSecret
+metadata:
+  name: lab-ldap-data-{{ $name }}
+  namespace: {{ $.Values.configNamespace | quote }}
+spec:
+  connectionRef: {name: {{ $.Values.connection | quote }}}
+  driftInterval: 30s
+  mountPath: lab-ldap-data
+  path: {{ $name }}
+  dataFrom:
+    - secretRef: {name: lab-ldap-data-{{ $name }}}
+  deletionPolicy: Orphan
+{{- end }}

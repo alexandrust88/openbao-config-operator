@@ -30,6 +30,13 @@ const (
 // a minimal spec (required fields only) must not write on its second pass; then each optional field is set
 // (one write), removed (one write restoring the default) and left alone for a further pass (no write).
 func confDefaults(ctx context.Context, t *testing.T, e *confEnv, c *confCatalog, r *confResult) {
+	started := time.Now()
+	defer func() {
+		r.duration = time.Since(started)
+		t.Logf("%s: total %s, startup %s, minimal %s, optional fields %s (%d tested)", r.kind.Kind,
+			r.duration.Round(time.Millisecond), r.startupDuration.Round(time.Millisecond),
+			r.minimalDuration.Round(time.Millisecond), r.fieldsDuration.Round(time.Millisecond), r.fieldsTested)
+	}()
 	k := r.kind
 	k8s := e.cluster.k8s
 	ns := "conf-" + strings.ToLower(k.Kind)
@@ -45,6 +52,13 @@ func confDefaults(ctx context.Context, t *testing.T, e *confEnv, c *confCatalog,
 		t.Fatal(err)
 	}
 
+	r.startupDuration = time.Since(started)
+	minimalStarted := time.Now()
+	defer func() {
+		if r.minimalDuration == 0 {
+			r.minimalDuration = time.Since(minimalStarted)
+		}
+	}()
 	for _, d := range c.referents(k, k.examples(), false) {
 		obj := confRewrite(d, ns, false)
 		if err := k8s.Create(ctx, obj); err != nil {
@@ -78,11 +92,18 @@ func confDefaults(ctx context.Context, t *testing.T, e *confEnv, c *confCatalog,
 		r.defaults = e.na(r, confTestDefaults, "minimal spec not ready")
 		return
 	}
+	r.minimalDuration = time.Since(minimalStarted)
 	if len(extras) > 0 {
 		r.note("minimal spec adds CEL-required %s", strings.Join(confKeys(extras), ","))
 	}
+	if k.Kind == "AccessLevel" {
+		confTemplateDefaults(ctx, t, e, mgr, r, base, obj, extras)
+		return
+	}
 	since := time.Now()
-	if w := confSteady(mgr, k, 2, e.drift); w > 0 {
+	if w, err := confSteady(mgr, k, 2, e.drift); err != nil {
+		r.fail("(minimal)", "steady-state measurement: %s", confShortErr(err))
+	} else if w > 0 {
 		r.fail("(minimal)", "second pass wrote %d time(s) %v", w,
 			confUpdateNotes(ctx, k8s, ns, k.Kind, obj.GetName(), since))
 	}
@@ -102,13 +123,19 @@ func confDefaults(ctx context.Context, t *testing.T, e *confEnv, c *confCatalog,
 			noValue = append(noValue, field)
 			continue
 		}
-		switch confField(ctx, e, mgr, r, obj, field, value) {
+		fieldStarted := time.Now()
+		outcome := confField(ctx, e, mgr, r, obj, field, value)
+		elapsed := time.Since(fieldStarted)
+		r.fieldsDuration += elapsed
+		t.Logf("%s.%s checked in %s", k.Kind, field, elapsed.Round(time.Millisecond))
+		switch outcome {
 		case confFieldRejected:
 			rejected = append(rejected, field)
 		default:
 			tested++
 		}
 	}
+	r.fieldsTested = tested
 	r.note("default test: %d optional fields tested", tested)
 	if tested == 0 {
 		e.na(r, confTestOptionalFields, "no optional field tested")
@@ -185,7 +212,11 @@ func confField(ctx context.Context, e *confEnv, mgr *confManager, r *confResult,
 	since = time.Now()
 	writes, state, err = confChange(ctx, k8s, mgr, k, obj, e.drift, func(spec map[string]any) { delete(spec, field) })
 	if err != nil {
-		r.note("%s: removal rejected: %s", field, confShortErr(err))
+		if confIsInvalid(err) {
+			r.note("%s: removal rejected: %s", field, confShortErr(err))
+		} else {
+			r.fail(field, "remove: %s", confShortErr(err))
+		}
 		return confFieldTested
 	}
 	switch {
@@ -204,7 +235,9 @@ func confField(ctx context.Context, e *confEnv, mgr *confManager, r *confResult,
 		r.fail(field, "remove: %d writes %v", writes, notes(since))
 	}
 	since = time.Now()
-	if w := confSteady(mgr, k, 1, e.drift); w > 0 {
+	if w, err := confSteady(mgr, k, 1, e.drift); err != nil {
+		r.fail(field, "steady-state measurement: %s", confShortErr(err))
+	} else if w > 0 {
 		r.fail(field, "pass after remove wrote %d time(s) %v", w, notes(since))
 	}
 	return confFieldTested
@@ -339,7 +372,9 @@ func confChange(ctx context.Context, k8s client.Client, mgr *confManager, k *con
 	}
 	state := confWaitReady(ctx, k8s, obj, confChangeTimeout)
 	if state.ready {
-		confWaitReconciles(mgr, k, 1, drift)
+		if err := confWaitReconciles(mgr, k, 1, drift); err != nil {
+			return 0, state, err
+		}
 	}
 	after, err := mgr.scrape()
 	if err != nil {
@@ -349,25 +384,27 @@ func confChange(ctx context.Context, k8s client.Client, mgr *confManager, k *con
 }
 
 // confSteady waits for n further reconciles of the kind and returns the writes made meanwhile.
-func confSteady(mgr *confManager, k *confKind, n int, drift time.Duration) int {
+func confSteady(mgr *confManager, k *confKind, n int, drift time.Duration) (int, error) {
 	before, err := mgr.scrape()
 	if err != nil {
-		return -1
+		return 0, err
 	}
-	confWaitReconciles(mgr, k, n, drift)
+	if err := confWaitReconciles(mgr, k, n, drift); err != nil {
+		return 0, err
+	}
 	after, err := mgr.scrape()
 	if err != nil {
-		return -1
+		return 0, err
 	}
-	return int(after.writes[k.Kind] - before.writes[k.Kind])
+	return int(after.writes[k.Kind] - before.writes[k.Kind]), nil
 }
 
-func confWaitReconciles(mgr *confManager, k *confKind, n int, drift time.Duration) {
+func confWaitReconciles(mgr *confManager, k *confKind, n int, drift time.Duration) error {
 	start, err := mgr.scrape()
 	if err != nil {
-		return
+		return err
 	}
-	_ = confPoll(time.Duration(n+2)*drift, func() error {
+	return confPoll(time.Duration(n+2)*drift, func() error {
 		cur, err := mgr.scrape()
 		if err != nil {
 			return err

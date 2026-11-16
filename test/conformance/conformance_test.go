@@ -7,12 +7,14 @@
 package conformance
 
 import (
+	"cmp"
 	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -34,19 +36,22 @@ const confSkipNoExample = "no example"
 
 // confEnv is everything the phases share.
 type confEnv struct {
-	root          string
-	cluster       confCluster
-	bao           *confBao
-	roleID        string
-	secretID      string
-	managerBin    string
-	managerSource string
-	managerArgs   []string
-	serverKind    bool
-	drift         time.Duration
-	logDir        string
-	exceptions    map[string]string
-	naUsed        sync.Map
+	root                                             string
+	cluster                                          confCluster
+	bao                                              *confBao
+	roleID                                           string
+	secretID                                         string
+	managerBin                                       string
+	managerSource                                    string
+	managerArgs                                      []string
+	serverKind                                       bool
+	drift                                            time.Duration
+	logDir                                           string
+	exceptions                                       map[string]string
+	naUsed                                           sync.Map
+	parallelism                                      int
+	setupDuration, noWriteDuration, defaultsDuration time.Duration
+	readyDuration, cleanupDuration                   time.Duration
 }
 
 // na returns the matrix cell for a test that could not be measured for r's kind: n/a when exceptions.yaml declares
@@ -64,14 +69,16 @@ func (e *confEnv) na(r *confResult, test, why string) string {
 
 // confResult is one row of the coverage matrix.
 type confResult struct {
-	mu       sync.Mutex
-	kind     *confKind
-	skip     string
-	example  string
-	noWrite  string
-	defaults string
-	failing  []string
-	notes    []string
+	mu                                                         sync.Mutex
+	kind                                                       *confKind
+	skip                                                       string
+	example                                                    string
+	noWrite                                                    string
+	defaults                                                   string
+	failing                                                    []string
+	notes                                                      []string
+	duration, startupDuration, minimalDuration, fieldsDuration time.Duration
+	fieldsTested                                               int
 }
 
 func (r *confResult) note(format string, args ...any) {
@@ -94,6 +101,7 @@ type confConfig struct {
 	drift                                     time.Duration
 	filter                                    *regexp.Regexp
 	phases                                    string
+	parallelism                               int
 }
 
 func confLoadConfig(t *testing.T) confConfig {
@@ -113,6 +121,10 @@ func confLoadConfig(t *testing.T) confConfig {
 		drift:      4 * time.Second,
 		filter:     regexp.MustCompile(os.Getenv("CONF_KINDS")),
 		phases:     confEnvOr("CONF_PHASES", "nowrite,defaults"),
+	}
+	cfg.parallelism, err = strconv.Atoi(confEnvOr("CONF_PARALLELISM", "8"))
+	if err != nil || cfg.parallelism < 1 || cfg.parallelism > 16 {
+		t.Fatal("CONF_PARALLELISM must be between 1 and 16")
 	}
 	if v := os.Getenv("CONF_DRIFT_INTERVAL"); v != "" {
 		if cfg.drift, err = time.ParseDuration(v); err != nil || cfg.drift <= 0 {
@@ -145,6 +157,7 @@ func confEnvOr(key, def string) string {
 }
 
 func TestConformance(t *testing.T) {
+	started := time.Now()
 	ctrllog.SetLogger(logr.Discard())
 	cfg := confLoadConfig(t)
 	catalog := confLoadCatalog(t, cfg.root, cfg.crdDir)
@@ -178,30 +191,47 @@ func TestConformance(t *testing.T) {
 		root: cfg.root, cluster: confStartCluster(t, cfg.assets, cfg.crdDir, cfg.logDir), bao: bao,
 		roleID: roleID, secretID: secretID, managerBin: cfg.managerBin, managerSource: cfg.managerSource,
 		managerArgs: cfg.managerArgs, serverKind: err == nil, drift: cfg.drift, logDir: cfg.logDir,
-		exceptions: confLoadExceptions(t, cfg.root),
+		exceptions: confLoadExceptions(t, cfg.root), parallelism: cfg.parallelism,
 	}
 	if e.serverKind {
 		if err := confCreateServer(ctx, e.cluster.k8s, bao.addr); err != nil {
 			t.Fatal(err)
 		}
 	}
-	t.Logf("logs in %s, drift interval %s", cfg.logDir, cfg.drift)
+	e.setupDuration = time.Since(started)
+	t.Logf("setup %s; logs in %s, drift interval %s, default workers %d", e.setupDuration.Round(time.Millisecond), cfg.logDir, cfg.drift, cfg.parallelism)
 
 	if strings.Contains(cfg.phases, "nowrite") {
+		phase := time.Now()
 		t.Run("nowrite", func(t *testing.T) { confNoWrite(ctx, t, e, catalog, results) })
+		e.noWriteDuration = time.Since(phase)
 	}
 	if strings.Contains(cfg.phases, "defaults") {
+		phase := time.Now()
 		t.Run("defaults", func(t *testing.T) {
-			for _, r := range results {
-				if r.skip != "" {
-					continue
+			pending := append([]*confResult(nil), results...)
+			// Start field-heavy kinds first so their mandatory drift windows overlap the shorter cases.
+			slices.SortStableFunc(pending, func(a, b *confResult) int {
+				return cmp.Compare(len(b.kind.optionalFields()), len(a.kind.optionalFields()))
+			})
+			jobs := make(chan *confResult, len(pending))
+			for _, r := range pending {
+				if r.skip == "" {
+					jobs <- r
 				}
-				t.Run(r.kind.Kind, func(t *testing.T) {
-					t.Parallel()
-					confDefaults(ctx, t, e, catalog, r)
+			}
+			close(jobs)
+			var workers sync.WaitGroup
+			for range min(cfg.parallelism, len(jobs)) {
+				workers.Go(func() {
+					for r := range jobs {
+						t.Run(r.kind.Kind, func(t *testing.T) { confDefaults(ctx, t, e, catalog, r) })
+					}
 				})
 			}
+			workers.Wait()
 		})
+		e.defaultsDuration = time.Since(phase)
 	}
 
 	measured := []string{confTestExamples}

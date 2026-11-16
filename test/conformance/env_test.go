@@ -344,9 +344,11 @@ type confMetrics struct {
 	reconciles map[string]float64
 }
 
+var confMetricsClient = &http.Client{Timeout: 5 * time.Second}
+
 func (m *confManager) scrape() (confMetrics, error) {
 	out := confMetrics{writes: map[string]float64{}, reconciles: map[string]float64{}}
-	resp, err := http.Get(m.metricsURL) //nolint:gosec // local test endpoint
+	resp, err := confMetricsClient.Get(m.metricsURL) //nolint:gosec // local test endpoint
 	if err != nil {
 		return out, err
 	}
@@ -358,7 +360,7 @@ func (m *confManager) scrape() (confMetrics, error) {
 	sc.Buffer(make([]byte, 1<<20), 1<<20)
 	for sc.Scan() {
 		line := sc.Text()
-		if line == "" || line[0] == '#' {
+		if !strings.HasPrefix(line, "openbao_writes_total{") && !strings.HasPrefix(line, "controller_runtime_reconcile_total{") {
 			continue
 		}
 		cut := strings.LastIndexByte(line, ' ')

@@ -1,0 +1,85 @@
+name: integration lab
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: lab-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  lab:
+    name: lab / ${{ matrix.profile }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [identity, eso, pki, ldap]
+    env:
+      LAB_CONTEXT: kind-openbao-config-operator-lab
+      PROFILE: ${{ matrix.profile }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
+      - name: Install lab tools
+        run: |
+          make kind helm
+          echo "$PWD/bin" >> "$GITHUB_PATH"
+      - name: Deploy and exercise the selected profile
+        run: |
+          set -o pipefail
+          {
+            hack/lab/up.sh raft
+            case "$PROFILE" in
+              identity)
+                npm ci --ignore-scripts --prefix hack/lab/browser
+                hack/lab/identity-up.sh
+                hack/lab/identity-test.sh
+                hack/lab/identity-browser.sh
+                ;;
+              eso)
+                hack/lab/identity-up.sh
+                hack/lab/eso-up.sh
+                hack/lab/eso-test.sh
+                ;;
+              pki)
+                hack/lab/pki-up.sh
+                hack/lab/pki-test.sh
+                ;;
+              ldap)
+                hack/lab/plugins/up.sh
+                hack/lab/plugins/test.sh
+                ;;
+              *) exit 2 ;;
+            esac
+          } 2>&1 | tee "$RUNNER_TEMP/lab.log"
+      - name: Pod diagnostics
+        if: failure()
+        run: |
+          if [ -f ".tmp/lab/openbao-config-operator-lab/kubeconfig" ]; then
+            kubectl --kubeconfig .tmp/lab/openbao-config-operator-lab/kubeconfig get pods -A -o wide \
+              > "$RUNNER_TEMP/lab-pods.txt"
+          fi
+      # Never upload the lab state directory: it can contain fixture credentials and kubeconfigs.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: lab-${{ matrix.profile }}-results
+          path: |
+            ${{ runner.temp }}/lab.log
+            ${{ runner.temp }}/lab-pods.txt
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Delete the disposable cluster
+        if: always()
+        run: |
+          if [ -x bin/kind ]; then
+            bin/kind delete cluster --name openbao-config-operator-lab
+          fi

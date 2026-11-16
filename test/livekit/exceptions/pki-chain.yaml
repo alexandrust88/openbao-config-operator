@@ -12,12 +12,3 @@ enumValues:
   PKIKey:
     type:
       kms: needs an OpenBao external key (sys/external-keys) backed by a KMS or HSM, which bao server -dev does not have
-notReady:
-  - kind: PKIIssuer
-    name: pki-alg-rsa8192
-    overlays: [root-to-child/full, child/full, child-connection-root-login/full]
-    reason: RSA-8192 key generation can outlast the 30s requestTimeout on a shared runner; root/full covers the 8192-bit issuer
-  - kind: PKIKey
-    name: pki-alg-key-rsa8192
-    overlays: [root-to-child/full, child/full, child-connection-root-login/full]
-    reason: RSA-8192 key generation can outlast the 30s requestTimeout on a shared runner; root/full covers the 8192-bit key

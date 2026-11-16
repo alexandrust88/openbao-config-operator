@@ -14,11 +14,3 @@ notReady:
   - kind: RaftAutopilot
     env: dev
     reason: bao server -dev runs on inmem storage; autopilot needs raft storage
-  - kind: Plugin
-    reason: no plugin binary with the declared sha256 exists in plugin_directory, and no OCI plugin is declared in the server configuration
-  - kind: SecretsMount
-    name: sys-plugin-mount
-    reason: waits for the Plugin sys-plugin-secrets, which cannot register without its binary
-  - kind: AuthMount
-    name: sys-plugin-auth-mount
-    reason: waits for the Plugin sys-plugin-auth, which cannot register without its binary

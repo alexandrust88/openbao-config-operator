@@ -1,0 +1,4 @@
+apiVersion: v2
+name: obco-lab-ldap
+version: 0.1.0
+description: Disposable LDAPS directory and real OpenBao LDAP plugin scenarios

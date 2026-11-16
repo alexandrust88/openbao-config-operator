@@ -47,3 +47,17 @@ func TestStateRequiresCurrentConditions(t *testing.T) {
 		})
 	}
 }
+
+func TestStateReportsPausedWithoutReady(t *testing.T) {
+	obj := &unstructured.Unstructured{Object: map[string]any{
+		"metadata": map[string]any{"generation": int64(1)},
+		"spec":     map[string]any{"connectionRef": map[string]any{"name": "bao"}},
+		"status": map[string]any{"observedGeneration": int64(1), "conditions": []any{
+			map[string]any{"type": "Synced", "status": "False", "reason": "Paused", "message": "paused by resource", "observedGeneration": int64(1)},
+		}},
+	}}
+	got := stateOf(obj)
+	if got.ready || got.reason != "Paused" || got.message != "paused by resource" {
+		t.Fatalf("paused state = %+v, want non-Ready with its Paused reason", got)
+	}
+}

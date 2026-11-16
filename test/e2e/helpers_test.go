@@ -115,6 +115,22 @@ func bao(args ...string) string {
 	return out
 }
 
+// tagBuiltImage names a just-built image by its id. A fixed tag leaves the previous binary running:
+// the pod spec does not change, so the rollout never starts the new digest.
+func tagBuiltImage(image string) string {
+	id := strings.TrimSpace(mustRun("docker", "image", "inspect", "--format", "{{.Id}}", image))
+	hex := strings.TrimPrefix(id, "sha256:")
+	if len(hex) < 12 {
+		Fail("image id is not a digest: " + id)
+	}
+	repo, _ := splitImage(image)
+	tagged := repo + ":" + hex[:12]
+	if tagged != image {
+		mustRun("docker", "tag", image, tagged)
+	}
+	return tagged
+}
+
 // splitImage splits repo:tag; a registry port is not mistaken for the tag.
 func splitImage(image string) (string, string) {
 	i := strings.LastIndex(image, ":")

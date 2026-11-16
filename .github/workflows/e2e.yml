@@ -22,7 +22,7 @@ jobs:
       contents: read
     env:
       KIND_CLUSTER: openbao-config-operator-test-e2e
-      # Must match managerImage in test/e2e so the suite reuses the image loaded here.
+      # Build tag. The build step retags this with the image id and exports that name for the suite.
       E2E_IMG: example.com/openbao-config-operator:v0.0.1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -47,6 +47,13 @@ jobs:
           { make setup-test-e2e && make helm kustomize yq; } >"$RUNNER_TEMP/setup.log" 2>&1 &
           setup_pid=$!
           make docker-build-host IMG="$E2E_IMG"
+          # A fixed tag does not change the pod spec when this commit's digest does, so the rollout keeps the old manager.
+          id="$(docker image inspect --format '{{.Id}}' "$E2E_IMG")"
+          hex="${id#sha256:}"
+          built="$E2E_IMG"
+          E2E_IMG="${built%:*}:${hex:0:12}"
+          docker tag "$built" "$E2E_IMG"
+          echo "E2E_IMG=$E2E_IMG" >> "$GITHUB_ENV"
           go test -tags=e2e -run='^$' ./test/e2e/
           setup_status=0
           wait "$setup_pid" || setup_status=$?

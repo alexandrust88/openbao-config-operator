@@ -29,7 +29,7 @@ tenant_role=$(param tenantAuthRole)
 tenant_sa=$(param tenantServiceAccount)
 child_role=$(param childAuthRole)
 child_sa=$(param childServiceAccount)
-labels=(root-full r2c-full opt-full child-full ccr-full root-min)
+labels=(root-full r2c-full opt-full child-full ccr-full root-min child-min)
 
 err() { printf '%s: %s\n' "${0##*/}" "$*" >&2; }
 
@@ -48,6 +48,7 @@ overlay_dir() {
     child-full) echo child/full ;;
     ccr-full) echo child-connection-root-login/full ;;
     root-min) echo root/minimal ;;
+    child-min) echo child/minimal ;;
     *) echo "$1" ;;
   esac
 }
@@ -84,7 +85,10 @@ writes_after=$(mktemp)
 trap 'rm -f -- "$rendered" "$observed" "$helm_log" "$writes_before" "$writes_after"' EXIT
 
 hack/e2e/tls.sh
-kubectl apply -f hack/e2e/openbao.yaml -f test/e2e/testdata/openbao-auth.yaml
+KIND_CLUSTER=$kind_cluster test/livekit/kind-plugins.sh "$out_dir/plugins"
+plugin_sha=$(cat "$out_dir/plugins/sha256")
+kubectl apply -f "$out_dir/plugins/openbao.yaml" -f test/e2e/testdata/openbao-auth.yaml
+kubectl -n openbao rollout status statefulset/openbao --timeout=300s
 kubectl create namespace "$operator_ns" --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n "$operator_ns" create secret generic livekit-token-file --from-file=token=<(fixture token) \
   --dry-run=client -o yaml | kubectl apply -f -
@@ -92,7 +96,7 @@ kubectl -n "$operator_ns" create secret generic livekit-token-file --from-file=t
 # The chart rolls out while OpenBao starts and the Secrets are created; conn-cluster-token-file reads the token file.
 "$helm" upgrade --install openbao-config-operator charts/openbao-config-operator \
   --namespace "$operator_ns" --create-namespace \
-  --set "image.repository=${E2E_IMG%:*}" --set "image.tag=${E2E_IMG##*:}" \
+  --set "image.repository=${E2E_IMG%:*}" --set "image.tag=${E2E_IMG##*:}" --set-string image.digest= \
   --set "extraArgs={--drift-interval-critical=1m,--drift-interval-standard=1m}" \
   --set-json 'extraVolumes=[{"name":"livekit-token-file","secret":{"secretName":"livekit-token-file"}}]' \
   --set-json 'extraVolumeMounts=[{"name":"livekit-token-file","mountPath":"/var/run/openbao","readOnly":true}]' \
@@ -150,6 +154,8 @@ excuse() {
 }
 
 "$kustomize" build test/livekit/kind >"$rendered"
+test/livekit/crl-fixture.sh "$rendered" "$namespace"
+PLUGIN_SHA=$plugin_sha "$yq" -i '(select(.kind == "Plugin") | .spec.sha256) = strenv(PLUGIN_SHA)' "$rendered"
 "$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "|" + .metadata.name + "|" + .metadata.labels["live.openbaoconfig.io/overlay"]' "$rendered" >"$out_dir/inventory.txt"
 [ -s "$out_dir/inventory.txt" ] || { err "empty live kit inventory"; exit 1; }
 
@@ -255,8 +261,21 @@ settle() {
   done
 }
 
+# Reads the actual mounted subprocess, beyond successful catalog registration and mount configuration.
+plugin_health() {
+  local path expected actual
+  for path in root-full-sys-plugin-mount auth/root-full-sys-plugin-auth-mount; do
+    expected=secret
+    case $path in auth/*) expected=auth ;; esac
+    # shellcheck disable=SC2016 # the test token is expanded only inside the OpenBao pod
+    actual=$(kubectl -n openbao exec "${active[0]}" -- sh -ec 'BAO_TOKEN=$E2E_TOKEN bao read -field=type "$1/health"' sh "$path")
+    [ "$actual" = "$expected" ] || { err "$path plugin health returned $actual, want $expected"; return 1; }
+  done
+}
+
 settle "after apply" false
 [ "${#failed[@]}" -eq 0 ] || exit 1
+plugin_health
 
 # A child login reaches its own OpenBao namespace only: the child role logs in inside it, the tenant role at the root
 # with a policy limited to it. Each must write there and be refused at the root and in a sibling namespace.
@@ -309,21 +328,30 @@ kubectl -n "$operator_ns" create serviceaccount livekit-metrics --dry-run=client
 kubectl create clusterrolebinding livekit-metrics --clusterrole=openbao-config-operator-metrics-reader \
   --serviceaccount="$operator_ns:livekit-metrics" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 metrics_token=$(kubectl -n "$operator_ns" create token livekit-metrics)
-operator_writes >"$writes_before"
-
-echo "deleting the active OpenBao node ${active[0]} and switching root/full to Observe"
-kubectl -n openbao delete pod "${active[0]}" --wait=false
+echo "switching root/full to Observe before the failover write baseline"
 "$kustomize" build examples/live/overlays/observe/full | "$yq" 'select(.spec.managementPolicy == "Observe")' >"$observed"
+test/livekit/crl-fixture.sh "$observed" "$namespace"
+PLUGIN_SHA=$plugin_sha "$yq" -i '(select(.kind == "Plugin") | .spec.sha256) = strenv(PLUGIN_SHA)' "$observed"
 drop_skipped "$observed"
-# Change a harmless managed-spec field in every mode so pre-failover Ready conditions cannot satisfy this gate.
+"$yq" -i '(select(.spec.connectionRef != null) | .spec.driftInterval) = "31s"' "$observed"
+kubectl apply -f "$observed" >/dev/null
+settle "after the Observe transition" true
+[ "${#failed[@]}" -eq 0 ] || exit 1
+operator_writes >"$writes_before"
+wait_openbao
+echo "deleting the active OpenBao node ${active[0]} after root/full entered Observe"
+kubectl -n openbao delete pod "${active[0]}" --wait=false
+# Refresh every generation without briefly reverting the observed objects to Manage.
+"$yq" -i 'select(.metadata.labels["live.openbaoconfig.io/overlay"] != "root-full")' "$rendered"
 "$yq" -i '(select(.spec.connectionRef != null) | .spec.driftInterval) = "31s"' "$rendered"
 kubectl apply -f "$rendered" >/dev/null
-"$yq" -i '(select(.spec.connectionRef != null) | .spec.driftInterval) = "31s"' "$observed"
+"$yq" -i '(select(.spec.connectionRef != null) | .spec.driftInterval) = "32s"' "$observed"
 kubectl apply -f "$observed" >/dev/null
 wait_openbao
 settle "after the failover and Observe" true
 wait_openbao
 echo "OpenBao ready again, active node ${active[0]}"
+plugin_health
 
 operator_writes >"$writes_after"
 if [ "$(head -n1 "$writes_before")" != "$(head -n1 "$writes_after")" ]; then
@@ -334,6 +362,4 @@ all_writes=$(awk 'NR == FNR { before[$1] = $2; next } $1 != "leader" && $2 > bef
   "$writes_before" "$writes_after" | sort | tr '\n' ' ')
 echo "OpenBao writes during the failover and Observe: ${all_writes:-none}"
 printf '\nOpenBao writes during the failover and Observe: %s\n' "${all_writes:-none}" >>"${GITHUB_STEP_SUMMARY:-/dev/null}"
-# A Logger level lives only in the memory of the node that took the write, so the new active node needs it again.
-writes=$(tr ' ' '\n' <<<"$all_writes" | grep -v '^Logger=' | tr '\n' ' ' | sed 's/ *$//' || true)
-[ "${#failed[@]}" -eq 0 ] && [ "$boundary_failed" -eq 0 ] && [ -z "$writes" ]
+[ "${#failed[@]}" -eq 0 ] && [ "$boundary_failed" -eq 0 ] && [ -z "$all_writes" ]

@@ -200,8 +200,9 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 	"$(GOLANGCI_LINT)" config verify
 
 .PHONY: govulncheck
-govulncheck: govulncheck-tool ## Report known vulnerabilities reachable from the code.
+govulncheck: govulncheck-tool ## Report known vulnerabilities reachable from both Go modules.
 	"$(GOVULNCHECK)" ./...
+	cd test/livekit/pluginfixture && "$(GOVULNCHECK)" ./...
 
 .PHONY: helm-lint
 helm-lint: helm ## Lint the Helm chart and render it with default values.
@@ -552,3 +553,21 @@ endef
 define gomodver
 $(shell go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $(1) 2>/dev/null)
 endef
+
+.PHONY: lab-up lab-identity lab-eso lab-pki
+lab-up: ## Create the disposable kind lab with TLS raft OpenBao and the operator.
+	hack/lab/up.sh $(or $(LAB_PROFILE),raft)
+
+lab-identity: ## Exercise Keycloak OIDC, JWT and group access in the local lab.
+	npm ci --ignore-scripts --prefix hack/lab/browser
+	hack/lab/identity-up.sh
+	hack/lab/identity-test.sh
+	hack/lab/identity-browser.sh
+
+lab-eso: ## Exercise tenant secret delivery and rotation through ESO.
+	hack/lab/eso-up.sh
+	hack/lab/eso-test.sh
+
+lab-pki: ## Issue and verify localhost certificates through cert-manager and operator PKI CRDs.
+	hack/lab/pki-up.sh
+	hack/lab/pki-test.sh

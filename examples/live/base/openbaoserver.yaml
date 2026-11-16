@@ -17,4 +17,5 @@ spec:
   rateLimit:
     qps: 50
     burst: 100
-  requestTimeout: 30s
+  # Full overlays generate RSA-8192 keys; allow for CPU contention on shared runners.
+  requestTimeout: 3m

@@ -1,0 +1,12 @@
+# Values for the operator chart. OpenBao infrastructure comes from hack/e2e/openbao.yaml.
+replicas: 2
+leaderElection:
+  enabled: true
+pluginKinds:
+  enabled: true
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi

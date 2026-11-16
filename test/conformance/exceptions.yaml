@@ -125,9 +125,6 @@
 - kind: PKIKey
   test: optional-fields
   reason: every optional field is immutable (key type, bits, import bundle, writeSecretRef) or has no example value (externalKeyRef needs a KMS)
-- kind: AccessLevel
-  field: spec.metadata
-  reason: an AccessLevel writes nothing to OpenBao; its fields only shape the policies that AccessGrant and AccessLayout render, so setting or removing one makes no write for the kind
 - kind: TransitKey
   field: spec.minDecryptionVersion
   reason: the example value needs a key with at least two versions, and rotating is the one-shot rotateNonce; the minimal key has one version, where the only valid value 1 is the default

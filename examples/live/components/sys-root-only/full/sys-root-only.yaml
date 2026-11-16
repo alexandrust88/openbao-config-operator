@@ -302,7 +302,7 @@ spec:
   name: live-kit-auth
   command: openbao-plugin-auth-live-kit
   sha256: fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9
-  oci: true
+  oci: false
 ---
 apiVersion: sys.openbaoconfig.io/v1alpha1
 kind: SecretsMount
