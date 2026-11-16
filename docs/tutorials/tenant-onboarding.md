@@ -63,8 +63,9 @@ Through the platform connection, create for each tenant:
 
 - the OpenBao namespace `tenant-a`;
 - a Kubernetes auth method inside it, and its configuration;
-- the policy `tenant-admin`, which lets the tenant create child namespaces and secrets engines in
-  them, and policies and auth roles whose names start with `team-`; a role can bind only
+- the policy `tenant-admin`, which lets the tenant create child namespaces, secrets engines in
+  them and KV data in their `secret` mounts, and policies and auth roles whose names start with
+  `team-`; a role can bind only
   ServiceAccounts of the tenant's own Kubernetes namespace. Everything stays inside the OpenBao
   namespace `tenant-a`;
 - the role `operator`, which lets only the ServiceAccount `openbao-config` of the Kubernetes

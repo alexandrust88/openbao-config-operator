@@ -19,11 +19,7 @@ keywords:
   - gitops
   - configuration-as-code
   - multi-tenancy
-# The release rewrites version, appVersion, artifacthub.io/images (image pinned by digest), artifacthub.io/changes and
-# artifacthub.io/prerelease (hack/release/package-chart.sh). It also signs the package with the GPG chart signing key
-# (Helm provenance, <tgz>.prov next to the release asset and as a layer of the OCI chart) and sets
-# artifacthub.io/signKey to its fingerprint and /charts/pgp-public-key.asc on GitHub Pages. The chart OCI artifact is
-# also signed with keyless cosign, as a Sigstore bundle and as a legacy sha256-<digest>.sig tag.
+# Release packaging sets versions, image digests, signing metadata and release notes.
 annotations:
   artifacthub.io/license: Apache-2.0
   artifacthub.io/operator: "true"
@@ -36,9 +32,9 @@ annotations:
         - linux/arm64
   artifacthub.io/links: |
     - name: Documentation
-      url: https://github.com/alexandrust88/openbao-config-operator/tree/main/docs
+      url: https://alexandrust88.github.io/openbao-config-operator/
     - name: Verify the release
-      url: https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/security/hardening.md#r-supply-01-verify-and-enforce-signatures
+      url: https://alexandrust88.github.io/openbao-config-operator/security/hardening/#verify-the-release
   artifacthub.io/changes: |
     - kind: added
       description: Initial release

@@ -42,7 +42,7 @@ Self-init runs only once, on an empty storage. To change the policy later, manag
 [examples/self-init/verify.sh](../../examples/self-init/verify.sh) boots OpenBao 2.7.2 in a
 container with the example, raft storage, a `static` seal and fake ServiceAccount files, then
 checks through a test-only userpass login that the auth method, the policy and the role exist and
-that the root token was revoked:
+that the root token was revoked. It needs Docker, the `bao` CLI and `jq`:
 
 ```sh
 examples/self-init/verify.sh

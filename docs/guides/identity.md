@@ -101,8 +101,9 @@ assignments that say who may use a client, the provider, and the issuer configur
 
 `OIDCClient` writes the generated client ID and secret to the Secret in `writeSecretRef`. Give it
 to the application that logs its users in through OpenBao. `OIDCRole`
-([examples/identity/oidcrole.yaml](../../examples/identity/oidcrole.yaml)) issues identity tokens to
-OpenBao clients instead.
+([examples/identity/oidcrole.yaml](../../examples/identity/oidcrole.yaml)) is for the other
+direction: OpenBao issues signed identity tokens to its own logged-in identities at
+`identity/oidc/token/<name>`, for example so that workloads can authenticate to other systems.
 
 ## 4. Check that it worked
 

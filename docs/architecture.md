@@ -26,9 +26,7 @@ cite them.
 
 - **1. Steady-state reconcile reads and does not write.** `openbao_writes_total` is zero at rest.
   Proven on a live OpenBao 2.7.2 cluster (81 objects of 55 kinds, zero rewrites across drift
-  intervals and a manager restart). The per-kind no-write conformance test runs on every pull request (for
-  the kinds it touches, every kind of a group whose Go code changes, or every kind when shared code changes), on pushes to `main`, weekly and on demand,
-  except for cases documented in `test/conformance/exceptions.yaml`.
+  intervals and a manager restart), and checked per kind by the no-write and default conformance tests ([CI gates](#ci-gates)).
 - **2. One cached client per connection.** The operator logs in once and renews. Logging in on every
   reconcile would grow entities, aliases and leases without bound; `openbao_logins_total` makes
   this visible. A new login follows only a 401 or a 403 whose lookup-self fails (see
@@ -54,11 +52,15 @@ cite them.
 
 ### Not yet enforced
 
-- **3. The spec is the whole desired state.** The target is that every typed field is compared, including
-  omitted ones at their declared default, so removing a field from the spec unsets it
-  ([ADR 0011](adr/0011-full-field-comparison.md)). Today nested maps are compared exactly, but top-level keys
-  the spec omits are not compared, so removing an optional field does not always unset it. The rule moves to the
-  list above when ADR 0011 is closed.
+- **3. The spec is the whole desired state.** Each adapter's `Desired` returns every typed field, an omitted
+  optional field at the server default the adapter declares, so removing a field from the spec writes the default
+  back ([ADR 0011](adr/0011-full-field-comparison.md)). The default conformance test sets and removes each optional
+  field per kind. The adapters follow the rule, but the engine does not enforce it yet:
+    - no test yet checks that each kind's `Desired` covers every field of its CRD schema
+      ([BL-012](project/backlog.md#bl-012-remaining-v2-rule-gaps)), so a field an adapter leaves out is not unset;
+    - some fields cannot return to a default because OpenBao keeps the stored value, such as a pinned mount
+      `plugin_version`, and some kinds cannot run on `bao server -dev`; `test/conformance/exceptions.yaml` lists
+      each case with its reason.
 
 Typed kinds give validation, references and accurate status; `OpenBaoEndpoint` covers any path without a
 typed kind ([ADR 0006](adr/0006-endpoint-escape-hatch.md)).
@@ -203,10 +205,12 @@ What a tenant cannot do:
 - **exceed its OpenBao policy:** the policy bound to the tenant's ServiceAccount is the limit of
   what it can configure ([ADR 0003](adr/0003-connections-and-tenant-boundary.md)).
 
-These are the controls in the code. What the tests prove today is narrower: the e2e test in `test/e2e` runs a
-tenant connection under a non-root policy, and the [known limitations](reference/limitations.md#verification)
-list what is not proven end to end; a two-tenant e2e test (`test/e2e/isolation_test.go`) proves that a second tenant's writes outside its OpenBao namespace and policy, its references to another tenant's objects and its use of a server that excludes it are refused, and that none of the objects it tried to create exists in OpenBao. The default install also holds cluster-wide Secret and
-TokenRequest rights ([security model](#security-model), RR-01).
+The two-tenant e2e test (`test/e2e/isolation_test.go`) proves these controls end to end: a second tenant is
+refused when it writes outside its OpenBao namespace and policy, references another tenant's connection, Secret
+or ServiceAccount, or uses a server or cluster connection that excludes it, and none of the objects it tried to
+create exists in OpenBao. What is not proven end to end is in the
+[known limitations](reference/limitations.md#verification). The default install also holds cluster-wide Secret
+and TokenRequest rights ([security model](#security-model), RR-01).
 
 `OpenBaoServer` status reports `Ready`, `version`, `sealed` and `standby` from the unauthenticated
 `sys/seal-status` and `sys/health` in the root namespace. Connection status copies those and adds
@@ -376,8 +380,9 @@ The comparison in `internal/engine/compare.go` treats each key by its class
 | server-owned | `ServerOwned` | no | no (accessor, `creation_time`) |
 
 A nil value, an absent key, an empty list and an empty map are equal to one another; `""`, `0` and `false` are
-not equal to absent. Only the keys `Desired` returns are compared (rule 3 is [not yet enforced](#not-yet-enforced)),
-and `OpenBaoEndpoint` compares only its data keys, so a key removed from `data` is not unset on the server.
+not equal to absent. Only the keys `Desired` returns are compared, which is why rule 3 depends on each adapter
+returning every typed field ([not yet enforced](#not-yet-enforced)). `OpenBaoEndpoint` compares only its data keys,
+so a key removed from `data` is not unset on the server.
 
 ### Reconcile sequence
 
@@ -505,7 +510,9 @@ purpose, release it: clear its status (`kubectl patch <kind> <name> --subresourc
   label selector over such objects (`entitySelector`, `mountSelector`). CEL enforces exactly one.
   Kubernetes referents must be `Ready` for their current generation, provide the value in
   `status.id`, and have been reconciled on the referrer's server (`status.serverID`) and OpenBao
-  namespace; a referent change re-queues the referrer through a field index.
+  namespace. A referent change re-queues the referrer at once only for the kinds whose adapter implements
+  `ReferenceWatcher` (`Policy`, `AuthMount`, `SecretsMount`) and for `AccessGrant` and `AccessLayout`, which watch
+  `AccessLevel`; every other referrer picks the change up at its next `ReferenceNotReady` retry.
 - One-time outputs use `writeSecretRef: {name}`. The operator writes the Secret only if it is
   absent or already owned by the CR, and sets itself as owner; it refuses any other Secret.
   Every `OutputWriter` adapter also implements `OutputSecretNamer`, so that refusal comes before
@@ -591,7 +598,8 @@ The HMAC key is the immutable Secret `openbao-config-operator-hash-key` (flag
 first start. It cannot be rotated without rewriting every write-only field once.
 
 Operator permissions: Secrets get/list/watch (references; the cache keeps metadata
-only), Secrets create/update (outputs and the HMAC key), `serviceaccounts/token` create
+only), Secrets create/update/patch (outputs and the HMAC key), ConfigMaps and Namespaces get/list/watch (CA
+bundles, namespace selectors and the pause annotation), `serviceaccounts/token` create
 (TokenRequest), cluster-wide by default and per namespace with `--watch-namespaces`. In OpenBao: its own role,
 used only by `ClusterOpenBaoConnection`. Other residual risks: one-time outputs live
 in Kubernetes Secrets (etcd encryption and RBAC apply), and drift in write-only fields is
@@ -603,7 +611,7 @@ Reads per second = objects / interval ([ADR 0014](adr/0014-drift-tiers-and-reque
 Every interval is jittered.
 
 - Two tiers, both operator flags: access-critical (`Policy`, `AuthMount`, every kind of the `auth` group,
-  `Audit`, `Group`, `GroupMembership`, access groups) every 15 minutes and standard (everything else) every
+  `Audit`, `Group`, `GroupMembership`, `AccessGrant`, `AccessLayout`) every 15 minutes and standard (everything else) every
   hour; `spec.driftDetection: Disabled` and `spec.driftInterval` per object.
 - `OpenBaoServer.spec.rateLimit`: one token bucket shared by every connection to that server; drift
   reads wait, spec-change reconciles go first; `openbao_drift_lag_seconds` shows the lag.
@@ -686,29 +694,33 @@ integration-tested.
 
 ## Observability
 
-| metric | labels | status |
-|--------|--------|--------|
-| `openbao_requests_total` | connection, method, code | done (target label: server) |
-| `openbao_request_duration_seconds` | connection, method | done |
-| `openbao_logins_total` | connection, result | done; flat at rest |
-| `openbao_token_renewals_total` | connection, result | done |
-| `openbao_writes_total` | kind | done; zero at rest |
-| `openbao_drift_repairs_total`, `openbao_conflicts_total` | kind | done |
-| `openbao_drift_lag_seconds` | connection | done |
-| `openbao_resource_ready` | kind, namespace, name, reason | done; proves each resource is Ready, and why not |
-| `openbao_write_budget_exhausted_total` | server | done; proves the write budget held writes back |
-| `openbao_connection_ready` | kind, namespace, name | done; proves each connection can log in and serve clients |
+The metrics below show whether the design rules hold. Their meaning, label values, example queries and alert
+rules are in [observability](operate/observability.md).
 
-Events on create, adopt, update (naming the keys that differed, never values), delete, conflict
-and guarded delete. Logs never contain tokens, secret values or OpenBao response bodies.
+| metric | labels | shows |
+|--------|--------|-------|
+| `openbao_requests_total` | connection, method, code | the request load on OpenBao, retries included |
+| `openbao_request_duration_seconds` | connection, method | OpenBao latency |
+| `openbao_logins_total` | connection, result | rule 2: flat at rest |
+| `openbao_token_renewals_total` | connection, result | rule 2: tokens are renewed, not replaced by logins |
+| `openbao_writes_total` | kind | rule 1: zero at rest |
+| `openbao_drift_repairs_total`, `openbao_conflicts_total` | kind | out-of-band changes repaired; passes refused under rule 4 |
+| `openbao_drift_lag_seconds` | connection | how far drift reads run behind their schedule |
+| `openbao_resource_ready` | kind, namespace, name, reason | rule 10: each resource is `Ready`, and why not |
+| `openbao_write_budget_exhausted_total` | server | the write circuit breaker held writes back |
+| `openbao_connection_ready` | kind, namespace, name | each connection can log in and serve clients |
+
+Events name the keys that differed, never values ([events](reference/status-and-events.md#events)). Logs never
+contain tokens, secret values or OpenBao response bodies.
 
 ## CI gates
 
 The pull-request gate runs lint, unit tests, envtest, integration of every adapter against
 `bao server -dev`, `verify-generated`, govulncheck, a kind e2e test with the chart, and the per-kind
-no-write conformance test for the kinds the pull request touches (every kind when shared code changes). The full
-no-write and default conformance tests run on pushes to `main`, weekly and on demand, with documented
-exceptions. Remaining gaps: integration against every supported OpenBao minor and field-level API coverage.
+no-write and default conformance tests for the kinds the pull request touches, every kind of a group whose Go code changes,
+or every kind when shared code changes (`hack/ci/conformance-kinds.sh`). The full no-write and default
+conformance tests run on pushes to `main`, weekly and on demand, with the exceptions in
+`test/conformance/exceptions.yaml`. Remaining gaps: integration against every supported OpenBao minor and field-level API coverage.
 
 ## Delivery
 
@@ -716,5 +728,6 @@ exceptions. Remaining gaps: integration against every supported OpenBao minor an
   and digest.
 - A `v*` tag triggers a GitHub release with the image, the Helm chart (OCI) and `install.yaml`,
   signed with keyless cosign and carrying an SBOM attestation and build provenance (forms and SLSA levels in
-  [verify the release](security/hardening.md#verify-the-release)).
+  [verify the release](security/hardening.md#verify-the-release)). Since v0.3.0 the chart package is also signed
+  with the project's GPG key (Helm provenance, a `.prov` file), which `helm install --verify` checks.
 - Workflow actions are pinned by SHA; Renovate keeps those pins and Go modules current.

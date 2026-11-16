@@ -15,6 +15,12 @@ in with Kubernetes auth through TokenRequest as the tenant ServiceAccount, under
 policy, and reconciles a `Policy`, a `KVSecret` and an `OpenBaoEndpoint` through create, drift
 repair, steady state and delete; a two-tenant e2e test (`test/e2e/isolation_test.go`) proves that a second tenant's writes outside its OpenBao namespace and policy, its references to another tenant's objects and its use of a server that excludes it are refused, and that none of the objects it tried to create exists in OpenBao.
 
+In the e2e workflow, `test/livekit/kind.sh` also applies the live kit (64 built-in kinds, the database kinds
+against PostgreSQL) to a three-node Raft OpenBao with TLS and persistent volumes (`hack/e2e/openbao.yaml`), logged
+in with non-root tokens (Kubernetes auth, AppRole and an orphan token under an `admin` policy). The four kinds with dedicated integration fixtures run only
+against `bao server -dev`, and the external-plugin kinds only in golden payload tests
+([verification guide](verification.md#live-crd-coverage)).
+
 Exit criteria: the per-kind tests run against a server with persistent storage, TLS and a
 non-root token. The second-tenant scenario is done (`test/e2e/isolation_test.go`). Storage, HA,
 TLS and backup behaviour of the server stay out of scope.

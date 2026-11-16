@@ -27,7 +27,8 @@ YAML to Git, let Argo CD or Flux apply it, and the operator converges OpenBao, r
 It does not deploy, initialise, unseal or upgrade OpenBao, and it does not copy secret values into Kubernetes
 (use [External Secrets Operator](https://external-secrets.io) for that).
 
-> **Status: alpha.** v0.2.0 is the latest release (image, Helm chart and `install.yaml`). The API is `v1alpha1`;
+> **Status: alpha.** Each [release](https://github.com/alexandrust88/openbao-config-operator/releases) ships a
+> signed image, Helm chart and `install.yaml`. The API is `v1alpha1`;
 > the API group domain `openbaoconfig.io` is final ([ADR 0008](docs/adr/0008-provisional-api-group-domain.md)).
 > Read the [risks](#risks) and the [known limitations](docs/reference/limitations.md) before you rely on it; the
 > [roadmap](docs/maintainers/roadmap.md) says what comes next.
@@ -99,7 +100,8 @@ are the better choice.
   checksums with keyless cosign, and attests SPDX and CycloneDX SBOMs and provenance: GitHub artifact
   attestations (SLSA Build L2, as GitHub documents it) plus a cosign `slsaprovenance1` statement that the
   release job writes itself, which claims no SLSA level. Nothing reaches Build L3
-  ([verify a release](SECURITY.md#verifying-releases)). Threat model and hardening guide in
+  ([verify a release](SECURITY.md#verifying-releases)). Since v0.3.0 the chart also carries a GPG signature
+  (Helm provenance), which `helm install --verify` checks. Threat model and hardening guide in
   [docs/security](docs/security/).
 
 ## Quick start
@@ -108,7 +110,7 @@ The [quickstart](docs/get-started/quickstart.md) installs the operator and a dev
 [kind](https://kind.sigs.k8s.io) cluster and reconciles a first policy in a few minutes; CI runs every command on
 that page. The [tutorials](docs/tutorials/index.md) then walk through the platform owner, tenant onboarding and
 team onboarding roles, and the [install guide](docs/get-started/install.md) covers production installs from the
-Helm repository or the signed OCI chart.
+OCI chart, the Helm repository or `install.yaml`, and how to verify them.
 
 ## Architecture
 

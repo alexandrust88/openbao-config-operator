@@ -1,9 +1,8 @@
 # Kind catalogue
 
 Every typed kind, with its implementation status. The design is in the
-[architecture](architecture.md). The v2 typed catalogue is built-ins first: the
-kinds compiled into OpenBao 2.7 are implemented and tested against `bao server -dev`, including
-built-in kinds beyond the core set of the v2 spec. The external-plugin kinds stay in the code but
+[architecture](architecture.md). Every built-in kind in this catalogue is implemented and tested against
+`bao server -dev`; the remaining built-in gaps are in [BL-009](project/backlog.md). The external-plugin kinds stay in the code but
 are disabled by default behind `--enable-plugin-kinds` (chart `pluginKinds.enabled`) until plugin
 support ([phase 5](maintainers/roadmap.md#phases)) works end to end.
 
@@ -54,10 +53,11 @@ and `Entity`.
   notes say otherwise; root-only kinds are refused with `RootOnlyKind` before any OpenBao call. Measured per kind
   and connection mode by `test/nsmatrix` ([architecture](architecture.md#namespace-scope)).
 
-The v2 engine rules (full-field comparison, path index, destructive guard, drift tiers) are being
-retrofitted to every kind; until that lands, `integration-tested` means the v1 engine rules hold.
-Write-only fields (absent from reads) are hashed into `status.writeOnlyHash` (HMAC), never
-compared.
+The engine applies the path index, the destructive guard and the drift tiers to every kind. Every built-in
+adapter returns its full payload with declared defaults, and the no-write and default conformance tests measure
+each built-in kind, except the cases in `test/conformance/exceptions.yaml`
+([not yet enforced](architecture.md#not-yet-enforced)). Write-only fields (absent from reads) are hashed into
+`status.writeOnlyHash` (HMAC), never compared.
 
 ## core
 
@@ -74,7 +74,7 @@ compared.
 |------|------|--------------|-------|--------|----------|-------|
 | `Policy` | `sys/policies/acl/<name>` | builtin | 1 | integration-tested | `integration_test.go`, `sys_core_test.go`, `templated_acl_test.go`, live | ACL only; OpenBao has no EGP/RGP |
 | `PasswordPolicy` | `sys/policies/password/<name>` | builtin | 4 | integration-tested | `sys_core_test.go`, live |  |
-| `OpenBaoNamespace` | `sys/namespaces/<path>` | builtin | 2 | integration-tested | `sys_core_test.go`, `templated_acl_test.go`, live | namespace scope: any (creates a child of its OpenBao namespace); delete leaves it `tainted` until purged; sealable namespaces return key shares once (`writeSecretRef`); default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| `OpenBaoNamespace` | `sys/namespaces/<path>` | builtin | 2 | integration-tested | `sys_core_test.go`, `templated_acl_test.go`, live | namespace scope: any (creates a child of its OpenBao namespace); delete leaves it `tainted` until purged (`ReconcileInProgress`); namespace sealing is not supported yet; default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `AuthMount` | `sys/auth/<path>`, `sys/auth/<path>/tune` | builtin | 2 | integration-tested | `identity_test.go`, `sys_core_test.go`, `templated_acl_test.go`, live | `type`, `local`, `seal_wrap` immutable; accessor in status; default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `SecretsMount` | `sys/mounts/<path>`, `sys/mounts/<path>/tune` | builtin | 2 | integration-tested | `sys_core_test.go`, `templated_acl_test.go`, live | as `AuthMount`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `Audit` | `sys/audit/<path>` | builtin | 4 | integration-tested | `sys_audit_test.go` | namespace scope: root only (`RootOnlyKind` elsewhere); types file, socket, syslog, http; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
@@ -143,20 +143,20 @@ compared.
 | `DatabaseConnection` | `<m>/config/<name>` | builtin | 4 | integration-tested | `secrets_credentials_test.go`, live | `password`, `private_key` write-only; `connection_url` redacted on read; never re-send the password after `rotate-root`; builtin plugins: MySQL family, PostgreSQL, Cassandra, InfluxDB, Redis, Valkey |
 | `DatabaseRole` | `<m>/roles/<name>` | builtin | 4 | integration-tested | `secrets_credentials_test.go`, live |  |
 | `DatabaseStaticRole` | `<m>/static-roles/<name>` | builtin | 4 | integration-tested | `secrets_credentials_test.go` | password not returned |
-| `PKIIssuer` | generate: `<m>/root/generate/<type>`, `<m>/intermediate/generate/<type>`; import: `<m>/config/ca`, `<m>/intermediate/set-signed`; config: `<m>/issuer/<ref>` (u) | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | multi-step and non-idempotent; exported private key returned once (`writeSecretRef`); CSR in status; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
-| `PKIKey` | `<m>/key/<ref>`, `<m>/keys/generate/<type>`, `<m>/keys/import` (u) | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | extra; OpenBao external keys (`sys/external-keys`) are an alternative; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| `PKIIssuer` | generate: `<m>/root/generate/<type>`, `<m>/intermediate/generate/<type>`; import: `<m>/config/ca`, `<m>/intermediate/set-signed`; config: `<m>/issuer/<ref>` | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | multi-step and non-idempotent; exported private key returned once (`writeSecretRef`); CSR in status; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| `PKIKey` | `<m>/key/<ref>`, `<m>/keys/generate/<type>`, `<m>/keys/import` | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | extra; OpenBao external keys (`sys/external-keys`) are an alternative; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `PKIRole` | `<m>/roles/<name>` | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | OpenBao CEL policies not modelled |
-| `PKIConfig` | `<m>/config/urls`, `<m>/config/crl`, `<m>/config/cluster`, `<m>/config/issuers` (u) | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | one kind for the per-mount singletons; shape to be decided |
-| `PKIACMEConfig` | `<m>/config/acme` (u) | builtin (u) | 4 | integration-tested | `secrets_pki_test.go`, live |  |
-| `PKIAutoTidy` | `<m>/config/auto-tidy` (u) | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | extra |
+| `PKIConfig` | `<m>/config/urls`, `<m>/config/crl`, `<m>/config/cluster`, `<m>/config/issuers` | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | one kind for the per-mount singletons |
+| `PKIACMEConfig` | `<m>/config/acme` | builtin (u) | 4 | integration-tested | `secrets_pki_test.go`, live |  |
+| `PKIAutoTidy` | `<m>/config/auto-tidy` | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | extra |
 | `TransitKey` | `<m>/keys/<name>`, `<m>/keys/<name>/config` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live | `type`, `derived`, `convergent_encryption` immutable; key material never read; delete needs `deletion_allowed`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `SSHCA` | `<m>/config/ca` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live | `private_key` write-only (u); generated key cannot be replaced without delete; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `SSHRole` | `<m>/roles/<name>` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live |  |
 | `KubernetesSecretsConfig` | `<m>/config` | builtin | 2 | integration-tested | `secrets_credentials_test.go`, live | `service_account_jwt` write-only |
 | `KubernetesSecretsRole` | `<m>/roles/<name>` | builtin | 2 | integration-tested | `secrets_credentials_test.go`, live |  |
-| `RabbitMQConfig` | `<m>/config/connection`, `<m>/config/lease` | builtin | 6 | integration-tested | `secrets_credentials_test.go`, live | `password` write-only; two writes (`Writer`); built into 2.7.2, listed under phase 6 in the v2 spec pending an open question |
+| `RabbitMQConfig` | `<m>/config/connection`, `<m>/config/lease` | builtin | 6 | integration-tested | `secrets_credentials_test.go`, live | `password` write-only; two writes (`Writer`); built into 2.7.2; listed under phase 6 pending an [open question](maintainers/roadmap.md#open-questions) |
 | `RabbitMQRole` | `<m>/roles/<name>` | builtin | 6 | integration-tested | `secrets_credentials_test.go`, live |  |
-| `TOTPKey` | `<m>/keys/<name>` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live | with `generate=true` the barcode and URL are returned once (u); destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| `TOTPKey` | `<m>/keys/<name>` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live | with `generate=true` the barcode and URL are returned once; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `LDAPSecretsConfig` | `<m>/config` | external-plugin | 6 | plugin-gated | - | `bindpass` write-only |
 | `LDAPSecretsDynamicRole` | `<m>/role/<name>` | external-plugin | 6 | plugin-gated | - |  |
 | `LDAPSecretsStaticRole` | `<m>/static-role/<name>` | external-plugin | 6 | plugin-gated | - |  |

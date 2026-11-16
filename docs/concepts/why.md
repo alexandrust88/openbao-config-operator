@@ -46,7 +46,7 @@ against it. Neither project tests that, and neither has kinds for what only Open
 `sys/workflows`, JWT roles with CEL, or OCI plugins. In return both carry Vault Enterprise kinds that OpenBao
 does not serve; provider-vault, for example, has EGP and RGP Sentinel policies and the KMIP engine.
 
-This operator takes the opposite bet: OpenBao only, minimum 2.6, with no flavor detection
+This operator takes the opposite bet: OpenBao only, minimum 2.6, with no flavour detection
 ([ADR 0009](../adr/0009-openbao-only-target.md)). Namespaces get a kind of their own that handles the
 asynchronous delete, kinds that OpenBao serves only in the root namespace refuse a child namespace before any
 call, and the OpenBao-only features have kinds ([architecture](../architecture.md#openbao-native-features)).
@@ -182,7 +182,7 @@ such as an AppRole secret ID.
   resources, with the rest of Crossplane's ecosystem. This operator offers only its access kinds
   (`AccessLevel`, `AccessGrant`, `AccessLayout`) above the primitives.
 - **Maturity.** vault-config-operator is at v1.0 and ships through OperatorHub, and the Terraform provider under
-  provider-vault has been released since 2017. This operator is alpha (`v1alpha1`, v0.2.x) with one maintainer.
+  provider-vault has been released since 2017. This operator is alpha (`v1alpha1`, v0.3) with one maintainer.
 - **One tool for configuration and secrets.** vault-config-operator also generates and syncs secret values
   (`RandomSecret`, `VaultSecret`). This operator leaves that to ESO.
 

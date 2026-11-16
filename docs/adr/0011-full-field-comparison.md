@@ -1,6 +1,6 @@
 # 0011. Full-field comparison with declared defaults
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; implemented, checked per kind by the default test in `test/conformance/defaults_test.go`. Date: 2026-11-14.
 
 ## Context
 
@@ -23,4 +23,3 @@ sets and removes each optional field. `OpenBaoEndpoint` keeps comparing only its
   the no-write test catches it.
 - An operator upgrade that changes a declared default rewrites objects; the write circuit breaker
   ([ADR 0018](0018-write-circuit-breaker.md)) bounds that.
-- Status: in progress.

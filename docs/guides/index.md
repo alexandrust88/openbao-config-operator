@@ -5,7 +5,10 @@ connection ([Install](../get-started/install.md), [Connect to OpenBao](../get-st
 
 The manifests come from `examples/`, where CI checks every file against the CRDs. They use the
 Kubernetes namespace `openbao-config` and a connection named `openbao`; change both to yours. Values
-such as passwords, keys and certificates in them are fake placeholders.
+such as passwords, keys and certificates in them are fake placeholders. The check steps read
+OpenBao with the `bao` CLI, so set `BAO_ADDR` and a token that may read the paths.
+
+To learn the operator step by step on a test cluster first, follow the [tutorials](../tutorials/index.md).
 
 ## Authentication
 

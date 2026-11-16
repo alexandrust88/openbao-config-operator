@@ -10,14 +10,14 @@ and the [release process](../maintainers/release-process.md#openbao-versions).
 | component | supported | tested in CI |
 |-----------|-----------|--------------|
 | OpenBao | 2.6 and 2.7 (minimum 2.6) | 2.7.2: unit, envtest and integration tests run against `bao server -dev` (`BAO_VERSION` in the `Makefile`); the e2e test runs `ghcr.io/openbao/openbao:2.7.2` in kind (`hack/e2e/openbao.yaml`). 2.6 is covered by its OpenAPI snapshot (`api-coverage/openapi-2.6.json`) only |
-| Kubernetes | 1.31 or later (chart `kubeVersion: ">=1.31.0-0"`) | envtest 1.35 (from `k8s.io/api` v0.35 in `go.mod`); kind node `kindest/node:v1.35.8` with kind v0.33.0 in the e2e workflow |
+| Kubernetes | 1.31 or later (chart `kubeVersion: ">=1.31.0-0"`) | envtest 1.35 (from `k8s.io/api` v0.35 in `go.mod`); kind node `kindest/node:v1.35.8` with kind v0.33.0 in the e2e workflow (`KIND_NODE_IMAGE` and `KIND_VERSION` in the `Makefile`) |
 | Helm | 3.8 or later, for OCI charts | Helm v4.3.1 (`HELM_VERSION` in the `Makefile`) for lint, unit tests and e2e |
 | Image architectures | `linux/amd64`, `linux/arm64` | both are built and checked by `hack/release/verify-release.sh` |
 
 ## OpenBao
 
 - OpenBao is the only target ([ADR 0009](../adr/0009-openbao-only-target.md)). The design relies on
-  OpenBao features: self-init, namespaces, horizontal read scaling and OCI plugins. Other servers
+  OpenBao features: self-init, namespaces and OCI plugins. Other servers
   are not tested and not supported.
 - Each operator minor supports the OpenBao minors that have an API snapshot in `api-coverage/` and
   are listed in its release notes; today `openapi-2.6.json` and `openapi-2.7.json`.
@@ -60,11 +60,13 @@ and the [release process](../maintainers/release-process.md#openbao-versions).
 | method | artefact |
 |--------|----------|
 | Helm, OCI | `oci://ghcr.io/alexandrust88/charts/openbao-config-operator`, version `@VERSION@` |
+| Helm repository | `https://alexandrust88.github.io/openbao-config-operator/charts`, for tools without OCI support |
 | plain manifests | `install.yaml` and `crds.yaml` attached to the GitHub release `@TAG@` |
 
 The chart ships the CRDs as templates, so `helm upgrade` upgrades them; `crds.keep` (default `true`)
-annotates them with `helm.sh/resource-policy: keep`. The [install guide](../get-started/install.md)
-has the commands.
+annotates them with `helm.sh/resource-policy: keep`. Since v0.3.0 the chart is also signed with the project's GPG
+key (Helm provenance), so `helm install --verify` works; v0.2.0 and earlier have no provenance file. The
+[install guide](../get-started/install.md) has the commands.
 
 ## Image
 

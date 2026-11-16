@@ -27,7 +27,7 @@ import (
 // +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=approlesecretids/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=approlesecretids/finalizers,verbs=update
 // +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=approles,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update
 
 // Keys of the AppRoleSecretID payload that are not sent to OpenBao: the role the secret ID belongs to, and the
 // accessor of the secret ID that the output Secret holds (desired) or that OpenBao holds (observed).

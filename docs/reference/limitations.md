@@ -24,7 +24,8 @@ entry leaves this page when its source is closed.
 
 | limitation | effect | source |
 |------------|--------|--------|
-| Top-level keys the spec omits are not compared yet | removing an optional field from the spec does not always unset it in OpenBao; set the field to its default explicitly | [ADR 0011](../adr/0011-full-field-comparison.md), [architecture](../architecture.md#not-yet-enforced) |
+| No test checks that each kind's `Desired` covers every field of its CRD schema | a field an adapter leaves out of its payload is not compared, so removing it from the spec does not unset it in OpenBao; set the field to its default explicitly | [BL-012](../project/backlog.md#bl-012-remaining-v2-rule-gaps), [architecture](../architecture.md#not-yet-enforced) |
+| Some fields cannot return to their default once set, such as a pinned mount `plugin_version` or a PKI default issuer | OpenBao keeps the stored value when the field is removed from the spec | `test/conformance/exceptions.yaml`, [architecture](../architecture.md#not-yet-enforced) |
 | `OpenBaoEndpoint` compares only its `data` keys | a key removed from `data` is not unset on the server | [architecture](../architecture.md#field-classes) |
 | Write-only fields cannot be compared | drift in a password or other value OpenBao does not return is invisible; the operator writes it again only when the input Secret or spec changes | [architecture](../architecture.md#security-model) |
 | The read after a write is not pinned to the active node | on a cluster whose standbys serve reads, a read-back can return stale values and report `OutOfSync`, retried with backoff | [architecture](../architecture.md#reconcile-sequence) |
@@ -38,7 +39,7 @@ entry leaves this page when its source is closed.
 | Only entities, groups and namespaces carry a server-side ownership marker | after status loss, other kinds need a one-time `creationPolicy: Adopt` to be managed again | [ADR 0012](../adr/0012-ownership-path-index-and-marker.md) |
 | `GroupMembership`, `AccessGrant` and `AccessLayout` keep the members and children they own only in status | a restore without status cannot remove members or children that the spec no longer lists; remove them by hand | [BL-011](../project/backlog.md#bl-011-restore-without-status-chart-attestation), [backup and restore](../operate/backup-restore.md) |
 | Creates are serialised per process | with several replicas, leader election must stay on (the chart default) | [architecture](../architecture.md#scale-and-drift) |
-| The hash key of `status.writeOnlyHash` cannot be rotated without rewriting every write-only field | if the hash-key Secret is deleted, the next manager start creates a new key and every object with write-only inputs is rewritten once | [architecture](../maintainers/roadmap.md#later-plugins-and-the-road-to-v1beta1) |
+| The hash key of `status.writeOnlyHash` cannot be rotated without rewriting every write-only field | if the hash-key Secret is deleted, the next manager start creates a new key and every object with write-only inputs is rewritten once | [architecture](../architecture.md#security-model), [roadmap](../maintainers/roadmap.md#later-plugins-and-the-road-to-v1beta1) |
 
 ## OpenBao behaviour
 

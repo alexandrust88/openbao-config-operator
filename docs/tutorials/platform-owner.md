@@ -77,7 +77,9 @@ openbaoserver.core.openbaoconfig.io/openbao condition met
 clusteropenbaoconnection.core.openbaoconfig.io/platform condition met
 ```
 
-The connection is `Ready` once the operator has logged in to OpenBao as itself.
+The connection is `Ready` once the operator has logged in to OpenBao as itself. The server's
+`allowedNamespaces` and `allowedAudiences` limit `OpenBaoConnection` objects only, so they do not
+apply to the `ClusterOpenBaoConnection` `platform`; its own `allowedNamespaces` limits it instead.
 
 ## 3. Configure OpenBao in one go
 

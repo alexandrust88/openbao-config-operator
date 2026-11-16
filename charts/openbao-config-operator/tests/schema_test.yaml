@@ -298,3 +298,67 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "at '/serviceMonitor/relabelings/0': got string, want object"
+
+  - it: rejects a newline that would inject a manager flag through an audience
+    set:
+      apiServerAudiences: ["x\n            - --metrics-secure=false"]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/apiServerAudiences/0'"
+
+  - it: rejects a priority class name that is not a DNS name
+    set:
+      priorityClassName: "x\n      hostNetwork: true"
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/priorityClassName'"
+
+  - it: rejects the default ServiceAccount
+    set:
+      serviceAccount.create: false
+      serviceAccount.name: default
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/serviceAccount/name'"
+
+  - it: rejects a chart-managed flag in extraArgs
+    set:
+      extraArgs: [--watch-namespaces=team-a]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/extraArgs/0'"
+
+  - it: rejects POD_NAMESPACE in extraEnv
+    set:
+      extraEnv: [{name: POD_NAMESPACE, value: kube-system}]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/extraEnv/0/name'"
+
+  - it: rejects a hostPath extra volume
+    set:
+      extraVolumes: [{name: host, hostPath: {path: /}}]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/extraVolumes/0'"
+
+  - it: rejects a privileged manager container
+    set:
+      securityContext.privileged: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/securityContext/privileged'"
+
+  - it: rejects added capabilities
+    set:
+      securityContext.capabilities.add: [NET_ADMIN]
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/securityContext/capabilities/add'"
+
+  - it: rejects a pod that may run as root
+    set:
+      podSecurityContext.runAsNonRoot: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/podSecurityContext/runAsNonRoot'"

@@ -32,8 +32,8 @@ deployment "openbao" successfully rolled out
 
 ## 2. Give the operator the same identity on the second server
 
-The second server knows nothing of the first. Enable its Kubernetes auth method and create the
-same policy and role as in [Set up the platform](platform-owner.md#1-give-the-operator-its-own-identity-in-openbao):
+The second server knows nothing of the first. Enable its Kubernetes auth method, point it at the
+cluster's API server, and create the same policy and role as in [Set up the platform](platform-owner.md#1-give-the-operator-its-own-identity-in-openbao):
 
 ```bash
 --8<-- "hack/docs/tutorial-multiple-instances.sh:openbao-2-auth-enable"
@@ -49,9 +49,13 @@ Success! Data written to: auth/kubernetes/role/openbao-config-operator
 
 ## 3. Declare the second server and its connection
 
-Each OpenBao gets its own `OpenBaoServer`, and each server its own connection. The server
-`openbao-2` sets no `allowedNamespaces`, so no tenant connection may use it; the
-`ClusterOpenBaoConnection` `platform-2` reaches it for the namespace `platform`.
+The second OpenBao gets its own `OpenBaoServer` and its own connection. The server `openbao-2`
+sets no `allowedNamespaces`, so no tenant connection may use it; the `ClusterOpenBaoConnection`
+`platform-2` reaches it for the namespace `platform`.
+
+The first OpenBao is now declared twice: as `quickstart` by the quickstart and as `openbao` by the
+previous tutorial. The tutorials keep both. Each `OpenBaoServer` has its own allow-lists and its
+own `rateLimit`, so on a real platform declare each OpenBao once.
 
 === "openbaoserver.yaml"
 
@@ -151,8 +155,8 @@ among the secrets engines; and `userpass/` among the auth methods. The first ser
 
 ## What you built
 
-- Two OpenBao servers managed from one Kubernetes cluster, each declared once as an
-  `OpenBaoServer` with its own connection.
+- Two OpenBao servers managed from one Kubernetes cluster, each reached through its own
+  `OpenBaoServer` and connection.
 - Configuration that differs per server, and one policy kept identical on both.
 - Proof that a resource bound to one server never writes to the other.
 

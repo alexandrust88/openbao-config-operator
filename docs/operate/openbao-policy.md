@@ -238,5 +238,5 @@ bao token capabilities -namespace=tenants/team-a sys/policies/acl/team-a-app
 bao token capabilities -namespace=tenants/team-a sys/policies/acl/platform-admin
 ```
 
-A resource that hits a missing capability reports `Synced=False` with `ReconcileError` and a
+A resource that hits a missing capability reports `Synced=False` with `PermissionDenied` and a
 403 in the message ([troubleshooting.md](troubleshooting.md#common-openbao-errors)).

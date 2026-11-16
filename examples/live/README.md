@@ -8,7 +8,7 @@ realistic values). [coverage.md](coverage.md) lists the components that hold eac
 
 | path | what it is |
 |------|------------|
-| `params/` | the only environment-specific values, as `live-params` literals: address, CA ConfigMap, Kubernetes namespace, login roles |
+| `params/` | the only environment-specific values, as `live-params` literals: address, CA ConfigMap, Kubernetes namespace, token audience, login mounts, roles and ServiceAccounts |
 | `base/` | the `OpenBaoServer` and `nameref.yaml`, which makes a `namePrefix` reach every reference and OpenBao name |
 | `modes/<mode>/` | the `OpenBaoConnection` and `ClusterOpenBaoConnection` of one connection mode |
 | `components/<scenario>/{minimal,full}/` | one dependency chain each, for example mount, config, role, policy |
@@ -42,7 +42,8 @@ carry the label `live.openbaoconfig.io/nested: "true"`. Exceptions, which are sh
 
 - The operator runs and watches the Kubernetes namespace from `kubernetesNamespace`.
 - A ConfigMap with the CA of the OpenBao listener exists in that namespace (`caConfigMap`, key `caKey`).
-- The ServiceAccounts named in the `live-params` literals exist, and OpenBao has Kubernetes auth roles for them:
+- The ServiceAccounts named in the `live-params` literals exist, and OpenBao has Kubernetes auth roles for them
+  that accept the token audience `audience`:
   - `rootAuthRole` at `rootAuthMountPath` in the root namespace, with a policy over the root namespace and below
     (`root`, `root-to-child`, `optional`).
   - `tenantAuthRole` at the same mount, with a policy that only reaches `tenantNamespace`

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The kind quickstart of docs/get-started/quickstart.md, end to end. The page includes the sections between the
-# snippet markers, so each section stays a command a reader can paste; checks the page does not show sit outside
+# snippet markers, so each section stays a command a reader can paste; the checks, which the page does not show, sit outside
 # the markers. CI runs this script against the locally built image and chart.
 #
 # Environment:

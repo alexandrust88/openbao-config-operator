@@ -33,7 +33,8 @@ spec:
 A `DatabaseConnection` configures one database. The root password comes from a Secret; OpenBao
 never returns it, so the operator records a hash and writes it again when the Secret changes.
 `allowedRoles` lists the roles that may use the connection. The file holds one connection per
-supported plugin; the PostgreSQL one comes first:
+plugin section (PostgreSQL, MySQL, Cassandra, InfluxDB, Valkey, and Redis through the `valkey`
+section) and a Snowflake connection set through `pluginConfig`; the PostgreSQL one comes first:
 
 ??? example "examples/secrets/databaseconnection.yaml"
 

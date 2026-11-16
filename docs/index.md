@@ -31,7 +31,7 @@ vault-config-operator and External Secrets Operator.
 
 !!! warning "Status: alpha"
 
-    v0.2.0 is the latest release. The API is `v1alpha1`, so a minor release may change it under the
+    @TAG@ is the latest release. The API is `v1alpha1`, so a minor release may change it under the
     [deprecation policy](maintainers/release-process.md#deprecation-policy); the API group domain
     `openbaoconfig.io` is final ([ADR 0008](adr/0008-provisional-api-group-domain.md)). Check the
     [known limitations](reference/limitations.md) before you point the operator at production configuration.

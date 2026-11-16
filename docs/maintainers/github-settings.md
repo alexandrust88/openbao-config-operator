@@ -48,6 +48,11 @@ and update the decision rules in [GOVERNANCE.md](../../GOVERNANCE.md#decision-ma
   personal repository only the owner holds.
 - The Renovate GitHub App installed on the repository (manual, <https://github.com/apps/renovate>), with read access
   to Dependabot alerts so `vulnerabilityAlerts` in `renovate.json` works.
+- Optional, for release pull requests (manual, not configured yet): a GitHub App owned by the repository owner, with
+  the repository permissions Contents and Pull requests set to read and write, installed on this repository. Store
+  its client ID as the variable `RELEASE_APP_CLIENT_ID` and a private key as the secret `RELEASE_APP_PRIVATE_KEY` of
+  the `release-please` environment. Without the app, `release-please.yml` logs "release-please skipped" and releases
+  are tagged by hand ([release process](release-process.md#cutting-a-release)).
 
 ## General
 
@@ -188,7 +193,7 @@ Settings > Environments.
 
 | Environment | Deployment branches and tags | Protection |
 |-------------|------------------------------|------------|
-| `release` | tags `v*` only | required reviewers: the owner (`RELEASE_REVIEWER`); prevent self-review off in solo mode, on in strict mode (see [solo and strict mode](#solo-and-strict-mode)); holds no secrets (signing is keyless). Every publishing job of `release.yml` (`image`, `chart`, `ocm`, `assets`) uses it, so each waits for its own approval |
+| `release` | tags `v*` only | required reviewers: the owner (`RELEASE_REVIEWER`); prevent self-review off in solo mode, on in strict mode (see [solo and strict mode](#solo-and-strict-mode)); holds the secrets `HELM_SIGNING_KEY` and `HELM_SIGNING_PASSPHRASE`, set by hand ([chart signing key](release-process.md#chart-signing-key)); cosign signing is keyless. Every publishing job of `release.yml` (`image`, `chart`, `ocm`, `assets`) uses it, so each waits for its own approval |
 | `release-please` | branches `main` and `release-[0-9]*` | none; holds `RELEASE_APP_CLIENT_ID` (variable) and `RELEASE_APP_PRIVATE_KEY` (secret), set by hand; new `release-*` branches are restricted by the `release-branches` ruleset |
 | `github-pages` | branch `main` only (the script creates it if the first Pages deployment has not) | none |
 

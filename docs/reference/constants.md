@@ -9,9 +9,9 @@ constant name when a line does not match. The design behind these values is in t
 
 | value | default | source | effect |
 |-------|---------|--------|--------|
-| `DefaultDriftIntervalCritical` | 15 min | `internal/engine/drift.go:13` | drift interval of access-critical kinds (policies, auth mounts, auth kinds, groups); flag `--drift-interval-critical` (`cmd/main.go:104`) |
+| `DefaultDriftIntervalCritical` | 15 min | `internal/engine/drift.go:13` | drift interval of the access-critical kinds listed in [scale and drift](../architecture.md#scale-and-drift); flag `--drift-interval-critical` (`cmd/main.go:104`) |
 | `DefaultDriftIntervalStandard` | 1 h | `internal/engine/drift.go:14` | drift interval of every other kind; flag `--drift-interval-standard` (`cmd/main.go:106`) |
-| `MinDriftInterval` | 30 s | `internal/engine/drift.go:42` | a shorter `spec.driftInterval` is raised to 30 s |
+| `MinDriftInterval` | 30 s | `internal/engine/drift.go:42` | CEL rejects a shorter `spec.driftInterval` (`api/common/v1alpha1/types.go:120`); the engine raises one that bypassed validation to 30 s |
 | `mountTableTTL` | 2 s | `internal/controller/sys/mounttable.go:17` | one read of `sys/mounts` or `sys/auth` serves every mount resource of the same connection and OpenBao namespace; a mount write or delete clears it, so an out-of-band mount change shows up to 2 s later |
 | `liveSnapshotTTL` | 10 s | `internal/engine/ownership.go:157` | one live LIST of a kind serves the ownership rechecks before adoption; a path this process claimed after that LIST gets a fresh LIST |
 | jitter | × 0.8 to × 1.2 | `internal/engine/reconciler.go:1563-1564` | applied to the drift requeue, to every backoff and to the pause recheck |

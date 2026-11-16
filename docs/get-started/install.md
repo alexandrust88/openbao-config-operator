@@ -19,29 +19,45 @@ Each release publishes a signed image, a signed chart and signed release assets,
 provenance attestations. The released chart pins the image by digest (`image.digest`), so a
 verified chart pulls the verified image. Verify before you install:
 [Hardening: verify the release](../security/hardening.md#verify-the-release) has the `cosign` and
-`gh attestation` commands, and `hack/release/verify-release.sh @TAG@` runs all of them.
+`gh attestation` commands. From a clone of the repository, `hack/release/verify-release.sh @TAG@`
+runs all of them. The script needs Helm 4; if `helm` on your `PATH` is Helm 3, set `HELM` to a
+Helm 4 binary.
 
 ### Verify the chart signature
 
-Releases after v0.2.0 also sign the chart with the project's GPG key (Helm provenance): the
-release page lists `openbao-config-operator-<version>.tgz.prov` next to the chart. For v0.2.0 and
-earlier there is no signature file, so skip this section: `--verify` fails for them. Download the public key, check that its fingerprint matches the one Artifact Hub
-shows for the chart, and convert it to the binary keyring Helm reads:
+Since v0.3.0, each release also signs the chart with the project's GPG key (Helm provenance). The
+file `openbao-config-operator-<version>.tgz.prov` sits next to the chart on the release page and is
+a layer of the OCI chart. v0.2.0 and earlier have no provenance file, so `--verify` fails for them.
 
-```bash
-curl -fsSLo openbao-config-operator.asc https://alexandrust88.github.io/openbao-config-operator/charts/pgp-public-key.asc
-gpg --show-keys openbao-config-operator.asc
-gpg --dearmor < openbao-config-operator.asc > openbao-config-operator.gpg
-```
+1. Download the public key and show its fingerprint:
 
-Then add `--verify --keyring openbao-config-operator.gpg` to the `helm install` command in step 2,
-with either Helm method. Helm stops before it installs anything when the signature does not verify.
-To check without installing:
+    ```bash
+    curl -fsSLo openbao-config-operator.asc https://alexandrust88.github.io/openbao-config-operator/charts/pgp-public-key.asc
+    gpg --show-keys openbao-config-operator.asc
+    ```
 
-```bash
-helm pull oci://ghcr.io/alexandrust88/charts/openbao-config-operator --version @VERSION@ \
-  --verify --keyring openbao-config-operator.gpg
-```
+    The fingerprint must be `FECBF5840F506776191497D4561068F2CF22E472`, the key Artifact Hub
+    shows for the chart.
+
+2. Helm 4 reads the armoured key file `openbao-config-operator.asc` as it is. Helm 3 reads only a
+   binary keyring, so convert the key for Helm 3:
+
+    ```bash
+    gpg --dearmor < openbao-config-operator.asc > openbao-config-operator.gpg
+    ```
+
+3. Check the chart without installing it. With Helm 4, pass
+   `--keyring openbao-config-operator.asc` instead:
+
+    ```bash
+    helm pull oci://ghcr.io/alexandrust88/charts/openbao-config-operator --version @VERSION@ \
+      --verify --keyring openbao-config-operator.gpg
+    ```
+
+    Helm prints `Signed by:`, `Using Key With Fingerprint:` and `Chart Hash Verified:` lines.
+
+4. Add `--verify --keyring <keyring file>` to the `helm install` command in [2. Install](#2-install),
+   with either Helm method. Helm stops before it installs anything when the signature does not verify.
 
 ## 2. Install
 
@@ -65,8 +81,7 @@ manifest without values.
     The same chart is served from a classic Helm repository on this site, for tools without OCI
     support. The repository lists only charts that match their release's signed checksums, but
     `helm install` from it checks no signature unless you add `--verify` (see
-    [Verify the chart signature](#verify-the-chart-signature)), so verify the chart first when
-    the release has a signature file.
+    [Verify the chart signature](#verify-the-chart-signature)).
 
     ```bash
     helm repo add openbao-config-operator https://alexandrust88.github.io/openbao-config-operator/charts
@@ -285,7 +300,10 @@ Keep `crds.keep=true`. Deleting a CRD deletes every custom resource of that kind
 `crds.install=false` together with `crds.keep=false`, because that upgrade would delete the CRDs an earlier
 release installed. See
 [Backup and restore](../operate/backup-restore.md#uninstall-and-crd-deletion) for what happens in OpenBao
-when that occurs.
+when that occurs. The guard only sees the values of the current upgrade: Helm keeps a CRD that a release stops
+rendering only if the live CRD already carries `helm.sh/resource-policy: keep`. After any revision with
+`crds.keep=false`, set `crds.keep=true` in one upgrade before you switch to `crds.install=false` or turn
+`pluginKinds.enabled` off.
 
 `crds.keep=true` wins over a `helm.sh/resource-policy` in `crds.annotations`, so the annotation
 appears once. With `crds.keep=false`, a `helm.sh/resource-policy` in `crds.annotations` is used as
@@ -379,10 +397,12 @@ This changes three things:
 
 - The manager gets `--watch-namespaces=<list>` and caches objects only from the listed namespaces
   and its own namespace.
-- Access to Secrets, ConfigMaps, `serviceaccounts/token` and Events moves from the ClusterRole to
-  a Role and RoleBinding in each listed namespace and in the release namespace.
-- The ClusterRole keeps the cluster-wide rules: the custom resources, and read access to
-  Namespaces (for `allowedNamespaces`).
+- Access to Secrets, ConfigMaps, `serviceaccounts/token`, Events and every namespaced kind of the
+  operator moves from the ClusterRole to a Role and RoleBinding in each listed namespace and in
+  the release namespace.
+- The ClusterRole keeps only the cluster-wide rules: `OpenBaoServer` and
+  `ClusterOpenBaoConnection`, read access to Namespaces (for `allowedNamespaces`), and `GET` on
+  `/.well-known/openid-configuration`.
 
 List every namespace that holds a credential, a CA bundle or a ServiceAccount that a
 `ClusterOpenBaoConnection` references. A reference to an unlisted namespace fails: the connection
@@ -479,8 +499,9 @@ kubectl create clusterrolebinding prometheus-openbao-config-operator-metrics \
   --serviceaccount=monitoring:prometheus-k8s
 ```
 
-The ServiceMonitor skips TLS verification by default because of the self-signed certificate. Set
-`serviceMonitor.tlsConfig` to a CA when you set `metrics.certSecret`.
+The ServiceMonitor skips TLS verification by default because of the self-signed certificate. When
+you set `metrics.certSecret` with `serviceMonitor.enabled=true`, set `serviceMonitor.tlsConfig.ca` (or `caFile`) and `serverName`, and
+set `insecureSkipVerify: false`; otherwise the chart fails to render.
 
 The alerts and what to do about each one are in [Runbooks](../operate/runbooks.md). The metrics are
 described in [Observability](../operate/observability.md).
@@ -489,7 +510,9 @@ described in [Observability](../operate/observability.md).
 
 `networkPolicy.enabled=true` renders a NetworkPolicy for the manager pods:
 
-- ingress only to the metrics port, from `networkPolicy.metrics.from` (empty allows any source);
+- ingress only to the metrics port, from `networkPolicy.metrics.from`; when that list is empty,
+  from the release namespace and `networkPolicy.metrics.monitoringNamespace` (`monitoring` by
+  default);
 - egress to DNS (`networkPolicy.dns.to`, kube-dns in `kube-system` by default);
 - egress to the API server on `networkPolicy.apiServer.ports` (443 and 6443), limited to
   `networkPolicy.apiServer.cidrs` when set;

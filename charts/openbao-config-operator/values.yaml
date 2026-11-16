@@ -74,6 +74,10 @@ rbac:
   create: true
   # -- Create the user-facing <release>-tenant-editor and <release>-viewer ClusterRoles.
   userRoles: true
+  tenantEditor:
+    # -- Plurals to leave out of the tenant-editor role, for example openbaoendpoints to keep the raw-path kind
+    # for platform admins (ADR 0006).
+    excludeKinds: []
   aggregate:
     # -- Aggregate the tenant-editor role into the built-in admin role.
     admin: true
@@ -83,7 +87,7 @@ rbac:
     view: true
 
 metrics:
-  # -- Serve metrics over HTTPS on port 8443, protected by Kubernetes authentication and authorization.
+  # -- Serve metrics over HTTPS on metrics.port, protected by Kubernetes authentication and authorization.
   enabled: true
   port: 8443
   # -- Secret (tls.crt, tls.key) with the metrics serving certificate. Empty uses a self-signed certificate.
@@ -99,15 +103,15 @@ serviceMonitor:
   labels: {}
   interval: 30s
   scrapeTimeout: 10s
-  # -- TLS config of the scrape endpoint. insecureSkipVerify fits only the default self-signed certificate, which
-  # no CA can verify; with metrics.certSecret the chart requires ca (or caFile) and serverName and refuses insecureSkipVerify.
+  # -- TLS configuration for scraping metrics. The default skips verification of the generated self-signed certificate.
+  # With metrics.certSecret, provide ca (or caFile) and serverName; insecureSkipVerify must be false.
   tlsConfig:
     insecureSkipVerify: true
   relabelings: []
   metricRelabelings: []
 
 prometheusRule:
-  # -- Create a prometheus-operator PrometheusRule with the alerts in docs/operations/runbooks.md.
+  # -- Create a prometheus-operator PrometheusRule with the alerts described at runbookBaseURL.
   enabled: false
   labels: {}
   # -- Series selector of the operator's metrics. Empty means job="<fullname>-metrics" in the release namespace.
@@ -122,22 +126,25 @@ prometheusRule:
   openbaoErrorRatio: 0.05
   # -- How long writes must continue before OpenBaoConfigOperatorSteadyStateWrites fires.
   steadyStateWritesFor: 30m
-  runbookBaseURL: https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/operations/runbooks.md
+  # -- Base URL of each alert's runbook_url; the lower-case alert name is appended as the anchor.
+  runbookBaseURL: https://alexandrust88.github.io/openbao-config-operator/operate/runbooks/
 
 health:
   port: 8081
 
 pprof:
   # -- Serve Go pprof profiles on 127.0.0.1 inside the pod (no Service); reach them with kubectl port-forward.
+  # A heap profile holds OpenBao tokens, so whoever may port-forward to the pod can then read them.
   enabled: false
   port: 8082
 
-# -- Extra manager arguments. Flags with a dedicated value (--leader-elect, --metrics-secure, --metrics-bind-address,
-# --pprof-bind-address, --health-probe-bind-address) are refused here.
+# -- Extra manager arguments. Flags the chart sets from a value (--leader-elect, --metrics-secure, --metrics-bind-address,
+# --metrics-cert-path, --pprof-bind-address, --health-probe-bind-address, --watch-namespaces, --apiserver-audiences,
+# --enable-plugin-kinds) are refused here.
 extraArgs: []
-# -- Extra manager environment variables.
+# -- Extra manager environment variables. POD_NAMESPACE is refused: the chart sets it.
 extraEnv: []
-# -- Extra volumes, for example a CA bundle ConfigMap trusted through SSL_CERT_DIR in extraEnv.
+# -- Extra volumes, for example a CA bundle ConfigMap trusted through SSL_CERT_DIR in extraEnv. hostPath is refused.
 extraVolumes: []
 # -- Extra volume mounts of the manager container.
 extraVolumeMounts: []

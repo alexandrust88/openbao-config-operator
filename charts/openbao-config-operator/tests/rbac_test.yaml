@@ -36,7 +36,7 @@ tests:
           content:
             apiGroups: [""]
             resources: [secrets]
-            verbs: [create, get, list, patch, update, watch]
+            verbs: [create, get, list, update, watch]
         documentIndex: 0
       - notMatchRegex:
           path: rules[*].resources[*]
@@ -95,7 +95,7 @@ tests:
           content:
             apiGroups: [""]
             resources: [secrets]
-            verbs: [create, get, list, patch, update, watch]
+            verbs: [create, get, list, update, watch]
         documentIndex: 6
 
   - it: keeps only cluster-scoped kinds, namespaces and nonResourceURLs in the ClusterRole when watchNamespaces is set
@@ -233,7 +233,7 @@ tests:
           content:
             apiGroups: [""]
             resources: [secrets]
-            verbs: [create, get, list, patch, update, watch]
+            verbs: [create, get, list, update, watch]
         documentIndex: 4
 
   - it: creates no manager RBAC when rbac.create is false
@@ -309,6 +309,24 @@ tests:
             apiGroups: [""]
             resources: [secrets]
           any: true
+
+  - it: keeps cluster connections out of the viewer
+    template: templates/rbac/user-roles.yaml
+    documentIndex: 1
+    asserts:
+      - notMatchRegex:
+          path: rules[*].resources[*]
+          pattern: ^(openbaoservers|clusteropenbaoconnections)(/status)?$
+
+  - it: leaves the configured kinds out of the tenant editor
+    template: templates/rbac/user-roles.yaml
+    documentIndex: 0
+    set:
+      rbac.tenantEditor.excludeKinds: [openbaoendpoints]
+    asserts:
+      - notMatchRegex:
+          path: rules[*].resources[*]
+          pattern: ^openbaoendpoints(/status)?$
 
   - it: drops aggregation labels when disabled
     template: templates/rbac/user-roles.yaml

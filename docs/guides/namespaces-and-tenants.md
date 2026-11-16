@@ -84,7 +84,7 @@ The chart's `<release>-tenant-editor` ClusterRole allows every namespaced kind e
 `OpenBaoConnection` (the cluster-scoped kinds are left out too), and is aggregated into the built-in `admin` and `edit`
 roles. A team with `edit` in its namespace can therefore create resources, but never change which
 OpenBao identity they use. To grant only the operator's kinds, bind the role in the team's
-namespace:
+namespace. The role name below is the one for a release named `openbao-config-operator`:
 
 ```bash
 kubectl -n team-a create rolebinding team-a-openbao \

@@ -5,31 +5,15 @@ token. One policy can then give every workload its own path. The operator stores
 as you write it: `Policy` passes `{{...}}` through unchanged. The access kinds write the templates
 for you.
 
-Every pattern on this page is tested end to end by `test/integration/templated_acl_test.go`. The
-test runs the operator against an envtest API server and `bao server -dev`. Real ServiceAccounts
-from two Kubernetes namespaces log in with TokenRequest tokens, then the test reads and writes
-secrets with the tokens they get. The YAML below is in
-[examples/policies/templated/](../../examples/policies/templated/), and the same test applies those
-files with a server-side dry run.
+The YAML on this page is in
+[examples/policies/templated/](../../examples/policies/templated/), and an integration test runs
+every pattern end to end ([How these patterns are tested](#how-these-patterns-are-tested)).
 
-```bash
-BAO_BIN=$(command -v bao) go test -tags integration -run TestTemplatedACL ./test/integration/
-```
+## Before you begin
 
-## What the test proves
-
-- A ServiceAccount can read and write only its own templated path. It gets `403` on the path of
-  the other ServiceAccount, on another name in its own namespace, and on paths without a template.
-- `{{identity.entity.name}}` and `{{identity.entity.id}}` work both for a named entity (bound with
-  `Entity` and `EntityAlias`) and for the `entity_<random>` entity that a login creates.
-- A `{{identity.groups.names.<group>.id}}` path works only for members of the group. Membership
-  comes from `Group` and `GroupMembership`.
-- An `AccessGrant` with `{sa.namespace}/{sa.name}` gives the same isolation, for data and for
-  metadata `list`.
-- A capability added to a `Policy` applies to the next token of that ServiceAccount.
-- In a child OpenBao namespace, a policy written through a connection based in that namespace
-  works, and so does one written with `spec.namespace` through the root connection. Neither policy
-  appears in the root namespace.
+A `Ready` connection `openbao` in the Kubernetes namespace `openbao-config`, whose OpenBao policy
+may manage auth and secrets mounts, policies, Kubernetes auth roles and identity objects
+([OpenBao policy: platform operator](../operate/openbao-policy.md#platform-operator-in-the-root-namespace)).
 
 ## The auth method
 
@@ -61,10 +45,11 @@ templates are sent unchanged.
 `apps/data/sa/team-b/app/*`. Neither can use the other's path. The role also attaches the two
 policies of the next section.
 
-The accessor changes when the auth method is disabled and enabled again. The `Policy` follows the
-`AuthMount` and rewrites the policy with the new accessor. Use `mountPath: kubernetes` instead of
-`authMountRef` for a mount that no `AuthMount` manages; the operator then reads the accessor from
-`sys/auth` at every drift check. A name in `${accessor:...}` that `accessorRefs` does not list is an
+The accessor changes when the auth method is disabled and enabled again. A literal accessor, as in
+the example, then no longer matches. A `Policy` that uses `accessorRefs` follows the `AuthMount`
+and rewrites the policy with the new accessor. In `accessorRefs`, use `mountPath: kubernetes`
+instead of `authMountRef` for a mount that no `AuthMount` manages; the operator then reads the
+accessor from `sys/auth` at every drift check. A name in `${accessor:...}` that `accessorRefs` does not list is an
 invalid spec, and the policy waits while the mount does not exist. `AccessGrant` resolves the
 accessor too (see [below](#accessgrant-renders-the-templates)).
 
@@ -129,7 +114,34 @@ logs in again, and the new token can delete.
 ## Ordering
 
 `EntityAlias` and `GroupMembership` resolve their references (`mountRef`, `entityRef`, `groupRef`)
-when they reconcile. If a reference is not `Ready` yet,
-the object reports `ReferenceNotReady` and tries again with a backoff from 2 seconds up to 30 seconds.
-Nothing triggers an earlier retry. If you apply everything at once, expect up to 30 seconds per level of references before
-everything is `Ready`.
+when they reconcile. If a reference is not `Ready` yet, the object reports `ReferenceNotReady` and
+tries again with a backoff from 2 seconds up to 30 seconds; a change of the referent does not
+trigger an earlier retry. If you apply everything at once, expect up to 30 seconds per level of
+references before everything is `Ready`.
+
+## How these patterns are tested
+
+`test/integration/templated_acl_test.go` runs the operator against an envtest API server and
+`bao server -dev`. Real ServiceAccounts from two Kubernetes namespaces log in with TokenRequest
+tokens, then the test reads and writes secrets with the tokens they get. The same test applies the
+files of `examples/policies/templated/` with a server-side dry run. It proves that:
+
+- A ServiceAccount can read and write only its own templated path. It gets `403` on the path of
+  the other ServiceAccount, on another name in its own namespace, and on paths without a template.
+- `{{identity.entity.name}}` and `{{identity.entity.id}}` work both for a named entity (bound with
+  `Entity` and `EntityAlias`) and for the `entity_<random>` entity that a login creates.
+- A `{{identity.groups.names.<group>.id}}` path works only for members of the group. Membership
+  comes from `Group` and `GroupMembership`.
+- An `AccessGrant` with `{sa.namespace}/{sa.name}` gives the same isolation, for data and for
+  metadata `list`.
+- A capability added to a `Policy` applies to the next token of that ServiceAccount.
+- In a child OpenBao namespace, a policy written through a connection based in that namespace
+  works, and so does one written with `spec.namespace` through the root connection. Neither policy
+  appears in the root namespace.
+
+CI runs it with the other integration tests. To run it alone from a clone of the repository, with
+`bao` on your `PATH` or in `BAO_BIN`:
+
+```bash
+make test-integration INTEGRATION_RUN=TestTemplatedACL
+```

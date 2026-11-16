@@ -5,11 +5,9 @@ community meets and how to get involved.
 
 ## Channels
 
-| channel | use it for |
-|---------|------------|
-| [GitHub Discussions](https://github.com/alexandrust88/openbao-config-operator/discussions) | questions (Q&A), ideas, show and tell, release announcements |
-| [Issues](https://github.com/alexandrust88/openbao-config-operator/issues/new/choose) | bug reports, feature requests, new kind requests |
-| [Security advisories](https://github.com/alexandrust88/openbao-config-operator/security/advisories/new) | private vulnerability reports ([SECURITY.md](../../SECURITY.md)) |
+[SUPPORT.md](../../SUPPORT.md) lists where to ask a question, discuss an idea, report a bug, request a kind or
+report a vulnerability. [GitHub Discussions](https://github.com/alexandrust88/openbao-config-operator/discussions)
+also carries release announcements and show and tell.
 
 There is no chat room or community meeting yet. When there is enough interest, a channel will be opened in the
 OpenBao community spaces rather than a separate one, and announced in Discussions.
@@ -40,7 +38,9 @@ Before your first pull request, read [CONTRIBUTING.md](../../CONTRIBUTING.md). T
    get `help wanted`.
 3. A proposal that contradicts an [ADR](../adr/) gets `needs-adr` and is discussed as a new ADR first.
 4. Issues and pull requests with no activity are marked stale after 90 and 60 days and closed 30 days later.
-   Accepted, prioritised, assigned or milestoned items are never marked stale.
+   Assigned or milestoned items, items with `priority/critical-urgent`, `priority/important-soon` or
+   `lifecycle/frozen` or `kind/security`, issues with `triage/accepted`, `good first issue` or `help wanted`,
+   and draft pull requests are never marked stale.
 
 ## Recognition
 

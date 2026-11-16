@@ -48,8 +48,9 @@ Restore the snapshot, unseal, and wait for the connections to become `Ready`. Th
 their status. On the next reconcile each resource reads its object and:
 
 - writes it again if the object differs from the spec (changes made after the snapshot was taken);
-- creates it again if it is missing and the resource had acquired it (`status.acquired` set), even
-  with `creationPolicy: Adopt`.
+- creates it again if it is missing and the resource had created it (`status.acquired: Created`),
+  even with `creationPolicy: Adopt`. A resource that adopted the object (`status.acquired: Adopted`)
+  and has `creationPolicy: Adopt` reports `NotFound` instead.
 
 Objects created out of band after the snapshot are lost. One-time outputs generated after the
 snapshot, such as AppRole secret IDs, exist in Kubernetes Secrets but no longer in OpenBao:
@@ -70,12 +71,19 @@ existing object it does not own yet:
 
 | `creationPolicy` | result |
 |------------------|--------|
-| `CreateOrAdopt` (default) | adopts the object, emits an `Adopted` event, sets `status.acquired: Adopted` |
+| `Create` (default) | `Conflict` for an existing object, except a configuration singleton |
+| `CreateOrAdopt` | adopts the object, emits an `Adopted` event, sets `status.acquired: Adopted` |
 | `Adopt` | adopts it; reports `NotFound` if it does not exist |
-| `Create` | `Conflict`, unless the object already matches the spec and the spec has no write-only inputs |
 
-Use `CreateOrAdopt` or `Adopt` for a restore. Each resource with write-only inputs writes once,
-because its status has no hash yet.
+Set `creationPolicy: CreateOrAdopt` or `Adopt` for a restore. Each resource with write-only inputs
+writes once, because its status has no hash yet.
+
+Kinds with an ownership marker in OpenBao (entities, groups, namespaces) also compare the cluster
+ID. Without `--cluster-id`, the cluster ID is the UID of the `kube-system` namespace, which changes
+when the cluster is rebuilt, so these objects stop with `Conflict` ("carries the ownership marker
+of another cluster") whatever the `creationPolicy`. Set the same `--cluster-id` through the chart's
+`extraArgs` on the rebuilt cluster as on the old one; if the old cluster had none, set it to the old
+`kube-system` UID.
 
 ### Status is not restored
 

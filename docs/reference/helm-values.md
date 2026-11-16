@@ -17,7 +17,9 @@ combinations:
 | `replicas` greater than 1 with `leaderElection.enabled: false` | `replicas > 1 requires leaderElection.enabled=true` |
 | `injectedIdentity.projectedToken.path` under `/var/run/secrets/kubernetes.io/serviceaccount/` | the automounted token directory is refused |
 | `crds.install: false` with `crds.keep: false` | an upgrade would delete the CRDs of an earlier release and every custom resource with them |
-| `metrics.certSecret` set without `serviceMonitor.tlsConfig.ca` (or `caFile`) and `serverName`, or with `insecureSkipVerify` | the ServiceMonitor cannot verify the certificate |
+| `metrics.certSecret` with `serviceMonitor.enabled`, without `serviceMonitor.tlsConfig.ca` (or `caFile`) and `serverName`, or with `insecureSkipVerify: true` | the ServiceMonitor cannot verify the certificate |
+
+String values that land in a manifest (names, image tag, audiences, CIDRs, durations, the token path) must match a pattern without whitespace, so a value cannot add YAML keys to the rendered objects.
 
 ## Names, CRDs and image
 
@@ -47,9 +49,9 @@ combinations:
 | `health.port` | integer, 1 to 65535 | `8081` | port of `/healthz` and `/readyz` |
 | `pprof.enabled` | boolean | `false` | serve Go pprof profiles on `127.0.0.1` inside the pod (no Service); reach them with `kubectl port-forward` |
 | `pprof.port` | integer, 1 to 65535 | `8082` | pprof port |
-| `extraArgs` | list of strings | `[]` | extra manager arguments. Flags with a dedicated value (`--leader-elect`, `--metrics-secure`, `--metrics-bind-address`, `--pprof-bind-address`, `--health-probe-bind-address`) are refused |
-| `extraEnv` | list of objects | `[]` | extra manager environment variables |
-| `extraVolumes` | list of objects | `[]` | extra volumes, for example a CA bundle ConfigMap trusted through `SSL_CERT_DIR` in `extraEnv` |
+| `extraArgs` | list of strings | `[]` | extra manager arguments. Flags the chart sets from a value (`--leader-elect`, `--metrics-secure`, `--metrics-bind-address`, `--metrics-cert-path`, `--pprof-bind-address`, `--health-probe-bind-address`, `--watch-namespaces`, `--apiserver-audiences`, `--enable-plugin-kinds`) are refused |
+| `extraEnv` | list of objects | `[]` | extra manager environment variables; `POD_NAMESPACE` is refused because the chart sets it |
+| `extraVolumes` | list of objects | `[]` | extra volumes, for example a CA bundle ConfigMap trusted through `SSL_CERT_DIR` in `extraEnv`; `hostPath` volumes are refused |
 | `extraVolumeMounts` | list of objects | `[]` | extra volume mounts of the manager container |
 
 Manager flags without a chart value, such as `--drift-interval-critical`,
@@ -71,10 +73,11 @@ Manager flags without a chart value, such as `--drift-interval-critical`,
 | key | type | default | description |
 |-----|------|---------|-------------|
 | `serviceAccount.create` | boolean | `true` | create the ServiceAccount |
-| `serviceAccount.name` | string | `""` | ServiceAccount name; defaults to the full name; required when `create` is `false` |
+| `serviceAccount.name` | string | `""` | ServiceAccount name; defaults to the full name; required when `create` is `false`; `default` is refused, so the manager rights never land on the namespace's default ServiceAccount |
 | `serviceAccount.annotations` | map of strings | `{}` | |
 | `rbac.create` | boolean | `true` | create the manager ClusterRole, Roles and bindings |
 | `rbac.userRoles` | boolean | `true` | create the user-facing `<release>-tenant-editor` and `<release>-viewer` ClusterRoles |
+| `rbac.tenantEditor.excludeKinds` | list of plurals | `[]` | kinds to leave out of `<release>-tenant-editor`, for example `openbaoendpoints` to keep the raw-path kind for platform admins ([ADR 0006](../adr/0006-endpoint-escape-hatch.md)). The viewer never includes `OpenBaoServer` or `ClusterOpenBaoConnection` |
 | `rbac.aggregate.admin` | boolean | `true` | aggregate the tenant-editor role into the built-in `admin` role |
 | `rbac.aggregate.edit` | boolean | `true` | aggregate the tenant-editor role into the built-in `edit` role |
 | `rbac.aggregate.view` | boolean | `true` | aggregate the viewer role into the built-in `view` role |
@@ -103,7 +106,7 @@ Manager flags without a chart value, such as `--drift-interval-critical`,
 | `prometheusRule.reconcileErrorRatio` | number, at most 1 | `0.1` | ratio of failed reconciles per controller above which `OpenBaoConfigOperatorReconcileErrors` fires |
 | `prometheusRule.openbaoErrorRatio` | number, at most 1 | `0.05` | ratio of OpenBao 5xx and transport errors per connection above which `OpenBaoConfigOperatorOpenBaoServerErrors` fires |
 | `prometheusRule.steadyStateWritesFor` | string, a number followed by `s`, `m` or `h` | `30m` | how long writes must continue before `OpenBaoConfigOperatorSteadyStateWrites` fires |
-| `prometheusRule.runbookBaseURL` | string, `http://` or `https://` URL | the project's runbooks page on GitHub | base of each alert's `runbook_url` |
+| `prometheusRule.runbookBaseURL` | string, `http://` or `https://` URL | `https://alexandrust88.github.io/openbao-config-operator/operate/runbooks/` | base of each alert's `runbook_url`; charts of v0.3.0 and earlier default to the GitHub page `docs/operations/runbooks.md` |
 
 [Observability](../operate/observability.md) explains the metrics and the alerts.
 
@@ -112,15 +115,15 @@ Manager flags without a chart value, such as `--drift-interval-critical`,
 | key | type | default | description |
 |-----|------|---------|-------------|
 | `resources` | object | requests `cpu: 50m`, `memory: 128Mi`; limit `memory: 512Mi` | manager container resources |
-| `podSecurityContext` | object | `runAsNonRoot: true`, `runAsUser: 65532`, `runAsGroup: 65532`, `seccompProfile.type: RuntimeDefault` | pod security context |
-| `securityContext` | object | `allowPrivilegeEscalation: false`, `privileged: false`, `readOnlyRootFilesystem: true`, `runAsNonRoot: true`, `capabilities.drop: [ALL]`, `seccompProfile.type: RuntimeDefault` | container security context |
+| `podSecurityContext` | object | `runAsNonRoot: true`, `runAsUser: 65532`, `runAsGroup: 65532`, `seccompProfile.type: RuntimeDefault` | pod security context; `runAsNonRoot: false` is refused. Set `runAsUser` and `runAsGroup` to `null` where the platform assigns UIDs (OpenShift) |
+| `securityContext` | object | `allowPrivilegeEscalation: false`, `privileged: false`, `readOnlyRootFilesystem: true`, `runAsNonRoot: true`, `capabilities.drop: [ALL]`, `seccompProfile.type: RuntimeDefault` | container security context. The schema requires `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true` and `runAsNonRoot: true`, and refuses `privileged: true` and added capabilities |
 | `livenessProbe` | object | `initialDelaySeconds: 15`, `periodSeconds: 20` | merged into the `httpGet` liveness probe |
 | `readinessProbe` | object | `initialDelaySeconds: 5`, `periodSeconds: 10` | merged into the `httpGet` readiness probe |
 | `podDisruptionBudget.enabled` | boolean | `true` | create a PodDisruptionBudget when `replicas` is greater than 1 |
 | `podDisruptionBudget.minAvailable` | integer or string | `1` | |
 | `podDisruptionBudget.maxUnavailable` | integer or string | `""` | used instead of `minAvailable` when set |
 | `topologySpreadConstraints` | list of objects | `maxSkew: 1`, `topologyKey: kubernetes.io/hostname`, `whenUnsatisfiable: ScheduleAnyway` | a missing `labelSelector` defaults to the pod selector labels |
-| `priorityClassName` | string | `""` | |
+| `priorityClassName` | string, DNS name | `""` | pod priority class |
 | `nodeSelector` | map of strings | `{}` | |
 | `tolerations` | list of objects | `[]` | |
 | `affinity` | object | `{}` | |
