@@ -200,8 +200,9 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 	"$(GOLANGCI_LINT)" config verify
 
 .PHONY: govulncheck
-govulncheck: govulncheck-tool ## Report known vulnerabilities reachable from the code.
+govulncheck: govulncheck-tool ## Report known vulnerabilities reachable from both Go modules.
 	"$(GOVULNCHECK)" ./...
+	cd test/livekit/pluginfixture && "$(GOVULNCHECK)" ./...
 
 .PHONY: helm-lint
 helm-lint: helm ## Lint the Helm chart and render it with default values.
