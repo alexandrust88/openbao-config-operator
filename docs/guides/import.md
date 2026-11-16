@@ -5,6 +5,13 @@ kind. Every resource has `managementPolicy: Observe` and `creationPolicy: Adopt`
 reads the object and reports drift, and never writes or deletes. You switch resources to `Manage` one at a
 time, so adoption of a running server is incremental.
 
+## Before you begin
+
+- A clone of the repository at the release you run, as in the
+  [quickstart](../get-started/quickstart.md#before-you-begin), and Go 1.26 or later. Releases do
+  not ship an `obc-import` binary.
+- An OpenBao token that may read and list the paths you import.
+
 ## Run it
 
 `read` prompts for a read-only token without echoing it:
@@ -21,12 +28,13 @@ bin/obc-import -connection openbao -server openbao -ca-namespace openbao-system 
 | `-address`, `-ca-cert`, `-token` | server, CA bundle and token; default to `BAO_ADDR`, `BAO_CACERT`, `BAO_TOKEN`. Prefer the env for the token |
 | `-namespace` | OpenBao namespace to read (default `BAO_NAMESPACE`); use the namespace the connection points at, `spec.namespace` of each resource is relative to it |
 | `-recursive` | also read every child namespace |
-| `-connection`, `-connection-kind` | `connectionRef` of every resource (`OpenBaoConnection` by default, or `ClusterOpenBaoConnection`) |
+| `-connection`, `-connection-kind` | `connectionRef` of every resource (`OpenBaoConnection` by default, or `ClusterOpenBaoConnection`); `-connection` is required |
 | `-server` | also emit the `OpenBaoServer` of this name and the connection itself, see below |
 | `-ca-namespace` | namespace of the `OpenBaoServer` CA bundle Secret; required with `-server` and `-ca-cert`. Use a platform namespace tenants cannot write |
-| `-k8s-namespace` | `metadata.namespace` of every resource |
+| `-k8s-namespace` | `metadata.namespace` of every resource; required |
 | `-include-kv-paths` | emit a `KVSecret` skeleton per KV path |
 | `-o` | a directory (one file per kind, `<group>-<kind>.yaml`, mode 0600) or `-` for one stream on stdout (default) |
+| `-timeout` | timeout of each OpenBao request (default `30s`) |
 
 The token needs read and list on the imported paths, plus `sudo` on `sys/audit` for audit devices. The
 tool only sends GET and LIST requests. A path it cannot read is listed on stderr and skipped; only unreadable
@@ -69,9 +77,9 @@ keyed by the OpenBao field name (for example `KubernetesAuthConfig/kubernetes sp
 Secret kubernetes key token_reviewer_jwt`), and lists them on stderr. A `KVSecret` gets `dataFrom` pointing at a
 Secret of its own name; values are never read.
 
-Create these Secrets before you apply the resources. In Observe mode the operator still builds the desired
-state, so a missing Secret leaves the resource waiting for it, but write-only values are never compared, so
-any value works until you switch to `Manage`; then the first write sends whatever the Secret holds. A `KVSecret`
+Create these Secrets with their real values before you switch to `Manage`. In Observe mode a missing write-only
+Secret resolves to an empty value and write-only values are never compared, so the resource reports `Observed`
+either way; the first write in `Manage` then sends whatever the Secret holds, empty included. A `KVSecret`
 is compared, so its Secret needs the real data.
 
 Not imported: objects of kinds without a typed CRD. The stderr summary names everything it skipped.

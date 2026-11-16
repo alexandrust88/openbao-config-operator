@@ -15,11 +15,15 @@ The shipped rules do not alert on objects or connections that are not `Ready`. T
 No manager replica has been scraped as up for 5 minutes. Nothing is reconciled, so drift stays
 and new resources stay pending. OpenBao itself is not affected.
 
-1. `kubectl -n <namespace> get pods -l app.kubernetes.io/name=openbao-config-operator`
-2. For a crash loop, read `kubectl logs --previous`. A failure to load the hash-key Secret or a
-   missing RBAC rule shows at startup.
+1. List the manager pods:
+   `kubectl -n <namespace> get pods -l app.kubernetes.io/name=openbao-config-operator`.
+2. For a crash loop, read the previous container's log:
+   `kubectl -n <namespace> logs <pod> --previous`, with a crash-looping pod from step 1. A failure to load the
+   hash-key Secret or a missing RBAC rule shows at startup.
 3. If the pods run but are not scraped, check the ServiceMonitor labels and that the scraper is
-   bound to the `<fullname>-metrics-reader` ClusterRole.
+   bound to the `<fullname>-metrics-reader` ClusterRole; without the binding the scrape answers 403.
+
+The alert resolves when Prometheus scrapes at least one replica as `up == 1`.
 
 ## OpenBaoConfigOperatorReconcileErrors
 
@@ -28,8 +32,11 @@ failed for 15 minutes.
 
 1. `kubectl get <kind> -A` and look for `Synced=False`; `kubectl describe` shows the reason and
    message. [troubleshooting.md](troubleshooting.md) explains each reason.
-2. Many kinds failing at once usually means OpenBao or a connection is down: check the two
-   OpenBao alerts below.
+2. Many kinds failing at once usually means OpenBao or a connection is down: check
+   [OpenBaoConfigOperatorOpenBaoServerErrors](#openbaoconfigoperatoropenbaoservererrors) and
+   [OpenBaoConfigOperatorOpenBaoDenied](#openbaoconfigoperatoropenbaodenied).
+
+The alert resolves when the failed share of the controller's reconciles drops below the threshold.
 
 ## OpenBaoConfigOperatorSteadyStateWrites
 
@@ -44,6 +51,8 @@ At rest the operator only reads, so this is a fight.
 3. The same key differs on every read with no other writer: the server normalises the value
    differently from the spec. Write the value as the server returns it and report the kind.
 
+The alert resolves when `openbao_writes_total` for the kind stops increasing for 15 minutes.
+
 ## OpenBaoConfigOperatorOpenBaoServerErrors
 
 More than `prometheusRule.openbaoErrorRatio` (5%) of the requests of one connection have returned
@@ -53,6 +62,9 @@ More than `prometheusRule.openbaoErrorRatio` (5%) of the requests of one connect
 2. `code="error"` is a transport failure: DNS, TLS (wrong CA bundle), a NetworkPolicy
    (`networkPolicy.openbao`) or OpenBao being down.
 3. The client retries 5xx with backoff, so a short blip does not fire this alert.
+
+The alert resolves when the share of 5xx and `error` responses of the connection drops below the
+threshold.
 
 ## OpenBaoConfigOperatorOpenBaoDenied
 
@@ -64,3 +76,5 @@ OpenBao has answered 403 to one connection for 15 minutes.
    or move the resource to a connection that may manage that path.
 3. A 403 on login means the auth role no longer accepts the identity (bound ServiceAccount,
    audience or namespace).
+
+The alert resolves when the connection gets no 403 for 5 minutes.

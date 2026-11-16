@@ -48,6 +48,12 @@ current version in [`.github/.release-please-manifest.json`](../../.github/.rele
 a version, for example a release candidate, end the description of the next pull request with a
 `Release-As: 0.2.0-rc.1` footer; edit the description before you merge, because the squash commit copies it.
 
+release-please runs only when the `release-please` environment has the GitHub App configured
+([repository settings](#repository-settings-this-process-relies-on)). Without the app, the `Release pull request`
+job of [`release-please.yml`](../../.github/workflows/release-please.yml) logs "release-please skipped" and opens
+no pull request. The app is not configured yet, so v0.1.0 to v0.3.1 were released through the
+[manual path](#cutting-a-release), and the maintainer chose each version by the same rules.
+
 ## Repository settings this process relies on
 
 Set these once when the repository is created:
@@ -63,15 +69,16 @@ Set these once when the repository is created:
   secrets `HELM_SIGNING_KEY` and `HELM_SIGNING_PASSPHRASE` ([chart signing key](#chart-signing-key)).
 - Environment `release-please`, limited to `main` and `release-X.Y`. Optional, recommended: a GitHub App with
   contents and pull-requests write, its client id in the environment variable `RELEASE_APP_CLIENT_ID` and its key
-  in the environment secret `RELEASE_APP_PRIVATE_KEY`. Without the app, the release pull request is opened with
-  `GITHUB_TOKEN`, which starts no workflows, so required checks never report on it; a maintainer then has to push
-  an empty commit to the release branch or merge with admin rights.
+  in the environment secret `RELEASE_APP_PRIVATE_KEY`. Without the app, release-please opens no release pull
+  request (a pull request opened with `GITHUB_TOKEN` would start no workflows, so required checks would never
+  report on it), and releases follow the manual path in [cutting a release](#cutting-a-release).
 - Discussions on, with the categories Announcements, Q&A, Ideas and Show and tell.
 - Private vulnerability reporting on.
 
 ## Before the first release
 
-Do these once, before `v0.1.0`:
+Both steps were done for `v0.1.0`: the image and chart packages are public. Repeat them when the repository moves to
+a new owner.
 
 1. **Rehearse in a fork.** Fork the repository into a throwaway account, enable Actions in the fork, run `hack/github/apply-settings.sh` against
    it, push a throwaway tag such as `v0.0.1-rehearsal.1` and let the release workflow run to the end. Check the
@@ -118,30 +125,44 @@ signed; their cosign signatures still verify.
 
 ## Cutting a release
 
+There are two paths, and both end with a tag push that starts the release workflow. With release-please, a
+maintainer merges the release pull request. On the manual path, a maintainer writes the changelog entry and pushes
+the tag. v0.1.0 to v0.3.1 were tagged by hand without a changelog pull request; their entries were added afterwards.
+Steps 2 and 5 differ by path.
+
 1. **Check main.** The latest `ci`, `e2e` and weekly `conformance` runs on `main` are green, and no
    `priority/critical-urgent` issue is open for the release.
-2. **Review the release pull request.** release-please keeps one open, titled `chore(main): release X.Y.Z`. Check
-   that the version is what you expect and that `CHANGELOG.md` reads well. Edit the entries in the pull request if
-   needed; do not edit released entries later. Every breaking change and deprecation must be in the entry with what
-   users must do.
+2. **Prepare the changelog entry.**
+   - With release-please: review the open release pull request, titled `chore(main): release X.Y.Z`. Check that
+     the version is what you expect and that `CHANGELOG.md` reads well. Edit the entries in the pull request if
+     needed.
+   - On the manual path: open a pull request that adds a `## [X.Y.Z](<release URL>) (<date>)` section at the top of
+     `CHANGELOG.md`, with the user-visible changes, and sets `.github/.release-please-manifest.json` to `X.Y.Z`, so
+     release-please starts from this version once the app is configured.
+
+   Do not edit released entries later. Every breaking change and deprecation must be in the entry with what users
+   must do.
 3. **Label merged pull requests.** The GitHub release notes are generated from pull request labels
    ([`.github/release.yml`](../../.github/release.yml)). Make sure the merged pull requests have a `kind/*` label.
 4. **Dry-run when the release pipeline changed.** Run the `release` workflow by hand (`workflow_dispatch`) with
    version `vX.Y.Z-dryrun`. It builds, scans, signs with a throwaway key and verifies everything, and publishes
    nothing. Locally, `make release-dry-run` does the same.
-5. **Merge the release pull request** (squash).
-6. **Tag the merge commit** with a signed, annotated tag and push it:
+5. **Merge the pull request from step 2** (squash), and wait until the `ci` and `e2e` runs on its merge commit are
+   green.
+6. **Tag the merge commit** with an annotated tag and push it:
 
    ```sh
    git fetch origin
    git switch --detach origin/main
    git log -1 --format='%H %s'
-   git tag -s vX.Y.Z -m "vX.Y.Z"
+   git tag -a vX.Y.Z -m "vX.Y.Z"
    git push origin vX.Y.Z
    ```
 
-   The commit printed by `git log` must be the release pull request's merge commit. Signing the tag is a
-   convention: nothing checks the tag signature (see [github-settings.md](github-settings.md#release-tags-signed-tag-ruleset-optional)).
+   The commit printed by `git log` must be the merge commit from step 5. Only the repository owner can push a
+   `v*` tag ([tag ruleset](github-settings.md#release-tags-tag-ruleset)). `git tag -s` signs the tag instead, which
+   is a convention: nothing checks the tag signature (see
+   [github-settings.md](github-settings.md#release-tags-signed-tag-ruleset-optional)).
 7. **Watch the release workflow and approve its jobs.** It runs CI and e2e, checks the version, refuses to
    overwrite an existing release (and stops when it cannot tell), builds the multi-arch image, scans it, signs the
    image, chart and checksums with keyless cosign, signs the chart with the GPG chart signing key, attests the
@@ -149,16 +170,23 @@ signed; their cosign signatures still verify.
    the GitHub release with the generated notes. The `image`, `chart`, `ocm` and `assets` jobs each wait for an
    approval in the `release` environment; before the first
    approval, check that the run's commit is the one from step 6. The tag push also runs `release-please` once more,
-   which marks the release pull request `autorelease: tagged` so the next release pull request can open.
+   which marks the release pull request `autorelease: tagged` so the next release pull request can open; on the
+   manual path it finds no release pull request and stops.
 
    Releases run one at a time (concurrency group `release`). GitHub keeps only one waiting run per group, so a
    third tag pushed while one release runs and another waits cancels the waiting one: push the next tag after the
    previous release has finished.
-8. **Verify** the published release from a clean machine:
+8. **Verify** the published release from a machine that is not logged in to `ghcr.io`. The script needs cosign v3,
+   crane, jq, yq, curl and Helm v4, because Helm v3 cannot read the armoured chart signing key; `make helm` downloads
+   the pinned Helm v4 into `bin/`:
 
    ```sh
-   hack/release/verify-release.sh vX.Y.Z
+   make helm
+   HELM="$PWD/bin/helm" hack/release/verify-release.sh vX.Y.Z
    ```
+
+   With `ASSETS_DIR` set to a directory that holds the downloaded release assets, the script also checks the
+   signed checksums, the provenance and the examples bundle.
 
 9. **Announce** in Discussions (Announcements) with a link to the release, and note breaking changes and
    deprecations in a separate paragraph.
@@ -227,7 +255,6 @@ release with a migration note.
 
 | phase | supported releases |
 |-------|--------------------|
-| before the first release | `main` only |
 | `0.y` | the latest minor; critical security fixes only for the previous minor, for 30 days after the next minor is released, at the maintainers' discretion |
 | from `1.0.0` | the latest two minors; security fixes for the previous minor until three months after the next minor is released |
 

@@ -28,8 +28,11 @@ Rules every workflow follows:
   helm-unittest, pinact and poutine in the workflow `env:`), or is built with `go install` at an exact version (the
   Go checksum database verifies it). The envtest control-plane binaries are fetched by `setup-envtest`, which checks
   them against its release index, and cosign by the SHA-pinned `sigstore/cosign-installer` action.
-- Signing is keyless (OIDC to Sigstore), so the repository holds no signing key. The only repository secret is the
-  release-please GitHub App key, in the `release-please` environment.
+- Cosign signing is keyless (OIDC to Sigstore), so the repository holds no cosign key. The workflows read three
+  secrets, each from an environment: the release-please GitHub App key (`RELEASE_APP_PRIVATE_KEY`, `release-please`
+  environment), and the GPG chart signing key and its passphrase (`HELM_SIGNING_KEY`, `HELM_SIGNING_PASSPHRASE`,
+  `release` environment), which only the step that packages the chart reads
+  ([chart signing key](../maintainers/release-process.md#chart-signing-key)).
 - GitHub-hosted runners only. No AI agent runs in CI.
 
 ## Security jobs
@@ -73,4 +76,5 @@ the line, and `.github/poutine.yml`. Both files are owned by the maintainers (`.
 - **harden-runner egress blocking**: a block list can only be written from an audit run of each job, and the agent
   is downloaded at run time and reports to a third party. Adding it to the signing jobs would add code with access to
   the OIDC token. The release jobs instead pull only digest-pinned images and checksum-verified tools, hold no
-  long-lived secret and wait for a maintainer's approval in the `release` environment.
+  long-lived secret except the GPG chart signing key in the chart job, and wait for a maintainer's approval in the
+  `release` environment.

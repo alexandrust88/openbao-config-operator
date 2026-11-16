@@ -5,11 +5,19 @@ alerts and their runbooks are in [runbooks.md](runbooks.md).
 
 ## First look
 
+List every managed resource with its `Ready` and `Synced` columns, then the connections:
+
 ```sh
-kubectl get openbao -A                                   # every kind, with Ready
+kubectl get openbao -A
 kubectl get openbaoconnections -A
 kubectl get clusteropenbaoconnections
-kubectl describe policy team-a-app -n team-a             # conditions, status.path, events
+```
+
+For one resource (here the `Policy` `team-a-app` in `team-a`), read its conditions, `status.path`
+and events, then the manager logs:
+
+```sh
+kubectl describe policy team-a-app -n team-a
 kubectl get events -n team-a --field-selector involvedObject.name=team-a-app
 kubectl logs -n openbao-config-operator deploy/openbao-config-operator
 ```

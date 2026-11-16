@@ -11,8 +11,9 @@ are listed in [status and events](../reference/status-and-events.md).
 The operator keeps the configuration of an existing OpenBao server in the state that Kubernetes
 custom resources declare. One custom resource is one object at one OpenBao API path: a policy, an
 auth role, a mount, an entity. It does not deploy, initialise, unseal or upgrade OpenBao, and it
-does not sync secret values into Kubernetes ([ADR 0007](../adr/0007-no-secret-sync.md)). v2 targets
-OpenBao 2.6 and later only ([ADR 0009](../adr/0009-openbao-only-target.md)).
+does not sync secret values into Kubernetes ([ADR 0007](../adr/0007-no-secret-sync.md)). It targets
+OpenBao 2.6 and later only ([ADR 0009](../adr/0009-openbao-only-target.md),
+[compatibility](../reference/compatibility.md)).
 
 The model is closer to Terraform than to a secrets syncer: the spec is the desired state of a
 remote API object, the operator reads that object, compares it field by field and writes only the
@@ -98,9 +99,9 @@ The engine enforces the design rules:
    spec, status, event or log.
 5. No root token at runtime.
 
-One rule is not enforced yet: that the spec is the whole desired state, so removing a field unsets it. Top-level
-keys the spec omits are not compared until [ADR 0011](../adr/0011-full-field-comparison.md) is closed
-([architecture](../architecture.md#not-yet-enforced)). The full numbered list is in the
+One rule is followed by every adapter but not yet enforced by the engine: the spec is the whole desired state, so
+removing a field writes its default back ([ADR 0011](../adr/0011-full-field-comparison.md)). The gaps are listed
+under [not yet enforced](../architecture.md#not-yet-enforced), and the full numbered list is in the
 [architecture](../architecture.md#design-rules).
 
 Putting these rules in one engine, not in each kind, is what keeps more than a hundred kinds

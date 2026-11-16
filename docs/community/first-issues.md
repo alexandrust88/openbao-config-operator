@@ -33,4 +33,4 @@ example under `examples/`, and a row in [kinds.md](../kinds.md). `OpenBaoEndpoin
 |------|-----------|
 | a worked example for [adopting existing configuration](../guides/migration.md): `obc-import`, `Observe`, then `Manage` on a real server | added to `docs/guides/migration.md` and reviewed by a maintainer |
 | a Flux example next to the Argo CD one: health checks and dependency ordering for connections before resources | a page under `docs/guides/` with tested manifests |
-| a "first tenant in ten minutes" tutorial on a real (non-dev) OpenBao with TLS and an OpenBao namespace | a page under `docs/guides/`, tested end to end |
+| a variant of the [tenant onboarding tutorial](../tutorials/tenant-onboarding.md), which uses the quickstart's dev server, on a real (non-dev) OpenBao with TLS and an OpenBao namespace | a page under `docs/tutorials/`, tested end to end |

@@ -30,7 +30,6 @@ advisory. Fixes ship as a patch release with the advisory.
 | latest minor release (`v0.Y.x`) | yes |
 | previous minor release | critical security fixes only, for 30 days after the next minor is released, at the maintainers' discretion |
 | older minor releases | no, upgrade to the latest |
-| `main` | yes, until the first release |
 
 The project is pre-1.0: the API is `v1alpha1`. The full support window, including the rules from
 1.0.0, is in the [release process](docs/maintainers/release-process.md#support-window).
@@ -52,21 +51,20 @@ Out of scope:
 ## Verifying releases
 
 The release workflow signs the image index, each platform image and the Helm chart with keyless
-cosign, attests SPDX and CycloneDX SBOMs and build provenance on all of them (GitHub artifact attestations on the
-image index and the chart: SLSA Build L2; cosign `slsaprovenance1` statement written by the release job: no SLSA
-level), and signs the checksums of the release assets. Verify a release before you install it:
+cosign, attests SPDX and CycloneDX SBOMs and build provenance on all of them, and signs the
+checksums of the release assets. From v0.3.0 the chart also carries a Helm provenance file
+(`.tgz.prov`) signed with the project's GPG chart signing key, fingerprint
+`FECBF5840F506776191497D4561068F2CF22E472`; the public key is
+<https://alexandrust88.github.io/openbao-config-operator/charts/pgp-public-key.asc>.
+
+Verify a release before you install it. From a checkout of the repository, with cosign v3, crane,
+jq, yq, curl and Helm v4 on `PATH`, replace `vX.Y.Z` with the release tag:
 
 ```sh
-hack/release/verify-release.sh v0.2.0
+hack/release/verify-release.sh vX.Y.Z
 ```
 
-or check the image signature by hand, pinned to the release workflow run for exactly that tag:
-
-```sh
-cosign verify ghcr.io/alexandrust88/openbao-config-operator@<digest> \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity https://github.com/alexandrust88/openbao-config-operator/.github/workflows/release.yml@refs/tags/v0.2.0
-```
-
-The commands for the SBOMs, the provenance, the chart and `gh attestation verify` are in
-[docs/security/hardening.md](docs/security/hardening.md#verify-the-release).
+The script, the equivalent `cosign` and `gh attestation` commands, and the SLSA level of each
+provenance form are in [docs/security/hardening.md](docs/security/hardening.md#verify-the-release).
+To check the chart signature during `helm install --verify`, see
+[verify the chart signature](docs/get-started/install.md#verify-the-chart-signature).

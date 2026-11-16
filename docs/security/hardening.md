@@ -9,7 +9,8 @@ Priority: **High** closes a path to the platform identity, to cluster-wide crede
 loss; **Medium** limits blast radius or improves detection; **Low** is defence in depth.
 
 The commands assume the chart defaults: release and namespace `openbao-config-operator`,
-hash-key Secret `openbao-config-operator-hash-key`.
+hash-key Secret `openbao-config-operator-hash-key`. The cosign and `gh attestation` release verification commands live
+only on this page, in [verify the release](#verify-the-release); other pages link here.
 
 ## Checklist
 
@@ -25,7 +26,7 @@ hash-key Secret `openbao-config-operator-hash-key`.
 | [R-POD-02](#r-pod-02-keep-the-security-context) | High | keep seccomp, read-only root filesystem, non-root, no capabilities | T-19 |
 | [R-POD-03](#r-pod-03-resources-and-availability) | Medium | resource limits, two replicas, leader election, PDB | T-23 |
 | [R-POD-04](#r-pod-04-no-sidecar-injection) | Medium | no sidecar injection into the operator pod | T-22 |
-| [R-SUPPLY-01](#r-supply-01-verify-and-enforce-signatures) | High | verify image and chart with cosign; enforce at admission; pin by digest | T-25, RR-11 |
+| [R-SUPPLY-01](#r-supply-01-verify-and-enforce-signatures) | High | verify image and chart ([verify the release](#verify-the-release)); enforce at admission; pin by digest | T-25, RR-11 |
 | [R-CONFIG-01](#r-config-01-openbaoserver) | High | `OpenBaoServer`: https, CA bundle, allow-lists, rate limit | T-14, T-17, T-18, T-28, N1 |
 | [R-CONFIG-02](#r-config-02-clusteropenbaoconnection) | High | `ClusterOpenBaoConnection`: `allowedNamespaces`, projected token, explicit audiences | T-01, T-15, T-16, N5 |
 | [R-CONFIG-03](#r-config-03-forbid-the-escape-hatches-in-production) | Medium | forbid `allowInsecureHTTP` and `{}` selectors in production | T-17, T-18, N6 |
@@ -64,10 +65,11 @@ watchNamespaces:
 ```
 
 The chart then moves the Secret, ConfigMap, token and Event rules, and every rule on a namespaced
-managed kind with its `status` and `finalizers`, into a Role per listed namespace plus the release
-namespace (`templates/rbac/manager.yaml:30-58`). The ClusterRole keeps only the cluster-scoped
+managed kind with its `status` and `finalizers`, into a Role per listed namespace
+(`templates/rbac/manager.yaml:30-70`). An unlisted release namespace gets only `get` on the
+hash-key Secret and `create` on Secrets. The ClusterRole keeps only the cluster-scoped
 kinds (`openbaoservers`, `clusteropenbaoconnections`), Namespace reads and the OIDC discovery URL.
-The manager caches only those namespaces and lists live only inside them (`cmd/main.go:228-240`,
+The manager caches only those namespaces and lists live only inside them (`cmd/main.go:232-244`,
 `internal/engine/ownership.go:326-333`). Resources in other namespaces are not reconciled, and the
 manager cannot read or patch them. Adding a tenant means a chart upgrade, which is the point:
 enrolment becomes a reviewed change.
@@ -106,13 +108,17 @@ value can be written to an OpenBao path the author can read back. The chart aggr
 `<release>-tenant-editor` into `admin` and `edit` (`values.yaml:77-81`), which already read
 Secrets, so nothing is gained there. Do not bind `<release>-tenant-editor` on its own to a subject
 that must not read the namespace's Secrets. To keep plain `edit` users away from OpenBao entirely,
-set `rbac.aggregate.edit=false` and bind the role explicitly.
+set `rbac.aggregate.edit=false` and bind the role explicitly. To keep a single kind, such as the raw-path `OpenBaoEndpoint`
+([ADR 0006](../adr/0006-endpoint-escape-hatch.md)), for platform admins, list it in
+`rbac.tenantEditor.excludeKinds`.
 
 ### R-RBAC-04: Isolate the operator namespace
 
 - Run nothing else in the operator namespace.
 - Allow `get` on Secrets there (the hash key), `pods/exec`, `pods/attach`, `pods/portforward`
   and Lease writes only to cluster admins.
+- Do not grant workload `create` (pods, deployments, jobs, cronjobs) or `impersonate` on ServiceAccounts
+  there to anyone else: a pod that names the manager ServiceAccount gets its token and its cluster-wide rights.
 - Keep `pprof.enabled=false`; when needed, it binds to 127.0.0.1 only
   (`templates/deployment.yaml:63-65`).
 
@@ -123,7 +129,7 @@ set `rbac.aggregate.edit=false` and bind the role explicitly.
 The chart's NetworkPolicy is on by default. It admits metrics scrapes only from the release
 namespace and `networkPolicy.metrics.monitoringNamespace` (`monitoring`), and allows DNS to
 kube-dns. With empty `apiServer.cidrs` or `openbao.to` it still allows egress to any host on 443,
-6443 and 8200 (GAP-07), and the release notes print a warning. Name every peer:
+6443 and 8200 (GAP-07), and the install notes (`NOTES.txt`) print a warning. Name every peer:
 
 ```yaml
 networkPolicy:
@@ -151,7 +157,7 @@ networkPolicy:
 Take the API server addresses from
 `kubectl get endpointslices -n default -l kubernetes.io/service-name=kubernetes`. For an OpenBao
 outside the cluster, use an `ipBlock` in `openbao.to`. The client already refuses redirects
-(`internal/openbao/client.go:274-280,298-299`); the policy is the second line. With NodeLocal
+(`internal/openbao/client.go:276-281,298-299`); the policy is the second line. With NodeLocal
 DNSCache, set `dns.nodeLocalDNS.enabled=true`.
 
 On Cilium (RKE2), an `ipBlock` does not match the API server's identity. Set
@@ -168,6 +174,8 @@ networkPolicy:
 ```
 
 `toFQDNs` needs the Cilium DNS proxy; the chart adds the DNS rule it learns the addresses from.
+With empty `openbao.fqdns`, the Cilium policy allows egress to any host on the OpenBao ports, and
+the install notes print a warning.
 
 ### R-NETWORK-02: Restrict OpenBao egress
 
@@ -277,8 +285,9 @@ signature travels with the digest.
 #### Verify the release
 
 `.github/workflows/release.yml` runs only on a `v*` tag that is a SemVer 2.0 version, after the
-full CI and e2e suites, and signs with keyless cosign (GitHub OIDC, logged in Rekor). No signing key
-exists. A release refuses to overwrite an existing GitHub release, image tag or chart version, and
+full CI and e2e suites, and signs with keyless cosign (GitHub OIDC, logged in Rekor), so no cosign
+key exists. The only signing key is the GPG key of the chart's Helm provenance, described in
+[Helm provenance](#helm-provenance-gpg). A release refuses to overwrite an existing GitHub release, image tag or chart version, and
 stops when it cannot tell whether one exists. It pushes the image and the chart by digest and tags
 them only after the signatures and attestations are in place (the image also after the
 vulnerability gate, `hack/release/scan.sh`, high and critical).
@@ -294,16 +303,28 @@ base images.
 | --- | --- | --- |
 | image index | cosign | SPDX and CycloneDX SBOM per platform, provenance (cosign `slsaprovenance1` and GitHub), OpenVEX when `hack/release/vex.openvex.json` has statements |
 | each platform image (amd64, arm64) | cosign | SPDX and CycloneDX SBOM, provenance (cosign `slsaprovenance1`) |
-| chart (OCI) | cosign (Sigstore bundle and legacy `sha256-<digest>.sig`) | SPDX and CycloneDX SBOM (the chart and the image it pins), provenance (cosign `slsaprovenance1` and GitHub) |
+| chart (OCI) | cosign (Sigstore bundle and legacy `sha256-<digest>.sig`); from v0.3.0 also GPG (Helm provenance, `.tgz.prov` layer) | SPDX and CycloneDX SBOM (the chart and the image it pins), provenance (cosign `slsaprovenance1` and GitHub) |
+| chart release asset (`.tgz`), from v0.3.0 | GPG (`.tgz.prov` next to it) | covered by `sha256sums.txt` |
 | release assets | `sha256sums.txt.sigstore.json` | GitHub provenance for every file in `sha256sums.txt`, also attached as `openbao-config-operator.intoto.jsonl` |
 | OCM component descriptor ([below](#verify-and-transfer-the-ocm-component)) | cosign | provenance (cosign `slsaprovenance1`) |
 
 The release notes list the image index digest, each platform digest and the chart digest. One
-script checks every row above, and that the verified chart pins the verified image:
+script checks every row above, and that the verified chart pins the verified image. Run it from a
+checkout of the repository with cosign v3, crane, jq, yq, curl and Helm v4 on `PATH`:
 
 ```sh
-hack/release/verify-release.sh v0.2.0
+hack/release/verify-release.sh @TAG@
 ```
+
+The script prints one `ok` line per check and ends with `release @TAG@ verified`. Optional parts:
+
+- Helm v4 is required to verify the Helm provenance, because the script passes the armored public
+  key. If `helm` on `PATH` is Helm v3, set `HELM` to a Helm v4 binary; otherwise the check fails
+  with `needs Helm v4 to read the armored key`.
+- With `ASSETS_DIR` set to a directory of downloaded release assets, it also checks the signed
+  `sha256sums.txt`, the assets against it and their provenance.
+- With the `gh` CLI on `PATH`, it also checks the GitHub artifact attestations; with the ocm CLI, the
+  [OCM component](#verify-and-transfer-the-ocm-component).
 
 Every signature must come from the release run of exactly the version you install. A pattern that
 accepts any `v*` tag also accepts an older, signed release whose tags were moved in a registry or a
@@ -314,7 +335,7 @@ mirror, so pin the full identity. By hand, with cosign v3 and crane (`IMAGE_DIGE
 REPO=alexandrust88/openbao-config-operator
 IMAGE=ghcr.io/alexandrust88/openbao-config-operator
 CHART=ghcr.io/alexandrust88/charts/openbao-config-operator
-VERSION=0.2.0
+VERSION=@VERSION@
 IMAGE_DIGEST=sha256:...
 CHART_DIGEST=sha256:...
 PIN=(--certificate-oidc-issuer https://token.actions.githubusercontent.com
@@ -357,7 +378,7 @@ gh attestation verify assets/install.yaml "${GH_PIN[@]}"
 cosign verify-blob-attestation "${PIN[@]}" --type slsaprovenance1 \
   --bundle assets/openbao-config-operator.intoto.jsonl assets/install.yaml
 cosign verify-blob "${PIN[@]}" --bundle assets/sha256sums.txt.sigstore.json assets/sha256sums.txt
-(cd assets && sha256sum -c sha256sums.txt)
+(cd assets && shasum -a 256 -c sha256sums.txt)
 ```
 
 `helm pull oci://$CHART --version $VERSION` prints the digest it pulled; compare it with
@@ -366,14 +387,24 @@ cosign verify-blob "${PIN[@]}" --bundle assets/sha256sums.txt.sigstore.json asse
 `sha256sums.txt` (`hack/docs/chart-index.sh`); `helm install` from it checks no signature unless you
 pass `--verify`.
 
-From the first release after v0.2.0, the chart is also signed with the project's GPG chart signing key
-(Helm provenance): `openbao-config-operator-<version>.tgz.prov` sits next to the chart in the
-GitHub release and is a layer of the OCI chart, the public key is served at
-`https://alexandrust88.github.io/openbao-config-operator/charts/pgp-public-key.asc`, and the
-`artifacthub.io/signKey` annotation names its fingerprint. Artifact Hub shows the chart as signed
-because of that `.prov` file. `helm install --verify` with that key is in
-[Install: verify the chart signature](../get-started/install.md#verify-the-chart-signature); it
-proves who packaged the chart, while the cosign commands above also prove which workflow run built it.
+#### Helm provenance (GPG)
+
+From v0.3.0 the chart is also signed with the project's GPG chart signing key (Helm provenance).
+v0.2.0 and earlier have no provenance file.
+
+| item | value |
+|------|-------|
+| provenance file | `openbao-config-operator-<version>.tgz.prov`, next to the chart in the GitHub release and as a layer of the OCI chart |
+| key fingerprint | `FECBF5840F506776191497D4561068F2CF22E472`, also in the chart's `artifacthub.io/signKey` annotation |
+| public key | `https://alexandrust88.github.io/openbao-config-operator/charts/pgp-public-key.asc` |
+| Helm v3 | needs the key dearmored (`gpg --dearmor`) |
+| Helm v4 | reads the armored key |
+
+Artifact Hub shows the chart as signed because of the `.prov` file. `verify-release.sh` checks it.
+To verify during `helm install` with `--verify`, follow
+[Install: verify the chart signature](../get-started/install.md#verify-the-chart-signature). The GPG
+signature proves who packaged the chart; the cosign commands in this section also prove which
+workflow run built it.
 
 #### Verify and transfer the OCM component
 
@@ -388,7 +419,7 @@ keyless cosign (the identity above, pinned to the release tag) plus a `slsaprove
 Verify it at the source, with the ocm CLI v0.54.0, cosign, crane and yq:
 
 ```sh
-hack/ocm/verify.sh v0.2.0
+hack/ocm/verify.sh @TAG@
 ```
 
 It checks the descriptor signature and provenance, that the descriptor is this component and
@@ -398,7 +429,7 @@ the ocm CLI is on `PATH` and skips it, with a message, for a release that has no
 Then transfer it through a CTF directory into the air-gapped registry:
 
 ```sh
-COMPONENT=github.com/alexandrust88/openbao-config-operator:0.2.0
+COMPONENT=github.com/alexandrust88/openbao-config-operator:@VERSION@
 ocm transfer componentversions --copy-resources "ghcr.io/alexandrust88/ocm//$COMPONENT" ./ocm-ctf
 ocm transfer ctf ./ocm-ctf registry.example.internal/ocm
 ocm verify componentversions "registry.example.internal/ocm//$COMPONENT"
@@ -547,7 +578,7 @@ spec:
 | setting | value | why |
 |---------|-------|-----|
 | `apiServerAudiences` | every audience in the API server's `--api-audiences` | the operator always refuses the built-in audiences (including `rke2` and `k3s`) and the discovered issuer (`internal/connection/audiences.go:17-23,29-54`), but not other custom audiences |
-| `extraArgs: ["--cluster-id=<name>"]` | a stable name per cluster | the ownership marker carries it, so a second cluster writing the same OpenBao namespace gets `Conflict`; the default is the `kube-system` UID, which changes when a cluster is rebuilt (`cmd/main.go:174-176`) |
+| `extraArgs: ["--cluster-id=<name>"]` | a stable name per cluster | the ownership marker carries it, so a second cluster writing the same OpenBao namespace gets `Conflict`; the default is the `kube-system` UID, which changes when a cluster is rebuilt (`cmd/main.go:178-180`) |
 | `pluginKinds.enabled` | `false` unless you use those plugins | fewer CRDs, fewer controllers, smaller RBAC |
 | `metrics.certSecret` and `serviceMonitor.tlsConfig` | a certificate from your CA, and that CA and `serverName` in the ServiceMonitor | the default ServiceMonitor skips TLS verification of the self-signed certificate (`values.yaml:104-105`); with `metrics.certSecret` the chart refuses to render without `ca` (or `caFile`) and `serverName`, or with `insecureSkipVerify` |
 | `--write-budget-per-minute` | default 60; lower for a small OpenBao | caps drift repairs and default-change rewrites per server during upgrades; changed write-only inputs (Secret or hash-key rotation) are exempt and paced only by `rateLimit` |
@@ -750,14 +781,15 @@ Follow [upgrade.md](../operate/upgrade.md), and in addition:
    writes nothing.
 4. To stop the operator touching a server while you investigate, annotate the server; nothing is
    read, written or deleted for resources that use it, and deletions keep their finalizers
-   (`internal/engine/reconciler.go:258-264,1077-1097`):
+   (`internal/engine/reconciler.go:258-264,1115-1148`):
 
    ```sh
    kubectl annotate openbaoservers.core.openbaoconfig.io openbao openbaoconfig.io/paused=true
    ```
 
-   Remove the annotation (`openbaoconfig.io/paused-`) to resume. Roll back with `helm rollback`
-   while paused; keep the hash-key Secret.
+   Remove the annotation (`openbaoconfig.io/paused-`) to resume. To roll back while paused, pin the
+   earlier image as in [Upgrade: rolling back](../operate/upgrade.md#rolling-back), not with
+   `helm rollback`, which also replaces the CRDs; keep the hash-key Secret.
 
 ### R-OPS-02: Incidents
 
@@ -765,7 +797,7 @@ The tools, from narrow to wide:
 
 | scope | tool | effect |
 |-------|------|--------|
-| one resource | `managementPolicy: Observe` in Git | reads and reports drift (`Drifted` with the differing keys), never writes or deletes, and removes the finalizer (`internal/engine/reconciler.go:295-297,1053`) |
+| one resource | `managementPolicy: Observe` in Git | reads and reports drift (`Drifted` with the differing keys), never writes or deletes, and removes the finalizer (`internal/engine/reconciler.go:295-297,1090-1098`) |
 | one resource | `openbaoconfig.io/paused: "true"` on it | no reads, writes or deletes |
 | one tenant | the annotation on its Namespace | the same for every resource in it |
 | one server | the annotation on the `OpenBaoServer` | the same for every resource that uses it |

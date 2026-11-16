@@ -23,11 +23,15 @@ CRDs. One custom resource is one object at one API path. OpenBao is the only tar
 
 ```text
 cmd/main.go                    manager wiring, flags, metrics, health
+cmd/controllers.go             API schemes and the Setup<Kind> call of every kind
+cmd/obc-import                 import CLI: builds Observe-mode resources from a live server
 api/common/v1alpha1            ResourceSpec, ResourceStatus, refs, condition reasons
 api/<group>/v1alpha1           CRD types per group (core, sys, auth, secrets, identity, access)
 internal/openbao               client, auth, token renewal, per-connection cache, retries, metrics
 internal/connection            connectionRef -> authenticated client, tenant boundary
 internal/engine                generic reconciler, adapter interfaces, FieldSpec compare, Secret index
+internal/refs                  flexible reference resolution (literal, OpenBao name, Kubernetes ref, selector)
+internal/importer              reads a live server for obc-import
 internal/controller/<group>    one adapter file and Setup<Kind> func per kind
 test/integration               envtest + real `bao server -dev` (build tag integration)
 test/e2e                       kind cluster + Helm chart + OpenBao (build tag e2e)
@@ -79,15 +83,16 @@ docs/                          architecture, kind catalogue, ADRs, backlog, tech
    - doc comments become CRD descriptions: write them for the user ("the OpenBao role").
 4. Adapter in `internal/controller/<group>/<kind>.go`: RBAC markers, `Setup<Kind>`, `Path`,
    `Desired` and `Fields`. Every kind defaults to `deletionPolicy: Orphan`; users opt into
-   `Delete` on each resource. `DefaultDeletionPolicy` remains deprecated and ignored. Add an
-   optional interface only when the default read, write or delete is wrong. Every write-only,
+   `Delete` on each resource. Add an optional interface only when the default read, write or delete is wrong. Every write-only,
    create-only, aliased, unordered or duration field goes in `FieldSpec`. Resolve references
    through the `Resolver` and wrap `engine.ErrReferenceNotReady` when a referent is missing or not
    `Ready`.
-5. Register the scheme and `Setup<Kind>` in `cmd/main.go`.
+5. Register the scheme and `Setup<Kind>` in `cmd/controllers.go`.
 6. Generate (below), add `examples/<group>/<kind>.yaml` setting every spec field (validated by a
-   server-side dry-run test in `test/examples/`), and update the docs/kinds.md row if the path,
-   availability or notes changed.
+   server-side dry-run test in `test/examples/`), add a `minimal` and a `full` example of a built-in
+   kind to the live kit (`examples/live/components/`, listed in `examples/live/coverage.md`;
+   `make test-livekit` fails without them), run `make samples`, and update the docs/kinds.md row if
+   the path, availability or notes changed.
 7. Tests: unit tests for `Desired` and `FieldSpec` against a read-shaped fixture, envtest for the
    CEL rules, and an integration scenario for builtin kinds (create, steady state without a write,
    drift repair, delete per policy). External-plugin kinds get a golden payload test instead.
@@ -117,16 +122,25 @@ gofmt -l api/<group> internal/controller/<group>
 go build ./...
 go vet ./internal/controller/<group>/...
 go test ./internal/controller/<group>/... -count=1
-make setup-envtest      # the Kubernetes version follows k8s.io/api in go.mod
+make setup-envtest
 KUBEBUILDER_ASSETS="$(./bin/setup-envtest use 1.35.0 --bin-dir "$PWD/bin" -p path)" \
-  go test ./internal/controller/<group>/... -count=1          # envtest and CEL tests
+  go test ./internal/controller/<group>/... -count=1
 make bao && BAO_BIN="$PWD/bin/bao" \
-  go test -tags integration ./test/integration/... -run '<Test>' -count=1   # envtest from bin/k8s
-make check                 # fmt-check, vet, lint, test, verify-generated: the pull request gate
-make test-integration      # every scenario against the pinned bao binary
-make helm-lint validate-manifests
-make test-e2e              # kind and Docker; creates and deletes a local kind cluster
+  go test -tags integration ./test/integration/... -run '<Test>' -count=1
+make check
+make test-integration
+make test-e2e
 ```
+
+- `make setup-envtest` downloads envtest binaries for the Kubernetes minor of `k8s.io/api` in `go.mod`
+  (1.35 today); the next command runs the envtest and CEL tests with them.
+- The integration run finds the envtest binaries under `bin/k8s`.
+- `make check` is the fast subset of the pull request gate: `fmt-check`, `vet`, `mod-check`, `lint`,
+  `test`, `test-docs`, `verify-generated`, `api-coverage`, `helm-lint` and `validate-manifests`. It
+  starts no cluster; `test` starts `bao server -dev` for a few packages when
+  `bao` is available and skips them otherwise.
+- `make test-integration` runs every scenario against the pinned `bao` binary.
+- `make test-e2e` needs Docker, kind, kubectl and Helm; it creates and deletes a local kind cluster.
 
 ## Hard rules
 
@@ -165,7 +179,8 @@ make test-e2e              # kind and Docker; creates and deletes a local kind c
 
 | file | holds |
 |------|-------|
-| [docs/architecture.md](docs/architecture.md) | goals, non-goals, design, reconcile flow, roadmap |
+| [docs/architecture.md](docs/architecture.md) | scope, design rules, components, reconcile flow, CI gates |
+| [docs/maintainers/roadmap.md](docs/maintainers/roadmap.md) | phases and the order of planned work |
 | [docs/kinds.md](docs/kinds.md) | the catalogue of kinds: path, availability, phase |
 | [docs/adr/](docs/adr/) | accepted decisions and their rationale |
 | [docs/project/verification.md](docs/project/verification.md) | what each check proves and its limits |

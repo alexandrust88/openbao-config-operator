@@ -37,8 +37,9 @@ intermediate that uses an existing key:
     --8<-- "examples/secrets/pkiissuer.yaml"
     ```
 
-`key.source` chooses where the key comes from: `internal` keeps it in OpenBao, `exported` also
-writes it to the Secret in `writeSecretRef`, and `existing` uses a key that a `PKIKey` created:
+`key.source` chooses where the key comes from: `internal` (the default) keeps it in OpenBao,
+`exported` also writes it once to the Secret in `writeSecretRef`, `existing` reuses a key already
+stored in the mount, such as one a `PKIKey` created, and `kms` uses an OpenBao external key:
 
 ??? example "examples/secrets/pkikey.yaml"
 
@@ -46,7 +47,8 @@ writes it to the Secret in `writeSecretRef`, and `existing` uses a key that a `P
     --8<-- "examples/secrets/pkikey.yaml"
     ```
 
-Issuers default to `deletionPolicy: Orphan`, so deleting the resource never deletes a CA.
+With the default `deletionPolicy: Orphan`, deleting the resource keeps the CA. `Delete` removes it
+only while the resource carries the annotation `openbaoconfig.io/allow-destructive-delete: "true"`.
 
 ## 3. Configure the mounts
 

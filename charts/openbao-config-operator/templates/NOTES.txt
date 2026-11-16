@@ -11,11 +11,12 @@ credentials or CA bundles referenced by a ClusterOpenBaoConnection.
 {{- end }}
 
 Next steps:
-  1. Create an OpenBaoConnection (namespaced, tenant identity) or a ClusterOpenBaoConnection (platform team).
-  2. List every managed object: kubectl get openbao -A
+  1. Create an OpenBaoServer and a connection to your existing OpenBao server:
+     https://alexandrust88.github.io/openbao-config-operator/get-started/connect/
+  2. List managed resources: kubectl get openbao -A
 {{- if .Values.rbac.userRoles }}
 
-User roles: {{ .Release.Name }}-tenant-editor (every kind except connections) and {{ .Release.Name }}-viewer.
+User roles: {{ .Release.Name }}-tenant-editor (namespaced configuration resources; excludes connections) and {{ .Release.Name }}-viewer.
 {{- end }}
 {{- if .Values.metrics.enabled }}
 

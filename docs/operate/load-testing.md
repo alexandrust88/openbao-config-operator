@@ -19,7 +19,7 @@ count and kind set. Each run starts a fresh environment:
 The harness creates the objects with 16 parallel workers, follows their `Ready` and `Synced` conditions through
 informers, scrapes the manager's `/metrics` every 2 s and reads the manager's RSS and CPU time and OpenBao's RSS
 with `ps`. Goroutine
-counts come from `go_goroutines`; `cmd/main.go` has no pprof flag.
+counts come from `go_goroutines`; the harness leaves pprof off.
 
 Kind sets:
 
@@ -340,4 +340,4 @@ cache is scoped to `--watch-namespaces`, the client reads Secrets live and the S
   72 s plus N/100 s before every object is ready again.
 - Namespace trees: OpenBao creates and removes mounts one at a time, so 1,000 mounts take a little over a minute
   on storage like this laptop's, whatever `--max-concurrent-reconciles` says. A tenant connection created before
-  its OpenBao namespace exists starts working only at its next probe, up to 72 s later.
+  its OpenBao namespace exists reports `ReferenceNotReady` and retries after 2 to 30 s.

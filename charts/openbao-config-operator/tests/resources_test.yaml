@@ -295,7 +295,7 @@ tests:
           pattern: openbao_requests_total\{.*code="403"\}
       - equal:
           path: spec.groups[0].rules[4].annotations.runbook_url
-          value: https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/operations/runbooks.md#openbaoconfigoperatoropenbaodenied
+          value: https://alexandrust88.github.io/openbao-config-operator/operate/runbooks/#openbaoconfigoperatoropenbaodenied
 
   - it: applies a custom selector, thresholds, alert labels and disabled alerts
     template: templates/prometheusrule.yaml

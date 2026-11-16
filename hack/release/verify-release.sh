@@ -100,6 +100,7 @@ case $tag in
     trap 'rm -rf -- "$prov_dir"' EXIT
     chart_prov() {
       local url=https://github.com/$repository/releases/download/$tag/$tgz
+      [[ $("$helm" version --short) == v4* ]] || { echo "needs Helm v4 to read the armored key; set HELM" >&2; return 1; }
       curl -fsSL -o "$prov_dir/pgp-public-key.asc" "$sign_key_url" &&
         curl -fsSL -o "$prov_dir/$tgz" "$url" &&
         curl -fsSL -o "$prov_dir/$tgz.prov" "$url.prov" &&

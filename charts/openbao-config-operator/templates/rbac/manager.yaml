@@ -38,7 +38,18 @@ metadata:
   labels:
     {{- include "openbao-config-operator.labels" $ | nindent 4 }}
 rules:
+  {{- if has $ns $.Values.watchNamespaces }}
   {{- include "openbao-config-operator.managerRules.namespaced" $ | nindent 2 }}
+  {{- else }}
+  {{- /* unwatched release namespace: only the hash-key Secret (--hash-key-secret default), read live, created once */}}
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [openbao-config-operator-hash-key]
+    verbs: [get]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [create]
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

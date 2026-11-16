@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The multiple OpenBao instances tutorial of docs/tutorials/multiple-instances.md, after
-# hack/docs/tutorial-platform-owner.sh. The page includes the sections between the snippet markers; checks the page
-# does not show sit outside them.
+# hack/docs/tutorial-platform-owner.sh. The page includes the sections between the snippet markers; the checks, which the page
+# does not show, sit outside them.
 #
 # Environment:
 #   KIND_CLUSTER  kind cluster the quickstart ran on (default openbao-quickstart)

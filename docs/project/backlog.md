@@ -7,7 +7,7 @@ limitations of what already exists belong in the [tech-debt register](tech-debt.
 
 ## BL-001: Pick an owned API group domain before the first release
 
-Status: closed on 2026-11-15. The maintainers keep `openbaoconfig.io`; it shipped in v0.1.0 and v0.1.1 and
+Status: closed on 2026-11-15. The maintainers keep `openbaoconfig.io`; it has shipped in every release since v0.1.0 and
 [ADR 0008](../adr/0008-provisional-api-group-domain.md) records the decision.
 
 Goal: publish v1alpha1 under an API group domain that will not be renamed.
@@ -52,7 +52,8 @@ reports a server that refuses API creation, and why it does not weaken the serve
 
 ## BL-004: Secrets engines, OIDC, MFA, plugins and sys singletons
 
-Status: open
+Status: done for the kinds (`api/secrets`, `api/identity`, `api/sys`, [kind catalogue](../kinds.md)); the phase 4
+scale test is open in the [roadmap](../maintainers/roadmap.md#phases)
 
 Goal: typed kinds for the database, PKI, transit, SSH, Kubernetes, RabbitMQ and TOTP engines,
 the OIDC provider kinds, MFA, the plugin catalogue and the sys singletons.
@@ -72,7 +73,7 @@ and is verified as described in TD-004 before release.
 
 ## BL-006: Access models
 
-Status: open
+Status: done (`api/access/v1alpha1`, `internal/controller/access`; roadmap phase 7)
 
 Goal: `AccessLevel`, `AccessGrant` and `AccessLayout` render policies, roles, groups and aliases
 from a machine-side and a human-side access description, as the architecture describes.

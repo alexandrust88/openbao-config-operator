@@ -41,8 +41,9 @@ configuration:
     --8<-- "examples/auth/jwtauthconfig.yaml"
     ```
 
-Set exactly one source of keys per mount: `oidcDiscoveryURL`, `jwksURL` or
-`jwtValidationPubkeys`.
+Set exactly one source of keys per mount: `oidcDiscoveryURL`, `jwksURL`, `jwtValidationPubkeys`
+or a `providerConfig` with `provider: kubernetes`. The API server refuses a spec with none or
+several of them, and an `oidcClientID` without `oidcDiscoveryURL`.
 
 ## 3. Create roles
 
@@ -84,7 +85,7 @@ Every resource shows `Ready` `True`. For an OIDC mount, log in with
 | config reports `ReferenceNotReady` | the client secret Secret and key exist in the resource's namespace |
 | login fails with `claim "sub" does not match` or `audience` errors | `boundSubject`, `boundClaims` and `boundAudiences` against the decoded JWT |
 | OIDC login fails with `redirect_uri` errors | `allowedRedirectURIs` on the role and the redirect URI registered at the provider are identical |
-| `Synced=False` keeps naming a field | a value OpenBao normalises differently; write it the way `bao read` returns it |
+| config or role reports `OutOfSync` and names a key | OpenBao normalises the value differently; write it the way `bao read` returns it |
 
 ## Related
 

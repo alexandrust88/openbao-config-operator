@@ -1,7 +1,7 @@
 # Tutorials
 
-Four lessons, one per role, that build a small multi-tenant OpenBao platform on the kind cluster of
-the [quickstart](../get-started/quickstart.md). Each lesson continues from the cluster the one
+Four lessons that build a small multi-tenant OpenBao platform on the kind cluster of the
+[quickstart](../get-started/quickstart.md). In each one you act in the role the table names. Each lesson continues from the cluster the one
 before it left, so follow them in order.
 
 | # | tutorial | you act as | at the end |

@@ -10,7 +10,9 @@ It takes about five minutes.
 ## Before you begin
 
 Finish [Onboard two tenants](tenant-onboarding.md). Every command that acts as the tenant admin
-carries `--as tenant-a-admin`, so the API server applies that user's rights, not yours.
+carries `--as tenant-a-admin`, so the API server applies that user's rights, not yours. Commands
+that read OpenBao through `kubectl -n openbao exec` run with your rights and, unless they set `BAO_TOKEN`, the dev server's
+root token, to show you the result.
 
 ## 1. Onboard the team devteam
 

@@ -113,9 +113,10 @@ immutable Secret. Protect it like any other Secret in the operator namespace.
 
 | scope | grants | when |
 |-------|--------|------|
-| ClusterRole `<fullname>-manager` | the custom resources, their status and finalizers; `get`, `list`, `watch` on Namespaces | always |
-| same ClusterRole | Secrets (`get`, `list`, `watch`, `create`, `update`, `patch`), ConfigMaps (read), `serviceaccounts/token` (`create`), Events | `watchNamespaces` empty |
-| Role `<fullname>-manager` per listed namespace and the release namespace | the Secret, ConfigMap, token and Event rules above | `watchNamespaces` set |
+| ClusterRole `<fullname>-manager` | `OpenBaoServer` and `ClusterOpenBaoConnection` with their status and finalizers; `get`, `list`, `watch` on Namespaces; `GET /.well-known/openid-configuration` | always |
+| same ClusterRole | the namespaced kinds with their status and finalizers; Secrets (`get`, `list`, `watch`, `create`, `update`, `patch`), ConfigMaps (read), `serviceaccounts/token` (`create`), Events | `watchNamespaces` empty |
+| Role `<fullname>-manager` per listed namespace | the namespaced rules of the previous row | `watchNamespaces` set |
+| Role `<fullname>-manager` in the release namespace | `get` on the hash-key Secret, `create` on Secrets | `watchNamespaces` set without the release namespace |
 | Role `<fullname>-leader-election` | Leases and Events in the release namespace | `leaderElection.enabled` |
 | ClusterRoles `<fullname>-metrics-auth`, `<fullname>-metrics-reader` | TokenReviews and SubjectAccessReviews for the metrics endpoint; `GET /metrics` for scrapers | `metrics.enabled` |
 
@@ -140,7 +141,11 @@ the metrics server (`--enable-http2`).
   critical vulnerabilities (`hack/release/scan.sh`, dated and justified exceptions only), then
   signs and attests before it tags.
 - The image index, each platform image and the chart are signed with keyless cosign, using the
-  workflow's GitHub OIDC identity. No signing key exists to leak.
+  workflow's GitHub OIDC identity, so no cosign key exists to leak.
+- From v0.3.0 the chart also carries a Helm provenance file (`.tgz.prov`) signed with a GPG key
+  that is stored as a secret of the `release` environment. Artifact Hub shows the chart as signed
+  because of it. The GPG signature proves who packaged the chart; the cosign signature also proves
+  which workflow run built it.
 - SPDX and CycloneDX SBOMs and build provenance (its two forms and their SLSA levels are in
   [verify the release](security/hardening.md#verify-the-release)) are attached as signed attestations; the chart carries a
   CycloneDX SBOM of itself and the image it pins. Release assets are covered by a signed

@@ -1,7 +1,7 @@
 # Runbooks (moved)
 
-The runbooks moved to [operate/runbooks.md](../operate/runbooks.md). This page stays because released charts and
-`config/prometheus/prometheusrule.yaml` link each alert here; the docs site does not publish it.
+The runbooks moved to [operate/runbooks.md](../operate/runbooks.md). This page stays because the charts of v0.3.0 and earlier
+link each alert here; the docs site does not publish it.
 
 ## OpenBaoConfigOperatorDown
 

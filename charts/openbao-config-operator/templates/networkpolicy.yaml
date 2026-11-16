@@ -55,7 +55,7 @@ spec:
       to:
         {{- range . }}
         - ipBlock:
-            cidr: {{ . }}
+            cidr: {{ . | quote }}
         {{- end }}
       {{- end }}
     - ports:

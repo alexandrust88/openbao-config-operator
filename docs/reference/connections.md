@@ -187,21 +187,12 @@ The gauge `openbao_connection_ready{kind,namespace,name}` is 1 while a connectio
 
 ## Client behaviour
 
-The operator keeps one authenticated client per connection UID. The client is replaced when the
-address, `namespace`, `authNamespace`, CA bundle, request timeout, the connection or server
-generation, or a credential input (a Secret version, a token file's modification time) changes.
-The rate limit is one token bucket per server address, shared by every connection to it. Each
-client:
-
-| event | behaviour |
-|-------|-----------|
-| renewable token | renewed after a third of its TTL; a new login when renewal fails or the max TTL is near |
-| non-renewable token | replaced by a new login after two thirds of its TTL |
-| 401 | one new login, then the request is retried |
-| 403 | a new login only if `auth/token/lookup-self` shows the token is no longer valid, at most once every 5 seconds; otherwise the request fails with `PermissionDenied` |
-| 429 and 5xx | retried with backoff, inside the server's rate limit |
-| concurrent cache misses | share one login |
-| connection deleted, denied or credentials changed | the token it logged in for is revoked in the background, best effort; a static `auth.token` is never revoked |
+The operator keeps one authenticated client per connection. The client is replaced when the
+connection or server generation changes, or when the value of a credential input changes: the content of a
+referenced Secret or CA bundle, or a token file's modification time. An edit that changes only a Secret's labels
+or annotations keeps the client. How the client renews, logs in again, retries and revokes its token is in
+[client cache](../architecture.md#client-cache); the timings are in
+[constants and timings](constants.md#login-renewal-and-tokens).
 
 Every request carries the header `X-Openbao-Config-Resource: <group>/<kind>/<namespace>/<name>` of
 the resource it serves ([ADR 0022](../adr/0022-audit-attribution-header.md)).

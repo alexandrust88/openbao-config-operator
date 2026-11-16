@@ -61,7 +61,9 @@ The Secret holds the three keys. The examples bind the secret ID and its tokens 
 `10.42.0.0/16`, so the login works only from an address inside that range. Set
 `secretIDBoundCIDRs`, `tokenBoundCIDRs` and the secret ID's `cidrList` and `tokenBoundCIDRs` to the
 machine's range, or leave them out to allow any address. The secret ID's lists are immutable, so
-set them before you apply it. Log in from the machine:
+set them before you apply it. Test the login from a host inside the bound range. The command uses
+the mount `approle` of the example; with the mount of step 1, the path is
+`auth/approle-ci/login`:
 
 ```bash
 bao write auth/approle/login \

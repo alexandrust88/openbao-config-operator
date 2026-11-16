@@ -56,7 +56,7 @@ kubectl apply --server-side -f crds.yaml
 
 1. Read the release notes from the current version up to the target, for deprecations, changed
    defaults and new required permissions in OpenBao.
-2. Verify the new image and chart ([security.md](../security.md#verifying-releases)).
+2. Verify the new image and chart ([Hardening: verify the release](../security/hardening.md#verify-the-release)).
 3. Check that every resource is healthy before you start, so new failures stand out:
 
    ```sh
@@ -84,6 +84,36 @@ kubectl apply --server-side -f crds.yaml
    A short rise in `openbao_writes_total` is expected when a release starts sending a field it did
    not send before. A rate that stays up after the first drift interval is not; see
    [the runbook](runbooks.md#openbaoconfigoperatorsteadystatewrites).
+
+## Upgrading to 0.3.1
+
+v0.3.1 changes no CRD. The manager now releases its leader election lease when it stops, so a rollout hands
+over at once. The chart's values schema is stricter, so `helm upgrade` fails on values
+that earlier charts accepted:
+
+- `securityContext.privileged: true`, `allowPrivilegeEscalation: true`, `runAsNonRoot: false`, entries in
+  `capabilities.add`, or a `securityContext` without `allowPrivilegeEscalation`, `readOnlyRootFilesystem` and
+  `runAsNonRoot`;
+- `podSecurityContext.runAsNonRoot: false`, a `hostPath` entry in `extraVolumes`, `serviceAccount.name: default`,
+  `POD_NAMESPACE` in `extraEnv`, or a flag in `extraArgs` that the chart already sets or `--hash-key-secret`;
+- names, durations, CIDRs and audiences that contain whitespace.
+
+If you set `watchNamespaces`, the release namespace is no longer watched unless it is listed: resources there are
+not reconciled, and Secrets, ConfigMaps or ServiceAccounts there that an `OpenBaoServer` or
+`ClusterOpenBaoConnection` references can no longer be read. Add the release namespace to `watchNamespaces` if
+you keep any of them there.
+
+Remove or correct those values, then use the [upgrade procedure](#upgrade-procedure). The aggregated viewer role
+loses read on `ClusterOpenBaoConnection`; grant it separately to anyone who still needs it. The alerts'
+`runbook_url` now points at the documentation site.
+
+## Upgrading to 0.3.0
+
+v0.3.0 changes no manager code, CRD, chart value or chart template; upgrade with the
+[upgrade procedure](#upgrade-procedure) and expect no extra writes. The release adds a GPG-signed
+Helm provenance file to the chart, so from v0.3.0 you can install and upgrade with `helm --verify`
+([Install: verify the chart signature](../get-started/install.md#verify-the-chart-signature)).
+An upgrade from v0.1.x also needs the steps in [Upgrading to 0.2.0](#upgrading-to-020).
 
 ## Upgrading to 0.2.0
 

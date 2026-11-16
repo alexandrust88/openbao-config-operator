@@ -43,7 +43,7 @@ spec:
       automountServiceAccountToken: true
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- with .Values.priorityClassName }}
-      priorityClassName: {{ . }}
+      priorityClassName: {{ . | quote }}
       {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -53,7 +53,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: manager
-          image: {{ include "openbao-config-operator.image" . }}
+          image: {{ include "openbao-config-operator.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - /manager
@@ -76,7 +76,7 @@ spec:
             - --watch-namespaces={{ include "openbao-config-operator.watchNamespaces" $ }}
             {{- end }}
             {{- with .Values.apiServerAudiences }}
-            - --apiserver-audiences={{ join "," . }}
+            - {{ printf "--apiserver-audiences=%s" (join "," .) | quote }}
             {{- end }}
             {{- if .Values.pluginKinds.enabled }}
             - --enable-plugin-kinds
@@ -124,7 +124,7 @@ spec:
             {{- end }}
             {{- if $projectedToken.enabled }}
             - name: injected-identity-token
-              mountPath: {{ dir $projectedToken.path }}
+              mountPath: {{ dir $projectedToken.path | quote }}
               readOnly: true
             {{- end }}
             {{- with .Values.extraVolumeMounts }}
@@ -136,7 +136,7 @@ spec:
         {{- if $metricsCert }}
         - name: metrics-certs
           secret:
-            secretName: {{ .Values.metrics.certSecret }}
+            secretName: {{ .Values.metrics.certSecret | quote }}
         {{- end }}
         {{- if $projectedToken.enabled }}
         - name: injected-identity-token
@@ -145,7 +145,7 @@ spec:
               - serviceAccountToken:
                   audience: {{ $projectedToken.audience | quote }}
                   expirationSeconds: {{ int $projectedToken.expirationSeconds }}
-                  path: {{ base $projectedToken.path }}
+                  path: {{ base $projectedToken.path | quote }}
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}

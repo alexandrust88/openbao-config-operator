@@ -40,18 +40,18 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/test/testenv"
 )
 
-func TestCacheOptionsKeepsOperatorNamespace(t *testing.T) {
-	if got := cacheOptions("", "operator").DefaultNamespaces; got != nil {
+func TestCacheOptionsWatchesOnlyListedNamespaces(t *testing.T) {
+	if got := cacheOptions("").DefaultNamespaces; got != nil {
 		t.Fatalf("all namespaces: DefaultNamespaces = %v, want nil", got)
 	}
-	got := cacheOptions(" team-a, ,team-b", "operator").DefaultNamespaces
-	for _, ns := range []string{"operator", "team-a", "team-b"} {
+	got := cacheOptions(" team-a, ,team-b").DefaultNamespaces
+	for _, ns := range []string{"team-a", "team-b"} {
 		if _, ok := got[ns]; !ok {
 			t.Errorf("DefaultNamespaces = %v, missing %q", got, ns)
 		}
 	}
-	if len(got) != 3 {
-		t.Errorf("DefaultNamespaces = %v, want 3 entries", got)
+	if len(got) != 2 {
+		t.Errorf("DefaultNamespaces = %v, want 2 entries", got)
 	}
 }
 
@@ -67,7 +67,7 @@ func TestCacheHoldsNoValuesAndSeesRotation(t *testing.T) {
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: "0"},
 		HealthProbeBindAddress: "0",
-		Cache:                  cacheOptions("", "default"),
+		Cache:                  cacheOptions(""),
 		Client:                 clientOptions(),
 	})
 	if err != nil {

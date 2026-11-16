@@ -18,8 +18,8 @@ spec:
     - port: https
       path: /metrics
       scheme: https
-      interval: {{ .Values.serviceMonitor.interval }}
-      scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}
+      interval: {{ .Values.serviceMonitor.interval | quote }}
+      scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout | quote }}
       bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
       {{- with $tls }}
       tlsConfig:

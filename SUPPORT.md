@@ -30,5 +30,4 @@ Remove tokens, secret values and OpenBao response bodies first.
 ## Supported versions
 
 Which operator releases get fixes, and which OpenBao and Kubernetes versions each release supports, is in the
-[release process](docs/maintainers/release-process.md#support-window). Until the first release, only the `main`
-branch is supported.
+[release process](docs/maintainers/release-process.md#support-window).

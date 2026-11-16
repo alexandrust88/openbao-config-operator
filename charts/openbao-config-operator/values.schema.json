@@ -5,7 +5,9 @@
   "definitions": {
     "port": {"type": "integer", "minimum": 1, "maximum": 65535},
     "stringMap": {"type": "object", "additionalProperties": {"type": "string"}},
-    "objectList": {"type": "array", "items": {"type": "object"}}
+    "objectList": {"type": "array", "items": {"type": "object"}},
+    "dnsName": {"type": "string", "pattern": "^([a-z0-9]([-.a-z0-9]*[a-z0-9])?)?$", "maxLength": 253},
+    "duration": {"type": "string", "pattern": "^([0-9]+(ms|s|m|h|d|w|y))+$"}
   },
   "properties": {
     "global": {"type": "object"},
@@ -54,7 +56,7 @@
       "required": ["repository"],
       "properties": {
         "repository": {"type": "string", "minLength": 1},
-        "tag": {"type": "string"},
+        "tag": {"type": "string", "pattern": "^([\\w][\\w.-]{0,127})?$"},
         "digest": {"type": "string", "pattern": "^(sha256:[a-f0-9]{64})?$"},
         "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]}
       }
@@ -79,7 +81,7 @@
     },
     "apiServerAudiences": {
       "type": "array",
-      "items": {"type": "string", "minLength": 1, "pattern": "^[^,]+$"}
+      "items": {"type": "string", "pattern": "^[^,\\s]+$"}
     },
     "injectedIdentity": {
       "type": "object",
@@ -92,7 +94,7 @@
             "enabled": {"type": "boolean"},
             "audience": {"type": "string", "minLength": 1},
             "expirationSeconds": {"type": "integer", "minimum": 600},
-            "path": {"type": "string", "pattern": "^(/[^/]+){2,}$", "maxLength": 512}
+            "path": {"type": "string", "pattern": "^(/[^/\\s]+){2,}$", "maxLength": 512}
           }
         }
       }
@@ -102,7 +104,7 @@
       "additionalProperties": false,
       "properties": {
         "create": {"type": "boolean"},
-        "name": {"type": "string"},
+        "name": {"allOf": [{"$ref": "#/definitions/dnsName"}, {"not": {"const": "default"}}]},
         "annotations": {"$ref": "#/definitions/stringMap"}
       },
       "if": {"properties": {"create": {"const": false}}, "required": ["create"]},
@@ -114,6 +116,13 @@
       "properties": {
         "create": {"type": "boolean"},
         "userRoles": {"type": "boolean"},
+        "tenantEditor": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "excludeKinds": {"type": "array", "items": {"type": "string", "pattern": "^[a-z0-9]+$"}}
+          }
+        },
         "aggregate": {
           "type": "object",
           "additionalProperties": false,
@@ -131,7 +140,7 @@
       "properties": {
         "enabled": {"type": "boolean"},
         "port": {"$ref": "#/definitions/port"},
-        "certSecret": {"type": "string"},
+        "certSecret": {"$ref": "#/definitions/dnsName"},
         "service": {
           "type": "object",
           "additionalProperties": false,
@@ -148,8 +157,8 @@
       "properties": {
         "enabled": {"type": "boolean"},
         "labels": {"$ref": "#/definitions/stringMap"},
-        "interval": {"type": "string"},
-        "scrapeTimeout": {"type": "string"},
+        "interval": {"$ref": "#/definitions/duration"},
+        "scrapeTimeout": {"$ref": "#/definitions/duration"},
         "tlsConfig": {"type": "object"},
         "relabelings": {"$ref": "#/definitions/objectList"},
         "metricRelabelings": {"$ref": "#/definitions/objectList"}
@@ -198,13 +207,21 @@
       "type": "array",
       "items": {
         "type": "string",
-        "not": {"pattern": "^--?(leader-elect|metrics-secure|metrics-bind-address|pprof-bind-address|health-probe-bind-address)(=|$)"}
+        "not": {"pattern": "^--?(leader-elect|metrics-secure|metrics-bind-address|metrics-cert-path|pprof-bind-address|health-probe-bind-address|watch-namespaces|apiserver-audiences|enable-plugin-kinds|hash-key-secret)(=|$)"}
       }
     },
-    "extraEnv": {"$ref": "#/definitions/objectList"},
+    "extraEnv": {
+      "type": "array",
+      "items": {"type": "object", "properties": {"name": {"not": {"const": "POD_NAMESPACE"}}}}
+    },
     "extraVolumes": {
       "type": "array",
-      "items": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string", "minLength": 1}}}
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {"name": {"type": "string", "minLength": 1}},
+        "not": {"required": ["hostPath"]}
+      }
     },
     "extraVolumeMounts": {
       "type": "array",
@@ -215,8 +232,21 @@
       }
     },
     "resources": {"type": "object"},
-    "podSecurityContext": {"type": "object"},
-    "securityContext": {"type": "object"},
+    "podSecurityContext": {
+      "type": "object",
+      "properties": {"runAsNonRoot": {"const": true}}
+    },
+    "securityContext": {
+      "type": "object",
+      "required": ["allowPrivilegeEscalation", "readOnlyRootFilesystem", "runAsNonRoot"],
+      "properties": {
+        "allowPrivilegeEscalation": {"const": false},
+        "privileged": {"const": false},
+        "readOnlyRootFilesystem": {"const": true},
+        "runAsNonRoot": {"const": true},
+        "capabilities": {"type": "object", "properties": {"add": {"maxItems": 0}}}
+      }
+    },
     "livenessProbe": {"type": "object"},
     "readinessProbe": {"type": "object"},
     "podDisruptionBudget": {
@@ -224,12 +254,12 @@
       "additionalProperties": false,
       "properties": {
         "enabled": {"type": "boolean"},
-        "minAvailable": {"type": ["integer", "string"]},
-        "maxUnavailable": {"type": ["integer", "string"]}
+        "minAvailable": {"type": ["integer", "string"], "pattern": "^([0-9]+%)?$"},
+        "maxUnavailable": {"type": ["integer", "string"], "pattern": "^([0-9]+%)?$"}
       }
     },
     "topologySpreadConstraints": {"$ref": "#/definitions/objectList"},
-    "priorityClassName": {"type": "string"},
+    "priorityClassName": {"$ref": "#/definitions/dnsName"},
     "nodeSelector": {"$ref": "#/definitions/stringMap"},
     "tolerations": {"$ref": "#/definitions/objectList"},
     "affinity": {"type": "object"},
@@ -271,7 +301,7 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "cidrs": {"type": "array", "items": {"type": "string"}},
+            "cidrs": {"type": "array", "items": {"type": "string", "pattern": "^[0-9a-fA-F.:]+/[0-9]{1,3}$"}},
             "ports": {"type": "array", "items": {"$ref": "#/definitions/port"}}
           }
         },

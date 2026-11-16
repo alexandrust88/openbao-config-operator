@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The platform owner tutorial of docs/tutorials/platform-owner.md, on the cluster that hack/docs/quickstart.sh left.
-# The page includes the sections between the snippet markers; checks the page does not show sit outside them.
+# The page includes the sections between the snippet markers; the checks, which the page does not show, sit outside them.
 #
 # Environment:
 #   KIND_CLUSTER  kind cluster the quickstart ran on (default openbao-quickstart)

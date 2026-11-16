@@ -209,7 +209,7 @@ If the connection works in the root namespace, leave out every `-namespace` flag
 
     A `ClusterOpenBaoConnection` is usable from every namespace its `allowedNamespaces` selects.
     With Kubernetes or JWT auth and no `serviceAccountRef`, it logs in as the operator itself (see
-    [below](#log-in-as-the-operator)):
+    [Log in as the operator](#log-in-as-the-operator)):
 
     ```yaml title="examples/core/clusteropenbaoconnection-injectedidentity.yaml"
     --8<-- "examples/core/clusteropenbaoconnection-injectedidentity.yaml"

@@ -17,7 +17,11 @@ same object.
 3. Generate the resources with [`obc-import`](import.md), or write them by hand. Each resource needs
    `managementPolicy: Observe`, `creationPolicy: Adopt` and `deletionPolicy: Orphan`; `obc-import` sets the
    first two. `Adopt` reports `NotFound` instead of creating an object when a name or path is wrong.
-4. Apply the resources and read their `Synced` condition. `Observed` means OpenBao matches the spec;
+4. Create the Secrets for write-only fields with their real values. In `Observe` a missing
+   write-only Secret resolves to an empty value, so the resource still reports `Observed`; OpenBao never
+   returns these values, so `Observe` cannot compare them. The first write in `Manage` sends whatever the
+   Secret holds, empty included, so the real values must be in place before step 6 ([Import](import.md#what-you-must-add)).
+5. Apply the resources and read their `Synced` condition. `Observed` means OpenBao matches the spec;
    `Drifted` names the keys that differ. Fix the spec until every resource is `Observed`:
 
    ```sh
@@ -25,7 +29,7 @@ same object.
    kubectl describe policy.sys.openbaoconfig.io app-read -n team-a
    ```
 
-5. Switch resources to `managementPolicy: Manage`, one namespace or one kind at a time. Check that each
+6. Switch resources to `managementPolicy: Manage`, one namespace or one kind at a time. Check that each
    resource is `Ready` and that its events show `Adopted`, not `Created`:
 
    ```sh
@@ -34,9 +38,6 @@ same object.
 
    An `Updated` event names the keys that differed from the spec. Fix the spec if the difference was not
    intended.
-6. Create the Secrets for write-only fields before you switch a resource that has them. OpenBao never
-   returns these values, so `Observe` cannot compare them, and the first write in `Manage` sends whatever
-   the Secret holds ([Import](import.md#what-you-must-add)).
 7. Retire the previous manager's records. With step 2 done, the OpenBao objects stay.
 8. Once the operator is the only manager, set `deletionPolicy: Delete` where you want deleting the
    resource to remove the object; leave `Orphan` everywhere else.
