@@ -244,14 +244,19 @@ func availability(t testing.TB, path string) map[string]string {
 	}
 	out := map[string]string{}
 	for line := range strings.SplitSeq(string(raw), "\n") {
-		if !strings.HasPrefix(line, "| `") {
+		if !strings.HasPrefix(line, "| `") && !strings.HasPrefix(line, "| [`") {
 			continue
 		}
 		cols := strings.Split(strings.ReplaceAll(line, `\|`, "/"), "|")
 		if len(cols) < 4 {
 			continue
 		}
-		out[strings.Trim(strings.TrimSpace(cols[1]), "`")] = strings.TrimSpace(cols[3])
+		_, label, _ := strings.Cut(cols[1], "`")
+		kind, _, ok := strings.Cut(label, "`")
+		if !ok || kind == "" {
+			t.Fatalf("invalid kind label in catalogue row: %s", line)
+		}
+		out[kind] = strings.TrimSpace(cols[3])
 	}
 	return out
 }

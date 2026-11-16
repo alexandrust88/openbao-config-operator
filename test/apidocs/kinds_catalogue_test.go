@@ -28,7 +28,7 @@ func loadCatalogue(t *testing.T) (rows []catalogueRow, doc string) {
 	}
 	doc = string(raw)
 	for line := range strings.SplitSeq(doc, "\n") {
-		if !strings.HasPrefix(line, "| `") {
+		if !strings.HasPrefix(line, "| `") && !strings.HasPrefix(line, "| [`") {
 			continue
 		}
 		cols := strings.Split(strings.ReplaceAll(line, `\|`, "/"), "|")
@@ -36,7 +36,7 @@ func loadCatalogue(t *testing.T) (rows []catalogueRow, doc string) {
 			t.Fatalf("kinds.md row has %d columns, want 7: %s", len(cols)-2, line)
 		}
 		rows = append(rows, catalogueRow{
-			kind:         strings.Trim(strings.TrimSpace(cols[1]), "`"),
+			kind:         regexp.MustCompile("`([^`]+)`").FindStringSubmatch(cols[1])[1],
 			availability: strings.TrimSpace(cols[3]),
 			evidence:     strings.TrimSpace(cols[6]),
 		})

@@ -1,3 +1,7 @@
+---
+description: "Interpret OpenBao resource Ready and Synced conditions, reason codes, Kubernetes events and observed generations."
+---
+
 # Status and events
 
 The exact status contract of every kind: conditions, reasons, status fields, events and the

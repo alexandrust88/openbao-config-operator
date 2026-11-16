@@ -1,3 +1,7 @@
+---
+description: "Planned OpenBao Config Operator work and priorities for contributors."
+---
+
 # Backlog
 
 These are real outcomes that are planned and not implemented yet. The order of work, by release, and the phases

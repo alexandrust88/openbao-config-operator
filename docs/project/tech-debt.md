@@ -1,3 +1,7 @@
+---
+description: "Tracked technical debt in OpenBao Config Operator, with impact and follow-up work for maintainers."
+---
+
 # Tech-debt register
 
 This register lists material limitations of the current implementation and its verification.

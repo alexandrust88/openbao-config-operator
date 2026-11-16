@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: no OpenBao-to-Kubernetes secret sync. Rationale, constraints and consequences."
+---
+
 # 0007. No OpenBao-to-Kubernetes secret sync
 
 Status: accepted, still accurate for v2 (2026-11-14). Date: 2026-11-13.

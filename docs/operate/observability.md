@@ -1,3 +1,7 @@
+---
+description: "Monitor OpenBao Config Operator with metrics, logs, health probes, alerts and reconciliation status."
+---
+
 # Observability
 
 What the operator exposes for monitoring: Prometheus metrics, the chart's scrape and alert

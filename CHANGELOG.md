@@ -9,6 +9,40 @@ App is configured, [release-please](https://github.com/googleapis/release-please
 conventional-commit titles of merged pull requests. Do not edit released entries. The process is in
 [docs/maintainers/release-process.md](docs/maintainers/release-process.md).
 
+## [0.4.0](https://github.com/alexandrust88/openbao-config-operator/releases/tag/v0.4.0) (2026-11-16)
+
+### Features
+
+- Add six typed kinds: `CertAuthCRL`, `KVSecretMetadata`, `PKICELRole`, `PKIKeyConfig`,
+  `TransitCacheConfig` and `TransitKeyConfig`, with CRDs, adapters, examples and integration tests
+  ([#12](https://github.com/alexandrust88/openbao-config-operator/pull/12)). `KVSecretMetadata`
+  requires the destructive-delete annotation before deleting all stored secret versions.
+
+### Fixes
+
+- Make connection-backoff timing deterministic in tests
+  ([#13](https://github.com/alexandrust88/openbao-config-operator/pull/13)).
+- Use content-derived manager image tags in e2e upgrades, provide real CRL and external-plugin
+  fixtures, and preserve Observe mode during the active-node failover check
+  ([#14](https://github.com/alexandrust88/openbao-config-operator/pull/14)).
+- Patch the isolated plugin fixture's dependencies and include it in vulnerability scanning.
+- Drain conformance selector output in its test harness to avoid intermittent broken-pipe failures.
+
+### Testing and documentation
+
+- Add a TLS raft integration lab covering Keycloak identity, ESO secret rotation, cert-manager PKI
+  and an external LDAP plugin. Conformance uses bounded workers and reports timings.
+- Add Keycloak, Auth0 and Okta OIDC and JWT CI regression: root and two tenants, admin/read/ops
+  identities, external and internal group policies, browser login, discovery and JWKS validation,
+  KV/transit access, denial and revocation. Keycloak runs inside the disposable cluster. Hosted
+  provider resources are provisioned and cleaned up per run; Auth0 and Okta require configured
+  accounts and GitHub environment credentials.
+- Add self-hosted Authentik and ZITADEL CI profiles with OIDC browser login, human JWT and
+  service-account JWT validation through discovery and JWKS in root and two child namespaces.
+  Their group claims feed operator-managed policies; dedicated machine mounts test audience isolation.
+- Add runnable OIDC showcase scenarios and improve documentation titles, descriptions and
+  maintainer guidance for search indexing.
+
 ## [0.3.1](https://github.com/alexandrust88/openbao-config-operator/releases/tag/v0.3.1) (2026-11-16)
 
 No change to the CRDs. With `watchNamespaces` set, the release namespace is no longer watched unless it is listed,

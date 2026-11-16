@@ -1,4 +1,9 @@
-# Import a running OpenBao
+---
+title: Import existing OpenBao configuration safely
+description: Generate Kubernetes resources from an existing OpenBao server, review them in Observe mode and adopt configuration incrementally.
+---
+
+# Import existing OpenBao configuration safely
 
 `obc-import` reads a live OpenBao server and writes one custom resource per object it can map to a typed
 kind. Every resource has `managementPolicy: Observe` and `creationPolicy: Adopt`: once applied, the operator
@@ -83,3 +88,34 @@ either way; the first write in `Manage` then sends whatever the Secret holds, em
 is compared, so its Secret needs the real data.
 
 Not imported: objects of kinds without a typed CRD. The stderr summary names everything it skipped.
+
+
+## Review before enabling management
+
+1. Read the import summary and skipped-path messages. An import is an inventory of the paths the
+   token could read, not proof that every configuration path was exported.
+2. Review the generated server, connection, OpenBao namespaces and policy contents. Prepare any
+   missing Secret inputs described above. Keep the output directory private; do not commit it
+   until that review is complete.
+3. Apply the reviewed resources while retaining `managementPolicy: Observe` and
+   `creationPolicy: Adopt`:
+
+   ```bash
+   kubectl apply -f imported/
+   kubectl -n openbao-config get openbao
+   ```
+
+4. Inspect each resource's `Synced` condition. `Observed` means the comparable fields match;
+   `Drifted` identifies differences to review. For a policy, for example:
+
+   ```bash
+   kubectl -n openbao-config describe policy <imported-policy-name>
+   ```
+
+   Observe mode does not prove that missing write-only inputs are correct. Resolve those inputs
+   before allowing writes.
+5. Follow [Migrate to the operator](migration.md) to stop the previous writer and switch resources
+   to `Manage` one at a time. Keep `deletionPolicy: Orphan` until you have reviewed deletion effects.
+
+See [status and events](../reference/status-and-events.md) when an imported resource is not
+observed as expected, and the [kind catalogue](../kinds.md) for supported paths and lifecycle notes.

@@ -1,0 +1,68 @@
+# Disposable kind fixture; credentials are referenced Kubernetes Secrets.
+fullnameOverride: zitadel
+replicaCount: 1
+# renovate: datasource=docker depName=ghcr.io/zitadel/zitadel
+image:
+  repository: ghcr.io/zitadel/zitadel
+  tag: v4.20.3@sha256:1b30fea7ed88826dc0a98dacee4e2f2c8b05201fd26f5e4cb5386615b29f7638
+login:
+  enabled: false
+postgresql:
+  enabled: false
+ingress:
+  enabled: false
+zitadel:
+  masterkeySecretName: zitadel-masterkey
+  configSecretName: zitadel-config
+  configSecretKey: config.yaml
+  configmapConfig:
+    ExternalDomain: zitadel.obco-lab-zitadel.svc
+    ExternalPort: 8080
+    ExternalSecure: false
+    TLS:
+      Enabled: false
+    DefaultInstance:
+      Features:
+        LoginV2:
+          Required: false
+      LoginPolicy:
+        AllowRegister: false
+        ForceMFA: false
+    Database:
+      Postgres:
+        Host: zitadel-postgres
+        Port: 5432
+        Database: zitadel
+        User:
+          Username: zitadel
+          SSL:
+            Mode: disable
+        Admin:
+          Username: postgres
+          SSL:
+            Mode: disable
+    FirstInstance:
+      Org:
+        Name: obco-lab
+        Machine:
+          Machine:
+            Username: obco-bootstrap
+            Name: Disposable lab bootstrap
+          MachineKey: null
+          # up() supplies an expiry one day from startup.
+          Pat: {}
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 768Mi
+tools:
+  kubectl:
+    image:
+      repository: alpine/k8s
+      tag: 1.35.0@sha256:18bc02c1e0df04451f4f9194eb7b7341c1165da5495459b52f85f72fb9545032
+  wait4x:
+    image:
+      repository: wait4x/wait4x
+      tag: 3.6@sha256:bec7ac18547781d854562c3729d3195c3880116d6758c49fdf4573ad58805f14

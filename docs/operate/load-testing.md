@@ -1,3 +1,7 @@
+---
+description: "Review measured operator load-test results, test conditions and scaling limits."
+---
+
 # Load testing
 
 This page describes the load test in `test/load`, the numbers it produced, the bottlenecks it found and how to

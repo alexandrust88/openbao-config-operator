@@ -7,7 +7,6 @@ import logging
 import os
 import posixpath
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -58,15 +57,9 @@ state = {}
 
 def release_tag():
     tag = os.environ.get("RELEASE_TAG", "").strip()
-    if tag:
-        return tag
-    try:
-        out = subprocess.run(
-            ["git", "tag", "-l", "v*", "--sort=-v:refname"], cwd=ROOT, capture_output=True, text=True, check=True
-        ).stdout
-    except (OSError, subprocess.CalledProcessError):
-        out = ""
-    return next((t for t in out.split() if TAG_PATTERN.match(t)), "")
+    if tag and not TAG_PATTERN.fullmatch(tag):
+        raise ValueError("RELEASE_TAG must be a published vMAJOR.MINOR.PATCH release")
+    return tag
 
 
 def adr_index(docs):
@@ -120,6 +113,14 @@ def expand(nav, docs):
         return flat
     if isinstance(nav, dict):
         return {title: expand(value, docs) for title, value in nav.items()}
+    if nav == "reference/api/":
+        result = ["reference/api/index.md"]
+        for group in apiref.GROUP_ORDER:
+            index = f"reference/api/{group}.md"
+            if index in generated:
+                kinds = sorted(p for p in generated if p.startswith(f"reference/api/{group}-"))
+                result.append({apiref.GROUP_LABELS[group]: [index, *kinds]})
+        return result
     if isinstance(nav, str) and nav.endswith("/"):
         on_disk = [p.relative_to(docs).as_posix() for p in (docs / nav).glob("*.md")]
         pages = sorted(set(on_disk) | {p for p in generated if posixpath.dirname(p) + "/" == nav})

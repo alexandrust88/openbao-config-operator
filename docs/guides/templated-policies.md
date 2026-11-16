@@ -1,3 +1,7 @@
+---
+description: "Write OpenBao ACL policy templates that use identity metadata to scope application and tenant access."
+---
+
 # Templated policies
 
 OpenBao fills in identity templates in an ACL policy for each request, from the entity behind the

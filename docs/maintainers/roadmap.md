@@ -1,3 +1,7 @@
+---
+description: Track released OpenBao Config Operator capabilities, outstanding test gates and planned work without promised release dates.
+---
+
 # Roadmap
 
 Where the project is going, by release. This page is the only place that orders work and names phases; the
@@ -10,7 +14,7 @@ before you begin a large one.
 
 ## Where we are
 
-- v0.1.1, v0.2.0 and v0.3.0 are released: a multi-arch image, the Helm chart, `install.yaml` and `crds.yaml`,
+- v0.1.1, v0.2.0, v0.3.0 and v0.3.1 are released: a multi-arch image, the Helm chart, `install.yaml` and `crds.yaml`,
   signed with keyless cosign, from the [GitHub releases](https://github.com/alexandrust88/openbao-config-operator/releases).
   Since v0.2.0 a release also carries an examples bundle, and since v0.3.0 the chart has a GPG Helm provenance file.
   The [changelog](../../CHANGELOG.md) lists the changes of each release; v0.1.0 has no GitHub release.
@@ -47,10 +51,11 @@ current engine and are retrofitted to its rules as the engine lands.
 `after 6` in the catalogue marks plugin kinds outside the core plan (cloud, GitHub, Okta, OCI, CF, Consul,
 Nomad, Terraform Cloud, MongoDB Atlas, Quay); they stay gated until each has a plugin and backend in CI.
 
-## v0.1 to v0.3: released
+## v0.1.1 to v0.3.1: released
 
 v0.1.1 was the first complete GitHub release, then v0.2.0 (the destructive-delete guard for key material, faster drift
-reads, the documentation site) and v0.3.0 (the signed chart and the role tutorials). The API group domain was
+reads, the documentation site) and v0.3.0 (the signed chart and the role tutorials). v0.3.1 tightened chart value validation
+and namespace-scoped watches; it made no CRD changes. The API group domain was
 decided before v0.1.0 ([BL-001](../project/backlog.md#bl-001-pick-an-owned-api-group-domain-before-the-first-release)).
 The goals in the next two sections were planned for v0.2 and v0.3; those releases shipped without them. Still open
 from the v0.1 plan:

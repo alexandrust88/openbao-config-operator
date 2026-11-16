@@ -1,3 +1,7 @@
+---
+description: "Build, verify and publish signed OpenBao Config Operator releases, container images and Helm charts."
+---
+
 # Release process
 
 This page is for maintainers. It covers versioning, how to cut a release, backports, the support window and the

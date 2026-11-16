@@ -1,3 +1,7 @@
+---
+description: "Manage OpenBao KV configuration and secret resources with Kubernetes manifests and referenced Secret inputs."
+---
+
 # KV secrets
 
 This guide creates a KV version 2 secrets engine and fills it from Kubernetes: secrets copied from
@@ -12,22 +16,40 @@ Kubernetes Secret (`writeSecretRef`).
 
 A `Ready` connection whose OpenBao policy allows `sys/mounts` (`read`), `sys/mounts/<mount>` and
 `sys/mounts/<mount>/tune` to manage the engine, and `<mount>/data/*` (`create`, `read`,
-`update`) and `<mount>/metadata/*` (`read`, `delete`) for the secrets
+`update`), `<mount>/metadata/*` (`read`, `delete`) for the secrets, and `<mount>/config`
+(`read`, `update`) for the engine configuration
 ([OpenBao policy for the operator](../operate/openbao-policy.md)).
 
 ## 1. Enable the engine
 
-The examples on this page write to the KV version 2 mount `secret`, which a `bao server -dev`
-server enables by default. To use a mount you enable here instead, set `mountPath` in the
-`KVConfig`, `KVSecret` and `RandomSecret` to that mount's path (`quickstart-kv` or `team-a/kv`
-below).
+Every resource on this page uses the KV v2 mount `secret`, connection `openbao` and Kubernetes
+namespace `openbao-config`. Save this as `kv-mount.yaml`; it creates that mount or adopts the
+existing KV v2 mount on a dev server:
 
-A `SecretsMount` with `type: kv` and `options.version: "2"` enables KV version 2. The minimal
-form:
-
-```yaml title="examples/quickstart/secretsmount.yaml"
---8<-- "examples/quickstart/secretsmount.yaml"
+```yaml
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: guide-secret
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  path: secret
+  type: kv
+  options:
+    version: "2"
 ```
+
+```bash
+kubectl apply -f kv-mount.yaml
+kubectl -n openbao-config wait secretsmount/guide-secret --for=condition=Ready --timeout=2m
+```
+
+If another operator resource already owns `secret`, reuse that resource instead of creating a
+second owner. For a different mount, change `path` here and every `mountPath` below together.
 
 Every mount field, including lease TTLs and audit settings:
 
@@ -43,6 +65,10 @@ A `KVConfig` sets the engine's version limits:
 --8<-- "examples/secrets/kvconfig.yaml"
 ```
 
+```bash
+kubectl apply -f examples/secrets/kvconfig.yaml
+```
+
 ## 2. Write a secret from Kubernetes Secrets
 
 A `KVSecret` writes the keys of one or more Kubernetes Secrets to one KV path. `dataFrom` copies
@@ -51,6 +77,10 @@ never stored in status, and a change of a referenced Secret writes a new version
 
 ```yaml title="examples/secrets/kvsecret.yaml"
 --8<-- "examples/secrets/kvsecret.yaml"
+```
+
+```bash
+kubectl apply -f examples/secrets/kvsecret.yaml
 ```
 
 The KV data is removed with the resource only when `deletionPolicy: Delete` is set and the
@@ -63,9 +93,35 @@ A `RandomSecret` generates a value once and stores it under one key of a KV secr
 Secret that the resource owns; `passwordPolicyName` generates it with an OpenBao password policy
 instead of `generator`:
 
-```yaml title="examples/secrets/randomsecret.yaml"
---8<-- "examples/secrets/randomsecret.yaml"
+Save this minimal example as `session-key.yaml`:
+
+```yaml
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: RandomSecret
+metadata:
+  name: obco-app-session-key
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: secret
+  path: obco/app-random
+  kvVersion: 2
+  key: session-key
+  generator:
+    length: 48
+    charset: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_
+  writeSecretRef:
+    name: obco-app-session-key
 ```
+
+```bash
+kubectl apply -f session-key.yaml
+```
+
+For password-policy generation, see [the complete RandomSecret examples](../../examples/secrets/randomsecret.yaml).
+Their second resource requires the `db-passwords` policy from
+[passwordpolicy.yaml](../../examples/sys/passwordpolicy.yaml) before it can become Ready.
 
 ## 4. Check that it worked
 

@@ -15,7 +15,7 @@ select_kinds() {
 expect() {
   local name=$1 want=$2 got
   shift 2
-  got=$(select_kinds "$@" | head -n 2 | paste -sd' ' -)
+  got=$(select_kinds "$@" | sed -n '1,2p' | paste -sd' ' -)
   if [[ $got =~ $want ]]; then
     echo "ok   $name"
   else

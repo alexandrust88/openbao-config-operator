@@ -1,3 +1,8 @@
+---
+title: Get started with OpenBao configuration on Kubernetes
+description: Choose a local quickstart, install the operator, connect an existing OpenBao server or import configuration for GitOps management.
+---
+
 # Get started
 
 openbao-config-operator manages the configuration of an OpenBao server that already runs: policies,
@@ -49,6 +54,13 @@ A platform admin declares each OpenBao server once as an `OpenBaoServer`. A conn
 operator logs in to that server, and every resource names its connection. The OpenBao policy behind
 the connection's identity is the limit of what the resources can change.
 [Concepts](../concepts/index.md) explains the model.
+
+## Configure your first object
+
+Once the connection is Ready, [declare and verify an ACL policy](../guides/policies.md).
+Then [configure Kubernetes authentication](../guides/kubernetes-auth.md) to attach that policy
+to a workload login. The [security model](../security.md) explains which identity performs each
+operation and where tenant isolation is enforced.
 
 ## Next steps
 

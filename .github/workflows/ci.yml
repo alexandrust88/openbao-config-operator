@@ -30,7 +30,7 @@ jobs:
       - run: make lint-config lint
       - name: Validate local lab scripts
         run: |
-          shellcheck -x hack/lab/*.sh hack/lab/plugins/*.sh
+          shellcheck -x hack/lab/*.sh hack/lab/plugins/*.sh hack/lab/saas/*.sh
           python3 - <<'PYTHON'
           import ast
           from pathlib import Path
@@ -39,7 +39,8 @@ jobs:
                   ast.parse(path.read_text(), filename=str(path))
           PYTHON
           node --check hack/lab/browser/oidc.mjs
-          python3 -m unittest discover -s hack/lab -p test_pki.py -v
+          python3 -m unittest discover -s hack/lab -p 'test_*.py' -v
+          python3 -m unittest discover -s hack/lab/saas -p 'test_*.py' -v
       - name: Validate external plugin fixture module
         working-directory: test/livekit/pluginfixture
         run: |
@@ -303,3 +304,25 @@ jobs:
           tar -xzf "$archive" -C "$plugin_dir" untt plugin.yaml
       - run: bin/helm unittest charts/openbao-config-operator
       - run: make validate-manifests
+
+  saas-browser-harness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: npm ci --ignore-scripts --prefix hack/lab/browser
+      - name: Exercise real Chromium against isolated login fixtures
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          import sys
+          sys.path.insert(0, "hack/lab/saas")
+          from operator_lab import browser_command
+          command = browser_command()
+          command[-1:] = ["--test", "/lab/saas/browser_test.mjs", "/lab/saas/browser_live_test.mjs"]
+          subprocess.run(command, check=True, timeout=240)
+          PY

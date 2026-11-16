@@ -1,3 +1,7 @@
+---
+description: "Choose OpenBao access policies, roles and operator AccessGrant resources for scoped team and workload permissions."
+---
+
 # Access model
 
 This guide gives workloads and people access to KV version 2 secrets without writing ACL policies
@@ -8,6 +12,40 @@ by hand. Three kinds work together:
 | `AccessLevel` | a named set of capabilities, such as read, write or owner | nothing; grants and layouts cite it |
 | `AccessGrant` | Kubernetes ServiceAccounts (machine access) | one policy `grant_<namespace>_<name>` and one Kubernetes auth role per subject |
 | `AccessLayout` | identity provider groups (human access) | one policy per role, OpenBao namespace and organisation, and per auth mount an external group with a group alias |
+
+## What a tenant means here
+
+A tenant is a team or workload boundary chosen by the platform. A Kubernetes namespace holds
+its custom resources and input Secrets; an OpenBao namespace holds the policies, auth methods
+and secrets those resources configure. They are separate namespaces and their names need not
+match. The connection's base OpenBao namespace and each resource's relative `spec.namespace`
+select the destination. Kubernetes RBAC controls who may change the declaration; OpenBao ACLs
+control what the connection and the eventual user can do.
+
+```mermaid
+flowchart LR
+  subgraph Kubernetes["Kubernetes tenant namespace"]
+    level["AccessLevel: capabilities"]
+    grant["AccessGrant: ServiceAccounts"]
+    layout["AccessLayout: IdP groups"]
+    conn["OpenBaoConnection"]
+    level --> grant
+    level --> layout
+    grant --> conn
+    layout --> conn
+  end
+  conn --> operator["Operator uses connection identity"]
+  operator --> policy["OpenBao policies and auth roles"]
+  operator --> groups["OpenBao external groups and aliases"]
+  workload["Workload authenticates directly"] --> policy
+  person["Person authenticates through IdP"] --> groups
+  groups --> acl["OpenBao checks ACLs in the selected namespace"]
+  policy --> acl
+```
+
+The operator creates configuration; it does not proxy user logins or read secrets on behalf of
+those users. A tenant boundary also needs restricted connections and OpenBao policies; an
+`AccessLayout` or Kubernetes namespace alone does not establish isolation.
 
 ## Before you begin
 

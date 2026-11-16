@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: one writer cluster per OpenBao namespace. Rationale, constraints and consequences."
+---
+
 # 0021. One writer cluster per OpenBao namespace
 
 Status: accepted. Date: 2026-11-14.

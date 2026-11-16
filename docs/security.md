@@ -1,3 +1,8 @@
+---
+title: OpenBao operator security model
+description: Understand tenant identities, Kubernetes RBAC, OpenBao ACL boundaries, credential handling and release verification.
+---
+
 # Security
 
 This page describes what the operator protects, from whom, and how. It also explains how to
@@ -55,6 +60,29 @@ authority of its own on top of it.
   operator fails with "the Secret exists and is not controlled by this resource".
 
 See [ADR 0003](adr/0003-connections-and-tenant-boundary.md) for the decision.
+
+### Follow a tenant request
+
+For a namespaced connection using Kubernetes authentication, the path is:
+
+```mermaid
+flowchart LR
+  resource["Tenant custom resource"] --> connection["OpenBaoConnection in the same Kubernetes namespace"]
+  connection --> request["TokenRequest for the tenant ServiceAccount"]
+  request --> login["OpenBao Kubernetes auth role"]
+  login --> policy["Scoped OpenBao ACL policy"]
+  policy --> path["Managed path in the connection's OpenBao namespace"]
+```
+
+The operator orchestrates these requests, but the OpenBao token carries the connection identity's
+permissions. Kubernetes RBAC decides who can edit the resource; the connection and server admission
+rules decide which identity and server it can use; OpenBao ACLs decide which operations succeed.
+A broad OpenBao policy remains broad even when the Kubernetes resource has a narrow name.
+
+The [two-tenant tutorial](tutorials/tenant-onboarding.md) provides a concrete configuration to try.
+Use [tenant-scoped operator policies](operate/openbao-policy.md#tenant-operator-in-a-child-namespace)
+when granting configuration rights, and follow the [hardening checklist](security/hardening.md)
+before sharing a deployment between teams.
 
 ## OpenBao namespace escape
 

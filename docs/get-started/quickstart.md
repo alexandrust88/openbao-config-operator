@@ -1,3 +1,7 @@
+---
+description: Install OpenBao Config Operator on kind, connect to OpenBao and reconcile your first policy. Test workload access and automatic drift repair.
+---
+
 # Quickstart on kind
 
 In this tutorial you run OpenBao and the operator on a local kind cluster, then manage your first

@@ -33,6 +33,9 @@ go.work
 .tmp/
 __pycache__/
 
+# private identity-lab workspace
+/.local/saas-lab/
+
 # credentials and key material
 *.pem
 *.key

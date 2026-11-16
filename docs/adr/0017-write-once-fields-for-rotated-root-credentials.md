@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: write-once fields for rotated root credentials. Rationale, constraints and consequences."
+---
+
 # 0017. Write-once fields for rotated root credentials
 
 Status: accepted. Date: 2026-11-14.

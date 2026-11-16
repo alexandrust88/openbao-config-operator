@@ -1,3 +1,7 @@
+---
+description: Configure OpenBao JWT and OIDC authentication with Kubernetes custom resources, Secret references, identity groups and tenant-specific roles.
+---
+
 # JWT and OIDC auth
 
 This guide configures OpenBao's JWT/OIDC auth method from Kubernetes resources: people log in

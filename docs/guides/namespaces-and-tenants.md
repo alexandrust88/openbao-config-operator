@@ -1,3 +1,7 @@
+---
+description: "Organize OpenBao namespaces and tenant connections with Kubernetes resources and scoped authentication."
+---
+
 # Namespaces and tenants
 
 This guide gives a team its own OpenBao namespace and its own connection, so the team manages its

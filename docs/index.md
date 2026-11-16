@@ -1,6 +1,6 @@
 ---
-title: openbao-config-operator
-description: Manage the configuration of an existing OpenBao server as Kubernetes custom resources.
+title: GitOps configuration for OpenBao on Kubernetes
+description: Manage OpenBao policies, auth methods, secrets engines and tenant namespaces with typed Kubernetes resources and GitOps.
 hide:
   - navigation
   - toc
@@ -8,16 +8,34 @@ hide:
 
 <div class="obco-hero" markdown>
 
-# openbao-config-operator
+# Manage OpenBao configuration with Kubernetes and GitOps
 
-Manage the configuration of an existing OpenBao server as Kubernetes custom resources: typed, multi-tenant and
-silent at rest.
+A Kubernetes operator for GitOps management of an existing OpenBao server: policies, auth methods, secrets
+engines and tenant namespaces as typed custom resources.
 { .obco-hero__pitch }
 
-[Get started](get-started/index.md){ .md-button .md-button--primary }
-[Quickstart on kind](get-started/quickstart.md){ .md-button }
+[Quickstart on kind](get-started/quickstart.md){ .md-button .md-button--primary }
+[Install on a cluster](get-started/install.md){ .md-button }
+
+[Supported resources](kinds.md) · [API reference](reference/api/index.md) · [Security model](security.md)
 
 </div>
+
+The operator manages the configuration of an existing OpenBao server. Server deployment, unsealing and upgrades
+remain separate; secret delivery tools such as External Secrets Operator consume the configured policies and auth roles.
+
+## Choose a task
+
+| You want to… | Follow this path |
+|--------------|------------------|
+| Learn the workflow from installation to a Ready policy | [Quickstart on kind](get-started/quickstart.md) |
+| Define and update an ACL policy | [Manage OpenBao policies](guides/policies.md) |
+| Give teams their own OpenBao namespaces and identities | [Tenant onboarding](tutorials/tenant-onboarding.md) |
+| Reconcile OpenBao configuration from Git | [Argo CD integration](guides/argocd.md) |
+| Configure OIDC login, JWT roles and group mappings | [JWT and OIDC authentication](guides/jwt-oidc-auth.md) |
+| Test user permissions, rejected access and policy changes | [OIDC permissions showcase](tutorials/oidc-showcase.md) |
+| Connect Keycloak, ESO or cert-manager in a disposable cluster | [Local integration lab](tutorials/local-lab.md) |
+| Adopt configuration already present in OpenBao | [Import and observe mode](guides/import.md) |
 
 ## Why this operator
 
@@ -42,7 +60,7 @@ The [decisions](adr/README.md) list each architecture choice in one sentence.
 
 <div class="grid cards" markdown>
 
--   :material-code-braces:{ .lg .middle } **One typed kind per OpenBao API**
+-   :material-code-braces:{ .lg .middle } **Typed OpenBao configuration**
 
     ---
 
@@ -103,10 +121,11 @@ The [decisions](adr/README.md) list each architecture choice in one sentence.
 
 </div>
 
-## A 60-second example
+## A policy resource and its status
 
-A tenant declares an OpenBao ACL policy in Git. The policy uses identity templating, and `accessorRefs` lets it
-name auth mounts by placeholder instead of hard-coding their accessors.
+This example shows how a policy is reconciled after its connection and referenced auth mounts exist. For a complete
+installation and first policy, follow the [quickstart](get-started/quickstart.md). The policy below uses identity
+templating; `accessorRefs` names auth mounts by placeholder instead of hard-coding their accessors.
 
 === "1. The manifest"
 
@@ -185,5 +204,6 @@ flowchart LR
 ## Next steps
 
 - [Choose a path](get-started/index.md): evaluate on kind, install on a cluster or import existing configuration.
+- [Configure JWT and OIDC authentication](guides/jwt-oidc-auth.md): declare auth mounts, roles and group mappings.
 - [Concepts](concepts/index.md): servers, connections, the engine and its design rules.
 - [API reference](reference/api/index.md): every kind and field, generated from the CRDs.

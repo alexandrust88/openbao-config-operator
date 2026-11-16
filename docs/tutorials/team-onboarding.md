@@ -1,3 +1,7 @@
+---
+description: "Delegate OpenBao configuration to teams inside a tenant and verify their scoped access."
+---
+
 # Onboard teams as a tenant
 
 In this tutorial you are the admin of `tenant-a`, with admin rights in the Kubernetes namespace

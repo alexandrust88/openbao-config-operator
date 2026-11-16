@@ -1,3 +1,7 @@
+---
+description: "Learn OpenBao Config Operator through platform, tenant, identity and workload integration tutorials."
+---
+
 # Tutorials
 
 Four lessons that build a small multi-tenant OpenBao platform on the kind cluster of the

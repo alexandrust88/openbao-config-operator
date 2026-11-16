@@ -1,9 +1,14 @@
 # OpenBao Config Operator
 
-Manage the configuration of an existing OpenBao server through Kubernetes custom resources.
+Manage the configuration of an existing OpenBao server through Kubernetes custom resources and GitOps.
 The operator reconciles policies, authentication methods, secrets engines and other configuration
 with the desired state in Kubernetes. This chart installs the operator; provision, initialise and
 unseal your OpenBao server separately.
+
+[Documentation](https://alexandrust88.github.io/openbao-config-operator/) ·
+[Quickstart](https://alexandrust88.github.io/openbao-config-operator/get-started/quickstart/) ·
+[Supported resources](https://alexandrust88.github.io/openbao-config-operator/kinds/) ·
+[Security model](https://alexandrust88.github.io/openbao-config-operator/security/)
 
 ## Install
 

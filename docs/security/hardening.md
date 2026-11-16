@@ -1,3 +1,8 @@
+---
+title: Harden an OpenBao Config Operator deployment
+description: Configure tenant isolation, restricted credentials, network access and release verification using the operator security checklist.
+---
+
 # Hardening
 
 This page turns the [threat model](threat-model.md) into a checklist for running

@@ -1,3 +1,7 @@
+---
+description: "Diagnose OpenBao Config Operator authentication, TLS, readiness, ownership and reconciliation failures."
+---
+
 # Troubleshooting
 
 Start with the resource's conditions and events, then the connection, then the manager logs. The
@@ -127,13 +131,29 @@ kubectl patch policy team-a-app -n team-a --type=merge -p '{"spec":{"deletionPol
 Remove the finalizer by hand only when no manager runs and you accept that the OpenBao object
 stays behind:
 
+The following requires `jq`. It removes only `openbaoconfig.io/finalizer`; JSON Patch tests
+reject the change if the object or its finalizers changed after the read. Other controllers'
+finalizers are preserved. If it fails, inspect the resource again before retrying.
+
 ```sh
-kubectl patch policy team-a-app -n team-a --type=json \
-  -p '[{"op":"remove","path":"/metadata/finalizers"}]'
+if patch=$(kubectl get policy team-a-app -n team-a -o json | jq -ce '
+  (.metadata.finalizers // [] | index("openbaoconfig.io/finalizer")) as $index
+  | if $index == null then error("operator finalizer is absent") else
+      [
+        {op: "test", path: "/metadata/uid", value: .metadata.uid},
+        {op: "test", path: "/metadata/resourceVersion", value: .metadata.resourceVersion},
+        {op: "test", path: ("/metadata/finalizers/" + ($index | tostring)),
+         value: "openbaoconfig.io/finalizer"},
+        {op: "remove", path: ("/metadata/finalizers/" + ($index | tostring))}
+      ]
+    end'); then
+  kubectl patch policy team-a-app -n team-a --type=json --patch "$patch"
+fi
 ```
 
-Then delete the object in OpenBao yourself if it should go: `status.path` holds its full path,
-including the namespace. Read it before you remove the finalizer.
+Then delete the object in OpenBao yourself if it should go. Record both `status.path` and
+`status.namespace` before removing the finalizer: the path does not include the namespace,
+and an empty namespace means root.
 
 An `AccessLevel` held by `openbaoconfig.io/in-use` is not stuck: delete the grants and layouts
 that cite it.

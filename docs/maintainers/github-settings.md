@@ -1,3 +1,7 @@
+---
+description: "Repository settings for OpenBao Config Operator maintainers, including required checks, Actions permissions and release protection."
+---
+
 # GitHub repository settings
 
 The security workflows in `.github/workflows` only protect `main` if the repository settings below are in place.

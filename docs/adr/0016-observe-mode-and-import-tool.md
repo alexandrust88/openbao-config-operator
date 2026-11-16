@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: observe mode and import tool. Rationale, constraints and consequences."
+---
+
 # 0016. Observe mode and import tool
 
 Status: accepted. Date: 2026-11-14.

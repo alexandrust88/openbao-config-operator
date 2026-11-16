@@ -1,3 +1,7 @@
+---
+description: "Operate OpenBao Config Operator with guides for upgrades, observability, troubleshooting, backups and tenant quotas."
+---
+
 # Operations
 
 Guides for running openbao-config-operator in production. The design is in

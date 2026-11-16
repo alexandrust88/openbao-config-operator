@@ -1,17 +1,16 @@
 apiVersion: v2
 name: openbao-config-operator
-description: Manage the configuration of an existing OpenBao server through Kubernetes custom resources.
+description: Manage existing OpenBao configuration declaratively with Kubernetes custom resources and GitOps.
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
 kubeVersion: ">=1.31.0-0"
-home: https://github.com/alexandrust88/openbao-config-operator
+home: https://alexandrust88.github.io/openbao-config-operator/
 icon: https://raw.githubusercontent.com/alexandrust88/openbao-config-operator/main/docs/assets/logo.svg
 sources:
   - https://github.com/alexandrust88/openbao-config-operator
 keywords:
   - openbao
-  - vault
   - operator
   - secrets
   - secrets-management

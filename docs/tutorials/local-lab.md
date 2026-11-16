@@ -1,7 +1,11 @@
+---
+description: "Run a kind integration lab for OpenBao, Keycloak, Authentik and ZITADEL authentication, External Secrets Operator, cert-manager PKI and LDAP."
+---
+
 # Test user and workload access in a local lab
 
 Run the configuration operator against a disposable, three-node OpenBao cluster in kind. Add
-Keycloak for human and machine authentication, External Secrets Operator (ESO) for workload
+Keycloak, Authentik or ZITADEL for human and machine authentication, External Secrets Operator (ESO) for workload
 secret delivery, or cert-manager for certificate issuance. The operator configures OpenBao
 through its own CRDs; the other controllers consume that configuration.
 
@@ -39,6 +43,7 @@ hack/lab/identity-up.sh
 hack/lab/identity-test.sh
 npm ci --ignore-scripts --prefix hack/lab/browser
 hack/lab/identity-browser.sh
+hack/lab/keycloak-test.sh
 ```
 
 The identity profile creates a root namespace scenario and two tenant scenarios, `lab-alpha`
@@ -55,8 +60,49 @@ form and completes an OpenBao OIDC authorization-code flow, then tests a user wh
 not match the requested role. This checks the browser authentication journey; it does not claim
 coverage of every OpenBao UI screen. The non-browser suite additionally tests machine clients.
 
+The additional `keycloak-test.sh` matrix uses admin, read and ops users in root, alpha and beta.
+The operator configures a separate auth mount for each validation mode:
+
+| Mode | Operator configuration | Login |
+| --- | --- | --- |
+| Browser OIDC | `JWTAuthConfig.oidcDiscoveryURL`, `oidcClientID` and `oidcClientSecretSecretRef` | Authorization code through the Keycloak login form |
+| JWT with discovery | `JWTAuthConfig.oidcDiscoveryURL` and `boundIssuer` | Keycloak-issued JWT submitted to OpenBao |
+| JWT with JWKS | `JWTAuthConfig.jwksURL` and `boundIssuer` | The same signed JWT verified through the realm's key endpoint |
+
+JWKS supplies public signing keys; it does not replace the OIDC client or browser redirect flow.
+Each mode checks external-group aliases, inherited internal-group policies, namespace isolation
+and role-specific data access. JWT denial cases distinguish group, issuer, audience and signature
+failures. All configuration is applied through operator CRDs. The existing editor/viewer and
+machine-client scenarios remain available for the ESO integration.
+
 Keycloak runs with HTTP inside this isolated development setup. OpenBao API connections use
 HTTPS with the lab CA. Do not expose this lab or reuse its credentials in another environment.
+
+## Test Authentik or ZITADEL
+
+Each provider runs in its own Kubernetes namespace with PostgreSQL. After starting the base lab,
+choose one profile:
+
+```sh
+make lab-authentik
+# Or:
+make lab-zitadel
+```
+
+Both profiles provision disposable identities and applications, then configure OpenBao through
+the operator. The test matrix covers root and two child namespaces, admin/read/ops roles, browser
+OIDC, and JWT validation through discovery and direct JWKS. Tests check group-derived policies,
+allowed and denied KV/transit operations, tenant isolation and token revocation.
+
+Use the [Authentik guide](../how-to/authentik-lab.md) or [ZITADEL guide](../how-to/zitadel-lab.md)
+for provider setup, claim mapping and machine-token scenarios. These local providers use fixed
+cluster-internal HTTP endpoints; OpenBao uses the lab CA and HTTPS. The setup is for disposable
+regression tests, not a production identity-provider deployment.
+
+To test hosted identity providers, use the [Okta and Auth0 lab guide](../guides/saas-identity-lab.md).
+It provisions dedicated provider resources and uses separate CRD-managed auth mounts and tenant
+namespaces. Human OIDC login, JWT discovery/JWKS validation, groups and access regressions
+run in CI.
 
 ## Deliver secrets to workloads with ESO
 
@@ -100,8 +146,11 @@ registration and process recovery in the live kit.
 
 ## Run the profiles in CI
 
-The **integration lab** GitHub Actions workflow runs the identity, ESO, PKI and LDAP profiles
-in separate jobs when manually dispatched. Each job creates and deletes its own kind cluster.
+The **integration lab** GitHub Actions workflow runs Keycloak (`identity`), Authentik and ZITADEL
+in separate jobs on relevant pull requests and weekly. Manual runs also include ESO, PKI and LDAP.
+The identity-provider jobs exercise browser OIDC and JWT discovery/JWKS. Providers run inside
+the cluster, so these tests need no external identity-provider account or GitHub secret.
+Each job creates and deletes its own kind cluster.
 It uploads test logs and pod status, never the lab state directory, kubeconfig or credentials.
 
 ## Remove the lab

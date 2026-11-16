@@ -1,3 +1,7 @@
+---
+description: "Configure OpenBao PKI mounts, issuers and certificate roles through Kubernetes resources and GitOps."
+---
+
 # PKI
 
 This guide builds a two-tier certificate authority in OpenBao from Kubernetes resources: a root

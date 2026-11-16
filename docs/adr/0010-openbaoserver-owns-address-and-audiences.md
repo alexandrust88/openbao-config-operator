@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: openBaoServer owns the address and audiences. Rationale, constraints and consequences."
+---
+
 # 0010. OpenBaoServer owns the address and audiences
 
 Status: accepted. Date: 2026-11-14.

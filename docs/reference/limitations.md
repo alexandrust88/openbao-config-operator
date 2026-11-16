@@ -1,3 +1,7 @@
+---
+description: "Review OpenBao Config Operator limitations, unsupported features and operational trade-offs before deployment."
+---
+
 # Known limitations
 
 Limitations of the current release that affect users, with the workaround where one exists. The

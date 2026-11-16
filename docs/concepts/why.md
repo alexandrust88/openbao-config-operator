@@ -1,8 +1,11 @@
+---
+description: Compare OpenBao Config Operator with Crossplane provider-vault, vault-config-operator and secret delivery tools for tenant configuration and GitOps.
+---
+
 # Why this operator exists
 
-Several tools already manage Vault-style configuration from Kubernetes. This page explains what they leave
-out for a platform team that runs OpenBao for many tenants, why that gap led to a new operator, and where the
-older tools remain the better choice. It is not a feature list: the [kind catalogue](../kinds.md) and
+Several tools already manage Vault-style configuration from Kubernetes. This page explains how their workflows differ for a platform team that runs OpenBao for many tenants, why those
+requirements led to this operator, and when another tool may fit better. It is not a feature list: the [kind catalogue](../kinds.md) and
 [API coverage](../api-coverage.md) say what the operator covers, and the [known limitations](../reference/limitations.md)
 say what it does not do yet.
 
@@ -20,6 +23,26 @@ External Secrets Operator comes last, because it solves a different problem. Ope
 the bank-vaults configurer are compared briefly in the
 [README](https://github.com/alexandrust88/openbao-config-operator#today-and-its-limits).
 
+## Choose by the workflow you need
+
+| Your requirement | Start with | Trade-off to evaluate |
+| --- | --- | --- |
+| Plan and review changes together with other infrastructure, without a Kubernetes controller | Terraform or OpenTofu with a suitable provider | Runs need scheduling or CI for ongoing drift repair; manage state and provider credentials carefully. Check the provider's OpenBao compatibility for your endpoints. |
+| Expose a platform API that composes secrets configuration with cloud or Kubernetes resources | Crossplane with a suitable provider | Composition adds a control-plane layer and its lifecycle conventions; review provider support for OpenBao independently. |
+| Manage HashiCorp Vault configuration through Kubernetes resources | vault-config-operator | Review its authentication, drift and deletion behaviour against your tenancy requirements. |
+| Apply configuration as part of an existing Bank-Vaults deployment | Bank-Vaults external configuration | Fits its configuration document and lifecycle; compare that model with separately owned resources. |
+| Reconcile typed OpenBao configuration with server selection controlled by the platform | OpenBao Config Operator | Alpha APIs and one maintained runtime test target; evaluate the [compatibility limits](../reference/compatibility.md). |
+| Deliver existing secrets to applications | External Secrets Operator | Provision policies, auth roles and mounts separately; the tools can be combined. |
+
+These are workflow choices, not a ranking. The upstream descriptions are
+[OpenTofu's plan/apply workflow](https://opentofu.org/docs/intro/),
+[Terraform's Vault provider](https://registry.terraform.io/providers/hashicorp/vault/latest/docs),
+[Crossplane compositions](https://docs.crossplane.io/latest/composition/compositions/),
+[vault-config-operator](https://github.com/redhat-cop/vault-config-operator) and
+[Bank-Vaults external configuration](https://bank-vaults.dev/docs/concepts/external-configuration/).
+The detailed implementation comparison below is scoped to its cited revisions, not a claim about
+all releases or deployments of those projects.
+
 ## The problem
 
 A platform team runs one or a few OpenBao servers. Each tenant team gets a Kubernetes namespace and an OpenBao
@@ -31,8 +54,7 @@ be taken over without surprises.
 
 ## Built for Vault, tested on Vault
 
-Both projects target HashiCorp Vault. A search of both repositories, and of terraform-provider-vault, finds no
-mention of OpenBao. That matters most for namespaces, the unit of tenancy in this design:
+Both projects target HashiCorp Vault. The source review at the revisions above did not establish an OpenBao runtime test matrix. That matters most for namespaces, the unit of tenancy in this design:
 
 - vault-config-operator documents namespaces as a Vault Enterprise feature
   ([`docs/namespaces.md`](https://github.com/redhat-cop/vault-config-operator/blob/3072fd2d72fccc6f59087bba84b983c94f4d729e/docs/namespaces.md)),
@@ -42,7 +64,7 @@ mention of OpenBao. That matters most for namespaces, the unit of tenancy in thi
   Enterprise.
 
 OpenBao ships namespaces in its open source release, and the API is close enough that these tools may work
-against it. Neither project tests that, and neither has kinds for what only OpenBao has: self-init,
+against it. The reviewed versions do not provide verified coverage here for OpenBao-specific features such as self-init,
 `sys/workflows`, JWT roles with CEL, or OCI plugins. In return both carry Vault Enterprise kinds that OpenBao
 does not serve; provider-vault, for example, has EGP and RGP Sentinel policies and the KMIP engine.
 
@@ -182,7 +204,7 @@ such as an AppRole secret ID.
   resources, with the rest of Crossplane's ecosystem. This operator offers only its access kinds
   (`AccessLevel`, `AccessGrant`, `AccessLayout`) above the primitives.
 - **Maturity.** vault-config-operator is at v1.0 and ships through OperatorHub, and the Terraform provider under
-  provider-vault has been released since 2017. This operator is alpha (`v1alpha1`, v0.3) with one maintainer.
+  provider-vault has been released since 2017. This operator has alpha APIs (`v1alpha1`) and one maintainer.
 - **One tool for configuration and secrets.** vault-config-operator also generates and syncs secret values
   (`RandomSecret`, `VaultSecret`). This operator leaves that to ESO.
 

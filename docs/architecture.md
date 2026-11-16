@@ -1,3 +1,7 @@
+---
+description: "Understand how OpenBao Config Operator reconciles Kubernetes resources, resolves credentials, detects drift and enforces ownership."
+---
+
 # Architecture
 
 openbao-config-operator keeps the configuration of an existing OpenBao server in the state that
@@ -21,7 +25,8 @@ what does not work yet is in the [known limitations](reference/limitations.md).
 
 ## Design rules
 
-The engine enforces these rules; an adapter cannot break them. The numbers are stable, so other pages and tests
+These rules describe the design contract. The engine enforces shared lifecycle controls, while
+full desired-field coverage still depends on adapters (rule 3 below). The numbers are stable, so other pages and tests
 cite them.
 
 - **1. Steady-state reconcile reads and does not write.** `openbao_writes_total` is zero at rest.

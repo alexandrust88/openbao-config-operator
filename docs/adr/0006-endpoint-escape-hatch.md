@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: endpoint escape hatch. Rationale, constraints and consequences."
+---
+
 # 0006. Endpoint escape hatch
 
 Status: accepted; only OpenBao paths are in scope per [ADR 0009](0009-openbao-only-target.md). Date: 2026-11-13.

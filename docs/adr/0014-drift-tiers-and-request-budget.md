@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: drift tiers and per-server request budget. Rationale, constraints and consequences."
+---
+
 # 0014. Drift tiers and per-server request budget
 
 Status: accepted. Date: 2026-11-14.

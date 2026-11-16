@@ -1,3 +1,7 @@
+---
+description: "Grant the OpenBao permissions required by operator-managed resources using scoped ACL policies."
+---
+
 # OpenBao policy for the operator
 
 The OpenBao policy behind a connection's identity is the only real limit on what the operator can

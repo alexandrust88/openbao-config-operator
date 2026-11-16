@@ -70,6 +70,10 @@ def variant_name(kind, path):
 
 def index_page(root, groups):
     out = [
+        "---",
+        "description: Browse OpenBao Config Operator YAML examples by resource kind, including curated scenarios and generated field samples.",
+        "---",
+        "",
         "# Examples",
         "",
         "Curated examples live in `examples/<group>/<kind>.yaml`: realistic manifests, most with a comment that",
@@ -98,7 +102,7 @@ def index_page(root, groups):
             files = [f"[{Path(p).name}]({REPO_LINK}{p})" for p in [curated, *variants] if p]
             if generated:
                 files.append(f"[generated]({REPO_LINK}{generated})")
-            files.append(f"[API](../api/{short}.md#{kind.lower()})")
+            files.append(f"[API](../api/{apiref.kind_filename(crd)})")
             source = "curated" if curated else "generated"
             if variants:
                 source += f" + {len(variants)} variant{'s' if len(variants) > 1 else ''}"
@@ -119,7 +123,9 @@ def index_page(root, groups):
 def group_page(root, group, crds):
     short = apiref.short_group(group)
     out = [
-        f"# {group} examples",
+        "---", f"title: {apiref.GROUP_LABELS.get(short, short)} YAML examples",
+        f"description: OpenBao {apiref.GROUP_LABELS.get(short, short).lower()} configuration examples for {group}, with curated manifests and complete field samples.",
+        "---", "", f"# {group} examples",
         "",
         "Each kind shows its curated example first, then any variants, then the generated sample with every spec",
         f"field set. The fields are described in the [API reference](../api/{short}.md).",
@@ -132,7 +138,7 @@ def group_page(root, group, crds):
             continue
         text = scenario(root / curated) if curated else ""
         out += [f"## {kind}", "", inline(text or summary(crd)), ""]
-        out += [f"[API reference](../api/{short}.md#{kind.lower()})", ""]
+        out += [f"[API reference](../api/{apiref.kind_filename(crd)})", ""]
         tabs = [("Curated", curated)] if curated else []
         tabs += [(f"Variant: {variant_name(kind, v)}", v) for v in variants]
         if generated:

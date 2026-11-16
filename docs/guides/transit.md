@@ -1,3 +1,7 @@
+---
+description: "Manage OpenBao transit encryption keys and configuration with Kubernetes resources, drift reconciliation and deletion safeguards."
+---
+
 # Transit
 
 This guide declares encryption keys of OpenBao's transit secrets engine in Kubernetes, with

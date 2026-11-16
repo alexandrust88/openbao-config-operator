@@ -52,7 +52,7 @@ func confStartBao(t *testing.T, bin, logDir string) *confBao {
 	t.Helper()
 	listen := "127.0.0.1:" + strconv.Itoa(confRandomPort(t))
 	log := confCreateFile(t, filepath.Join(logDir, "bao.log"))
-	cmd := exec.Command(bin, "server", "-dev", "-dev-root-token-id="+confRootToken, "-dev-listen-address="+listen)
+	cmd := exec.Command(bin, "server", "-dev", "-dev-no-store-token", "-dev-root-token-id="+confRootToken, "-dev-listen-address="+listen)
 	cmd.Stdout, cmd.Stderr = log, log
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start bao: %v", err)

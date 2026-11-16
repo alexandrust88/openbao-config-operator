@@ -1,3 +1,7 @@
+---
+description: "Set up OpenBao Config Operator as a platform owner and delegate configuration access to tenants."
+---
+
 # Set up the platform
 
 In this tutorial you are the platform owner: admin of OpenBao and of the Kubernetes cluster. You

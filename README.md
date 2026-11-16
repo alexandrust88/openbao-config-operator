@@ -1,23 +1,18 @@
 <p align="center"><img src="docs/assets/logo.svg" width="128" alt=""></p>
 
-# openbao-config-operator
+# OpenBao Config Operator
 
-**A Kubernetes operator that keeps the configuration of an OpenBao server, such as its policies, auth methods and
-mounts, the same as the custom resources you keep in Git.**
+**A Kubernetes operator for managing OpenBao policies, auth methods and secrets engines as code. Reconcile the
+configuration of an existing OpenBao server from Git with typed custom resources.**
 
-<!-- Replace the Best Practices badge with https://www.bestpractices.dev/projects/<id>/badge once the project is registered. -->
 [![CI](https://github.com/alexandrust88/openbao-config-operator/actions/workflows/ci.yml/badge.svg)](https://github.com/alexandrust88/openbao-config-operator/actions/workflows/ci.yml)
 [![Conformance](https://github.com/alexandrust88/openbao-config-operator/actions/workflows/conformance.yml/badge.svg)](https://github.com/alexandrust88/openbao-config-operator/actions/workflows/conformance.yml)
-[![Release](https://img.shields.io/github/v/release/alexandrust88/openbao-config-operator?include_prereleases&sort=semver)](https://github.com/alexandrust88/openbao-config-operator/releases)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/alexandrust88/openbao-config-operator/badge)](https://scorecard.dev/viewer/?uri=github.com/alexandrust88/openbao-config-operator)
-[![OpenSSF Best Practices](https://img.shields.io/badge/OpenSSF_Best_Practices-pending-lightgrey)](https://www.bestpractices.dev/)
+[![Release](https://img.shields.io/github/v/release/alexandrust88/openbao-config-operator?sort=semver)](https://github.com/alexandrust88/openbao-config-operator/releases)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/openbao-config-operator)](https://artifacthub.io/packages/search?repo=openbao-config-operator)
-[![Go Report Card](https://goreportcard.com/badge/github.com/alexandrust88/openbao-config-operator)](https://goreportcard.com/report/github.com/alexandrust88/openbao-config-operator)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-site-blue)](https://alexandrust88.github.io/openbao-config-operator/)
 
-**[Read the documentation](https://alexandrust88.github.io/openbao-config-operator/)**: [quickstart on kind](https://alexandrust88.github.io/openbao-config-operator/get-started/quickstart/),
-[install](https://alexandrust88.github.io/openbao-config-operator/get-started/install/), [guides](https://alexandrust88.github.io/openbao-config-operator/guides/), [API reference](https://alexandrust88.github.io/openbao-config-operator/reference/api/).
+[Quickstart](docs/get-started/quickstart.md) · [Documentation](https://alexandrust88.github.io/openbao-config-operator/) · [Supported resources](docs/kinds.md) · [Security model](docs/security.md) · [Releases](https://github.com/alexandrust88/openbao-config-operator/releases)
 
 openbao-config-operator keeps the configuration of an existing [OpenBao](https://openbao.org) server in the
 state that Kubernetes custom resources declare: policies, namespaces, mounts, auth methods and roles, secrets
@@ -33,77 +28,6 @@ It does not deploy, initialise, unseal or upgrade OpenBao, and it does not copy 
 > Read the [risks](#risks) and the [known limitations](docs/reference/limitations.md) before you rely on it; the
 > [roadmap](docs/maintainers/roadmap.md) says what comes next.
 
-## Today and its limits
-
-Platform teams that run OpenBao for many tenants want its configuration in Git, reviewed and reconciled like
-everything else in the cluster. Several tools already manage this configuration declaratively. They differ
-in model more than in quality:
-
-| tool | model | tenant boundary | drift and ownership |
-|------|-------|-----------------|---------------------|
-| OpenTofu or Terraform with the Vault provider, run in the cluster by tofu-controller | HCL modules planned and applied against the API | the token of the runner; tenants are separated by workspace, state and token | drift shows in the next plan; ownership is the state file, and existing objects need an import |
-| redhat-cop vault-config-operator | one custom resource per Vault object, built for HashiCorp Vault; also syncs secret values into Kubernetes Secrets | per resource, through a Kubernetes auth role | the operator reconciles each resource against Vault |
-| Crossplane managed resources for Vault | Crossplane managed resources generated from the Terraform provider, with compositions on top | the credentials of the `ProviderConfig` a resource references | Crossplane re-reads and corrects managed resources; the external name links a resource to its object |
-| bank-vaults configurer | one configuration document applied by the configurer, next to the bank-vaults init and unseal tooling | one privileged identity for the whole document | the document owns what it lists; with its purge option enabled, the configurer also removes configuration the document does not list |
-
-The gap: none of these is built for OpenBao and its namespaces, lets tenants configure OpenBao from their own
-namespace as their own identity while the platform alone decides the server, and gives each OpenBao path one owner
-with drift repair that stays silent at rest. External Secrets Operator delivers secret values and configures
-nothing. [Why this operator exists](docs/concepts/why.md) compares them in detail, including where the other tools
-are the better choice.
-
-## Risks
-
-- **KV history purge race.** A destructive delete of a KV version 2 secret can destroy a version another writer
-  created in the instant before the delete ([TD-008](docs/project/tech-debt.md#td-008-a-kv-history-purge-can-destroy-a-version-written-right-before-it)).
-- **Write-only drift is invisible.** OpenBao never returns passwords and similar fields, so a change made to them
-  outside Git is not detected ([known limitations](docs/reference/limitations.md#drift-detection-and-comparison)).
-- **The hash key cannot be rotated.** Replacing the key of `status.writeOnlyHash` rewrites every object with
-  write-only inputs once ([known limitations](docs/reference/limitations.md#ownership-and-restore)).
-- **The self-init platform identity can rewrite its own policy.** OpenBao has no Sentinel or EGP to stop it;
-  split the identity ([RR-02](docs/security/threat-model.md#residual-risks-and-recommendations)).
-- **One maintainer.** The project has a single maintainer today, and the bus-factor risk is stated in the
-  governance ([GOVERNANCE.md](GOVERNANCE.md#single-maintainer-phase)).
-
-## Highlights
-
-- **74 built-in kinds** (70 typed OpenBao kinds plus the server, two connection kinds and `OpenBaoEndpoint`), every one
-  reconciled against a real `bao server -dev` in CI ([kind catalogue](docs/kinds.md)). Built-in kinds cover 92.2%
-  of the configuration paths of OpenBao 2.7.2, measured per release in CI ([API coverage](docs/api-coverage.md)).
-  52 further kinds for external plugins are experimental, off by default and not run against a server.
-- **`OpenBaoEndpoint` escape hatch** for every path without a typed kind, with the same drift, ownership and
-  delete-guard rules ([ADR 0006](docs/adr/0006-endpoint-escape-hatch.md)).
-- **Tenants act as themselves.** The platform team declares a cluster-scoped `OpenBaoServer` (address, CA, allowed
-  namespaces and token audiences). A tenant's `OpenBaoConnection` logs in as a ServiceAccount of its own namespace
-  through TokenRequest, never as the operator, so the tenant's OpenBao policy is the limit
-  ([ADR 0003](docs/adr/0003-connections-and-tenant-boundary.md),
-  [ADR 0010](docs/adr/0010-openbaoserver-owns-address-and-audiences.md)). The [e2e tests](test/e2e) exercise
-  tenant connections and a [two-tenant isolation test](test/e2e/isolation_test.go); the
-  [known limitations](docs/reference/limitations.md#verification) list what is not proven yet, and the default
-  install is cluster-wide (RR-01 in the [threat model](docs/security/threat-model.md)).
-- **Silent at rest.** A steady-state reconcile reads and never writes; `openbao_writes_total` stays flat. The load
-  test shows zero OpenBao and Kubernetes writes over three drift intervals at 5,000 objects
-  ([load testing](docs/operate/load-testing.md#steady-state)).
-- **Drift tiers.** Access-critical kinds (policies, auth) are checked every 15 minutes and everything else hourly,
-  with ±20% jitter and a per-server request budget; per-object overrides ([ADR 0014](docs/adr/0014-drift-tiers-and-request-budget.md)).
-- **Adopt a running server safely.** `obc-import` reads a live OpenBao and writes custom resources in `Observe`
-  mode, which reports drift and never writes. Switch them to `Manage` one at a time ([import](docs/guides/import.md),
-  [ADR 0016](docs/adr/0016-observe-mode-and-import-tool.md)).
-- **Safe by default.** `creationPolicy: Create` and `deletionPolicy: Orphan` by default, one owner per path, a
-  second guard before deleting mounts, namespaces, KV data, audit devices, key material, MFA methods, entities or
-  the target of an `OpenBaoEndpoint`, and a write circuit breaker
-  ([ADR 0013](docs/adr/0013-destructive-delete-guard.md), [ADR 0018](docs/adr/0018-write-circuit-breaker.md)).
-- **No webhooks, no cert-manager.** Validation is OpenAPI and CEL in the CRDs ([ADR 0005](docs/adr/0005-cel-validation-without-webhooks.md)).
-- **Secrets only by reference.** Inputs come from Kubernetes Secrets; write-only values are tracked as an HMAC in
-  status and never appear in status, events, logs or metrics.
-- **Supply chain.** The release workflow builds multi-arch distroless images, signs the images, the chart and the
-  checksums with keyless cosign, and attests SPDX and CycloneDX SBOMs and provenance: GitHub artifact
-  attestations (SLSA Build L2, as GitHub documents it) plus a cosign `slsaprovenance1` statement that the
-  release job writes itself, which claims no SLSA level. Nothing reaches Build L3
-  ([verify a release](SECURITY.md#verifying-releases)). Since v0.3.0 the chart also carries a GPG signature
-  (Helm provenance), which `helm install --verify` checks. Threat model and hardening guide in
-  [docs/security](docs/security/).
-
 ## Quick start
 
 The [quickstart](docs/get-started/quickstart.md) installs the operator and a dev OpenBao on a local
@@ -111,6 +35,18 @@ The [quickstart](docs/get-started/quickstart.md) installs the operator and a dev
 that page. The [tutorials](docs/tutorials/index.md) then walk through the platform owner, tenant onboarding and
 team onboarding roles, and the [install guide](docs/get-started/install.md) covers production installs from the
 OCI chart, the Helm repository or `install.yaml`, and how to verify them.
+
+## What do you want to configure?
+
+| Task | Start here |
+|------|------------|
+| Create an ACL policy and verify reconciliation | [Policy guide](docs/guides/policies.md) |
+| Manage policies, auth roles and mounts from Git | [Argo CD integration](docs/guides/argocd.md) |
+| Give each team its own OpenBao namespace and connection | [Tenant onboarding](docs/tutorials/tenant-onboarding.md) |
+| Configure OIDC login and JWT authentication | [JWT and OIDC guide](docs/guides/jwt-oidc-auth.md) |
+| Test user groups, ACL denials and changes to access | [OIDC permissions showcase](docs/tutorials/oidc-showcase.md) |
+| Test identity providers, ESO or cert-manager with OpenBao | [Local integration lab](docs/tutorials/local-lab.md) |
+| Bring existing configuration under reconciliation | [Import and observe mode](docs/guides/import.md) |
 
 ## Architecture
 
@@ -150,9 +86,90 @@ requeues; each kind contributes a small adapter with its path, payload and compa
 ([ADR 0002](docs/adr/0002-generic-engine-with-adapters.md)). The full design is in
 [docs/architecture.md](docs/architecture.md).
 
+## Security model
+
+The platform team controls server addresses, trust roots and allowed tenant namespaces through `OpenBaoServer`.
+Each tenant connection authenticates with its own identity; OpenBao ACLs limit the configuration it can change.
+Credentials are supplied by Secret reference. Resources default to leaving their OpenBao objects in place on
+Kubernetes deletion, with an additional opt-in for destructive deletes.
+
+Read the [security model](docs/security.md), [threat model](docs/security/threat-model.md) and
+[production hardening guide](docs/security/hardening.md) before granting access to a shared server. The default
+installation is cluster-wide; namespace isolation requires the documented controls and appropriate OpenBao policies.
+
+## Supported resources and verification
+
+- **74 built-in kinds** (70 typed OpenBao kinds plus the server, two connection kinds and `OpenBaoEndpoint`), with
+  per-kind availability and test evidence in the [kind catalogue](docs/kinds.md). Built-in kinds cover 92.2%
+  of configuration paths on OpenBao 2.7.2 (106 of 115; 30.1% of all 352 writable paths), classified per release in CI ([API coverage](docs/api-coverage.md)).
+  52 further kinds are experimental and disabled by default behind `--enable-plugin-kinds`; check the catalogue
+  for their paths and verification limits.
+- **`OpenBaoEndpoint` escape hatch** for every path without a typed kind, with the same drift, ownership and
+  delete-guard rules ([ADR 0006](docs/adr/0006-endpoint-escape-hatch.md)).
+- **Tenants act as themselves.** The platform team declares a cluster-scoped `OpenBaoServer` (address, CA, allowed
+  namespaces and token audiences). A tenant's `OpenBaoConnection` logs in as a ServiceAccount of its own namespace
+  through TokenRequest, never as the operator, so the tenant's OpenBao policy is the limit
+  ([ADR 0003](docs/adr/0003-connections-and-tenant-boundary.md),
+  [ADR 0010](docs/adr/0010-openbaoserver-owns-address-and-audiences.md)). The [e2e tests](test/e2e) exercise
+  tenant connections and a [two-tenant isolation test](test/e2e/isolation_test.go); the
+  [known limitations](docs/reference/limitations.md#verification) list what is not proven yet, and the default
+  install is cluster-wide (RR-01 in the [threat model](docs/security/threat-model.md)).
+- **Silent at rest.** A steady-state reconcile reads and never writes; `openbao_writes_total` stays flat. The load
+  test shows zero OpenBao and Kubernetes writes over three drift intervals at 5,000 objects
+  ([load testing](docs/operate/load-testing.md#steady-state)).
+- **Drift tiers.** Access-critical kinds (policies, auth) are checked every 15 minutes and everything else hourly,
+  with ±20% jitter and a per-server request budget; per-object overrides ([ADR 0014](docs/adr/0014-drift-tiers-and-request-budget.md)).
+- **Adopt a running server safely.** `obc-import` reads a live OpenBao and writes custom resources in `Observe`
+  mode, which reports drift and never writes. Switch them to `Manage` one at a time ([import](docs/guides/import.md),
+  [ADR 0016](docs/adr/0016-observe-mode-and-import-tool.md)).
+- **Safe by default.** `creationPolicy: Create` and `deletionPolicy: Orphan` by default, one owner per path, a
+  second guard before deleting mounts, namespaces, KV data, audit devices, key material, MFA methods, entities or
+  the target of an `OpenBaoEndpoint`, and a write circuit breaker
+  ([ADR 0013](docs/adr/0013-destructive-delete-guard.md), [ADR 0018](docs/adr/0018-write-circuit-breaker.md)).
+- **No webhooks, no cert-manager.** Validation is OpenAPI and CEL in the CRDs ([ADR 0005](docs/adr/0005-cel-validation-without-webhooks.md)).
+- **Secrets only by reference.** Inputs come from Kubernetes Secrets; write-only values are tracked as an HMAC in
+  status and never appear in status, events, logs or metrics.
+- **Supply chain.** The release workflow builds multi-arch distroless images, signs the images, the chart and the
+  checksums with keyless cosign, and attests SPDX and CycloneDX SBOMs and provenance: GitHub artifact
+  attestations (SLSA Build L2, as GitHub documents it) plus a cosign `slsaprovenance1` statement that the
+  release job writes itself, which claims no SLSA level. Nothing reaches Build L3
+  ([verify a release](SECURITY.md#verifying-releases)). Since v0.3.0 the chart also carries a GPG signature
+  (Helm provenance), which `helm install --verify` checks. Threat model and hardening guide in
+  [docs/security](docs/security/).
+
 ## Compatibility
 
 Supported OpenBao, Kubernetes and Helm versions are listed in the [compatibility reference](docs/reference/compatibility.md).
+
+## Risks
+
+- **KV history purge race.** A destructive delete of a KV version 2 secret can destroy a version another writer
+  created in the instant before the delete ([TD-008](docs/project/tech-debt.md#td-008-a-kv-history-purge-can-destroy-a-version-written-right-before-it)).
+- **Write-only drift is invisible.** OpenBao never returns passwords and similar fields, so a change made to them
+  outside Git is not detected ([known limitations](docs/reference/limitations.md#drift-detection-and-comparison)).
+- **The hash key cannot be rotated.** Replacing the key of `status.writeOnlyHash` rewrites every object with
+  write-only inputs once ([known limitations](docs/reference/limitations.md#ownership-and-restore)).
+- **The self-init platform identity can rewrite its own policy.** OpenBao has no Sentinel or EGP to stop it;
+  split the identity ([RR-02](docs/security/threat-model.md#residual-risks-and-recommendations)).
+- **One maintainer.** The project has a single maintainer today, and the bus-factor risk is stated in the
+  governance ([GOVERNANCE.md](GOVERNANCE.md#single-maintainer-phase)).
+
+## Choosing a configuration tool
+
+Choose a tool around the workflow you want to maintain. The links below point to each project's own documentation;
+[Why this operator exists](docs/concepts/why.md) explains the design trade-offs in more detail.
+
+| Tool | Configuration model | Choose this when… |
+|------|---------------------|-------------------|
+| OpenBao Config Operator | Typed Kubernetes resources, tenant connections and reconciliation against OpenBao | You run OpenBao and want teams to manage configuration through Kubernetes and GitOps. |
+| [Terraform Vault provider](https://github.com/hashicorp/terraform-provider-vault) | Terraform resources for the Vault API | Your team already manages configuration through Terraform plans, state and modules. |
+| [redhat-cop vault-config-operator](https://github.com/redhat-cop/vault-config-operator) | Vault configuration CRDs authenticated through namespace-local ServiceAccounts | You run HashiCorp Vault and its supported kinds fit your existing Kubernetes workflow. |
+| [Crossplane provider-vault](https://github.com/upbound/provider-vault) | Crossplane managed resources generated with Upjet for the Vault API | You already use Crossplane and want Vault configuration within that platform model. |
+| [Bank-Vaults configurer](https://bank-vaults.dev/docs/concepts/external-configuration/) | External YAML or JSON configuration applied by the operator or CLI | You use Bank-Vaults and want its configuration workflow alongside its server tooling. |
+
+External Secrets Operator serves a complementary purpose: it delivers secret values to Kubernetes. This operator
+can configure the OpenBao policies and auth roles that ESO uses; the [local lab](docs/tutorials/local-lab.md) tests
+that integration.
 
 ## Documentation
 
