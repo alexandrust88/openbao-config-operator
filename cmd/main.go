@@ -148,7 +148,7 @@ func run() error {
 		return err
 	}
 	restConfig := ctrl.GetConfigOrDie()
-	cacheOpts := cacheOptions(watchNamespaces, operatorNamespace)
+	cacheOpts := cacheOptions(watchNamespaces)
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme:                  scheme,
 		Metrics:                 metricsOptions,
@@ -227,16 +227,16 @@ func run() error {
 	return mgr.Start(ctx)
 }
 
-// cacheOptions limits the cache to the watched namespaces; the operator namespace stays cached for the
-// hash-key Secret. Cached Secrets and ConfigMaps keep only metadata: their watches need change events, not values.
-func cacheOptions(watchNamespaces, operatorNamespace string) cache.Options {
+// cacheOptions limits the cache to the watched namespaces; the hash-key Secret is read live and needs no cache.
+// Cached Secrets and ConfigMaps keep only metadata: their watches need change events, not values.
+func cacheOptions(watchNamespaces string) cache.Options {
 	opts := cache.Options{ByObject: map[client.Object]cache.ByObject{
 		&corev1.Secret{}:    {Transform: stripData},
 		&corev1.ConfigMap{}: {Transform: stripData},
 	}}
 	for _, ns := range splitList(watchNamespaces) {
 		if opts.DefaultNamespaces == nil {
-			opts.DefaultNamespaces = map[string]cache.Config{operatorNamespace: {}}
+			opts.DefaultNamespaces = map[string]cache.Config{}
 		}
 		opts.DefaultNamespaces[ns] = cache.Config{}
 	}

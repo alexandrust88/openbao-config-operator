@@ -95,8 +95,13 @@ that earlier charts accepted:
   `capabilities.add`, or a `securityContext` without `allowPrivilegeEscalation`, `readOnlyRootFilesystem` and
   `runAsNonRoot`;
 - `podSecurityContext.runAsNonRoot: false`, a `hostPath` entry in `extraVolumes`, `serviceAccount.name: default`,
-  `POD_NAMESPACE` in `extraEnv`, or a flag in `extraArgs` that the chart already sets;
+  `POD_NAMESPACE` in `extraEnv`, or a flag in `extraArgs` that the chart already sets or `--hash-key-secret`;
 - names, durations, CIDRs and audiences that contain whitespace.
+
+If you set `watchNamespaces`, the release namespace is no longer watched unless it is listed: resources there are
+not reconciled, and Secrets, ConfigMaps or ServiceAccounts there that an `OpenBaoServer` or
+`ClusterOpenBaoConnection` references can no longer be read. Add the release namespace to `watchNamespaces` if
+you keep any of them there.
 
 Remove or correct those values, then use the [upgrade procedure](#upgrade-procedure). The aggregated viewer role
 loses read on `ClusterOpenBaoConnection`; grant it separately to anyone who still needs it. The alerts'

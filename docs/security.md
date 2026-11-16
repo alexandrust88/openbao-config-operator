@@ -115,7 +115,8 @@ immutable Secret. Protect it like any other Secret in the operator namespace.
 |-------|--------|------|
 | ClusterRole `<fullname>-manager` | `OpenBaoServer` and `ClusterOpenBaoConnection` with their status and finalizers; `get`, `list`, `watch` on Namespaces; `GET /.well-known/openid-configuration` | always |
 | same ClusterRole | the namespaced kinds with their status and finalizers; Secrets (`get`, `list`, `watch`, `create`, `update`, `patch`), ConfigMaps (read), `serviceaccounts/token` (`create`), Events | `watchNamespaces` empty |
-| Role `<fullname>-manager` per listed namespace and the release namespace | the namespaced rules of the previous row | `watchNamespaces` set |
+| Role `<fullname>-manager` per listed namespace | the namespaced rules of the previous row | `watchNamespaces` set |
+| Role `<fullname>-manager` in the release namespace | `get` on the hash-key Secret, `create` on Secrets | `watchNamespaces` set without the release namespace |
 | Role `<fullname>-leader-election` | Leases and Events in the release namespace | `leaderElection.enabled` |
 | ClusterRoles `<fullname>-metrics-auth`, `<fullname>-metrics-reader` | TokenReviews and SubjectAccessReviews for the metrics endpoint; `GET /metrics` for scrapers | `metrics.enabled` |
 

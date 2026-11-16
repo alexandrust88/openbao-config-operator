@@ -44,12 +44,12 @@ String values that land in a manifest (names, image tag, audiences, CIDRs, durat
 |-----|------|---------|-------------|
 | `replicas` | integer, at least 0 | `2` | manager replicas; more than one requires `leaderElection.enabled` |
 | `leaderElection.enabled` | boolean | `true` | passes `--leader-elect`; disable only with `replicas: 1` |
-| `watchNamespaces` | list of strings | `[]` | namespaces the manager watches (`--watch-namespaces`); empty means cluster-wide. When set, access to Secrets, ConfigMaps, ServiceAccount tokens, Events and every namespaced managed kind is granted through a Role in each listed namespace instead of a ClusterRole |
+| `watchNamespaces` | list of strings | `[]` | namespaces the manager watches (`--watch-namespaces`); empty means cluster-wide. When set, access to Secrets, ConfigMaps, ServiceAccount tokens, Events and every namespaced managed kind is granted through a Role in each listed namespace instead of a ClusterRole; the release namespace, unless listed, gets only the hash-key Secret |
 | `apiServerAudiences` | list of strings | `[]` | passes `--apiserver-audiences`: audiences the Kubernetes API server accepts besides the built-in ones (`https://kubernetes.default.svc`, `https://kubernetes.default.svc.cluster.local`, `kubernetes.default.svc`, `rke2`, `k3s`) and the discovered service account issuer. A tenant `OpenBaoConnection` is never given a token for them |
 | `health.port` | integer, 1 to 65535 | `8081` | port of `/healthz` and `/readyz` |
 | `pprof.enabled` | boolean | `false` | serve Go pprof profiles on `127.0.0.1` inside the pod (no Service); reach them with `kubectl port-forward` |
 | `pprof.port` | integer, 1 to 65535 | `8082` | pprof port |
-| `extraArgs` | list of strings | `[]` | extra manager arguments. Flags the chart sets from a value (`--leader-elect`, `--metrics-secure`, `--metrics-bind-address`, `--metrics-cert-path`, `--pprof-bind-address`, `--health-probe-bind-address`, `--watch-namespaces`, `--apiserver-audiences`, `--enable-plugin-kinds`) are refused |
+| `extraArgs` | list of strings | `[]` | extra manager arguments. Flags the chart sets from a value (`--leader-elect`, `--metrics-secure`, `--metrics-bind-address`, `--metrics-cert-path`, `--pprof-bind-address`, `--health-probe-bind-address`, `--watch-namespaces`, `--apiserver-audiences`, `--enable-plugin-kinds`) and `--hash-key-secret` are refused |
 | `extraEnv` | list of objects | `[]` | extra manager environment variables; `POD_NAMESPACE` is refused because the chart sets it |
 | `extraVolumes` | list of objects | `[]` | extra volumes, for example a CA bundle ConfigMap trusted through `SSL_CERT_DIR` in `extraEnv`; `hostPath` volumes are refused |
 | `extraVolumeMounts` | list of objects | `[]` | extra volume mounts of the manager container |

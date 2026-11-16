@@ -207,7 +207,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "not": {"pattern": "^--?(leader-elect|metrics-secure|metrics-bind-address|metrics-cert-path|pprof-bind-address|health-probe-bind-address|watch-namespaces|apiserver-audiences|enable-plugin-kinds)(=|$)"}
+        "not": {"pattern": "^--?(leader-elect|metrics-secure|metrics-bind-address|metrics-cert-path|pprof-bind-address|health-probe-bind-address|watch-namespaces|apiserver-audiences|enable-plugin-kinds|hash-key-secret)(=|$)"}
       }
     },
     "extraEnv": {

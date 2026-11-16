@@ -395,11 +395,10 @@ watchNamespaces:
 
 This changes three things:
 
-- The manager gets `--watch-namespaces=<list>` and caches objects only from the listed namespaces
-  and its own namespace.
+- The manager gets `--watch-namespaces=<list>` and caches objects only from the listed namespaces.
 - Access to Secrets, ConfigMaps, `serviceaccounts/token`, Events and every namespaced kind of the
-  operator moves from the ClusterRole to a Role and RoleBinding in each listed namespace and in
-  the release namespace.
+  operator moves from the ClusterRole to a Role and RoleBinding in each listed namespace. Unless
+  listed, the release namespace gets only `get` on the hash-key Secret and `create` on Secrets.
 - The ClusterRole keeps only the cluster-wide rules: `OpenBaoServer` and
   `ClusterOpenBaoConnection`, read access to Namespaces (for `allowedNamespaces`), and `GET` on
   `/.well-known/openid-configuration`.

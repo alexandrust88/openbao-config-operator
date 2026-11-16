@@ -11,8 +11,8 @@ conventional-commit titles of merged pull requests. Do not edit released entries
 
 ## [0.3.1](https://github.com/alexandrust88/openbao-config-operator/releases/tag/v0.3.1) (2026-11-16)
 
-No change to the CRDs. The chart refuses values that weaken the pod or inject YAML: check your values before you
-upgrade ([upgrading to 0.3.1](docs/operate/upgrade.md#upgrading-to-031)).
+No change to the CRDs. With `watchNamespaces` set, the release namespace is no longer watched unless it is listed,
+and the chart refuses values that weaken the pod or inject YAML: check your values before you upgrade ([upgrading to 0.3.1](docs/operate/upgrade.md#upgrading-to-031)).
 
 ### Security
 
@@ -21,6 +21,8 @@ upgrade ([upgrading to 0.3.1](docs/operate/upgrade.md#upgrading-to-031)).
 - The values schema refuses `privileged`, privilege escalation, `runAsNonRoot: false`, added capabilities, hostPath
   volumes, `serviceAccount.name: default`, `POD_NAMESPACE` in `extraEnv` and, in `extraArgs`, every flag the chart
   already sets ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
+- With `watchNamespaces` set, the release namespace no longer gets the full tenant Role: unless it is listed, the
+  manager only reads and creates its hash-key Secret there and no longer watches it ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
 - The aggregated viewer role no longer grants read on `ClusterOpenBaoConnection`, and the manager no longer has
   `patch` on Secrets ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
 

@@ -140,7 +140,7 @@ pprof:
 
 # -- Extra manager arguments. Flags the chart sets from a value (--leader-elect, --metrics-secure, --metrics-bind-address,
 # --metrics-cert-path, --pprof-bind-address, --health-probe-bind-address, --watch-namespaces, --apiserver-audiences,
-# --enable-plugin-kinds) are refused here.
+# --enable-plugin-kinds) and --hash-key-secret, whose name the namespace-scoped Role pins, are refused here.
 extraArgs: []
 # -- Extra manager environment variables. POD_NAMESPACE is refused: the chart sets it.
 extraEnv: []

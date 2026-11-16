@@ -65,8 +65,9 @@ watchNamespaces:
 ```
 
 The chart then moves the Secret, ConfigMap, token and Event rules, and every rule on a namespaced
-managed kind with its `status` and `finalizers`, into a Role per listed namespace plus the release
-namespace (`templates/rbac/manager.yaml:30-58`). The ClusterRole keeps only the cluster-scoped
+managed kind with its `status` and `finalizers`, into a Role per listed namespace
+(`templates/rbac/manager.yaml:30-70`). An unlisted release namespace gets only `get` on the
+hash-key Secret and `create` on Secrets. The ClusterRole keeps only the cluster-scoped
 kinds (`openbaoservers`, `clusteropenbaoconnections`), Namespace reads and the OIDC discovery URL.
 The manager caches only those namespaces and lists live only inside them (`cmd/main.go:232-244`,
 `internal/engine/ownership.go:326-333`). Resources in other namespaces are not reconciled, and the

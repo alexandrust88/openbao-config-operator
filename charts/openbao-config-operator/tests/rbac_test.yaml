@@ -47,7 +47,7 @@ tests:
           pattern: ^\*$
         documentIndex: 0
 
-  - it: moves namespaced access into a Role per watched namespace and the release namespace
+  - it: moves namespaced access into a Role per watched namespace
     template: templates/rbac/manager.yaml
     set:
       watchNamespaces: [team-a, team-b]
@@ -96,6 +96,13 @@ tests:
             apiGroups: [""]
             resources: [secrets]
             verbs: [create, get, list, update, watch]
+        documentIndex: 4
+      - notContains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [serviceaccounts/token]
+            verbs: [create]
         documentIndex: 6
 
   - it: keeps only cluster-scoped kinds, namespaces and nonResourceURLs in the ClusterRole when watchNamespaces is set
@@ -136,7 +143,7 @@ tests:
             nonResourceURLs: [/.well-known/openid-configuration]
             verbs: [get]
 
-  - it: grants namespaced managed kinds in every manager Role when watchNamespaces is set
+  - it: grants namespaced managed kinds in every watched namespace Role when watchNamespaces is set
     template: templates/rbac/manager.yaml
     set:
       watchNamespaces: [team-a, team-b]
@@ -160,11 +167,11 @@ tests:
       - contains:
           path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].resources
           content: policies
-        documentIndex: 6
+        documentIndex: 2
       - equal:
           path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].verbs
           value: [get, list, patch, update, watch]
-        documentIndex: 6
+        documentIndex: 2
       - contains:
           path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "patch")].resources
           content: policies/status
@@ -176,18 +183,18 @@ tests:
       - contains:
           path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[0] == "update")].resources
           content: policies/finalizers
-        documentIndex: 6
+        documentIndex: 2
       - equal:
           path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[0] == "update")].verbs
           value: [update]
-        documentIndex: 6
+        documentIndex: 2
       - contains:
           path: rules
           content:
             apiGroups: [core.openbaoconfig.io]
             resources: [openbaoconnections, openbaoendpoints]
             verbs: [get, list, patch, update, watch]
-        documentIndex: 6
+        documentIndex: 2
       - notMatchRegex:
           path: rules[*].resources[*]
           pattern: ^(openbaoservers|clusteropenbaoconnections|namespaces)(/.*)?$
@@ -216,14 +223,47 @@ tests:
             resources: [clusteropenbaoconnections, openbaoservers]
             verbs: [get, list, patch, update, watch]
 
-  - it: lets the manager read and create the hash-key Secret in its own namespace
+  - it: grants only the hash-key Secret in the release namespace when it is not watched
     template: templates/rbac/manager.yaml
     set:
       watchNamespaces: [team-a]
     asserts:
+      - hasDocuments:
+          count: 6
       - isKind:
           of: Role
         documentIndex: 4
+      - equal:
+          path: metadata.namespace
+          value: openbao-system
+        documentIndex: 4
+      - equal:
+          path: rules
+          value:
+            - apiGroups: [""]
+              resources: [secrets]
+              resourceNames: [openbao-config-operator-hash-key]
+              verbs: [get]
+            - apiGroups: [""]
+              resources: [secrets]
+              verbs: [create]
+        documentIndex: 4
+      - equal:
+          path: metadata.namespace
+          value: openbao-system
+        documentIndex: 5
+      - equal:
+          path: roleRef.name
+          value: obc-openbao-config-operator-manager
+        documentIndex: 5
+
+  - it: grants the full namespaced rules in the release namespace when it is watched
+    template: templates/rbac/manager.yaml
+    set:
+      watchNamespaces: [team-a, openbao-system]
+    asserts:
+      - hasDocuments:
+          count: 6
       - equal:
           path: metadata.namespace
           value: openbao-system
@@ -234,6 +274,13 @@ tests:
             apiGroups: [""]
             resources: [secrets]
             verbs: [create, get, list, update, watch]
+        documentIndex: 4
+      - contains:
+          path: rules
+          content:
+            apiGroups: [""]
+            resources: [serviceaccounts/token]
+            verbs: [create]
         documentIndex: 4
 
   - it: creates no manager RBAC when rbac.create is false
