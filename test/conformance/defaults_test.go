@@ -194,6 +194,10 @@ func confField(ctx context.Context, e *confEnv, mgr *confManager, r *confResult,
 		return confFieldTested
 	case !setOK:
 		return confFieldTested
+	case k.Kind == "KVSecretMetadata" && writes == 0:
+		r.note("%s: omission preserves the stored value without writing", field)
+	case k.Kind == "KVSecretMetadata":
+		r.fail(field, "remove: %d writes, want no write for retained metadata", writes)
 	case writes == 0:
 		r.fail(field, "remove: no write (default not restored)")
 	case writes > 1:

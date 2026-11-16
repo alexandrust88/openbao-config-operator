@@ -77,8 +77,8 @@ All groups are version `v1alpha1` under the API group domain `openbaoconfig.io`,
 |-------|----------------|
 | `core.openbaoconfig.io` | `OpenBaoServer`, `OpenBaoConnection`, `ClusterOpenBaoConnection`, `OpenBaoEndpoint` |
 | `sys.openbaoconfig.io` | `Policy`, `PasswordPolicy`, `OpenBaoNamespace`, `AuthMount`, `SecretsMount`, `Audit`, `AuditRequestHeader`, `RateLimitQuota`, `QuotaConfig`, `Plugin`, `CORSConfig`, `UIHeader`, `Logger`, `KeyRotationConfig`, `RaftAutopilot`, `Workflow` |
-| `auth.openbaoconfig.io` | `KubernetesAuthConfig`, `KubernetesAuthRole`, `JWTAuthConfig`, `JWTAuthRole`, `JWTCELRole`, `AppRole`, `AppRoleSecretID`, `TokenRole`, `CertAuthConfig`, `CertAuthRole`, `UserpassUser` |
-| `secrets.openbaoconfig.io` | `KVSecret`, `KVConfig`, `RandomSecret`, `DatabaseConnection`, `DatabaseRole`, `DatabaseStaticRole`, `PKIIssuer`, `PKIKey`, `PKIRole`, `PKIConfig`, `PKIACMEConfig`, `PKIAutoTidy`, `TransitKey`, `SSHCA`, `SSHRole`, `KubernetesSecretsConfig`, `KubernetesSecretsRole`, `RabbitMQConfig`, `RabbitMQRole`, `TOTPKey` |
+| `auth.openbaoconfig.io` | `KubernetesAuthConfig`, `KubernetesAuthRole`, `JWTAuthConfig`, `JWTAuthRole`, `JWTCELRole`, `AppRole`, `AppRoleSecretID`, `TokenRole`, `CertAuthConfig`, `CertAuthRole`, `CertAuthCRL`, `UserpassUser` |
+| `secrets.openbaoconfig.io` | `KVSecret`, `KVConfig`, `KVSecretMetadata`, `RandomSecret`, `DatabaseConnection`, `DatabaseRole`, `DatabaseStaticRole`, `PKIIssuer`, `PKIKey`, `PKIRole`, `PKICELRole`, `PKIKeyConfig`, `PKIConfig`, `PKIACMEConfig`, `PKIAutoTidy`, `TransitKey`, `TransitCacheConfig`, `TransitKeyConfig`, `SSHCA`, `SSHRole`, `KubernetesSecretsConfig`, `KubernetesSecretsRole`, `RabbitMQConfig`, `RabbitMQRole`, `TOTPKey` |
 | `identity.openbaoconfig.io` | `Entity`, `EntityAlias`, `Group`, `GroupAlias`, `GroupMembership`, `OIDCConfig`, `OIDCProvider`, `OIDCClient`, `OIDCKey`, `OIDCRole`, `OIDCScope`, `OIDCAssignment`, `MFAMethod`, `MFALoginEnforcement` |
 | `access.openbaoconfig.io` | `AccessLevel`, `AccessGrant`, `AccessLayout` |
 
@@ -153,7 +153,7 @@ The API packages import nothing from `internal/`, so other projects can import t
 | access level | `AccessLevel` | `internal/controller/access/accesslevel.go`; writes nothing to OpenBao | `accesslevel.access.openbaoconfig.io` |
 | engine | every other kind, one controller per kind; external-plugin kinds only with `--enable-plugin-kinds` | `engine.Reconciler` with the kind's adapter | `<kind>.<group>` in lower case, for example `policy.sys.openbaoconfig.io` |
 
-A default install runs 68 controllers, one per built-in kind. Every controller runs only on the leader. Engine
+A default install runs 74 controllers, one per built-in kind. Every controller runs only on the leader. Engine
 controllers run `--max-concurrent-reconciles` workers each, or `--max-concurrent-reconciles-high-volume` for the
 kinds that usually have many objects.
 

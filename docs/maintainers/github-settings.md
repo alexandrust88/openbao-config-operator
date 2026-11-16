@@ -54,6 +54,18 @@ and update the decision rules in [GOVERNANCE.md](../../GOVERNANCE.md#decision-ma
   the `release-please` environment. Without the app, `release-please.yml` logs "release-please skipped" and releases
   are tagged by hand ([release process](release-process.md#cutting-a-release)).
 
+## Dependency updates
+
+`renovate.json` is the dependency-update configuration. Renovate groups Kubernetes libraries,
+OpenBao and Go toolchain updates, pins action/image digests, and proposes security fixes without
+automerge. Dependabot alerts supply vulnerability information; a second version-update bot is
+not required.
+
+After installing the Renovate App, check that its Dependency Dashboard appears in repository
+issues and that an update PR includes the expected version and checksum changes. A configuration
+file alone does not prove the App has access. Review checksum pins and generated files in each
+update; run the normal PR checks before merging.
+
 ## General
 
 Settings > General.

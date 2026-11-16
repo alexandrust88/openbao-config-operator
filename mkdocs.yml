@@ -191,7 +191,9 @@ nav:
       - concepts/index.md
       - Why this operator: concepts/why.md
       - Architecture: architecture.md
-      - Decisions (ADRs): adr/
+      - Decisions:
+          - adr/README.md
+          - adr/
   - Project:
       - Roadmap: maintainers/roadmap.md
       - Backlog: project/backlog.md

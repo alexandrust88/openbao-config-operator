@@ -117,15 +117,12 @@ Acceptance criteria:
 
 ## BL-009: Remaining typed-kind gaps
 
-Status: open
+Status: done
 
-The listed gaps are already implemented: AuditRequestHeader, Logger, KeyRotationConfig, QuotaConfig,
-RaftAutopilot, Workflow, CertAuthConfig, PKIKey, PKIConfig (urls, crl, cluster, issuers), PKIACMEConfig,
-PKIAutoTidy, the PKI root and intermediate flow (PKIIssuer), SSHCA, KVConfig and OIDCConfig. Still missing:
-- `CertAuthCRL`: `auth/<b>/crls/<name>`;
-- `TransitCacheConfig`: `<m>/cache-config`;
-- `KVSecretMetadata`: `<m>/metadata/<path>` (max_versions, cas_required, delete_version_after,
-  custom_metadata), or a metadata section on KVSecret.
+The listed gaps are implemented, including CertAuthCRL, TransitCacheConfig, TransitKeyConfig,
+KVSecretMetadata, PKICELRole and PKIKeyConfig. Paths that stay on OpenBaoEndpoint are classified in
+[API coverage](../api-coverage.md): cubbyhole, sys/raw, sys/loggers, SSH issuer and zero-address
+configuration, the LDAP library set, and external keys (those need a KMS plugin).
 
 ## BL-010: Provable API coverage in CI
 

@@ -34,8 +34,23 @@ The operator then logs in as itself, so nobody has to create a token for it.
    `injectedIdentity: {}`; its default `tokenPath` is the chart's token,
    `/var/run/secrets/openbao/token`. See [Connect to OpenBao](../get-started/connect.md#log-in-as-the-operator).
 
-Self-init runs only once, on an empty storage. To change the policy later, manage it with a
-`Policy` resource.
+Self-init runs only once, on empty storage. The example denies the operator access to change its
+own policy, auth mount, auth configuration and login role. Use a separate bootstrap administrator
+identity to update those objects; a `Policy` or `AuthMount` using this connection cannot manage them.
+Existing installations need the updated policy applied separately: upgrading the operator or
+changing the self-init file does not rerun initialisation. Before applying the updated policy,
+set `deletionPolicy: Orphan` on any resources that manage these bootstrap objects and remove
+those resources from Kubernetes and their GitOps source. Keep the OpenBao objects in place;
+otherwise the new denials can leave reconciliation or deletion blocked.
+
+After a policy or login-role update, check the ClusterOpenBaoConnection's Ready and authenticated
+status, then reconcile a harmless configuration resource using that connection. Keep the bootstrap
+administrator available until both checks succeed. If login fails, repair the bootstrap objects
+with that administrator; restarting the operator does not repair OpenBao configuration.
+
+These denials prevent accidental self-lockout. They do not make broad policy-authoring rights a
+safe tenant boundary: the operator can still author other powerful policies. Use separate,
+restricted identities for tenant connections.
 
 ## Verify
 

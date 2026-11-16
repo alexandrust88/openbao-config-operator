@@ -158,8 +158,7 @@ applied for `refs`, 5.8 s and 9.1 s for `members`.
 
 ### Resources
 
-The idle manager runs about 4,400 goroutines: 68 controllers, one per built-in kind (plugin kinds are off by default), each with its
-workers, informers and queues. The count stayed flat through every scenario and after deletion, so nothing
+The idle manager on that run used about 4,400 goroutines: 68 controllers (plugin kinds off), each with its workers, informers and queues. A default install now starts 74 controllers, one per built-in kind. The count stayed flat through every scenario and after deletion, so nothing
 leaks. RSS was about 55 MiB idle, 125 to
 160 MiB with 1,000 objects and 232 MiB with 5,000. CPU peaked at 70 % of one core during the mixed N=1000 ramp;
 in steady state it was 7.5 % at N=1000 and 31 % at N=5000 with the 1 minute interval (81 drift checks/s).
@@ -328,7 +327,7 @@ cache is scoped to `--watch-namespaces`, the client reads Secrets live and the S
   of 60, a drift repair or default change across N objects takes N/60 minutes.
 - `--max-concurrent-reconciles` (default 4 per kind, 8 for high-volume kinds): creates scale with workers per
   kind until OpenBao or the Kubernetes API slows down. Raise it for a few kinds with thousands of objects. Every
-  worker is a goroutine on each of the 68 controllers, so do not raise it for everything.
+  worker is a goroutine on each of the 74 built-in controllers, so do not raise it for everything.
 - `--drift-interval-critical` and `--drift-interval-standard` (the old `--drift-interval` flag is removed): the steady
   OpenBao read rate is N divided by the interval, for example 5,000 objects at 10 minutes is 8.3 reads/s. Repair
   of out-of-band changes takes up to 1.2 intervals.

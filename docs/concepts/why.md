@@ -173,7 +173,7 @@ such as an AppRole secret ID.
 ## Where the others are better
 
 - **Breadth.** provider-vault has 127 managed resource kinds, each generated twice (cluster-scoped and
-  namespaced), and vault-config-operator has 96. This operator has 68 built-in kinds, covering 87.0% of the
+  namespaced), and vault-config-operator has 96. This operator has 74 built-in kinds, covering 92.2% of the
   configuration paths of OpenBao 2.7.2, and leaves the rest to `OpenBaoEndpoint`
   ([API coverage](../api-coverage.md)).
 - **HashiCorp Vault.** If you run Vault, and especially Vault Enterprise with Sentinel, replication or KMIP,

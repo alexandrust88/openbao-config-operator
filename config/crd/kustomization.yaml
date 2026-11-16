@@ -8,6 +8,7 @@ resources:
 - bases/auth.openbaoconfig.io_approles.yaml
 - bases/auth.openbaoconfig.io_approlesecretids.yaml
 - bases/auth.openbaoconfig.io_certauthconfigs.yaml
+- bases/auth.openbaoconfig.io_certauthcrls.yaml
 - bases/auth.openbaoconfig.io_certauthroles.yaml
 - bases/auth.openbaoconfig.io_jwtauthconfigs.yaml
 - bases/auth.openbaoconfig.io_jwtauthroles.yaml
@@ -40,11 +41,14 @@ resources:
 - bases/secrets.openbaoconfig.io_kubernetessecretsconfigs.yaml
 - bases/secrets.openbaoconfig.io_kubernetessecretsroles.yaml
 - bases/secrets.openbaoconfig.io_kvconfigs.yaml
+- bases/secrets.openbaoconfig.io_kvsecretmetadata.yaml
 - bases/secrets.openbaoconfig.io_kvsecrets.yaml
 - bases/secrets.openbaoconfig.io_pkiacmeconfigs.yaml
 - bases/secrets.openbaoconfig.io_pkiautotidies.yaml
+- bases/secrets.openbaoconfig.io_pkicelroles.yaml
 - bases/secrets.openbaoconfig.io_pkiconfigs.yaml
 - bases/secrets.openbaoconfig.io_pkiissuers.yaml
+- bases/secrets.openbaoconfig.io_pkikeyconfigs.yaml
 - bases/secrets.openbaoconfig.io_pkikeys.yaml
 - bases/secrets.openbaoconfig.io_pkiroles.yaml
 - bases/secrets.openbaoconfig.io_rabbitmqconfigs.yaml
@@ -53,6 +57,8 @@ resources:
 - bases/secrets.openbaoconfig.io_sshcas.yaml
 - bases/secrets.openbaoconfig.io_sshroles.yaml
 - bases/secrets.openbaoconfig.io_totpkeys.yaml
+- bases/secrets.openbaoconfig.io_transitcacheconfigs.yaml
+- bases/secrets.openbaoconfig.io_transitkeyconfigs.yaml
 - bases/secrets.openbaoconfig.io_transitkeys.yaml
 - bases/sys.openbaoconfig.io_auditrequestheaders.yaml
 - bases/sys.openbaoconfig.io_audits.yaml

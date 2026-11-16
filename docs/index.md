@@ -29,6 +29,8 @@ when OpenBao differs from the spec, and can observe and import a server that alr
 takes over. [Why this operator exists](concepts/why.md) compares it with Crossplane provider-vault,
 vault-config-operator and External Secrets Operator.
 
+The [decisions](adr/README.md) list each architecture choice in one sentence.
+
 !!! warning "Status: alpha"
 
     @TAG@ is the latest release. The API is `v1alpha1`, so a minor release may change it under the

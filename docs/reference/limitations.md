@@ -2,7 +2,7 @@
 
 Limitations of the current release that affect users, with the workaround where one exists. The
 sources are the [tech-debt register](../project/tech-debt.md), the [backlog](../project/backlog.md),
-the [ADRs](../adr/index.md) and the [architecture](../architecture.md); each entry links to its source. An
+the [ADRs](../adr/README.md) and the [architecture](../architecture.md); each entry links to its source. An
 entry leaves this page when its source is closed.
 
 !!! warning "Alpha API"

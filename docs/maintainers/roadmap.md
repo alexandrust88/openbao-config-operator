@@ -15,12 +15,12 @@ before you begin a large one.
   Since v0.2.0 a release also carries an examples bundle, and since v0.3.0 the chart has a GPG Helm provenance file.
   The [changelog](../../CHANGELOG.md) lists the changes of each release; v0.1.0 has no GitHub release.
 - The API group domain `openbaoconfig.io` is final ([ADR 0008](../adr/0008-provisional-api-group-domain.md)).
-- 68 built-in kinds implemented and integration-tested against `bao server -dev`, and 52 experimental plugin
+- 74 built-in kinds implemented and integration-tested against `bao server -dev`, and 52 experimental plugin
   kinds behind `--enable-plugin-kinds` ([kind catalogue](../kinds.md)).
 - Engine: path-index ownership with a server-side marker, `Create`/`Orphan` defaults, the destructive-delete
   guard, drift tiers with a per-server request budget, observe mode with the `obc-import` CLI, the write circuit
   breaker and pause ([architecture](../architecture.md#operational-safety)).
-- Evidence: [API coverage](../api-coverage.md) per OpenBao release (87.0% of configuration paths typed on 2.7.2,
+- Evidence: [API coverage](../api-coverage.md) per OpenBao release (92.2% of configuration paths typed on 2.7.2,
   built-in kinds only), the conformance run (no-write and default tests per kind: on pull requests for the kinds a
   change touches, every kind weekly and on `main`), the two-tenant isolation e2e test, and a
   [load test](../operate/load-testing.md) up to 5,000 objects with zero writes at rest.
@@ -71,7 +71,7 @@ from Git rebuilds ownership.
 | phase 3 exit test: wiping status then reconciling makes zero writes for marked kinds | [phases](#phases) | |
 | restore without status: ownership of memberships and access children rebuilt from the server-side marker | [BL-011](../project/backlog.md#bl-011-restore-without-status-chart-attestation) | |
 | ownership marker on KV version 2 metadata | [ADR 0012](../adr/0012-ownership-path-index-and-marker.md) | |
-| remaining typed kinds: `CertAuthCRL`, `TransitCacheConfig`, `KVSecretMetadata` | [BL-009](../project/backlog.md#bl-009-remaining-typed-kind-gaps) | yes |
+| typed kinds `CertAuthCRL`, `TransitCacheConfig`, `TransitKeyConfig`, `KVSecretMetadata`, `PKICELRole` and `PKIKeyConfig` | [BL-009](../project/backlog.md#bl-009-remaining-typed-kind-gaps) | done |
 | generic test that each kind's `Desired` covers its CRD schema (full-field comparison itself is done, [ADR 0011](../adr/0011-full-field-comparison.md)); `MaxLength` on strings read by CEL | [BL-012](../project/backlog.md#bl-012-remaining-v2-rule-gaps) | yes |
 | `DatabaseConnection` and LDAP rotated root credentials on `WriteOnce` instead of `CreateOnly` (the engine supports it; the kinds do not use it yet) | [ADR 0017](../adr/0017-write-once-fields-for-rotated-root-credentials.md) | yes |
 

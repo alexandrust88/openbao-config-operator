@@ -64,3 +64,14 @@ spec:
     path "+/data/app/*" {
       capabilities = ["read"]
     }
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVSecretMetadata
+metadata:
+  name: kv-app-metadata
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: kv
+  path: team/app
+  maxVersions: 5

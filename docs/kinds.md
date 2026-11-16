@@ -13,17 +13,17 @@ support ([phase 5](maintainers/roadmap.md#phases)) works end to end.
     [API coverage](api-coverage.md) share for OpenBao 2.7.2, the figure this documentation cites, contains no
     plugin-kind path.
 
-Counts: 120 rows, one per CRD in `config/crd/bases`: 68 built-in kinds, all integration-tested, and 52
+Counts: 126 rows, one per CRD in `config/crd/bases`: 74 built-in kinds, all integration-tested, and 52
 plugin-gated kinds (the CRDs listed in `hack/chart/plugin-crds.txt`). The built-in kinds are `OpenBaoServer`, the two
-connection kinds, `OpenBaoEndpoint` and 64 typed OpenBao kinds. `test/apidocs/kinds_catalogue_test.go` checks these
+connection kinds, `OpenBaoEndpoint` and 70 typed OpenBao kinds. `test/apidocs/kinds_catalogue_test.go` checks these
 counts and the evidence paths. Features without a typed kind are listed under [not typed](#not-typed).
 
 The API group domain `openbaoconfig.io` is final ([ADR 0008](adr/0008-provisional-api-group-domain.md)).
 
 Destructive kinds delete only with the annotation `openbaoconfig.io/allow-destructive-delete: "true"`
 ([ADR 0013](adr/0013-destructive-delete-guard.md)): `SecretsMount`, `AuthMount`, `OpenBaoNamespace`, `KVSecret`,
-`RandomSecret`, `Audit`, `OpenBaoEndpoint`, `TransitKey`, `PKIIssuer`, `PKIKey`, `SSHCA`, `TOTPKey`, `MFAMethod`
-and `Entity`.
+`RandomSecret`, `Audit`, `OpenBaoEndpoint`, `TransitKey`, `PKIIssuer`, `PKIKey`, `SSHCA`, `TOTPKey`, `MFAMethod`,
+`Entity` and `KVSecretMetadata`.
 
 ## Columns
 
@@ -103,6 +103,7 @@ each built-in kind, except the cases in `test/conformance/exceptions.yaml`
 | `TokenRole` | `auth/token/roles/<name>` | builtin | 2 | integration-tested | `auth_credentials_test.go`, live |  |
 | `CertAuthConfig` | `auth/<b>/config` | builtin | 7 | integration-tested | `auth_credentials_test.go`, live |  |
 | `CertAuthRole` | `auth/<b>/certs/<name>` | builtin | 7 | integration-tested | `auth_credentials_test.go`, live |  |
+| `CertAuthCRL` | `auth/<b>/crls/<name>` | builtin | 7 | integration-tested | `secrets_gaps_test.go`, live | exactly one of `crl` (write-only PEM) or `url`; a missing CRL is HTTP 400 |
 | `UserpassUser` | `auth/<b>/users/<name>` | builtin | 7 | integration-tested | `auth_credentials_test.go`, live | `password` write-only, from a Secret ref |
 | `LDAPAuthConfig` | `auth/<b>/config` | external-plugin | 6 | plugin-gated | - | `bindpass` write-only (u) |
 | `LDAPAuthGroup` | `auth/<b>/groups/<name>` | external-plugin | 6 | plugin-gated | - |  |
@@ -139,17 +140,22 @@ each built-in kind, except the cases in `test/conformance/exceptions.yaml`
 |------|------|--------------|-------|--------|----------|-------|
 | `KVSecret` | v2: `<m>/data/<path>` (+ `<m>/metadata/<path>`); v1: `<m>/<path>` | builtin | 4 | integration-tested | `secrets_kv_test.go`, live | values from Secret refs; delete via metadata (`Deleter`); default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `KVConfig` | `<m>/config` | builtin | 4 | integration-tested | `secrets_kv_test.go`, live | singleton per mount: `max_versions`, `cas_required`, `delete_version_after` |
+| `KVSecretMetadata` | `<m>/metadata/<path>` | builtin | 4 | integration-tested | `secrets_gaps_test.go`, live | per-secret retention and `custom_metadata`; an omitted field is left stored, and a set map replaces the stored keys; delete removes every version, so it is destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `RandomSecret` | `<m>/data/<path>`; value from `sys/policies/password/<name>/generate` | builtin | 4 | integration-tested | `secrets_kv_test.go`, live | OpenBao generates the value from the password policy; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `DatabaseConnection` | `<m>/config/<name>` | builtin | 4 | integration-tested | `secrets_credentials_test.go`, live | `password`, `private_key` write-only; `connection_url` redacted on read; never re-send the password after `rotate-root`; builtin plugins: MySQL family, PostgreSQL, Cassandra, InfluxDB, Redis, Valkey |
 | `DatabaseRole` | `<m>/roles/<name>` | builtin | 4 | integration-tested | `secrets_credentials_test.go`, live |  |
 | `DatabaseStaticRole` | `<m>/static-roles/<name>` | builtin | 4 | integration-tested | `secrets_credentials_test.go` | password not returned |
 | `PKIIssuer` | generate: `<m>/root/generate/<type>`, `<m>/intermediate/generate/<type>`; import: `<m>/config/ca`, `<m>/intermediate/set-signed`; config: `<m>/issuer/<ref>` | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | multi-step and non-idempotent; exported private key returned once (`writeSecretRef`); CSR in status; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `PKIKey` | `<m>/key/<ref>`, `<m>/keys/generate/<type>`, `<m>/keys/import` | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | extra; OpenBao external keys (`sys/external-keys`) are an alternative; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
-| `PKIRole` | `<m>/roles/<name>` | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | OpenBao CEL policies not modelled |
+| `PKIRole` | `<m>/roles/<name>` | builtin | 4 | integration-tested | `secrets_pki_test.go`, live |  |
+| `PKICELRole` | `<m>/cel/roles/<name>` | builtin | 4 | integration-tested | `secrets_gaps_test.go`, live | `cel_program` is the expression and its variables |
+| `PKIKeyConfig` | `<m>/config/keys` | builtin | 4 | integration-tested | `secrets_gaps_test.go`, live | singleton; `default` may be a key name, which OpenBao stores as the key id; the name `default` is reserved; no delete, so deletionPolicy is Orphan |
 | `PKIConfig` | `<m>/config/urls`, `<m>/config/crl`, `<m>/config/cluster`, `<m>/config/issuers` | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | one kind for the per-mount singletons |
 | `PKIACMEConfig` | `<m>/config/acme` | builtin (u) | 4 | integration-tested | `secrets_pki_test.go`, live |  |
 | `PKIAutoTidy` | `<m>/config/auto-tidy` | builtin | 4 | integration-tested | `secrets_pki_test.go`, live | extra |
 | `TransitKey` | `<m>/keys/<name>`, `<m>/keys/<name>/config` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live | `type`, `derived`, `convergent_encryption` immutable; key material never read; delete needs `deletion_allowed`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| `TransitCacheConfig` | `<m>/cache-config` | builtin | 4 | integration-tested | `secrets_gaps_test.go`, live | singleton; `size` is 0 or at least 10; 0 is an unlimited cache; no delete, so deletionPolicy is Orphan |
+| `TransitKeyConfig` | `<m>/config/keys` | builtin | 4 | integration-tested | `secrets_gaps_test.go`, live | singleton; `disable_upsert`; no delete, so deletionPolicy is Orphan |
 | `SSHCA` | `<m>/config/ca` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live | `private_key` write-only (u); generated key cannot be replaced without delete; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | `SSHRole` | `<m>/roles/<name>` | builtin | 4 | integration-tested | `secrets_engines_test.go`, live |  |
 | `KubernetesSecretsConfig` | `<m>/config` | builtin | 2 | integration-tested | `secrets_credentials_test.go`, live | `service_account_jwt` write-only |
@@ -237,6 +243,6 @@ These features have no typed kind: OpenBao does not have them, or they are actio
 
 ## Not catalogued
 
-Reachable with `OpenBaoEndpoint` and candidates for later typed kinds: transit cache config, OpenBao
+Reachable with `OpenBaoEndpoint` and candidates for later typed kinds: OpenBao
 sealable-namespace operations, user lockout config (tune `user_lockout_config` on `AuthMount`), plugin reload,
 control groups, and the namespace API lock.

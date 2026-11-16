@@ -1,0 +1,19 @@
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: CertAuthCRL
+metadata:
+  name: example-ca
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  crl: |
+    -----BEGIN X509 CRL-----
+    MIG3MGACAQEwCgYIKoZIzj0EAwIwABcNMjYxMTE2MTAzODQ2WhcNMjYxMTE3MTAz
+    ODQ2WqAvMC0wHwYDVR0jBBgwFoAU7xwkWwOR9+o7qHZ58wPaWG8ARyMwCgYDVR0U
+    BAMCAQEwCgYIKoZIzj0EAwIDRwAwRAIgFWHBRwqJ8at32iHshO0zV4jtilTY598l
+    UC40LlYDsuoCIA70OMlKXSLm8DnTkuUcmQwDbc1cr5twjFkUn8MSfzlp
+    -----END X509 CRL-----

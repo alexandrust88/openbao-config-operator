@@ -252,3 +252,27 @@ spec:
     length: 32
   writeSecretRef:
     name: app-legacy-token
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: KVSecretMetadata
+metadata:
+  name: kv-app-metadata
+  annotations:
+    openbaoconfig.io/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    kind: OpenBaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  mountPath: kv
+  path: team/app
+  maxVersions: 5
+  casRequired: true
+  metadataCASRequired: true
+  deleteVersionAfter: 768h
+  customMetadata:
+    owner: team

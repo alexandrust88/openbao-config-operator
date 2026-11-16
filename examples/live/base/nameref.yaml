@@ -209,6 +209,8 @@ nameReference:
         kind: PKIKey
       - path: spec/writeSecretRef/name
         kind: PKIKey
+      - path: spec/defaultKey
+        kind: PKIKeyConfig
       - path: spec/key/existing/keyRef/name
         kind: PKIIssuer
       - path: spec/key/existing/keyName
