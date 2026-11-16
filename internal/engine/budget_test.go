@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -75,40 +76,43 @@ func TestBudgetRetrySpread(t *testing.T) {
 }
 
 func TestConnectionNotReadyBackoff(t *testing.T) {
-	h := newHarness(t, testAdapter{}, newResource(testName))
-	h.conns.setErr(ErrConnectionNotReady)
-	res, err := h.reconcile()
-	if err != nil {
-		t.Fatal(err)
-	}
-	assertBetween(t, res.RequeueAfter, 1600*time.Millisecond, 2400*time.Millisecond)
-
-	for _, age := range []struct{ since, low, high time.Duration }{
-		{20 * time.Second, 16 * time.Second, 25 * time.Second},
-		{time.Hour, 48 * time.Second, 72 * time.Second},
-	} {
-		got := h.get()
-		for i := range got.Status.Conditions {
-			got.Status.Conditions[i].LastTransitionTime = metav1.NewTime(time.Now().Add(-age.since))
-		}
-		if err := h.k8s.Status().Update(t.Context(), got); err != nil {
-			t.Fatal(err)
-		}
+	// Conditions lose sub-second precision on serialisation; freeze time at a whole second for exact jitter bounds.
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t, testAdapter{}, newResource(testName))
+		h.conns.setErr(ErrConnectionNotReady)
 		res, err := h.reconcile()
 		if err != nil {
 			t.Fatal(err)
 		}
-		assertBetween(t, res.RequeueAfter, age.low, age.high)
-	}
-	if !reconnecting(h.get()) {
-		t.Fatal("the pass after ConnectionNotReady is not low priority")
-	}
+		assertBetween(t, res.RequeueAfter, 1600*time.Millisecond, 2400*time.Millisecond)
 
-	h.conns.setErr(nil)
-	h.mustReconcile()
-	if reconnecting(h.get()) {
-		t.Fatal("a Ready resource still counts as reconnecting")
-	}
+		for _, age := range []struct{ since, low, high time.Duration }{
+			{20 * time.Second, 16 * time.Second, 24 * time.Second},
+			{time.Hour, 48 * time.Second, 72 * time.Second},
+		} {
+			got := h.get()
+			for i := range got.Status.Conditions {
+				got.Status.Conditions[i].LastTransitionTime = metav1.NewTime(time.Now().Add(-age.since))
+			}
+			if err := h.k8s.Status().Update(t.Context(), got); err != nil {
+				t.Fatal(err)
+			}
+			res, err := h.reconcile()
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertBetween(t, res.RequeueAfter, age.low, age.high)
+		}
+		if !reconnecting(h.get()) {
+			t.Fatal("the pass after ConnectionNotReady is not low priority")
+		}
+
+		h.conns.setErr(nil)
+		h.mustReconcile()
+		if reconnecting(h.get()) {
+			t.Fatal("a Ready resource still counts as reconnecting")
+		}
+	})
 }
 
 func TestRecoveryRampPacesEachServer(t *testing.T) {
