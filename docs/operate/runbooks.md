@@ -1,3 +1,7 @@
+---
+description: "Follow operational runbooks for OpenBao Config Operator alerts and common failure conditions."
+---
+
 # Runbooks
 
 The chart renders these alerts with `prometheusRule.enabled=true`. They use only metrics the

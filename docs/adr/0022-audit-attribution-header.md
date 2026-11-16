@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: audit attribution header. Rationale, constraints and consequences."
+---
+
 # 0022. Audit attribution header
 
 Status: accepted. Date: 2026-11-14.

@@ -1,3 +1,7 @@
+---
+description: "Configure OpenBao database connections and credential roles declaratively using Kubernetes custom resources."
+---
+
 # Database secrets
 
 This guide connects OpenBao's database secrets engine to a database and declares roles that issue

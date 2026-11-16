@@ -1,3 +1,7 @@
+---
+description: "Connect one OpenBao Config Operator installation to multiple OpenBao servers with separate identities and credentials."
+---
+
 # Manage several OpenBao servers
 
 In this tutorial you are the platform owner again. You start a second OpenBao next to the

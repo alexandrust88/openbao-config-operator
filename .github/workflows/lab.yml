@@ -2,6 +2,25 @@ name: integration lab
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/lab.yml'
+      - '.github/actions/setup-go/**'
+      - 'hack/lab/**'
+      - 'hack/e2e/**'
+      - 'test/e2e/testdata/**'
+      - 'api/**'
+      - 'internal/**'
+      - 'cmd/**'
+      - 'config/**'
+      - 'charts/**'
+      - 'Makefile'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'go.mod'
+      - 'go.sum'
+  schedule:
+    - cron: '43 4 * * 2'
 
 permissions: {}
 
@@ -19,7 +38,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [identity, eso, pki, ldap]
+        profile: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["identity", "authentik", "zitadel", "eso", "pki", "ldap"]' || '["identity", "authentik", "zitadel"]') }}
     env:
       LAB_CONTEXT: kind-openbao-config-operator-lab
       PROFILE: ${{ matrix.profile }}
@@ -43,6 +62,11 @@ jobs:
                 hack/lab/identity-up.sh
                 hack/lab/identity-test.sh
                 hack/lab/identity-browser.sh
+                hack/lab/keycloak-test.sh
+                ;;
+              authentik|zitadel)
+                npm ci --ignore-scripts --prefix hack/lab/browser
+                hack/lab/provider-test.sh "$PROFILE"
                 ;;
               eso)
                 hack/lab/identity-up.sh

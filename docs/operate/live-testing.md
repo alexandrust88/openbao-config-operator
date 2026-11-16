@@ -1,3 +1,7 @@
+---
+description: "Run live OpenBao Config Operator checks and interpret test coverage, readiness results and declared exclusions."
+---
+
 # Live testing
 
 [`examples/live`](../../examples/live/README.md) is a kustomize kit that applies every built-in kind to a running

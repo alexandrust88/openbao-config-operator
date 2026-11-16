@@ -1,3 +1,7 @@
+---
+description: "Understand OpenBao configuration reconciliation, ownership, tenancy and deletion before designing a GitOps deployment."
+---
+
 # Concepts
 
 This page explains the mental model behind the operator: what it manages, how a tenant reaches

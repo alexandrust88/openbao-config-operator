@@ -1,3 +1,7 @@
+---
+description: "Move existing OpenBao configuration into operator management with ownership checks and staged adoption."
+---
+
 # Adopt existing OpenBao configuration
 
 This page brings objects that already exist in OpenBao under openbao-config-operator: objects created by
@@ -10,37 +14,38 @@ Observe first, hand each object over, then retire the old manager. At no point s
 same object.
 
 1. Install openbao-config-operator ([Install](../get-started/install.md)). Create the connections and their OpenBao
-   identities ([Connect to OpenBao](../get-started/connect.md), [OpenBao policy for the operator](../operate/openbao-policy.md)).
+    identities ([Connect to OpenBao](../get-started/connect.md), [OpenBao policy for the operator](../operate/openbao-policy.md)).
 2. Stop the previous manager from writing or deleting the objects you hand over. If it deletes an OpenBao
-   object when its own record of that object is removed, switch that off first, so that retiring it in
-   step 7 leaves the object in place.
+    object when its own record of that object is removed, switch that off first, so that retiring it in
+    step 7 leaves the object in place.
 3. Generate the resources with [`obc-import`](import.md), or write them by hand. Each resource needs
-   `managementPolicy: Observe`, `creationPolicy: Adopt` and `deletionPolicy: Orphan`; `obc-import` sets the
-   first two. `Adopt` reports `NotFound` instead of creating an object when a name or path is wrong.
+    `managementPolicy: Observe`, `creationPolicy: Adopt` and `deletionPolicy: Orphan`; `obc-import` sets the
+    first two. `Adopt` reports `NotFound` instead of creating an object when a name or path is wrong.
 4. Create the Secrets for write-only fields with their real values. In `Observe` a missing
-   write-only Secret resolves to an empty value, so the resource still reports `Observed`; OpenBao never
-   returns these values, so `Observe` cannot compare them. The first write in `Manage` sends whatever the
-   Secret holds, empty included, so the real values must be in place before step 6 ([Import](import.md#what-you-must-add)).
+    write-only Secret resolves to an empty value, so the resource still reports `Observed`; OpenBao never
+    returns these values, so `Observe` cannot compare them. The first write in `Manage` sends whatever the
+    Secret holds, empty included, so the real values must be in place before step 6 ([Import](import.md#what-you-must-add)).
 5. Apply the resources and read their `Synced` condition. `Observed` means OpenBao matches the spec;
-   `Drifted` names the keys that differ. Fix the spec until every resource is `Observed`:
+    `Drifted` names the keys that differ. Fix the spec until every resource is `Observed`:
 
-   ```sh
-   kubectl get openbao -n team-a
-   kubectl describe policy.sys.openbaoconfig.io app-read -n team-a
-   ```
+    ```sh
+    kubectl get openbao -n team-a
+    kubectl describe policy.sys.openbaoconfig.io app-read -n team-a
+    ```
 
 6. Switch resources to `managementPolicy: Manage`, one namespace or one kind at a time. Check that each
-   resource is `Ready` and that its events show `Adopted`, not `Created`:
+    resource is `Ready` and that its events show `Adopted`, not `Created`:
 
-   ```sh
-   kubectl get events -n team-a --field-selector reason=Adopted
-   ```
+    ```sh
+    kubectl get events -n team-a --field-selector reason=Adopted
+    ```
 
-   An `Updated` event names the keys that differed from the spec. Fix the spec if the difference was not
-   intended.
+    An `Updated` event names the keys that differed from the spec. Fix the spec if the difference was not
+    intended.
+
 7. Retire the previous manager's records. With step 2 done, the OpenBao objects stay.
 8. Once the operator is the only manager, set `deletionPolicy: Delete` where you want deleting the
-   resource to remove the object; leave `Orphan` everywhere else.
+    resource to remove the object; leave `Orphan` everywhere else.
 
 A field the spec leaves unset is not compared, so an adopted object keeps its other settings until the spec
 names them.

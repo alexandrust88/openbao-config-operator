@@ -1,3 +1,7 @@
+---
+description: "Configure OpenBao AppRole authentication with Kubernetes custom resources and credential Secret references."
+---
+
 # AppRole
 
 This guide gives a machine outside Kubernetes, such as a CI runner or a VM, an AppRole login: the

@@ -1,3 +1,7 @@
+---
+description: "Onboard two isolated OpenBao tenants using Kubernetes identities, scoped policies and operator resources."
+---
+
 # Onboard two tenants
 
 In this tutorial you are the platform admin on day 1 of two tenant teams, `tenant-a` and
@@ -71,11 +75,19 @@ Through the platform connection, create for each tenant:
 - the role `operator`, which lets only the ServiceAccount `openbao-config` of the Kubernetes
   namespace `tenant-a` log in, with that policy.
 
-`openbao-tenant-b.yaml` is the same with `tenant-b`.
+Both manifests are applied by the command below. Inspect each tenant's namespace and bindings:
 
-```yaml title="examples/tutorials/tenant-onboarding/openbao-tenant-a.yaml"
---8<-- "examples/tutorials/tenant-onboarding/openbao-tenant-a.yaml"
-```
+=== "Tenant A"
+
+    ```yaml title="examples/tutorials/tenant-onboarding/openbao-tenant-a.yaml"
+    --8<-- "examples/tutorials/tenant-onboarding/openbao-tenant-a.yaml"
+    ```
+
+=== "Tenant B"
+
+    ```yaml title="examples/tutorials/tenant-onboarding/openbao-tenant-b.yaml"
+    --8<-- "examples/tutorials/tenant-onboarding/openbao-tenant-b.yaml"
+    ```
 
 ```bash
 --8<-- "hack/docs/tutorial-tenant-onboarding.sh:openbao"
@@ -114,8 +126,15 @@ List the namespaces and read the tenant's role:
 --8<-- "hack/docs/tutorial-tenant-onboarding.sh:verify"
 ```
 
-You should see `platform/`, `tenant-a/` and `tenant-b/`, and a role bound to the ServiceAccount
-`openbao-config` of the Kubernetes namespace `tenant-a`, with the policy `tenant-admin`.
+Read the second tenant's role too:
+
+```bash
+kubectl -n openbao exec deploy/openbao -- bao read -namespace=tenant-b auth/kubernetes/role/operator
+```
+
+You should see `platform/`, `tenant-a/` and `tenant-b/`. Each role is bound to ServiceAccount
+`openbao-config` in its own Kubernetes namespace (`tenant-a` or `tenant-b`), with the policy
+`tenant-admin` in that OpenBao namespace.
 
 ## What you built
 

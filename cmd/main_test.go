@@ -169,7 +169,7 @@ func TestPluginKindsMatchCatalogueAndChart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	matches := regexp.MustCompile("(?m)^\\| `([A-Za-z0-9]+)` \\|[^|]*\\| external-plugin").FindAllSubmatch(doc, -1)
+	matches := regexp.MustCompile("(?m)^\\| \\[?`([A-Za-z0-9]+)`[^|]*\\|[^|]*\\| external-plugin").FindAllSubmatch(doc, -1)
 	catalogue := make([]string, 0, len(matches))
 	for _, m := range matches {
 		catalogue = append(catalogue, string(m[1]))

@@ -1,3 +1,7 @@
+---
+description: "Review CI permissions, dependency checks, build isolation and release security controls for OpenBao Config Operator."
+---
+
 # CI security
 
 How the GitHub Actions workflows in `.github/workflows` are protected, what each security job checks, and what to do

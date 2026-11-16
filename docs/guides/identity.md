@@ -1,3 +1,7 @@
+---
+description: "Manage OpenBao entities, aliases, internal groups and external group mappings through Kubernetes custom resources."
+---
+
 # Identity
 
 This guide declares OpenBao identities in Kubernetes: entities and groups, the aliases that link

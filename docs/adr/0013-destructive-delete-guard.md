@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: destructive-delete guard. Rationale, constraints and consequences."
+---
+
 # 0013. Destructive-delete guard
 
 Status: accepted. Date: 2026-11-14.

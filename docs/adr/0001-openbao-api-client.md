@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: use the OpenBao api/v2 client. Rationale, constraints and consequences."
+---
+
 # 0001. Use the OpenBao api/v2 client
 
 Status: accepted, still accurate for v2 (2026-11-14). Date: 2026-11-13.

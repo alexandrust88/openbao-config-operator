@@ -62,6 +62,7 @@ jobs:
         env:
           CONF_KINDS: ${{ steps.select.outputs.conf_kinds }}
           CONF_PARALLELISM: "8"
+          CONF_DRIFT_INTERVAL: "2s"
           CONF_OUT: ${{ runner.temp }}/conformance/matrix.md
           CONF_LOG_DIR: ${{ runner.temp }}/conformance/logs
           REASON: ${{ steps.select.outputs.reason }}

@@ -4,6 +4,7 @@
 import argparse
 import base64
 import contextlib
+import hashlib
 import html.parser
 import http.client
 import http.cookiejar
@@ -31,6 +32,7 @@ ISSUER = KEYCLOAK + "/realms/obco-lab"
 CALLBACK = "http://localhost:8250/oidc/callback"
 TENANTS = ("root", "alpha", "beta")
 ROLES = ("editor", "viewer")
+SHOWCASE_ROLES = ("admin", "read", "ops")
 LABEL = {"app.kubernetes.io/part-of": "obco-lab-identity"}
 # renovate: datasource=docker depName=mcr.microsoft.com/playwright
 PLAYWRIGHT_IMAGE = "mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579"
@@ -104,7 +106,7 @@ def credentials():
 
 
 def realm(values):
-    groups = [{"name": f"{tenant}-{role}s"} for tenant in TENANTS for role in ROLES]
+    groups = [{"name": f"{tenant}-{role}s"} for tenant in TENANTS for role in ROLES + SHOWCASE_ROLES]
     mappers = [{"name": "groups", "protocol": "openid-connect", "protocolMapper": "oidc-group-membership-mapper",
                 "config": {"claim.name": "groups", "full.path": "false", "id.token.claim": "true",
                            "access.token.claim": "true", "userinfo.token.claim": "true"}},
@@ -112,10 +114,10 @@ def realm(values):
                 "config": {"included.client.audience": "openbao", "id.token.claim": "true", "access.token.claim": "true"}}]
     clients = [{"clientId": "openbao", "enabled": True, "protocol": "openid-connect", "publicClient": False,
                 "secret": values["client-secret"], "standardFlowEnabled": True, "directAccessGrantsEnabled": True,
-                "redirectUris": [CALLBACK], "protocolMappers": mappers}]
+                "redirectUris": [CALLBACK, "http://127.0.0.1:8250/oidc/callback"], "protocolMappers": mappers}]
     users = []
     for tenant in TENANTS:
-        for role in ROLES:
+        for role in ROLES + SHOWCASE_ROLES:
             user = f"{tenant}-{role}"
             users.append({"username": user, "enabled": True, "email": user + "@example.invalid",
                           "emailVerified": True, "firstName": tenant, "lastName": role,
@@ -173,13 +175,21 @@ def up():
     apply([obj("Namespace", IDENTITY_NS, namespace=""),
            *[obj("Namespace", "obco-lab-" + t, namespace="") for t in ("alpha", "beta")]])
     existing = kube("-n", IDENTITY_NS, "get", "secret", "identity-users", "--ignore-not-found", "-o", "name")
-    if not existing:
-        names = [f"{t}-{r}" for t in TENANTS for r in ROLES] + ["client-secret"] + ["machine-" + t for t in TENANTS]
-        apply([secret("identity-users", IDENTITY_NS, {name: secrets.token_urlsafe(24) for name in names})])
-    values = credentials()
-    apply([secret("identity-realm", IDENTITY_NS, {"obco-lab-realm.json": json.dumps(realm(values))}),
+    names = [f"{t}-{r}" for t in TENANTS for r in ROLES + SHOWCASE_ROLES] + ["client-secret"] + ["machine-" + t for t in TENANTS]
+    values = credentials() if existing else {}
+    missing = [name for name in names if name not in values]
+    if missing:
+        values.update({name: secrets.token_urlsafe(24) for name in missing})
+        apply([secret("identity-users", IDENTITY_NS, values)])
+    realm_json = json.dumps(realm(values), sort_keys=True, separators=(",", ":"))
+    apply([secret("identity-realm", IDENTITY_NS, {"obco-lab-realm.json": realm_json}),
            secret("identity-client", NAMESPACE, {"client-secret": values["client-secret"]})])
     kube("apply", "-f", str(ROOT / "hack/lab/keycloak.yaml"))
+    # Keycloak imports this disposable realm only on startup. Unchanged content
+    # keeps the pod stable; new users or callbacks trigger a fresh realm import.
+    digest = hashlib.sha256(realm_json.encode()).hexdigest()
+    kube("-n", IDENTITY_NS, "patch", "deployment", "keycloak", "--type=merge", "-p",
+         json.dumps({"spec": {"template": {"metadata": {"annotations": {"openbaoconfig.io/realm-sha256": digest}}}}}))
     kube("-n", IDENTITY_NS, "rollout", "status", "deployment/keycloak", "--timeout=300s")
     namespaces = [cr("OpenBaoNamespace", "lab-" + t, {"name": "lab-" + t}) for t in ("alpha", "beta")]
     apply(namespaces)

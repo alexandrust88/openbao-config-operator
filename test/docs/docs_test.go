@@ -33,9 +33,10 @@ var root = filepath.Join("..", "..")
 // CRDs are not installed, so these manifests are only checked to be valid YAML with apiVersion and kind; any other
 // group the API server does not serve fails.
 var thirdPartyGroups = map[string]bool{
-	"policies.kyverno.io":   true,
-	"monitoring.coreos.com": true,
-	"argoproj.io":           true,
+	"kustomize.toolkit.fluxcd.io": true,
+	"policies.kyverno.io":         true,
+	"monitoring.coreos.com":       true,
+	"argoproj.io":                 true,
 }
 
 func TestManifestsDryRun(t *testing.T) {

@@ -1,3 +1,8 @@
+---
+title: OpenBao configuration guides
+description: Task guides for managing OpenBao policies, Kubernetes authentication, secrets engines, tenant namespaces and existing configuration with the operator.
+---
+
 # Guides
 
 Each guide reaches one goal with the operator. They assume an installed operator and a `Ready`
@@ -9,6 +14,15 @@ such as passwords, keys and certificates in them are fake placeholders. The chec
 OpenBao with the `bao` CLI, so set `BAO_ADDR` and a token that may read the paths.
 
 To learn the operator step by step on a test cluster first, follow the [tutorials](../tutorials/index.md).
+
+## Start with a configuration task
+
+| Task | Guide | Result to verify |
+| --- | --- | --- |
+| Declare an ACL policy | [Manage policies](policies.md) | The resource is Ready and `bao policy read` returns its HCL |
+| Give a workload access | [Kubernetes authentication](kubernetes-auth.md) | Its ServiceAccount can log in with the intended audience and policy |
+| Adopt existing configuration | [Import](import.md), then [migration](migration.md) | Observe reports the intended state before you enable management |
+| Check the tenant boundary | [Security model](../security.md#the-tenant-boundary) | Connections use scoped identities and tenant policies limit managed paths |
 
 ## Authentication
 
@@ -33,6 +47,10 @@ To learn the operator step by step on a test cluster first, follow the [tutorial
     Machine logins outside Kubernetes, with secret IDs the operator rotates.
 
 </div>
+
+Try these integrations with the [self-hosted identity lab](../tutorials/local-lab.md), including
+[Authentik](../how-to/authentik-lab.md) and [ZITADEL](../how-to/zitadel-lab.md), or use
+[Okta and Auth0](saas-identity-lab.md) for hosted-provider regression tests.
 
 ## Secrets engines
 

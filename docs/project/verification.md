@@ -1,3 +1,7 @@
+---
+description: "Understand what unit, integration, live-kit, conformance and user-flow tests prove about OpenBao Config Operator."
+---
+
 # Verification guide
 
 This page says what each check proves and what it does not. Run the narrowest check that proves
@@ -71,9 +75,10 @@ finish successfully; inventory, compilation and workflow linting cannot substitu
 ## Conformance timing
 
 The defaults phase runs eight kinds concurrently by default, starting the kinds with the most
-optional fields first. `CONF_PARALLELISM` accepts 1–16 workers. The no-write observation phase
-and the per-field drift windows are unchanged. A missing reconcile or failed metrics scrape
-fails the measurement rather than counting as zero writes. `AccessLevel` is an event-driven
+optional fields first. `CONF_PARALLELISM` accepts 1–16 workers. CI sets `CONF_DRIFT_INTERVAL=2s`;
+local runs default to four seconds. Observation windows scale with this interval while retaining
+the required reconcile counts and per-field assertions. A missing reconcile or failed metrics
+scrape fails the measurement rather than counting as zero writes. `AccessLevel` is an event-driven
 Kubernetes template: its separate test checks current-generation readiness after setting and
 removing fields, and zero OpenBao writes across the same observation windows.
 
@@ -86,12 +91,21 @@ the time required to observe successive reconciles.
 
 The [local lab tutorial](../tutorials/local-lab.md) runs real user OIDC, user and machine JWT,
 internal/external group membership, tenant-scoped ESO delivery, cert-manager PKI and an external
-LDAP plugin. `make lab-identity`, `make lab-eso` and `make lab-pki` exercise their respective
-profiles after `make lab-up`. LDAP has `hack/lab/plugins/up.sh` and `test.sh`.
+LDAP plugin. `make lab-identity`, `make lab-authentik`, `make lab-zitadel`, `make lab-eso` and
+`make lab-pki` exercise their respective profiles after `make lab-up`. LDAP has
+`hack/lab/plugins/up.sh` and `test.sh`.
 
-The separate `integration lab` workflow runs these profiles on manual dispatch. Its browser
-uses the official, digest-pinned Playwright container and a localhost OIDC callback. It proves
-the Keycloak browser login and OpenBao authorization result, not the entire OpenBao web UI.
+The `integration lab` workflow runs Keycloak, Authentik and ZITADEL on relevant pull requests
+and weekly; manual dispatch also runs ESO, PKI and LDAP. Each provider has its own kind cluster.
+Browser tests use the official, digest-pinned Playwright container and a localhost OIDC callback.
+They verify the provider login and OpenBao authorization result; they do not exercise the entire
+OpenBao web UI.
+
+The hosted [Auth0 and Okta workflow](../guides/saas-identity-lab.md) requires protected environment
+credentials and includes provider cleanup. Self-hosted profiles need no external provider account.
+All identity matrices cover root and two child namespaces with role-specific access checks;
+provider guides distinguish human ID tokens from service-account access tokens. Unit fixtures
+verify the harness separately and do not count as live provider evidence.
 Cloud plugins requiring accounts or credentials remain outside this lab's live coverage.
 
 ## Scoped checks

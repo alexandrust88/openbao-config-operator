@@ -1,3 +1,7 @@
+---
+description: "Limit tenant Kubernetes resources and OpenBao workloads with quotas and scoped access policies."
+---
+
 # Tenant quotas
 
 Every managed object costs drift reads against its OpenBao server

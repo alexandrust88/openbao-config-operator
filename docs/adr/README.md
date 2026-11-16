@@ -1,3 +1,7 @@
+---
+description: "Architecture decisions behind OpenBao Config Operator, including reconciliation, tenant boundaries, ownership and resource lifecycle."
+---
+
 # Architecture decisions
 
 The operator keeps the configuration of an existing OpenBao server in the state Kubernetes custom

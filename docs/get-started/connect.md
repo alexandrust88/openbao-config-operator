@@ -1,3 +1,8 @@
+---
+title: Connect the operator to an existing OpenBao server
+description: Declare an OpenBaoServer, choose a scoped connection identity and verify authentication before managing configuration.
+---
+
 # Connect to OpenBao
 
 This guide points the installed operator at an OpenBao server you run: you declare the server,
@@ -17,17 +22,24 @@ is described in the [connections reference](../reference/connections.md).
 
 | you want | kind | who creates it | it logs in as |
 |----------|------|----------------|---------------|
-| each team configures its own part of OpenBao | `OpenBaoConnection` in the team's namespace | the platform team | a ServiceAccount of that namespace, with a short-lived TokenRequest token |
+| each team configures its own part of OpenBao | `OpenBaoConnection` in the team's namespace | the platform team | a ServiceAccount of that namespace, or the AppRole or token configured for that connection |
 | the platform team configures OpenBao for everyone | `ClusterOpenBaoConnection` | the platform team | the operator's own ServiceAccount (injected identity), a named ServiceAccount, an AppRole or a token |
 
-Both kinds support four login methods. Prefer the first two: they need no stored credential.
+Both kinds support four login methods. For workloads in Kubernetes, prefer a short-lived
+ServiceAccount token when the OpenBao deployment can validate it. The right method depends on
+network reachability and which system owns credential rotation.
 
-| login | needs in OpenBao | credential in Kubernetes |
-|-------|------------------|--------------------------|
-| `kubernetes` | the kubernetes auth method, which reviews tokens with the TokenReview API | none |
-| `jwt` | the jwt auth method with the cluster's OIDC issuer or its public keys | none |
-| `appRole` | the approle auth method | a Secret with the role ID and secret ID |
-| `token` | a periodic token | a Secret, or on a `ClusterOpenBaoConnection` a file in the operator pod |
+| Login | When to use it | Credential location | Required OpenBao setup | Production guidance |
+| --- | --- | --- | --- | --- |
+| `kubernetes` | OpenBao can call the cluster's TokenReview API | Short-lived TokenRequest token; no stored login Secret | Kubernetes auth mount, reviewer access and a role bound to the ServiceAccount, namespace and audience | A practical default for in-cluster identity; restrict the role and use a dedicated audience |
+| `jwt` | OpenBao can verify the cluster's issuer and signing keys without TokenReview | Short-lived TokenRequest token; no stored login Secret | JWT auth mount with trusted discovery/JWKS or public keys, plus issuer, audience and subject bindings | Useful across clusters; ensure signing-key rotation and issuer reachability are handled |
+| `appRole` | Kubernetes identity is unavailable or an existing credential-delivery system manages AppRole | Role ID and Secret ID in Kubernetes Secrets | AppRole mount and a least-privilege role | Arrange Secret ID rotation before expiry; avoid copying an unbounded credential between teams |
+| `token` | An external system already supplies and rotates a scoped OpenBao token | Kubernetes Secret; a cluster connection can instead read a token file in the operator pod | An appropriately scoped token, normally periodic for an ongoing connection | Use a managed token lifecycle and narrow policy; never use the root token for the operator |
+
+For namespaced connections, every referenced Secret and ServiceAccount belongs to the connection's
+Kubernetes namespace. A cluster connection can use the operator's projected identity; a tenant
+connection cannot. The [connection reference](../reference/connections.md#authentication-methods)
+lists the fields for both kinds.
 
 [Install: tenancy models](install.md#tenancy-models) helps you choose between per-team and shared
 connections.
@@ -74,6 +86,34 @@ Write a policy that allows only what the connection will manage
 ([OpenBao policy for the operator](../operate/openbao-policy.md) has templates per kind), then
 create the login for it. The commands below follow the tenant example of step 3: team `team-a`
 works in the OpenBao namespace `tenants/team-a` and logs in there.
+
+These commands assume the OpenBao namespace `tenants/team-a` already exists. Create it as a
+platform administrator before proceeding if needed. Prepare the Kubernetes namespace now, so
+AppRole and token Secrets can be created before the connection:
+
+```bash
+kubectl create namespace team-a --dry-run=client -o yaml | kubectl apply -f -
+```
+
+For a minimal connection check, save this as `team-a-config.hcl`. It allows the connection to
+inspect and renew its own token and manage one application policy, `team-a-app`:
+
+```hcl
+path "auth/token/lookup-self" {
+  capabilities = ["read"]
+}
+path "auth/token/renew-self" {
+  capabilities = ["update"]
+}
+path "sys/policies/acl/team-a-app" {
+  capabilities = ["create", "read", "update", "delete"]
+}
+```
+
+`team-a-config` is the login policy you bootstrap below; `team-a-app` is a different policy the
+operator may manage through that login. The example grants no rights to rewrite its own login
+policy. Extend it deliberately for the resource kinds and paths you intend to manage, using the
+[operator policy templates](../operate/openbao-policy.md).
 
 === "Kubernetes auth"
 
@@ -123,8 +163,10 @@ works in the OpenBao namespace `tenants/team-a` and logs in there.
     ```
 
     `kubectl get --raw /.well-known/openid-configuration` shows the cluster's issuer. If OpenBao
-    cannot reach the discovery URL, set `jwt_validation_pubkeys` to the keys from
-    `kubectl get --raw /openid/v1/jwks` instead.
+    cannot reach discovery, configure a reachable JWKS endpoint with `jwks_url`, or maintain
+    PEM-formatted public keys in `jwt_validation_pubkeys`. The JSON returned by
+    `kubectl get --raw /openid/v1/jwks` is a JWKS document, not a PEM public key; do not pass it
+    directly to `jwt_validation_pubkeys`.
 
 === "AppRole"
 
@@ -163,7 +205,7 @@ If the connection works in the root namespace, leave out every `-namespace` flag
     needs the label that the server's `allowedNamespaces` selects:
 
     ```bash
-    kubectl create namespace team-a
+    kubectl create namespace team-a --dry-run=client -o yaml | kubectl apply -f -
     kubectl label namespace team-a openbaoconfig.io/tenant=true
     kubectl -n team-a create serviceaccount openbao-configurer
     ```
@@ -265,13 +307,14 @@ The `get` shows `Ready` `True`, the server and its OpenBao version. `Ready=True`
 the namespace labels change.
 
 Check what the identity may do before you create resources. Log in as the identity, then ask
-OpenBao about the paths your resources will write:
+OpenBao about the application-policy path granted by `team-a-config.hcl`:
 
 ```bash
 bao token capabilities -namespace=tenants/team-a sys/policies/acl/team-a-app
 ```
 
-A resource that hits a missing capability reports `PermissionDenied`.
+Expect `create`, `read`, `update` and `delete` for `team-a-app`. Run this check with the connection's login identity, not the platform administrator's token. A resource that hits a missing capability
+reports `PermissionDenied`.
 
 ## Troubleshooting
 
@@ -295,3 +338,10 @@ A resource that hits a missing capability reports `PermissionDenied`.
   [ClusterOpenBaoConnection](../reference/api/core.md#clusteropenbaoconnection).
 - [Namespaces and tenants](../guides/namespaces-and-tenants.md): OpenBao namespaces,
   `authNamespace` and one connection per team.
+
+
+## Configure your first object
+
+With the server and connection Ready, [create a Policy](../guides/policies.md) and verify its
+OpenBao path. Continue with [Kubernetes authentication](../guides/kubernetes-auth.md) for workload
+access, or [import existing configuration](../guides/import.md) if the server is already managed.

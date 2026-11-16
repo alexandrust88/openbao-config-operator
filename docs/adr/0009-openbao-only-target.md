@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: openBao-only target. Rationale, constraints and consequences."
+---
+
 # 0009. OpenBao-only target
 
 Status: accepted. Date: 2026-11-14.

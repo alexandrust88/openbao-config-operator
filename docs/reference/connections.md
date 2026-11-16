@@ -1,3 +1,7 @@
+---
+description: "Reference OpenBaoConnection, ClusterOpenBaoConnection and OpenBaoServer fields, credentials, TLS settings and namespace selection."
+---
+
 # Connections
 
 Field reference for `OpenBaoServer`, `OpenBaoConnection` and `ClusterOpenBaoConnection`, the

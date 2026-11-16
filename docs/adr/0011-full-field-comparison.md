@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: full-field comparison with declared defaults. Rationale, constraints and consequences."
+---
+
 # 0011. Full-field comparison with declared defaults
 
 Status: accepted; implemented, checked per kind by the default test in `test/conformance/defaults_test.go`. Date: 2026-11-14.

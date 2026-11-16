@@ -36,7 +36,7 @@ group_kinds() {
 }
 
 # The suite cannot measure external-plugin kinds (bao server -dev has no plugins); docs/kinds.md is its source too.
-plugins=$(awk -F'|' '/^\| `/ { gsub(/\\\|/, "/"); kind = $2; gsub(/[ `]/, "", kind); avail = $4; gsub(/^ +/, "", avail)
+plugins=$(awk -F'|' '/^\| \[?`/ { gsub(/\\\|/, "/"); split($2, label, "`"); kind = label[2]; avail = $4; gsub(/^ +/, "", avail)
   if (avail ~ /^external-plugin/) print tolower(kind) }' docs/kinds.md | sort -u)
 is_plugin() { grep -qxF "$1" <<<"$plugins"; }
 

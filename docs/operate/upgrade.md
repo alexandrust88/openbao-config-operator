@@ -1,3 +1,7 @@
+---
+description: "Upgrade OpenBao Config Operator, its Helm chart and CRDs while reviewing compatibility and breaking changes."
+---
+
 # Upgrade
 
 This page covers the compatibility rules of the API and the chart, and how to upgrade and roll

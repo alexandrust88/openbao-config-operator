@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: keep the API group domain openbaoconfig.io. Rationale, constraints and consequences."
+---
+
 # 0008. Keep the API group domain openbaoconfig.io
 
 Status: accepted (final, released in v0.1.0). Date: 2026-11-15. Proposed on 2026-11-13 as a provisional domain.

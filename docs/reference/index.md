@@ -1,3 +1,7 @@
+---
+description: Find OpenBao Config Operator custom resources, API fields, Helm values, connection settings, status conditions and compatibility requirements.
+---
+
 # Reference
 
 Exact facts about the operator's API, behaviour and packaging, for looking up while you work.

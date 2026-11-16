@@ -1,8 +1,8 @@
 # The GitHub organisation is not final: CI (.github/workflows/pages.yml) sets SITE_URL from actions/configure-pages
 # and REPO_URL from the repository it runs in, so only local builds use the fallbacks below.
 # Local build: pip install --require-hashes -r hack/docs/requirements.txt && mkdocs build (output in .tmp/site).
-site_name: openbao-config-operator
-site_description: Manage the configuration of an existing OpenBao server through Kubernetes custom resources.
+site_name: OpenBao Config Operator
+site_description: Manage OpenBao policies, auth methods, secrets engines and identity as Kubernetes custom resources, with GitOps.
 site_url: !ENV [SITE_URL, "https://alexandrust88.github.io/openbao-config-operator/"]
 repo_url: !ENV [REPO_URL, "https://github.com/alexandrust88/openbao-config-operator"]
 repo_name: openbao-config-operator
@@ -139,11 +139,17 @@ nav:
       - Onboard two tenants: tutorials/tenant-onboarding.md
       - Onboard teams as a tenant: tutorials/team-onboarding.md
       - Test users and workloads locally: tutorials/local-lab.md
+      - OIDC permissions showcase: tutorials/oidc-showcase.md
   - Guides:
       - guides/index.md
       - Authentication:
           - Kubernetes auth: guides/kubernetes-auth.md
           - JWT and OIDC auth: guides/jwt-oidc-auth.md
+          - Test Okta and Auth0: guides/saas-identity-lab.md
+          - Auth0 lab setup: how-to/auth0-lab.md
+          - Okta lab setup: how-to/okta-lab.md
+          - Authentik lab setup: how-to/authentik-lab.md
+          - ZITADEL lab setup: how-to/zitadel-lab.md
           - AppRole: guides/approle.md
       - Secrets engines:
           - KV secrets: guides/kv-secrets.md
@@ -151,6 +157,7 @@ nav:
           - PKI: guides/pki.md
           - Transit: guides/transit.md
       - Identity and access:
+          - Manage ACL policies: guides/policies.md
           - Identity: guides/identity.md
           - Access model: guides/access-model.md
           - Templated policies: guides/templated-policies.md
@@ -159,6 +166,7 @@ nav:
           - Import existing configuration: guides/import.md
           - Migrate to the operator: guides/migration.md
           - Argo CD: guides/argocd.md
+          - Flux: guides/flux.md
           - OpenBao self-init: guides/self-init.md
   - Operate:
       - operate/index.md
@@ -203,4 +211,5 @@ nav:
       - Maintainers:
           - Release process: maintainers/release-process.md
           - GitHub settings: maintainers/github-settings.md
+          - Search indexing: maintainers/search-indexing.md
       - Community: community/

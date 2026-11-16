@@ -1,3 +1,7 @@
+---
+description: "Plan backup and recovery for operator-managed configuration and understand the separate OpenBao data backup responsibilities."
+---
+
 # Backup and restore
 
 The custom resources in Git are the source of truth for OpenBao configuration. The operator

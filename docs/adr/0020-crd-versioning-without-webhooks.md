@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: cRD versioning without webhooks. Rationale, constraints and consequences."
+---
+
 # 0020. CRD versioning without webhooks
 
 Status: accepted. Date: 2026-11-14.

@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: write circuit breaker. Rationale, constraints and consequences."
+---
+
 # 0018. Write circuit breaker
 
 Status: accepted. Date: 2026-11-14.

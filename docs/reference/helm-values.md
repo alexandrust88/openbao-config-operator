@@ -1,3 +1,7 @@
+---
+description: "Configure the OpenBao Config Operator Helm chart, including deployment, RBAC, networking, metrics and resource settings."
+---
+
 # Helm values
 
 Every value of the `openbao-config-operator` chart, with its type, default and meaning.

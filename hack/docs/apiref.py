@@ -15,6 +15,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 GROUP_ORDER = ["core", "sys", "auth", "secrets", "identity", "access"]
+GROUP_LABELS = {"core": "Connection", "sys": "System", "auth": "Authentication", "secrets": "Secrets engine", "identity": "Identity", "access": "Access"}
 SKIPPED_ROOT_FIELDS = {"apiVersion", "kind", "metadata"}
 # Links from a page under docs/reference/<dir>/ to a repository file; hooks.py turns them into GitHub links.
 REPO_LINK = "../../../"
@@ -239,7 +240,7 @@ def field_table(schema):
     return "\n".join(lines)
 
 
-def kind_section(crd, root=ROOT):
+def kind_section(crd, root=ROOT, level=2):
     spec = crd["spec"]
     names = spec["names"]
     facts = [
@@ -251,13 +252,13 @@ def kind_section(crd, root=ROOT):
         facts.append("**Short names:** " + ", ".join(f"`{n}`" for n in names["shortNames"]))
     if names.get("categories"):
         facts.append("**Categories:** " + ", ".join(f"`{n}`" for n in names["categories"]))
-    out = [f"## {names['kind']}", "", "  \n".join(facts), ""]
-    heading = "###" if len(spec["versions"]) == 1 else "####"
+    out = [f"{'#' * level} {names['kind']}", "", "  \n".join(facts), ""]
+    heading = "#" * (level + (1 if len(spec["versions"]) == 1 else 2))
     for version in spec["versions"]:
         schema = version["schema"]["openAPIV3Schema"]
         if len(spec["versions"]) > 1:
             state = ", ".join(s for s, on in (("served", version.get("served")), ("storage", version.get("storage"))) if on)
-            out += [f"### {version['name']} ({state})", ""]
+            out += [f"{'#' * (level + 1)} {version['name']} ({state})", ""]
         if version.get("deprecated"):
             out += [f"Deprecated: {esc(version.get('deprecationWarning', 'yes'))}", ""]
         description = describe(schema.get("description", ""))
@@ -275,13 +276,22 @@ def kind_section(crd, root=ROOT):
     return "\n".join(out)
 
 
+def kind_filename(crd):
+    """Stable same-depth URLs retain repository/example relative links."""
+    return f"{short_group(crd['spec']['group'])}-{crd['spec']['names']['kind'].lower()}.md"
+
+
 def render(crd_dir, root=ROOT):
-    """Return {relative markdown path: content} for the reference index and one page per API group."""
+    """Return the index, compact compatibility group indexes and one page per kind."""
     groups = {}
     for crd in load_crds(crd_dir):
         groups.setdefault(crd["spec"]["group"], []).append(crd)
     pages = {}
     index = [
+        "---",
+        "description: OpenBao Kubernetes CRD reference with field types, defaults, validation rules and example manifests generated from the schemas.",
+        "---",
+        "",
         "# API reference",
         "",
         "Generated from the CustomResourceDefinitions in `config/crd/bases`, which `controller-gen` builds from",
@@ -296,9 +306,28 @@ def render(crd_dir, root=ROOT):
         crds = sorted(groups[group], key=lambda c: c["spec"]["names"]["kind"])
         name = short_group(group)
         index.append(f"| [`{group}`]({name}.md) | {len(crds)} |")
-        page = [f"# {group}", ""]
+        label = GROUP_LABELS.get(name, name)
+        page = ["---", f"title: {label} CRD reference",
+                f"description: OpenBao {label.lower()} custom resource fields, defaults, validation rules and YAML examples for the {group} API group.",
+                "---", "", f"# {group}", ""]
         page += [", ".join(f"[{c['spec']['names']['kind']}](#{c['spec']['names']['kind'].lower()})" for c in crds), ""]
-        page += [kind_section(c, root) for c in crds]
+        page += ["Choose a kind for its complete field reference, validation rules and tested example manifests.", ""]
+        for crd in crds:
+            kind = crd["spec"]["names"]["kind"]
+            filename = kind_filename(crd)
+            version = next(v for v in crd["spec"]["versions"] if v.get("storage"))
+            summary = " ".join(version["schema"]["openAPIV3Schema"].get("description", "").split())
+            summary = summary.split(". ", 1)[0].rstrip(".") + "." if summary else f"{kind} custom resource."
+            # Keep these headings stable: published links use <group>.md#<kind>.
+            page += [f"## {kind}", "", esc(summary), "",
+                     f"[{kind} fields and YAML example]({filename}) · [Example gallery](../examples/{name}.md#{kind.lower()})", ""]
+            description = f"{kind} Kubernetes CRD fields, defaults, validation and YAML examples for OpenBao. {summary}"
+            pages[f"reference/api/{filename}"] = "\n".join([
+                "---", "title: " + json.dumps(f"{kind} CRD reference"),
+                "description: " + json.dumps(description), "---", "",
+                f"[{label} resources]({name}.md) · [Kind catalogue](../../kinds.md) · [Examples](../examples/{name}.md#{kind.lower()})", "",
+                kind_section(crd, root, level=1),
+            ])
         pages[f"reference/api/{name}.md"] = "\n".join(page)
     index.append("")
     pages["reference/api/index.md"] = "\n".join(index)

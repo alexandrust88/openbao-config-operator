@@ -1,12 +1,17 @@
+---
+title: OpenBao Config Operator threat model
+description: Review trust boundaries, implementation controls, tenant privilege equivalences and documented residual risks.
+---
+
 # Threat model
 
-This page is the threat model of openbao-config-operator v2: what it protects, from whom, through
+This page is the threat model of the current OpenBao Config Operator design: what it protects, from whom, through
 which trust boundaries, and which control in the code or the deployment answers each threat. The
 hardening checklist that follows from it is [hardening.md](hardening.md). The design it models is
 [architecture.md](../architecture.md); the shorter overview is [security.md](../security.md).
 
 Every control is cited as `file:line` against the current tree (last checked on 2026-11-16,
-after v0.3.0). A threat without a control found in the code or the shipped chart is marked
+after v0.3.1). A threat without a control found in the code or the shipped chart is marked
 **GAP**.
 
 ## Gaps and weak defaults
@@ -69,7 +74,12 @@ Ratings:
 | M | needs a misconfiguration, a second weakness or an insider | one tenant's OpenBao objects or secrets, or a cluster-wide outage of reconciliation |
 | L | needs a privileged actor acting against the platform, or several weaknesses | one object, or noise without data exposure |
 
-Severity is the higher of the two ratings when both are at least M, and otherwise the lower one.
+The baseline severity is the higher of the two ratings when both are at least M, and otherwise
+the lower one. Three explicit upward overrides account for shared trust roots: T-19 is High
+because manager compromise can expose every tenant's credentials; T-25 is Medium because
+release verification is not enforced at admission; T-38 is Medium because an accepted malicious
+IdP can impersonate users across the auth roles that trust it. These are prioritisation decisions,
+not claims that their likelihood is higher than L.
 A **status** of `control` means the code or chart implements the control; `partial` means it
 exists with a gap; `residual` means the risk is accepted or depends on configuration outside the
 operator; `GAP` means no control was found.
@@ -276,7 +286,7 @@ Following the cert-manager page, each line states what a Kubernetes permission r
 | T-06 | T | `writeSecretRef` overwrites an unrelated Secret. | L | M | Low | the Secret must be absent or controlled by the CR, checked before the write and inside `CreateOrUpdate` (`reconciler.go:1341-1361,1374-1377`); the owner reference is set (`reconciler.go:1384`) | control |
 | T-07 | E, T | A resource escapes its OpenBao namespace with `..`, a leading `root` or an absolute path. | L | H | Low | CRD pattern (`types.go:102`); `ValidateNamespace` (`internal/openbao/client.go:188-198`, called at `reconciler.go:331-335`); `joinNamespace` never resolves `..` (`client.go:171-184`); `namespace` and `connectionRef` immutable (`types.go:94-95`); a delete is refused outside the connection's namespace (`reconciler.go:1050-1054`); a changed connection namespace stalls with `NamespaceChanged` (`reconciler.go:343-352`); `..` in path fields is refused (N2) | control |
 | T-08 | T | A tenant takes over an object it did not create (another tenant's, or the platform's in a shared namespace) with `Adopt` or `CreateOrAdopt`, then changes or deletes it. | M | M | Medium | `creationPolicy` defaults to `Create` (`types.go:106`); an older owner of the same server, namespace and path wins (`reconciler.go:433-441`, `internal/engine/ownership.go:223`); the path index holds acquired paths and the paths claimed before a create (`internal/engine/ownership.go:36`), and a failed create releases its claim, so it blocks no one (`reconciler.go:736`); a marker from another cluster gives `Conflict` (`reconciler.go:633-634`); the OpenBao policy (name prefixes, `allowed_parameters`) is the real limit; kinds without a server-side marker cannot tell an unmanaged object from a foreign one; a path with `..` can no longer dodge the index (N2) | residual |
-| T-09 | T, D | Deleting a CR, or removing it from Git, destroys OpenBao data. | M | H | Medium | `deletionPolicy` defaults to `Orphan` (`types.go:110`, `reconciler.go:1289-1294`); destructive kinds need the annotation on delete (`reconciler.go:903-907`) and on a recreate (`reconciler.go:472-476`); `OpenBaoEndpoint` is destructive too (N3), and so are the key material kinds, `MFAMethod` and `Entity`; whoever can set the annotation can still delete | control |
+| T-09 | T, D | Deleting a CR, or removing it from Git, destroys OpenBao data. | M | H | High | `deletionPolicy` defaults to `Orphan` (`types.go:110`, `reconciler.go:1289-1294`); destructive kinds need the annotation on delete (`reconciler.go:903-907`) and on a recreate (`reconciler.go:472-476`); `OpenBaoEndpoint` is destructive too (N3), and so are the key material kinds, `MFAMethod` and `Entity`; whoever can set the annotation can still delete | control |
 | T-10 | D | One tenant exhausts the shared per-server request budget or write budget (thousands of objects, a kind that flaps, or a very short drift interval), so other tenants' drift repair and writes starve. | M | M | Medium | one token bucket per server, drift reads held to 80% of it (`internal/openbao/ratelimit.go:12-14,84`); write budget per server for drift repairs, while creates, spec changes and changed write-only inputs are exempt (`internal/engine/budget.go:45,84-91`); `spec.driftInterval` floored at 30 s (N1); `ResourceQuota` documented but not shipped (`docs/operate/tenant-quotas.md`); budgets are per server, not per tenant (backlog BL-016) | residual |
 | T-11 | R | A tenant denies a change it made. | L | M | Low | Kubernetes audit of the CR change; OpenBao audit with the attribution header (`pool.go:283-285`), recorded once `examples/sys/auditrequestheader-attribution.yaml` is applied | control |
 | T-12 | T | A tenant forges `status.path` to steer a delete to another path. | L | H | Low | tenants get only `get` on status (`_helpers.tpl:85-91`); the delete stays inside the connection's namespace (`reconciler.go:1050-1054`) | control |

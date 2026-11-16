@@ -1,3 +1,7 @@
+---
+description: "Find support, report issues and contribute to the OpenBao Config Operator community."
+---
+
 # Community
 
 openbao-config-operator is built in the open for everyone who runs OpenBao on Kubernetes. This page says where the

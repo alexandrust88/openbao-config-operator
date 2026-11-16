@@ -1,3 +1,7 @@
+---
+description: "Find a first contribution to OpenBao Config Operator and the checks needed to submit it."
+---
+
 # First issues
 
 Well-scoped tasks for a first or second contribution. Each one is self-contained, has a clear "done", and a source

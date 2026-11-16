@@ -1,3 +1,7 @@
+---
+description: "Check supported OpenBao and Kubernetes versions, installation requirements and compatibility limits."
+---
+
 # Compatibility
 
 The versions and platforms each release supports and the ones CI tests. Sources: the chart's
@@ -7,14 +11,20 @@ and the [release process](../maintainers/release-process.md#openbao-versions).
 
 ## Summary
 
-| component | supported | tested in CI |
+| component | declared compatibility | tested in CI |
 |-----------|-----------|--------------|
-| OpenBao | 2.6 and 2.7 (minimum 2.6) | 2.7.2: unit, envtest and integration tests run against `bao server -dev` (`BAO_VERSION` in the `Makefile`); the e2e test runs `ghcr.io/openbao/openbao:2.7.2` in kind (`hack/e2e/openbao.yaml`). 2.6 is covered by its OpenAPI snapshot (`api-coverage/openapi-2.6.json`) only |
+| OpenBao | 2.6 and 2.7 under the release policy; minimum 2.6, with endpoint-specific limits | 2.7.2: integration tests run against `bao server -dev` (unit tests and envtest do not prove server compatibility) (`BAO_VERSION` in the `Makefile`); the e2e test runs `ghcr.io/openbao/openbao:2.7.2` in kind (`hack/e2e/openbao.yaml`). 2.6 is covered by its OpenAPI snapshot (`api-coverage/openapi-2.6.json`) only |
 | Kubernetes | 1.31 or later (chart `kubeVersion: ">=1.31.0-0"`) | envtest 1.35 (from `k8s.io/api` v0.35 in `go.mod`); kind node `kindest/node:v1.35.8` with kind v0.33.0 in the e2e workflow (`KIND_NODE_IMAGE` and `KIND_VERSION` in the `Makefile`) |
 | Helm | 3.8 or later, for OCI charts | Helm v4.3.1 (`HELM_VERSION` in the `Makefile`) for lint, unit tests and e2e |
 | Image architectures | `linux/amd64`, `linux/arm64` | both are built and checked by `hack/release/verify-release.sh` |
 
 ## OpenBao
+
+**Live compatibility is verified on 2.7.2.** The 2.6 OpenAPI snapshot establishes that a path or
+field exists in that API description; it does not exercise authentication, defaults, reads,
+writes or deletion on a running 2.6 server. Treat 2.6 as a declared compatibility target with
+incomplete runtime evidence, and test the kinds you use before upgrading or deploying there.
+The [API coverage report](../api-coverage.md) separates the two release inventories.
 
 - OpenBao is the only target ([ADR 0009](../adr/0009-openbao-only-target.md)). The design relies on
   OpenBao features: self-init, namespaces and OCI plugins. Other servers
@@ -24,8 +34,8 @@ and the [release process](../maintainers/release-process.md#openbao-versions).
 - The integration suite runs against the single pinned version, 2.7.2. A scheduled run against every
   supported minor is not in place yet
   ([BL-014](../project/backlog.md#bl-014-detect-openbao-api-changes-automatically)).
-- Adapters do not branch on the server version. A field or endpoint the server lacks shows as the
-  reason `Unsupported` ([ADR 0023](../adr/0023-openbao-api-changes-and-crd-lifecycle.md)).
+- Adapters do not branch on the server version. Recognised unsupported endpoints or features report
+  `Unsupported`; other API validation failures may report `ReconcileError` ([ADR 0023](../adr/0023-openbao-api-changes-and-crd-lifecycle.md)).
 - `OpenBaoServer.status.version` reports the version the server returns from `sys/health`.
 - A new OpenBao minor is supported in the next operator minor after its snapshot is added and
   classified, with a target of six weeks after the OpenBao release. An OpenBao minor is dropped in
@@ -84,13 +94,14 @@ Each kind in the [kind catalogue](../kinds.md) has an availability class.
 
 | class | meaning | default | tested |
 |-------|---------|---------|--------|
-| `builtin` | the object is compiled into OpenBao 2.7 (core or the built-in plugin registry) | enabled | every built-in kind is integration-tested against `bao server -dev` |
-| `external-plugin` | needs a plugin from openbao-plugins or a third party, registered with `Plugin` | disabled: the controllers run only with `--enable-plugin-kinds` (chart `pluginKinds.enabled: true`), and the chart installs their CRDs only then | unit tests and recorded payloads only; OpenBao 2.7.2 does not ship the plugins, so they are not run against a server |
+| `builtin` | the object is compiled into OpenBao 2.7 (core or the built-in plugin registry) | enabled | unit and integration suites plus the live kit; server prerequisites vary by kind (for example, RaftAutopilot requires raft storage). See the [catalogue](../kinds.md) for evidence and exceptions |
+| `external-plugin` | needs a plugin from openbao-plugins or a third party, registered with `Plugin` | disabled: the controllers run only with `--enable-plugin-kinds` (chart `pluginKinds.enabled: true`), and the chart installs their CRDs only then | unit tests and recorded payloads; the optional LDAP lab exercises its plugin/auth configuration, not every plugin kind or backend |
 
 An external-plugin kind reports `Unsupported` until its plugin is mounted. Only the LDAP, Kerberos
 and RADIUS paths are confirmed by OpenBao documentation; the catalogue marks the others `(u)`.
 
-The 52 external-plugin kinds are experimental: they are not tested against any OpenBao version, so the support
-statements on this page do not cover them, and no coverage claim counts on them. The typed share in
+The 52 external-plugin kinds are experimental: there is no complete live matrix for them, so the support
+statements on this page do not cover them. The [LDAP lab](../tutorials/local-lab.md#add-a-real-external-plugin)
+provides targeted evidence only; it does not establish support for other plugins or all their typed fields. The typed share in
 [API coverage](../api-coverage.md) for OpenBao 2.7.2 contains no plugin-kind path; the 2.6 figure counts LDAP,
 Kerberos and RADIUS paths, which 2.6 still builds in, through plugin kinds that are not run against a server.

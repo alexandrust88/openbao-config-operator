@@ -1,3 +1,7 @@
+---
+description: "Connect OpenBao self-initialization to declarative configuration managed by OpenBao Config Operator."
+---
+
 # OpenBao self-initialisation
 
 OpenBao can initialise itself at first boot from `initialize` blocks in its configuration. With

@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: creation and deletion policy defaults. Rationale, constraints and consequences."
+---
+
 # 0004. Creation and deletion policy defaults
 
 Status: superseded in part by [ADR 0015](0015-create-and-orphan-by-default.md) (both defaults). Date: 2026-11-13.

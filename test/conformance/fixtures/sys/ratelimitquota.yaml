@@ -1,5 +1,6 @@
-# The example's path is in an OpenBao child namespace that only exists in a namespaced install; secret/ is the
-# KV mount every bao server -dev has.
+# Omitting path in the defaults test makes this quota global. Keep its rate above the shared
+# harness traffic so setting/removing optional fields cannot throttle other kinds' namespace setup.
+# secret/ is the KV mount every bao server -dev has.
 apiVersion: sys.openbaoconfig.io/v1alpha1
 kind: RateLimitQuota
 metadata:
@@ -15,7 +16,7 @@ spec:
   managementPolicy: Manage
   name: secret-limit
   path: secret
-  rate: "50"
+  rate: "1000000"
   interval: 1s
   blockInterval: 30s
   inheritable: false

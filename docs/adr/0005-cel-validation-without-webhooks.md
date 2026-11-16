@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: cEL validation without admission webhooks. Rationale, constraints and consequences."
+---
+
 # 0005. CEL validation without admission webhooks
 
 Status: accepted, still accurate for v2 (2026-11-14). Date: 2026-11-13.

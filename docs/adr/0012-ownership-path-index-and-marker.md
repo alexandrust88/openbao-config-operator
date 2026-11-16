@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: ownership: path index and server-side marker. Rationale, constraints and consequences."
+---
+
 # 0012. Ownership: path index and server-side marker
 
 Status: accepted. Date: 2026-11-14.

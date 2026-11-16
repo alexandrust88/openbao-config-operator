@@ -1,4 +1,9 @@
-# Kubernetes auth
+---
+title: Configure OpenBao Kubernetes authentication with GitOps
+description: Use AuthMount, KubernetesAuthConfig and KubernetesAuthRole resources to bind a workload ServiceAccount to an OpenBao ACL policy.
+---
+
+# Configure OpenBao Kubernetes authentication
 
 This guide sets up OpenBao's Kubernetes auth method from Kubernetes resources, so that workloads
 log in with their ServiceAccount token and get exactly the policies their role grants.
@@ -9,7 +14,9 @@ log in with their ServiceAccount token and get exactly the policies their role g
   ([OpenBao policy for the operator](../operate/openbao-policy.md)):
     - `sys/auth` (`read`), and `sys/auth/<mount>` and `sys/auth/<mount>/tune` (`create`, `read`,
       `update`, `delete`, `sudo`) to manage the mount itself;
-    - `auth/<mount>/config` and `auth/<mount>/role/*` to manage its configuration and roles.
+    - `auth/<mount>/config` and `auth/<mount>/role/*` to manage its configuration and roles;
+    - `sys/policies/acl/guide-app-read` to manage the example ACL policy;
+    - `sys/mounts` and `sys/mounts/apps` to inspect and enable the example KV mount.
 - If the auth method already exists and someone else manages it, skip step 1 and set only the
   roles.
 
@@ -40,12 +47,43 @@ kubectl -n openbao-config wait authmount/kubernetes kubernetesauthconfig/kuberne
 
 ## 2. Create a policy and a role
 
-The role binds ServiceAccount names and namespaces to policies. Name `Policy` resources in
-`policyRefs` instead of repeating policy names: the role then waits until each policy exists in
-OpenBao. A minimal role:
+First create `Policy/guide-app-read` by following [Manage OpenBao policies](policies.md).
+It grants read access to `apps/data/app/*` and uses the same `openbao` connection in
+`openbao-config` as step 1.
 
-```yaml title="examples/quickstart/kubernetesauthrole.yaml"
---8<-- "examples/quickstart/kubernetesauthrole.yaml"
+Create the workload's namespace and ServiceAccount:
+
+```bash
+kubectl create namespace apps --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n apps create serviceaccount app --dry-run=client -o yaml | kubectl apply -f -
+```
+
+The role binds that ServiceAccount name and namespace to the policy. `policyRefs` makes the role
+wait until the managed policy exists in OpenBao. Save this as `app-role.yaml`:
+
+```yaml
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthRole
+metadata:
+  name: guide-app
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: kubernetes
+  name: guide-app
+  boundServiceAccountNames:
+    - app
+  boundServiceAccountNamespaces:
+    - apps
+  audience: openbao
+  tokenTTL: 15m
+  policyRefs:
+    - name: guide-app-read
+```
+
+```bash
+kubectl apply -f app-role.yaml
 ```
 
 Every field of the kind, including token limits and bound CIDRs:
@@ -70,19 +108,19 @@ Bind one ServiceAccount name per role where you can. `"*"` in `boundServiceAccou
 
 ## 3. Check that it worked
 
-The commands use the minimal role of step 2: `quickstart-app` in the namespace `quickstart`,
-which binds the ServiceAccount `app` of `quickstart`.
+The role is managed in Kubernetes namespace `openbao-config`; the workload ServiceAccount lives
+in namespace `apps`. Set the CLI to the same OpenBao namespace as the connection.
 
 ```bash
-kubectl -n quickstart wait kubernetesauthrole/quickstart-app --for=condition=Ready --timeout=2m
-bao read auth/kubernetes/role/quickstart-app
+kubectl -n openbao-config wait kubernetesauthrole/guide-app --for=condition=Ready --timeout=2m
+bao read auth/kubernetes/role/guide-app
 ```
 
 Log in as the workload with a token for the role's audience:
 
 ```bash
-bao write auth/kubernetes/login role=quickstart-app \
-  jwt="$(kubectl -n quickstart create token app --audience openbao)"
+bao write auth/kubernetes/login role=guide-app \
+  jwt="$(kubectl -n apps create token app --audience openbao)"
 ```
 
 The response lists the token's policies.
@@ -105,4 +143,5 @@ The response lists the token's policies.
   [Policy](../reference/api/sys.md#policy).
 - [Access model](access-model.md): `AccessGrant` writes the policy and one role per subject for
   you.
+- [Manage policies](policies.md): declare and verify the ACL before attaching it to a role.
 - [Templated policies](templated-policies.md): one policy for many ServiceAccounts.

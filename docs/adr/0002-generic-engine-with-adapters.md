@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: one generic engine with per-kind adapters and FieldSpec. Rationale, constraints and consequences."
+---
+
 # 0002. One generic engine with per-kind adapters and FieldSpec
 
 Status: accepted; the comparison rule (only the keys the spec sets) is superseded by [ADR 0011](0011-full-field-comparison.md). Date: 2026-11-13.

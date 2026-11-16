@@ -1,3 +1,7 @@
+---
+description: Install OpenBao Config Operator on Kubernetes with a signed Helm chart or manifests. Choose namespace scope, tenancy, availability and monitoring.
+---
+
 # Install
 
 This guide installs the operator on a Kubernetes cluster and chooses its scope, tenancy model,
@@ -8,7 +12,8 @@ not install one. To try it on a laptop first, follow the [Quickstart on kind](qu
 
 - Kubernetes 1.31 or later (the chart's `kubeVersion`) and `kubectl` with cluster-admin rights for
   the install, which creates CRDs and cluster roles.
-- Helm 3.8 or later, for OCI charts.
+- Helm 4 for the complete verification and installation path below. Helm 3.8 or later can install
+  the OCI chart, but the release-verification helper requires Helm 4.
 - An initialised, unsealed OpenBao server that the operator pods can reach.
 - An OpenBao identity for every connection, with a policy from
   [OpenBao policy for the operator](../operate/openbao-policy.md).
@@ -62,7 +67,9 @@ a layer of the OCI chart. v0.2.0 and earlier have no provenance file, so `--veri
 ## 2. Install
 
 Choose one method. The chart is the full installation; `install.yaml` is a fixed, single-replica
-manifest without values.
+manifest without values. The Helm commands below install the defaults and need no local
+`values.yaml`. To customize the release, create that file first and add `--values values.yaml`
+to the command.
 
 === "Helm (OCI)"
 
@@ -70,8 +77,7 @@ manifest without values.
     helm install openbao-config-operator \
       oci://ghcr.io/alexandrust88/charts/openbao-config-operator \
       --version @VERSION@ \
-      --namespace openbao-config-operator --create-namespace \
-      --values values.yaml
+      --namespace openbao-config-operator --create-namespace
     ```
 
     Pin the chart by digest in GitOps tools that support it; the release notes list the digest.
@@ -88,8 +94,7 @@ manifest without values.
     helm repo update openbao-config-operator
     helm install openbao-config-operator openbao-config-operator/openbao-config-operator \
       --version @VERSION@ \
-      --namespace openbao-config-operator --create-namespace \
-      --values values.yaml
+      --namespace openbao-config-operator --create-namespace
     ```
 
 === "install.yaml"
@@ -104,9 +109,8 @@ manifest without values.
       -f https://github.com/alexandrust88/openbao-config-operator/releases/download/@TAG@/install.yaml
     ```
 
-`values.yaml` holds your settings; the sections below name the values that matter most, and
-[Helm values](../reference/helm-values.md) lists all of them. Leave `--values` out to install the
-defaults: two replicas with leader election, cluster-wide scope, the NetworkPolicy and HTTPS
+An optional `values.yaml` holds your settings; the sections below name the values that matter most,
+and [Helm values](../reference/helm-values.md) lists all of them. The commands above use the defaults: two replicas with leader election, cluster-wide scope, the NetworkPolicy and HTTPS
 metrics.
 
 ## 3. Check the installation

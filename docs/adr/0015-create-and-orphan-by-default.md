@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: create by default and orphan by default. Rationale, constraints and consequences."
+---
+
 # 0015. Create by default and orphan by default
 
 Status: accepted. Date: 2026-11-14.

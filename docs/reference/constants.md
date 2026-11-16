@@ -1,3 +1,7 @@
+---
+description: "Look up OpenBao Config Operator annotations, labels, finalizers and their effects on reconciliation."
+---
+
 # Constants and timings
 
 The fixed values in the code that shape the operator's behaviour, and the defaults of the flags that tune

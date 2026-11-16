@@ -1,3 +1,7 @@
+---
+description: "Design decision for OpenBao Config Operator: openBao API changes and the CRD lifecycle. Rationale, constraints and consequences."
+---
+
 # 0023. OpenBao API changes and the CRD lifecycle
 
 Status: accepted. Date: 2026-11-14.
