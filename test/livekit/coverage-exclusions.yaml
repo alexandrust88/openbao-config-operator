@@ -1,10 +1,5 @@
 # These builtins have dedicated live suites because the shared dev-server overlays cannot supply their prerequisites.
 # Plugin-only CRDs are classified separately from hack/chart/plugin-crds.txt and docs/kinds.md.
-- kind: Plugin
-  reason: Registration requires a matching executable and checksum in the server plugin directory. The dedicated scenario supplies these; it tests registration, not running an external plugin.
-  file: test/integration/sys_config_test.go
-  test: TestIntegrationSysConfig
-  scenario: testSysCfgPlugin
 - kind: RaftAutopilot
   reason: The shared dev servers use in-memory storage. The dedicated scenario starts an initialized, unsealed single-node Raft server.
   file: test/integration/sys_raft_test.go

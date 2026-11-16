@@ -1,4 +1,4 @@
 notReady:
   - kind: Policy
     name: lc-paused
-    reason: carries openbaoconfig.io/paused, so the operator never reconciles it and it gets no Ready condition
+    reason: intentional paused state; the live test asserts current Synced=False/Paused, no Ready condition and no policy in OpenBao after other resources settle

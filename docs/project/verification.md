@@ -27,7 +27,7 @@ a pass.
 | `bin/helm unittest charts/openbao-config-operator` | The chart's unit tests in `charts/openbao-config-operator/tests` pass: CRDs, deployment, RBAC, plugin kinds and resources render as asserted | Rendering only; no install. CI installs the helm-unittest plugin before this step; locally install it yourself |
 | `make test-namespaces` | Every built-in kind through each connection mode (root, child through `spec.namespace`, connection based in a child, AppRole login inside a child) against one `bao server -dev` per mode and the manager built from `./cmd`; logins pointed outside their namespace are refused without a write, and the audit log shows where each object was written | Dev mode only; skips locally without `bao` (fails in CI) |
 | `make test-conformance` | Every built-in kind passes the no-write test (examples applied, a further drift pass writes nothing) and the default test (minimal spec, then each optional field set and removed) against `bao server -dev` and the manager built from `./cmd` | A pull request measures only the kinds it touches (`hack/ci/conformance-kinds.sh`); push to `main`, the weekly run and a manual run measure every kind. Kinds in `test/conformance/exceptions.yaml` are `n/a` for the named test |
-| `make test-livekit` | The live kit in `examples/live` renders with kustomize, every built-in kind has a minimal and a full example that sets every spec field, every rendered object passes server-side validation, and the root and child overlays reach `Ready` against `bao server -dev` | Logins are rewritten to AppRole, so this job does not exercise Kubernetes auth; runs in the pull request CI. Explicit prerequisite exceptions are not live passes |
+| `make test-livekit` | The live kit in `examples/live` renders with kustomize, every built-in kind has a minimal and a full example that sets every spec field, every rendered object passes server-side validation, and the root and child overlays reach `Ready` against `bao server -dev` | Logins are rewritten to AppRole; CRL URLs point at a controlled local HTTP fixture, and plugin checksums match locally built test binaries. Does not exercise Kubernetes auth; runs in pull request CI. Explicit prerequisite exceptions are not live passes |
 | `make test-e2e` | In a disposable kind cluster, installs the Helm chart and a three-node self-initialising OpenBao Raft cluster with TLS and PVCs; exercises Kubernetes authentication, configuration writes, drift repair, source Secret rotation, steady state and deletion; checks TLS rejection, active-Service routing, OpenBao pod replacement with retained PVC/data, and manager leader failover | Needs Docker, kubectl and Helm on the `PATH`; the Makefile downloads kind. This command runs the focused Go suite, including the two-tenant isolation test; the CI workflow also runs `test/livekit/kind.sh` across connection modes and the quickstart, tutorial and uninstall scripts (`hack/docs/`). A compiled suite is not evidence of a successful cluster run |
 | `go test ./<package> -run '^$' -fuzz '^<FuzzTest>$' -fuzztime 1m` | The fuzz targets hold for generated input: OpenBao paths, login paths and namespaces (`internal/openbao`), JWT audience parsing (`internal/connection`), the ownership path, field comparison and write-only hashing (`internal/engine`), and import names (`internal/importer`) | Seed corpora run in `make test`; the weekly and on-demand fuzz workflow explores new inputs |
 
@@ -37,16 +37,21 @@ a pass.
 checks the rendered overlays that the default live run actually executes against the CRD catalogue.
 An example file alone does not count. `TestLiveInventory` currently classifies all 126 CRDs:
 
-- 67 kinds must have an executable overlay scenario without a prerequisite exception.
+- 68 kinds must have an executable overlay scenario without a prerequisite exception.
 - Three kinds, `DatabaseConnection`, `DatabaseRole` and `DatabaseStaticRole`, need PostgreSQL, so only the kind
   e2e run (`test/livekit/kind.sh`, which starts PostgreSQL) applies their overlays.
-- Four built-in kinds use dedicated integration fixtures. `RabbitMQConfig` and `RabbitMQRole` have integration
-  scenarios outside the default overlays, `Plugin` needs a plugin executable and checksum for registration, and
-  `RaftAutopilot` needs Raft storage. `test/livekit/coverage-exclusions.yaml` names the test functions and their
-  prerequisites; the inventory check verifies that those functions exist. Registration does not prove an external
-  plugin can run.
+- Three built-in kinds use dedicated integration fixtures. `RabbitMQConfig` and `RabbitMQRole` have integration
+  scenarios outside the default overlays, and `RaftAutopilot` needs Raft storage. `test/livekit/coverage-exclusions.yaml` names the test functions and their
+  prerequisites; the inventory check verifies that those functions exist.
 - 52 external-plugin kinds require plugins and backends absent from the pinned OpenBao binary.
   Schema and payload checks cover these kinds, but do not constitute live coverage.
+
+The `Plugin` overlays build checksum-matched external auth and secrets fixture binaries, mount them and
+read their health endpoints. The kind run repeats these reads after replacing the active OpenBao pod.
+This proves that external plugin processes run, but does not cover the 52 backend-specific plugin CRDs.
+URL CRLs must be fetched from the controlled server. Paused policy scenarios assert current `Synced=False/Paused`, no `Ready` condition, and no remote
+policy; their intentional non-Ready state remains visible in the report.
+The kit allows three minutes per OpenBao request for RSA-8192 generation under shared-runner CPU contention.
 
 The full `make test-livekit` run requires at least one current Ready object for every overlay-covered
 kind. Managed objects also need current `Synced=True`, except in Observe mode, where drift
@@ -62,6 +67,32 @@ TLS active-node Service. Its result artifacts retain test logs, JUnit results an
 CI rejects an empty or skipped focused e2e suite. The conformance workflow retains its matrix and
 logs and rejects a skipped matrix suite. Live evidence still requires the corresponding jobs to
 finish successfully; inventory, compilation and workflow linting cannot substitute for that run.
+
+## Conformance timing
+
+The defaults phase runs eight kinds concurrently by default, starting the kinds with the most
+optional fields first. `CONF_PARALLELISM` accepts 1–16 workers. The no-write observation phase
+and the per-field drift windows are unchanged. A missing reconcile or failed metrics scrape
+fails the measurement rather than counting as zero writes. `AccessLevel` is an event-driven
+Kubernetes template: its separate test checks current-generation readiness after setting and
+removing fields, and zero OpenBao writes across the same observation windows.
+
+The matrix includes setup, phase, per-kind and optional-field timings; a sibling `*-timings.json`
+file carries the same measurements for comparisons. Use the same kinds, phase, machine and
+drift interval when comparing runs. More workers overlap observation waits; they do not remove
+the time required to observe successive reconciles.
+
+## User and workload integration lab
+
+The [local lab tutorial](../tutorials/local-lab.md) runs real user OIDC, user and machine JWT,
+internal/external group membership, tenant-scoped ESO delivery, cert-manager PKI and an external
+LDAP plugin. `make lab-identity`, `make lab-eso` and `make lab-pki` exercise their respective
+profiles after `make lab-up`. LDAP has `hack/lab/plugins/up.sh` and `test.sh`.
+
+The separate `integration lab` workflow runs these profiles on manual dispatch. Its browser
+uses the official, digest-pinned Playwright container and a localhost OIDC callback. It proves
+the Keycloak browser login and OpenBao authorization result, not the entire OpenBao web UI.
+Cloud plugins requiring accounts or credentials remain outside this lab's live coverage.
 
 ## Scoped checks
 

@@ -53,7 +53,8 @@ type row struct {
 // TestEndToEnd applies overlays (LIVEKIT_OVERLAYS, default root and child in both variants) each to its own
 // `bao server -dev` through the manager built from ./cmd, and asserts that every object reaches Ready unless a file
 // in test/livekit/exceptions excuses it. The connections are rewritten to AppRole logins (operator at the root,
-// tenant inside tenantNamespace for the child mode); everything else is applied as rendered. observe/<variant>
+// tenant inside tenantNamespace for the child mode); URL CRLs use a local server and plugins use built test binaries.
+// Other fields are applied as rendered. observe/<variant>
 // flips the objects of root/<variant> to Observe once they are settled. LIVEKIT_COMPONENTS limits the scenarios.
 func TestEndToEnd(t *testing.T) {
 	ctrllog.SetLogger(logr.Discard())
@@ -103,6 +104,7 @@ func TestEndToEnd(t *testing.T) {
 	}
 	createInputSecrets(t, kit, assets, c.kubeconfig, ns)
 
+	var pluginBin string
 	for _, r := range runs {
 		dir := filepath.Join(kit, "overlays", r.overlay)
 		r.mode = modeOf(t, dir)
@@ -133,6 +135,8 @@ func TestEndToEnd(t *testing.T) {
 			rewriteConnection(o, r.bao.addr, mount, secret, ns)
 			r.objs = append(r.objs, o)
 		}
+		prepareCRLURLs(t, r.objs)
+		preparePluginFixtures(t, root, logDir, r, &pluginBin)
 	}
 
 	startManager(t, managerBin, c.kubeconfig, ns, filepath.Join(logDir, "manager.log"), 30*time.Second)
@@ -148,6 +152,8 @@ func TestEndToEnd(t *testing.T) {
 	for _, r := range runs {
 		evaluate(ctx, c.k8s, r, r.overlay, exc)
 		verifyOutputSecrets(ctx, t, c.k8s, r)
+		verifyPausedPolicies(ctx, t, c.k8s, r)
+		verifyPluginFixtures(t, r)
 	}
 
 	observed := make([]*run, 0, len(observe))

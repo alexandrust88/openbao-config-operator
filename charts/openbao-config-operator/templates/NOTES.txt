@@ -1,4 +1,5 @@
 {{ include "openbao-config-operator.fullname" . }} {{ .Chart.AppVersion }} is installed in namespace {{ .Release.Namespace }}.
+Manager image: {{ include "openbao-config-operator.image" . }}.
 
 Check the manager:
   kubectl -n {{ .Release.Namespace }} rollout status deployment/{{ include "openbao-config-operator.fullname" . }}

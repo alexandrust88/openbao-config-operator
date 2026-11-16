@@ -1,0 +1,16 @@
+# The minimal Kubernetes configurations also need in-pod defaults in a child OpenBao namespace.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: child-min-
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: openbao-live-kit
+      live.openbaoconfig.io/overlay: child-min
+resources:
+  - ../../../../examples/live/params
+components:
+  - ../../../../examples/live/base
+  - ../../../../examples/live/modes/child
+  - ../../../../examples/live/components/auth-kubernetes/minimal
+  - ../../../../examples/live/components/kubernetes-secrets/minimal
+  - ../../../../examples/live/finalize

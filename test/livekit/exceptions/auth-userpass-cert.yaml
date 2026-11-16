@@ -1,6 +1,0 @@
-# auth-userpass-cert. A CRL given by url is fetched by OpenBao during the write, and example.com does not
-# serve one, so that object cannot become Ready here. The PEM object is the live proof.
-notReady:
-  - kind: CertAuthCRL
-    name: cert-crl-url
-    reason: OpenBao fetches url while writing the CRL, and https://example.com/ca.crl does not serve one; the PEM object is the live proof

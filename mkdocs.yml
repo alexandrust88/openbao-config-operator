@@ -138,6 +138,7 @@ nav:
       - Manage several OpenBao servers: tutorials/multiple-instances.md
       - Onboard two tenants: tutorials/tenant-onboarding.md
       - Onboard teams as a tenant: tutorials/team-onboarding.md
+      - Test users and workloads locally: tutorials/local-lab.md
   - Guides:
       - guides/index.md
       - Authentication:

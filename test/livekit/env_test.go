@@ -54,6 +54,11 @@ func startBao(t *testing.T, bin, dir, name string) *bao {
 			t.Fatal(err)
 		}
 	}
+	// OpenBao checks executable paths after resolving symlinks, including macOS temporary directories.
+	plugins, err := filepath.EvalSymlinks(plugins)
+	if err != nil {
+		t.Fatal(err)
+	}
 	config := filepath.Join(dir, name+"-bao.hcl")
 	hcl := fmt.Sprintf("unsafe_allow_api_audit_creation = true\nplugin_directory = %q\n", plugins)
 	if err := os.WriteFile(config, []byte(hcl), 0o600); err != nil {
@@ -370,7 +375,7 @@ func stateOf(cur *unstructured.Unstructured) objState {
 			synced = true
 		}
 	}
-	if !found {
+	if !found && s.reason == "" {
 		s.reason, s.message = "NoStatus", "no Ready condition"
 	}
 	policy, _, _ := unstructured.NestedString(cur.Object, keySpec, "managementPolicy")

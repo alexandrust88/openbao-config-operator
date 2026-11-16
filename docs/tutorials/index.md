@@ -43,3 +43,9 @@ build gives you that other tools do not.
 When you are done, delete the kind cluster as in
 [step 10 of the quickstart](../get-started/quickstart.md#10-clean-up). Both OpenBao servers and
 everything they hold go with it.
+
+## Local integration lab
+
+For a separate TLS raft cluster with real Keycloak users, machine JWTs, ESO and cert-manager,
+follow [Test user and workload access in a local lab](local-lab.md). It starts its own cluster
+and does not depend on the four quickstart lessons above.

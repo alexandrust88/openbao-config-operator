@@ -28,6 +28,24 @@ jobs:
       - run: make fmt-check vet mod-check
       - run: go vet -tags conformance,load,docs ./test/...
       - run: make lint-config lint
+      - name: Validate local lab scripts
+        run: |
+          shellcheck -x hack/lab/*.sh hack/lab/plugins/*.sh
+          python3 - <<'PYTHON'
+          import ast
+          from pathlib import Path
+          for path in Path("hack/lab").rglob("*.py"):
+              if "node_modules" not in path.parts:
+                  ast.parse(path.read_text(), filename=str(path))
+          PYTHON
+          node --check hack/lab/browser/oidc.mjs
+          python3 -m unittest discover -s hack/lab -p test_pki.py -v
+      - name: Validate external plugin fixture module
+        working-directory: test/livekit/pluginfixture
+        run: |
+          go mod tidy -diff
+          go mod verify
+          go vet ./...
 
   test:
     runs-on: ubuntu-24.04

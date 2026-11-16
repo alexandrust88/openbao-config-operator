@@ -1,0 +1,4 @@
+# Optional override: hack/lab/up.sh raft -f hack/lab/profiles/operator-single.yaml
+replicas: 1
+leaderElection:
+  enabled: true

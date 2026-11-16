@@ -79,12 +79,12 @@ client_cert() {
   local out=$1
   openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=openbao live kit test CA" \
     -addext basicConstraints=critical,CA:true -addext keyUsage=critical,keyCertSign,cRLSign \
-    -keyout "$out.ca.key" -out "$out.ca.crt" 2>/dev/null &&
+    -addext subjectKeyIdentifier=hash -keyout "$out.ca.key" -out "$out.ca.crt" 2>/dev/null &&
     openssl req -new -newkey rsa:2048 -nodes -subj "/CN=openbao live kit client" -keyout "$out.key" \
       -out "$out.csr" 2>/dev/null &&
     openssl x509 -req -sha256 -days 365 -in "$out.csr" -CA "$out.ca.crt" -CAkey "$out.ca.key" \
       -set_serial "0x$(openssl rand -hex 16)" -out "$out.crt" 2>/dev/null \
-      -extfile <(printf 'basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=clientAuth\n')
+      -extfile <(printf 'basicConstraints=critical,CA:FALSE\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid:always\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=clientAuth\n')
 }
 
 generate() {

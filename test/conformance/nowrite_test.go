@@ -40,7 +40,9 @@ func confNoWrite(ctx context.Context, t *testing.T, e *confEnv, c *confCatalog, 
 	}
 	own, refs := confNoWriteObjects(c, byKind)
 	created, createErrs := confCreateAll(ctx, t, e, append(append([]*unstructured.Unstructured{}, own...), refs...))
-	states := confWaitAllReady(ctx, k8s, byKind, created)
+	readyStarted := time.Now()
+	states := confWaitAllReady(ctx, t, k8s, byKind, created)
+	e.readyDuration = time.Since(readyStarted)
 
 	before, err := mgr.scrape()
 	if err != nil {
@@ -83,7 +85,9 @@ func confNoWrite(ctx context.Context, t *testing.T, e *confEnv, c *confCatalog, 
 		}
 	}
 
+	cleanupStarted := time.Now()
 	confDeleteAll(ctx, t, k8s, created, byKind)
+	e.cleanupDuration = time.Since(cleanupStarted)
 }
 
 func confNoWriteVerdict(n, ready int, writes, reconciles float64) string {
@@ -161,12 +165,14 @@ func confCreateAll(ctx context.Context, t *testing.T, e *confEnv, all []*unstruc
 }
 
 // confWaitAllReady polls the created objects of the kinds under test until all are Ready or confReadyTimeout.
-func confWaitAllReady(ctx context.Context, k8s client.Client, byKind map[string]*confResult,
+func confWaitAllReady(ctx context.Context, t *testing.T, k8s client.Client, byKind map[string]*confResult,
 	created map[string][]*unstructured.Unstructured) map[string]map[string]confObjState {
 	states := map[string]map[string]confObjState{}
 	deadline := time.Now().Add(confReadyTimeout)
+	nextProgress := time.Now()
 	for {
 		pending := 0
+		pendingKinds := map[string]bool{}
 		for kind := range byKind {
 			states[kind] = map[string]confObjState{}
 			for _, o := range created[kind] {
@@ -174,8 +180,13 @@ func confWaitAllReady(ctx context.Context, k8s client.Client, byKind map[string]
 				states[kind][o.GetName()] = s
 				if !s.ready {
 					pending++
+					pendingKinds[kind] = true
 				}
 			}
+		}
+		if pending > 0 && !time.Now().Before(nextProgress) {
+			t.Logf("waiting for %d examples: %s", pending, strings.Join(confKeys(pendingKinds), ", "))
+			nextProgress = time.Now().Add(15 * time.Second)
 		}
 		if pending == 0 || time.Now().After(deadline) {
 			return states

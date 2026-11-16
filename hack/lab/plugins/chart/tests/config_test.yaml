@@ -1,0 +1,37 @@
+suite: LDAP profile TLS and policy contracts
+templates:
+  - templates/config.yaml
+set:
+  plugin.sha256: 0123456789012345678901234567890123456789012345678901234567890123
+  directory.certificate: test-trust-anchor
+tests:
+  - it: configures verified LDAPS and explicitly adopts the plugin defaults
+    documentIndex: 2
+    asserts:
+      - equal:
+          path: spec.url
+          value: ldaps://lab-ldap.NAMESPACE.svc:6360
+      - equal:
+          path: spec.insecureTLS
+          value: false
+      - equal:
+          path: spec.certificate
+          value: test-trust-anchor
+      - equal:
+          path: spec.creationPolicy
+          value: CreateOrAdopt
+      - equal:
+          path: spec.bindPassSecretRef
+          value: {name: lab-ldap-bind, key: password}
+  - it: keeps group and user policy grants distinct
+    documentIndex: 5
+    asserts:
+      - equal:
+          path: spec.policies
+          value: [lab-ldap-group]
+  - it: keeps direct user policy separate
+    documentIndex: 6
+    asserts:
+      - equal:
+          path: spec.policies
+          value: [lab-ldap-user]

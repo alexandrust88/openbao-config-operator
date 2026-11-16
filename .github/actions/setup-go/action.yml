@@ -14,7 +14,7 @@ runs:
         path: |
           ~/go/pkg/mod
           ~/.cache/go-build
-        key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('go.sum') }}
+        key: go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           go-${{ runner.os }}-${{ github.workflow }}-${{ github.job }}-
           go-${{ runner.os }}-

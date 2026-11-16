@@ -10,6 +10,8 @@ tests:
       - matchRegexRaw:
           pattern: obc-openbao-config-operator 0\.1\.0 is installed in namespace openbao-system
       - matchRegexRaw:
+          pattern: 'Manager image: ghcr.io/alexandrust88/openbao-config-operator:0\.1\.0'
+      - matchRegexRaw:
           pattern: kubectl -n openbao-system rollout status deployment/obc-openbao-config-operator
 
   - it: says nothing about watched namespaces when cluster-wide

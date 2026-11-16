@@ -1,0 +1,1 @@
+{"name":"openbao-operator-lab-browser","private":true,"version":"1.0.0","description":"Optional real Chromium OIDC login for the disposable operator lab","dependencies":{"playwright":"1.65.1"}}

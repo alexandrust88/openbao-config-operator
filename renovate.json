@@ -7,6 +7,15 @@
     "helpers:pinGitHubActionDigests",
     "docker:pinDigests"
   ],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/tests/**",
+    "**/__fixtures__/**"
+  ],
   "labels": [
     "dependencies"
   ],
@@ -31,7 +40,8 @@
   },
   "kubernetes": {
     "managerFilePatterns": [
-      "/^hack/e2e/.+\\.ya?ml$/"
+      "/^hack/e2e/.+\\.ya?ml$/",
+      "/^hack/lab/.+\\.ya?ml$/"
     ]
   },
   "packageRules": [
@@ -96,6 +106,22 @@
         "quay.io/**"
       ],
       "minimumReleaseAgeBehaviour": "timestamp-optional"
+    },
+    {
+      "description": "Keep the browser package and matching browser image together",
+      "groupName": "lab playwright",
+      "matchPackageNames": [
+        "playwright",
+        "mcr.microsoft.com/playwright"
+      ]
+    },
+    {
+      "description": "Keep ESO chart and all controller images together",
+      "groupName": "lab external secrets",
+      "matchPackageNames": [
+        "external-secrets",
+        "ghcr.io/external-secrets/external-secrets"
+      ]
     }
   ],
   "customManagers": [
@@ -183,6 +209,31 @@
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n[A-Z_]+_VERSION=(?<currentValue>\\S+)"
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "Digest-pinned lab browser image in the Python runner",
+      "managerFilePatterns": [
+        "/^hack/lab/identity\\.py$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>docker) depName=(?<depName>\\S+)\\n[A-Z_]+ = \"\\S+?:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})\""
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Lab Helm chart versions; LDAP release assets remain manually paired with platform checksums",
+      "managerFilePatterns": [
+        "/^hack/lab/(?:eso|pki)-up\\.sh$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>helm) depName=(?<depName>\\S+) registryUrl=(?<registryUrl>\\S+)\\n[A-Z_]+=(?<currentValue>\\S+)"
+      ]
     }
-  ]
+  ],
+  "helm-values": {
+    "managerFilePatterns": [
+      "/^hack/lab/eso-values\\.yaml$/"
+    ]
+  }
 }
