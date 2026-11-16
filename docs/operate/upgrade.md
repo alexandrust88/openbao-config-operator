@@ -85,6 +85,22 @@ kubectl apply --server-side -f crds.yaml
    not send before. A rate that stays up after the first drift interval is not; see
    [the runbook](runbooks.md#openbaoconfigoperatorsteadystatewrites).
 
+## Upgrading to 0.3.1
+
+v0.3.1 changes no manager code or CRD. The chart's values schema is stricter, so `helm upgrade` fails on values
+that earlier charts accepted:
+
+- `securityContext.privileged: true`, `allowPrivilegeEscalation: true`, `runAsNonRoot: false`, entries in
+  `capabilities.add`, or a `securityContext` without `allowPrivilegeEscalation`, `readOnlyRootFilesystem` and
+  `runAsNonRoot`;
+- `podSecurityContext.runAsNonRoot: false`, a `hostPath` entry in `extraVolumes`, `serviceAccount.name: default`,
+  `POD_NAMESPACE` in `extraEnv`, or a flag in `extraArgs` that the chart already sets;
+- names, durations, CIDRs and audiences that contain whitespace.
+
+Remove or correct those values, then use the [upgrade procedure](#upgrade-procedure). The aggregated viewer role
+loses read on `ClusterOpenBaoConnection`; grant it separately to anyone who still needs it. The alerts'
+`runbook_url` now points at the documentation site.
+
 ## Upgrading to 0.3.0
 
 v0.3.0 changes no manager code, CRD, chart value or chart template; upgrade with the

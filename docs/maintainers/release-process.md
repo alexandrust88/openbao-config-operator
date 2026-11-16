@@ -51,7 +51,7 @@ a version, for example a release candidate, end the description of the next pull
 release-please runs only when the `release-please` environment has the GitHub App configured
 ([repository settings](#repository-settings-this-process-relies-on)). Without the app, the `Release pull request`
 job of [`release-please.yml`](../../.github/workflows/release-please.yml) logs "release-please skipped" and opens
-no pull request. The app is not configured yet, so v0.1.0 to v0.3.0 were released through the
+no pull request. The app is not configured yet, so v0.1.0 to v0.3.1 were released through the
 [manual path](#cutting-a-release), and the maintainer chose each version by the same rules.
 
 ## Repository settings this process relies on
@@ -127,7 +127,7 @@ signed; their cosign signatures still verify.
 
 There are two paths, and both end with a tag push that starts the release workflow. With release-please, a
 maintainer merges the release pull request. On the manual path, a maintainer writes the changelog entry and pushes
-the tag. v0.1.0 to v0.3.0 were tagged by hand without a changelog pull request; their entries were added afterwards.
+the tag. v0.1.0 to v0.3.1 were tagged by hand without a changelog pull request; their entries were added afterwards.
 Steps 2 and 5 differ by path.
 
 1. **Check main.** The latest `ci`, `e2e` and weekly `conformance` runs on `main` are green, and no

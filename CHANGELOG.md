@@ -4,10 +4,41 @@ All notable changes to this project are listed here. Versions follow [Semantic V
 before 1.0.0 a minor release may contain breaking changes, and the release notes say so. Each version links to its
 GitHub release, which lists the published artefacts, their digests and the merged pull requests.
 
-The releases up to v0.3.0 were tagged by hand and their entries were written by hand. Once the release-please GitHub
+The releases up to v0.3.1 were tagged by hand and their entries were written by hand. Once the release-please GitHub
 App is configured, [release-please](https://github.com/googleapis/release-please) writes new entries from the
 conventional-commit titles of merged pull requests. Do not edit released entries. The process is in
 [docs/maintainers/release-process.md](docs/maintainers/release-process.md).
+
+## [0.3.1](https://github.com/alexandrust88/openbao-config-operator/releases/tag/v0.3.1) (2026-11-16)
+
+No change to the CRDs. The chart refuses values that weaken the pod or inject YAML: check your values before you
+upgrade ([upgrading to 0.3.1](docs/operate/upgrade.md#upgrading-to-031)).
+
+### Security
+
+- The chart quotes string values in its templates, and the values schema requires plain names, durations, CIDRs
+  and audiences, so a value that contains a newline can no longer add YAML keys past the chart's own guards ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
+- The values schema refuses `privileged`, privilege escalation, `runAsNonRoot: false`, added capabilities, hostPath
+  volumes, `serviceAccount.name: default`, `POD_NAMESPACE` in `extraEnv` and, in `extraArgs`, every flag the chart
+  already sets ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
+- The aggregated viewer role no longer grants read on `ClusterOpenBaoConnection`, and the manager no longer has
+  `patch` on Secrets ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
+
+### Features
+
+- `rbac.tenantEditor.excludeKinds` takes kinds, such as `openbaoendpoints`, out of the aggregated tenant-editor
+  role ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
+
+### Fixes
+
+- The alerts' `runbook_url` points at the documentation site ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
+- `hack/release/verify-release.sh` stops with "needs Helm v4" instead of a key parse error under Helm 3, and the
+  release notes link the verification guide ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
+
+### Documentation
+
+- Every page was checked against the code; wrong statements about backup, observe mode, RBAC with
+  `watchNamespaces` and the release process are corrected ([#11](https://github.com/alexandrust88/openbao-config-operator/pull/11)).
 
 ## [0.3.0](https://github.com/alexandrust88/openbao-config-operator/releases/tag/v0.3.0) (2026-11-16)
 
