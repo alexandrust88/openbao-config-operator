@@ -42,6 +42,8 @@ class FluxTests(unittest.TestCase):
     def test_revision_gate_never_accepts_other_sha(self):
         sha = 'a' * 40
         self.assertTrue(flux.matches_revision('main@sha1:' + sha, sha))
+        self.assertTrue(flux.matches_revision('sha1:' + sha, sha))
+        self.assertFalse(flux.matches_revision('sha1:' + 'b' * 40, sha))
         self.assertFalse(flux.matches_revision('main@sha1:' + 'b' * 40, sha))
         self.assertFalse(flux.matches_revision('', 'main'))
 

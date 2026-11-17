@@ -82,4 +82,4 @@ def wait(h, revision, phase='all'):
 def matches_revision(actual, requested):
     if requested == 'main':
         return actual.startswith(('main@sha1:', 'refs/heads/main@sha1:'))
-    return actual.endswith('@sha1:' + requested)
+    return actual == 'sha1:' + requested or actual.endswith('@sha1:' + requested)
