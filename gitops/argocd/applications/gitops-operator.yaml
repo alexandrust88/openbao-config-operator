@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitops-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: gitops-operator
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openbao-config-operator-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 8
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 30s
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - PruneLast=true
+  sources:
+    - repoURL: https://alexandrust88.github.io/openbao-config-operator/charts
+      chart: openbao-config-operator
+      targetRevision: 0.4.0
+      helm:
+        releaseName: openbao-config-operator
+        valueFiles:
+          - $values/gitops/argocd/values/operator.yaml
+    - repoURL: https://github.com/alexandrust88/openbao-config-operator.git
+      targetRevision: main
+      ref: values

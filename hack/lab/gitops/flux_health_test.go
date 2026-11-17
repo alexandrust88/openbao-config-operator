@@ -1,24 +1,39 @@
 package main
 
 import (
-	"encoding/json"
-	"os/exec"
+	"os"
 	"testing"
 
 	"github.com/google/cel-go/cel"
+	"sigs.k8s.io/yaml"
 )
 
 func TestFluxHealthExpressions(t *testing.T) {
-	script := "import flux,json; h=type('H',(),{'operator_values':{}})(); " +
-		"failed=flux.manifests(h)[0][2]['spec']['healthCheckExprs'][0]['failed']; " +
-		"print(json.dumps({'current':flux.health_expression(True),'failed':failed}))"
-	output, err := exec.Command("python3", "-c", script).Output()
+	data, err := os.ReadFile("../../../gitops/flux/bootstrap/kustomizations.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var expressions map[string]string
-	if err := json.Unmarshal(output, &expressions); err != nil {
+	var roots struct {
+		Items []struct {
+			Metadata struct {
+				Name string `json:"name"`
+			} `json:"metadata"`
+			Spec struct {
+				Health []map[string]string `json:"healthCheckExprs"`
+			} `json:"spec"`
+		} `json:"items"`
+	}
+	if err := yaml.Unmarshal(data, &roots); err != nil {
 		t.Fatal(err)
+	}
+	var expressions map[string]string
+	for _, root := range roots.Items {
+		if root.Metadata.Name == "config" && len(root.Spec.Health) > 0 {
+			expressions = map[string]string{"current": root.Spec.Health[0]["current"], "failed": root.Spec.Health[0]["failed"]}
+		}
+	}
+	if len(expressions) != 2 {
+		t.Fatal("Missing checked-in Flux health expressions")
 	}
 	env, err := cel.NewEnv(cel.Variable("status", cel.DynType), cel.Variable("metadata", cel.DynType))
 	if err != nil {

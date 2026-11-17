@@ -1,0 +1,104 @@
+global:
+  image:
+    repository: quay.io/argoproj/argocd
+    tag: v3.6.1@sha256:296e3d74f449b2ce45265613fcb68c18ed7366488360c8ea32f5f2a93d2e5c54
+dex:
+  enabled: false
+notifications:
+  enabled: false
+applicationSet:
+  enabled: false
+server:
+  enabled: true
+  service:
+    type: ClusterIP
+redis:
+  image:
+    repository: public.ecr.aws/docker/library/redis
+    tag: 8.10.1-alpine@sha256:ef216d85ec44f4fdf7c0e6df2d1757a4734ed32fbb278cabd3181b5a27353b79
+configs:
+  cm:
+    timeout.reconciliation: 15s
+    timeout.reconciliation.jitter: 0s
+    application.resourceTrackingMethod: annotation
+    resource.customizations: |
+      "*.openbaoconfig.io/*":
+        health.lua: |
+          local hs = {status = "Progressing", message = "Waiting for the operator to reconcile"}
+          if obj.status == nil or obj.status.conditions == nil then
+            return hs
+          end
+          local generation = obj.metadata.generation
+          local observed = obj.status.observedGeneration
+          local ready, synced
+          for _, c in ipairs(obj.status.conditions) do
+            if c.type == "Ready" then
+              ready = c
+            elseif c.type == "Synced" then
+              synced = c
+            end
+            if observed == nil and c.type == "Ready" then
+              observed = c.observedGeneration
+            end
+          end
+          local waiting = {
+            ReconcileInProgress = true,
+            ReferenceNotReady = true,
+            ConnectionNotReady = true,
+            PluginNotRegistered = true,
+            ServerNotReady = true,
+            WriteBudgetExceeded = true,
+          }
+          if generation ~= nil and synced ~= nil and synced.observedGeneration == generation and synced.status == "False"
+            and synced.reason ~= "Paused" and not waiting[synced.reason] then
+            hs.status = "Degraded"
+            hs.message = (synced.reason or "") .. ": " .. (synced.message or "")
+            return hs
+          end
+          if generation ~= nil and ((observed == nil or observed < generation)
+            or (ready ~= nil and ready.observedGeneration ~= nil and ready.observedGeneration < generation)
+            or (synced ~= nil and synced.observedGeneration ~= nil and synced.observedGeneration < generation)) then
+            hs.message = "Waiting for the operator to observe generation " .. generation
+            return hs
+          end
+          for _, c in pairs({ready = ready, synced = synced}) do
+            if c.reason == "Paused" then
+              hs.status = "Suspended"
+              hs.message = c.message or "Paused"
+              return hs
+            end
+          end
+          if ready == nil then
+            return hs
+          end
+          local message = ready.message or ""
+          if ready.status == "True" then
+            if synced ~= nil and synced.status == "False" then
+              if not waiting[synced.reason] then
+                hs.status = "Degraded"
+              end
+              hs.message = (synced.reason or "") .. ": " .. (synced.message or "")
+              return hs
+            end
+            hs.status = "Healthy"
+            hs.message = message
+            return hs
+          end
+          if ready.status == "False" and not waiting[ready.reason] then
+            hs.status = "Degraded"
+            hs.message = (ready.reason or "") .. ": " .. message
+            return hs
+          end
+          hs.message = (ready.reason or "") .. ": " .. message
+          return hs
+    resource.customizations.health.argoproj.io_Application: |
+      local hs = {status = "Progressing", message = "Waiting for child Application sync and health"}
+      if obj.status == nil then return hs end
+      if obj.status.operationState ~= nil and obj.status.operationState.phase == "Failed" then
+        return {status = "Degraded", message = "Child sync failed"}
+      end
+      if obj.status.sync ~= nil and obj.status.sync.status == "Synced" and obj.status.health ~= nil then
+        hs.status = obj.status.health.status or "Progressing"
+        hs.message = obj.status.health.message or "Child Application health"
+      end
+      return hs

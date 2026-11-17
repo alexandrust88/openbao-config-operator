@@ -1,15 +1,19 @@
 ---
-title: Test OpenBao GitOps with Flux
-description: Deploy OpenBao and its configuration operator through Flux, then verify Git updates, drift correction and deletion behaviour against the live API.
+title: Deploy OpenBao and its configuration with Flux
+description: Use checked-in Flux resources, public chart releases and a public Git repository to deploy OpenBao and declarative root and tenant configuration.
 ---
 
-# Test OpenBao GitOps with Flux
+# Deploy OpenBao and its configuration with Flux
 
-This disposable kind profile installs Flux Operator and a FluxInstance, then lets Flux deploy
-OpenBao, the operator chart from the current checkout, and root and child namespace configuration.
-It uses a real in-cluster Git HTTP server. No GitHub account or repository credential is required.
+The [Flux examples](https://github.com/alexandrust88/openbao-config-operator/tree/main/gitops/flux)
+are ordinary checked-in Kubernetes manifests. They use this public Git repository, the official
+OpenBao Helm repository and the published OpenBao Config Operator OCI chart. They need no custom
+Git server, generated delivery repository, Git write credentials or locally built operator image.
 
-## Run the regression
+Use these examples in a disposable cluster. The OpenBao values configure a small TLS-enabled
+Raft deployment with self-initialisation, not a production availability or backup policy.
+
+## Run the documented smoke test
 
 From the repository root, with Docker running:
 
@@ -17,63 +21,83 @@ From the repository root, with Docker running:
 make lab-flux
 ```
 
-The runner builds the operator image from the checkout and loads it into the fresh kind cluster.
-It generates TLS and bootstrap credentials outside Git. OpenBao and the configuration operator
-are deployed by Flux; neither is installed imperatively before the test.
+The runner creates a fresh kind cluster, prepares random bootstrap credentials and TLS Secrets
+outside Git, installs Flux Operator, and applies the checked-in Flux bootstrap resources.
+Flux deploys both OpenBao and the published configuration operator chart. The public GitRepository
+follows `main` by default.
 
-The cluster is removed on exit. To retain a failed run for inspection:
+To test a commit already pushed to the public repository:
 
 ```sh
-KEEP_GITOPS_LAB=1 make lab-flux
+GITOPS_REVISION="$(git rev-parse HEAD)" make lab-flux
 ```
 
-The fixture uses `kind-obco-gitops-flux`. Do not reuse that context for other workloads.
-Delete a retained cluster with `bin/kind delete cluster --name obco-gitops-flux`.
+The runner replaces the source's branch reference with that exact commit; it never updates the
+public repository. CI supplies the pull request's public repository URL and exact head SHA. Local
+uncommitted changes to the Git-managed manifests are therefore not part of this smoke test.
+The published operator image is tested, not the manager binary in the checkout.
 
-## Follow the reconciliation order
+The cluster is removed on exit. For investigation, set `KEEP_GITOPS_LAB=1`; remove the retained
+cluster with `bin/kind delete cluster --name obco-gitops-flux` when finished.
 
-The generated Git repository separates infrastructure from configuration:
+## Use the checked-in manifests
 
-```text
-FluxInstance → GitRepository → root Kustomization
-                                 ├─ openbao Kustomization → TLS Raft server
-                                 ├─ operator Kustomization → HelmRelease → operator and CRDs
-                                 └─ config Kustomization (depends on both)
-                                      → connection, root and child configuration
-```
+The reusable files are under `gitops/flux/`:
 
-The bootstrap uses this FluxInstance shape; the fixture supplies its internal Git URL and pins
-the distribution to `2.10.0`:
+| Path | Purpose |
+| --- | --- |
+| `flux-instance.yaml` | Flux distribution and controllers, managed by Flux Operator |
+| `bootstrap/source.yaml` | Public GitRepository, default branch `main` |
+| `bootstrap/kustomizations.yaml` | Separate OpenBao, operator and configuration reconciliation |
+| `bootstrap/rbac.yaml` | Platform and configuration reconciliation identities |
+| `openbao/` | Official OpenBao HelmRepository and versioned HelmRelease |
+| `operator/` | Digest-pinned published operator OCIRepository and HelmRelease with example resource values |
+| `../openbao/values.yaml` | Shared OpenBao chart values; no secret values |
+| `../config/` | Root and child namespace CRs consumed by either Flux or Argo CD |
+
+The example GitRepository is directly editable:
 
 ```yaml
-apiVersion: fluxcd.controlplane.io/v1
-kind: FluxInstance
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
 metadata:
-  name: flux
+  name: openbao-config-operator
   namespace: flux-system
 spec:
-  distribution:
-    version: "2.10.0"
-    registry: ghcr.io/fluxcd
-  components: [source-controller, kustomize-controller, helm-controller]
-  cluster:
-    type: kubernetes
-    size: small
-    networkPolicy: true
-  sync:
-    kind: GitRepository
-    url: http://git.obco-gitops.svc:8080/repo.git
-    ref: refs/heads/main
-    path: ./flux/root
-    interval: 10s
+  interval: 1m
+  url: https://github.com/alexandrust88/openbao-config-operator
+  ref:
+    branch: main
 ```
 
-The internal HTTP source is only for this disposable lab. Use authenticated HTTPS or SSH for a
-shared repository. The Flux Operator chart is pinned to `0.62.1` and its verified OCI digest; the operator image
-is pinned by digest too. Both pins are recorded in
-[hack/lab/gitops/flux.py](https://github.com/alexandrust88/openbao-config-operator/blob/main/hack/lab/gitops/flux.py).
+For your own deployment, fork the repository and change this URL. Prepare the TLS and bootstrap
+Secrets referenced by the shared OpenBao values before applying the infrastructure. The smoke
+runner does this automatically; the YAML does not contain credentials.
 
-The operator HelmRelease reads the chart from the same Git revision under `operator/`:
+Once Flux Operator is installed and those prerequisites exist, the same delivery resources can
+be applied without the Python smoke harness:
+
+```sh
+kubectl apply -f gitops/flux/flux-instance.yaml
+kubectl -n flux-system wait --for=condition=Ready fluxinstance/flux --timeout=300s
+kubectl apply -k gitops/flux/bootstrap
+```
+
+Flux Operator installation itself is pinned in `hack/lab/gitops/flux.py` by chart digest and image
+digest. The static FluxInstance pins the controller distribution to `2.10.0`; that distribution
+renders its controller images with digests.
+
+## Follow the dependency graph
+
+```text
+Public GitRepository
+  ├─ openbao Kustomization → official OpenBao chart + shared values
+  ├─ operator Kustomization → published operator OCI chart
+  └─ config Kustomization, after both dependencies are healthy
+       → OpenBaoServer, connection, root and child namespace CRs
+```
+
+The operator HelmRelease uses an OCI chart source instead of a chart path inside Git:
 
 ```yaml
 apiVersion: helm.toolkit.fluxcd.io/v2
@@ -82,95 +106,57 @@ metadata:
   name: openbao-config-operator
   namespace: flux-system
 spec:
-  interval: 10s
-  releaseName: openbao-config-operator
+  interval: 1m
   targetNamespace: openbao-config-operator-system
   serviceAccountName: platform-reconciler
-  chart:
-    spec:
-      chart: ./operator
-      sourceRef:
-        kind: GitRepository
-        name: flux-system
-      reconcileStrategy: Revision
-      interval: 10s
+  chartRef:
+    kind: OCIRepository
+    name: operator-chart
   install:
     createNamespace: true
     strategy:
       name: RetryOnFailure
-      retryInterval: 10s
-  upgrade:
-    strategy:
-      name: RetryOnFailure
-      retryInterval: 10s
+      retryInterval: 30s
   driftDetection:
     mode: enabled
 ```
 
-The runner adds image values identifying the locally built image and clears `image.digest`, so
-an existing chart image pin cannot override the tested build. `reconcileStrategy: Revision`
-ensures a chart change is consumed even when its chart version is unchanged.
+The OCIRepository pins the published `0.4.0` chart by digest. The HelmRelease retains its release
+image pin. OpenBao uses official chart `0.30.7`; its `valuesFrom` reads the ConfigMap generated
+from `gitops/openbao/values.yaml`.
 
-The configuration dependency gate is a separate Kustomization:
+The config Kustomization declares `dependsOn` for both infrastructure layers and `wait: true`.
+Its custom health expressions require current-generation `Ready=True` and `Synced=True` for
+managed configuration; OpenBaoServer and OpenBaoConnection require current-generation Ready.
+A current-generation `Synced=False` reconciliation error is unhealthy even if an older Ready
+condition remains True. The executable CEL tests evaluate those cases against the checked-in YAML.
 
-```yaml
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: config
-  namespace: flux-system
-spec:
-  interval: 10s
-  retryInterval: 5s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./config
-  serviceAccountName: config-reconciler
-  dependsOn:
-    - name: openbao
-    - name: operator
-  prune: true
-  wait: true
-  timeout: 5m
-  healthCheckExprs:
-    - apiVersion: sys.openbaoconfig.io/v1alpha1
-      kind: Policy
-      current: >-
-        has(status.conditions) &&
-        status.conditions.exists(c, c.type == 'Ready' && c.status == 'True' &&
-          c.observedGeneration == metadata.generation) &&
-        status.conditions.exists(c, c.type == 'Synced' && c.status == 'True' &&
-          c.observedGeneration == metadata.generation)
-```
+## Understand what the smoke test proves
 
-The executable fixture adds equivalent checks for every managed kind and Ready-only checks for
-OpenBaoServer and OpenBaoConnection. It also recognises a current-generation reconciliation error
-as failed health. A stale Ready condition does not satisfy the gate.
+The test requires a healthy source and the selected Git revision at each Kustomization. It checks
+root and child namespace objects through the real OpenBao API, AppRole permissions, transit
+round trips, Kubernetes drift repair by Flux, and OpenBao drift repair by the configuration
+operator.
 
-## Interpret the evidence
+It does not commit changes to the public repository. Git update, invalid-commit recovery and
+Git removal/prune are not automated by this credential-free smoke test. To exercise those
+workflows, use your own fork and commit changes there.
 
-The regression waits for the exact Git revision and healthy Flux resources, then reads the live
-OpenBao API to verify root and child namespace policies, mounts, auth roles and transit keys.
-It tests Git policy updates, Kubernetes and OpenBao drift repair, failed configuration health and
-recovery, and removal of two policies with different deletion policies.
+`prune: true` controls deletion of Kubernetes resources removed from Git. The operator's separate
+`deletionPolicy` controls their OpenBao counterparts: `Delete` removes a supported remote object;
+`Orphan` retains it. The checked-in fixtures illustrate both choices without claiming the smoke
+test performs a public Git deletion.
 
-Flux `prune: true` deletes the Kubernetes object. The operator's `deletionPolicy` independently
-determines whether its OpenBao object is removed: `Delete` removes the test policy; `Orphan`
-retains it. Flux inventory alone does not prove either OpenBao outcome.
+## Review the trust boundary
 
-## Understand the trust boundary
+The platform reconciler has cluster-admin permission because it installs CRDs, cluster RBAC and
+server infrastructure. The bootstrap and platform repository are administrator trust boundaries.
+The configuration reconciler has permissions for the tested operator API groups and ConfigMaps
+only in `obco-gitops`, plus cluster permission for OpenBaoServer resources. It cannot read
+Kubernetes Secrets or create arbitrary cluster resources. This example is not proof of hostile
+multi-tenant Git isolation.
 
-The platform reconciler has cluster-admin permission because it installs the operator's CRDs,
-cluster RBAC and server resources. That account and the Flux bootstrap are platform-admin
-boundaries; this fixture does not prove hostile multi-tenant Git isolation.
-
-The configuration reconciler has namespaced permissions only for the tested operator API groups
-and ConfigMaps in `obco-gitops`, plus cluster permission for OpenBaoServer resources. It cannot
-read Kubernetes Secrets or create arbitrary cluster resources. Runtime credentials stay in
-Kubernetes Secrets and are never committed to the Git fixture.
-
-For production patterns, see [the Flux guide](../guides/flux.md), the official
+See the [Flux guide](../guides/flux.md), official
 [Flux Operator installation guide](https://fluxoperator.dev/docs/installation/),
-[Kustomization health checks](https://fluxcd.io/flux/components/kustomize/kustomizations/#health-check-expressions)
-and [HelmRelease chart reconciliation](https://fluxcd.io/flux/components/helm/helmreleases/#chart-template).
+[Kustomization health expressions](https://fluxcd.io/flux/components/kustomize/kustomizations/#health-check-expressions)
+and [HelmRelease chart references](https://fluxcd.io/flux/components/helm/helmreleases/#chart-reference).

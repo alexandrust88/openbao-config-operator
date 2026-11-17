@@ -1,0 +1,30 @@
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoServer
+metadata:
+  name: gitops-openbao
+spec:
+  address: https://openbao-active.openbao.svc:8200
+  caBundle:
+    configMapRef:
+      name: openbao-ca
+      namespace: obco-gitops
+      key: ca.crt
+  allowedNamespaces:
+    matchLabels:
+      kubernetes.io/metadata.name: obco-gitops
+  allowedAudiences:
+    - openbao
+---
+apiVersion: core.openbaoconfig.io/v1alpha1
+kind: OpenBaoConnection
+metadata:
+  name: gitops-openbao
+  namespace: obco-gitops
+spec:
+  serverRef:
+    name: gitops-openbao
+  auth:
+    token:
+      secretRef:
+        name: gitops-bootstrap
+        key: token

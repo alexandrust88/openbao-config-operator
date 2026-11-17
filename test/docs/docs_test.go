@@ -34,6 +34,7 @@ var root = filepath.Join("..", "..")
 // group the API server does not serve fails.
 var thirdPartyGroups = map[string]bool{
 	"fluxcd.controlplane.io":      true,
+	"source.toolkit.fluxcd.io":    true,
 	"helm.toolkit.fluxcd.io":      true,
 	"kustomize.toolkit.fluxcd.io": true,
 	"policies.kyverno.io":         true,

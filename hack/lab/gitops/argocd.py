@@ -1,23 +1,16 @@
-"""Reconcile a real Argo CD app-of-apps hierarchy in the disposable GitOps lab."""
-import hashlib
+"""Install Argo CD with Helm and reconcile checked-in public GitOps examples."""
 import json
-import re
 import subprocess
-import textwrap
 import time
-import urllib.request
 
 import common
 
-# Update the upstream manifest checksum and verified image digests together.
-VERSION = 'v3.6.1'
-MANIFEST_SHA256 = '0b38189d6e1fd76ef5c3db10355026c48a02020d82bf21a1a1b5ab16dffe4f3c'
-IMAGES = {
-    'quay.io/argoproj/argocd:v3.6.1': 'sha256:296e3d74f449b2ce45265613fcb68c18ed7366488360c8ea32f5f2a93d2e5c54',
-    'public.ecr.aws/docker/library/redis:8.10.1-alpine': 'sha256:ef216d85ec44f4fdf7c0e6df2d1757a4734ed32fbb278cabd3181b5a27353b79',
-}
 NAMESPACE = 'argocd'
-SERVER = 'https://kubernetes.default.svc'
+# renovate: datasource=helm depName=argo-cd registryUrl=https://argoproj.github.io/argo-helm
+CHART_VERSION = '10.18.0'
+CHART_REPOSITORY = 'https://argoproj.github.io/argo-helm'
+PUBLIC_REPOSITORY = 'https://github.com/alexandrust88/openbao-config-operator.git'
+EXAMPLES = common.ROOT / 'gitops/argocd'
 APPLICATION_HEALTH = '''local hs = {status = "Progressing", message = "Waiting for child Application sync and health"}
 if obj.status == nil then return hs end
 if obj.status.operationState ~= nil and obj.status.operationState.phase == "Failed" then
@@ -31,83 +24,33 @@ return hs
 '''
 
 
-def obj(kind, name, spec):
-    return {'apiVersion': 'argoproj.io/v1alpha1', 'kind': kind,
-            'metadata': {'name': name, 'namespace': NAMESPACE}, 'spec': spec}
+def read_object(path):
+    """Read the checked-in example using the shared, pinned YAML tool."""
+    return common.load_yaml(path)
 
 
-def allow(group, *kinds):
-    return [{'group': group, 'kind': kind} for kind in kinds]
-
-
-def project(name, repo, namespace, namespaced, cluster=()):
-    return obj('AppProject', name, {'sourceRepos': [repo],
-        'destinations': [{'server': SERVER, 'namespace': namespace}],
-        'namespaceResourceWhitelist': namespaced, 'clusterResourceWhitelist': list(cluster),
-        'orphanedResources': {'warn': False}})
-
-
-def projects(h):
-    return [project('gitops-root', h.repo.url, NAMESPACE, allow('argoproj.io', 'Application')),
-        project('gitops-openbao', h.repo.url, 'openbao',
-                allow('', 'ConfigMap', 'Service', 'ServiceAccount') + allow('apps', 'StatefulSet') +
-                allow('rbac.authorization.k8s.io', 'Role', 'RoleBinding') + allow('policy', 'PodDisruptionBudget'), allow('', 'Namespace')),
-        project('gitops-operator', h.repo.url, 'openbao-config-operator-system',
-                allow('', 'Service', 'ServiceAccount', 'Secret', 'ConfigMap') + allow('apps', 'Deployment') +
-                allow('rbac.authorization.k8s.io', 'Role', 'RoleBinding') + allow('policy', 'PodDisruptionBudget') +
-                allow('networking.k8s.io', 'NetworkPolicy'),
-                allow('', 'Namespace') + allow('apiextensions.k8s.io', 'CustomResourceDefinition') +
-                allow('rbac.authorization.k8s.io', 'ClusterRole', 'ClusterRoleBinding')),
-        project('gitops-config', h.repo.url, h.namespace,
-                allow('', 'ConfigMap') + allow('core.openbaoconfig.io', 'OpenBaoConnection') +
-                [item for kind, group in common.GROUPS.items() for item in allow(group + '.openbaoconfig.io', kind)],
-                allow('core.openbaoconfig.io', 'OpenBaoServer'))]
-
-
-def application(name, project_name, repo, path, namespace, wave=None, helm=None):
-    source = {'repoURL': repo, 'targetRevision': 'main', 'path': path}
-    if helm is not None:
-        source['helm'] = {'releaseName': 'openbao-config-operator', 'valuesObject': helm}
-    app = obj('Application', name, {'project': project_name, 'source': source,
-        'destination': {'server': SERVER, 'namespace': namespace},
-        'syncPolicy': {'automated': {'prune': True, 'selfHeal': True},
-            'retry': {'limit': 8, 'backoff': {'duration': '5s', 'factor': 2, 'maxDuration': '30s'}},
-            'syncOptions': ['CreateNamespace=true', 'ServerSideApply=true', 'PruneLast=true']}})
-    if wave is not None:
-        app['metadata']['annotations'] = {'argocd.argoproj.io/sync-wave': str(wave)}
+def root_application(repository=PUBLIC_REPOSITORY, revision='main'):
+    app = read_object(EXAMPLES / 'root.yaml')
+    app['spec']['source']['repoURL'] = repository
+    app['spec']['source']['targetRevision'] = revision
+    patches = []
+    for name in ('gitops-openbao', 'gitops-operator', 'gitops-config'):
+        indices = (1, 2) if name == 'gitops-openbao' else (1,)
+        paths = [f'/spec/sources/{index}' for index in indices] if name != 'gitops-config' else ['/spec/source']
+        operations = [{'op': 'replace', 'path': path + '/' + field, 'value': value}
+                      for path in paths for field, value in (('repoURL', repository), ('targetRevision', revision))]
+        patches.append({'target': {'kind': 'Application', 'name': name}, 'patch': json.dumps(operations)})
+    app['spec']['source']['kustomize'] = {'patches': patches}
     return app
 
 
-def manifests(h):
-    children = [application('gitops-openbao', 'gitops-openbao', h.repo.url, 'openbao', 'openbao', 0),
-                application('gitops-operator', 'gitops-operator', h.repo.url, 'operator', 'openbao-config-operator-system', 10, h.operator_values),
-                application('gitops-config', 'gitops-config', h.repo.url, 'config', h.namespace, 20)]
-    root = application('gitops-root', 'gitops-root', h.repo.url, 'argocd/root', NAMESPACE)
-    return children, root
-
-
-def pinned_manifest(raw):
-    if hashlib.sha256(raw).hexdigest() != MANIFEST_SHA256:
-        raise RuntimeError('Argo CD install manifest checksum differs from the pinned release')
-    source = raw.decode()
-    images = set(re.findall(r'^\s+image: (\S+)\s*$', source, re.MULTILINE))
-    if images != set(IMAGES):
-        raise RuntimeError('Argo CD install image inventory differs from verified pins')
-    for image, digest in IMAGES.items():
-        source = source.replace('image: ' + image, 'image: ' + image + '@' + digest)
-    return source
-
-
 def bootstrap_command(h, stage, *args, data=None):
-    """Report a fixed bootstrap stage, never manifests or arbitrary API responses."""
     try:
         result = subprocess.run(['kubectl', '--context', h.context, *args], input=data,
                                 text=True, capture_output=True, timeout=360)
     except subprocess.TimeoutExpired:
         raise RuntimeError(f'Argo CD bootstrap {stage} failed (command timeout)') from None
     if result.returncode:
-        # Only known error categories are exposed: kubectl can include request
-        # bodies in errors, so forwarding stderr would risk disclosing Secrets.
         categories = ('Conflict', 'NotFound', 'Forbidden', 'Invalid',
                       'no matches for kind', 'timed out', 'connection refused')
         category = next((value for value in categories if value.lower() in result.stderr.lower()), 'unclassified')
@@ -116,37 +59,38 @@ def bootstrap_command(h, stage, *args, data=None):
 
 
 def install(h):
-    h.apply({'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': NAMESPACE}})
-    url = f'https://raw.githubusercontent.com/argoproj/argo-cd/{VERSION}/manifests/core-install.yaml'
-    with urllib.request.urlopen(url, timeout=60) as response:
-        manifest = pinned_manifest(response.read())
-    bootstrap_command(h, 'install pinned controller manifest', '-n', NAMESPACE, 'apply', '--server-side', '-f', '-', data=manifest)
+    helm = str(common.ROOT / 'bin/helm')
+    common.run([helm, 'repo', 'add', 'argo', CHART_REPOSITORY, '--force-update'])
+    common.run([helm, 'repo', 'update', 'argo'])
+    common.run([helm, 'upgrade', '--install', 'argocd', 'argo/argo-cd',
+                '--version', CHART_VERSION, '--kube-context', h.context,
+                '--namespace', NAMESPACE, '--create-namespace', '--values', str(EXAMPLES / 'values/argocd.yaml'),
+                '--wait', '--timeout', '10m'], timeout=660)
     for crd in ('applications.argoproj.io', 'appprojects.argoproj.io'):
         bootstrap_command(h, 'establish ' + crd, 'wait', '--for=condition=Established', 'crd/' + crd, '--timeout=90s')
-    health = (common.ROOT / 'docs/guides/argocd-cm-health.yaml').read_text()
-    customizations = textwrap.dedent(health.split('  resource.customizations: |\n', 1)[1])
-    bootstrap_command(h, 'configure health checks', '-n', NAMESPACE, 'patch', 'configmap', 'argocd-cm', '--type=merge', '-p', json.dumps({'data': {
-        'resource.customizations': customizations,
-        'resource.customizations.health.argoproj.io_Application': APPLICATION_HEALTH,
-        'timeout.reconciliation': '15s', 'timeout.reconciliation.jitter': '0s',
-        'application.resourceTrackingMethod': 'annotation'}}))
-    for workload in ('deployment/argocd-redis', 'deployment/argocd-repo-server', 'statefulset/argocd-application-controller'):
-        bootstrap_command(h, 'rollout ' + workload, '-n', NAMESPACE, 'rollout', 'status', workload, '--timeout=300s')
-    h.apply(projects(h))
-    children, root = manifests(h)
-    common.write_json(h.repo.path / 'argocd/root/applications.json', {'apiVersion': 'v1', 'kind': 'List', 'items': children})
-    common.write_json(h.repo.path / 'argocd/root/kustomization.yaml', {'apiVersion': 'kustomize.config.k8s.io/v1beta1', 'kind': 'Kustomization', 'resources': ['applications.json']})
-    h.repo.commit('Declare Argo CD root and ordered child Applications')
-    h.apply(root)
+    for path in sorted((EXAMPLES / 'projects').glob('gitops-*.yaml')):
+        project = read_object(path)
+        project['spec']['sourceRepos'] = [h.public_url if url == PUBLIC_REPOSITORY else url
+                                         for url in project['spec']['sourceRepos']]
+        h.apply(project)
+    h.apply(root_application(h.public_url, h.revision))
     h._argocd_initial_order_verified = False
-    print('Argo CD bootstrapped; OpenBao, operator and configuration are declared only in Git')
+    print('Argo CD Helm server and UI ready; Applications use public Git and published charts')
 
 
 def synced(app, revision):
     status = app.get('status', {})
-    return (status.get('sync', {}).get('status') == 'Synced' and status.get('sync', {}).get('revision') == revision
+    sync = status.get('sync', {})
+    if app.get('spec', {}).get('sources'):
+        sources = app['spec']['sources']
+        revisions = sync.get('revisions', [])
+        current = (len(sources) == len(revisions) and
+                   all(actual == (source['targetRevision'] if source.get('chart') else revision)
+                       for source, actual in zip(sources, revisions)))
+    else:
+        current = sync.get('revision') == revision
+    return (sync.get('status') == 'Synced' and current
             and status.get('health', {}).get('status') == 'Healthy')
-
 
 def wait(h, revision, phase='all'):
     if phase not in ('all', 'infrastructure'):
@@ -184,15 +128,3 @@ def verify_order(apps):
         # Creation order is durable across later Git updates and self-heal passes.
         if apps[current]['metadata']['creationTimestamp'] < apps[previous]['metadata']['creationTimestamp']:
             raise RuntimeError('Argo CD child creation order violated its sync waves')
-
-
-def assert_unhealthy(h, revision):
-    def degraded():
-        app = h.get('application', 'gitops-config', NAMESPACE)
-        status = app.get('status', {})
-        h.kubectl('-n', NAMESPACE, 'annotate', 'application', 'gitops-config', 'argocd.argoproj.io/refresh=hard', '--overwrite')
-        return (status.get('sync', {}).get('revision') == revision and
-                status.get('sync', {}).get('status') == 'Synced' and
-                status.get('health', {}).get('status') == 'Degraded')
-    common.eventually(degraded, 'Argo CD reports current Git configuration Degraded', timeout=180)
-    print('Argo CD rejected invalid configuration health at the expected Git revision')

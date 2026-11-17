@@ -110,26 +110,26 @@ Cloud plugins requiring accounts or credentials remain outside this lab's live c
 
 ## GitOps delivery regression
 
-`make lab-argocd` and `make lab-flux` each create a fresh kind cluster, build the current operator
-image, and run the same regression through a real GitOps controller. They do not need a hosted
-Git account: a disposable smart-HTTP Git server holds the test repository inside the cluster.
-The `GitOps regression` workflow runs these exact commands in separate jobs on relevant pull
-requests, weekly and on manual dispatch. Its live controllers validate their third-party resources;
-the documentation envtest suite checks those examples as YAML because it installs only this
-operator’s CRDs.
+`make lab-argocd` and `make lab-flux` each create a fresh kind cluster and deploy the
+checked-in `gitops/` examples. Argo CD is installed from its Helm repository with its server UI;
+Flux uses Flux Operator. Both read the public GitHub repository and install published OpenBao
+and operator Helm charts. Neither requires Git credentials or a private Git service.
 
-The controllers deploy OpenBao and the operator from Git before reconciling root and child
-namespace configuration. The tests then grant KV metadata listing through a Git policy change, reject and repair an invalid
-policy, introduce Kubernetes and OpenBao drift, and remove policies from Git to verify `Delete`
-and `Orphan` separately. Readiness must
-refer to the current generation and source revision. Live requests verify the resulting OpenBao
-policies, authentication and transit operations; a green GitOps resource alone is insufficient.
+The `GitOps regression` workflow runs these commands on relevant pull requests, weekly and on
+manual dispatch. CI pins Git sources to the pull request's public head commit. The chart versions
+are pinned separately: this verifies released-chart deployment, not an unpublished manager build.
+The ordinary operator e2e suite continues to test the current source build.
 
-TLS and initial credentials are generated outside Git. This is a disposable integration fixture,
-not a production Git hosting or OpenBao bootstrap design. The tests do not cover Git provider
-webhooks, SSO for GitOps dashboards or multi-cluster promotion. See the
-[Argo CD app-of-apps lab](../how-to/argocd-lab.md) and
-[Flux delivery lab](../how-to/flux-lab.md) for commands, dependency graphs and production boundaries.
+Live requests check root and child namespace policies, AppRole permissions and transit operations.
+The tests introduce Kubernetes and OpenBao drift and check that the corresponding controllers
+restore the declared state. Readiness must refer to the current generation and expected source
+revision. The examples are rendered and their operator resources validated against CRDs before
+cluster testing.
+
+TLS and initial credentials are generated outside Git. No test pushes commits to the public
+repository, so this suite does not claim Git-update, Git-prune or promotion coverage. It also does
+not test dashboard SSO. See the [Argo CD app-of-apps guide](../how-to/argocd-lab.md) and
+[Flux guide](../how-to/flux-lab.md) for values, manifests and deployment commands.
 
 ## Scoped checks
 

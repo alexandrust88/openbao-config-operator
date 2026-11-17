@@ -1,0 +1,87 @@
+# Disposable kind demonstration: static unseal material is generated outside Git.
+global:
+  tlsDisable: false
+injector:
+  enabled: false
+server:
+  image:
+    registry: ghcr.io
+    repository: openbao/openbao
+    tag: 2.7.2@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f
+  affinity: ""
+  podManagementPolicy: Parallel
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 512Mi}
+  extraEnvironmentVars:
+    BAO_CACERT: /openbao/tls/ca.crt
+    BAO_TLS_SERVER_NAME: openbao-active.openbao.svc
+  extraSecretEnvironmentVars:
+    - envName: BAO_SEAL_KEY
+      secretName: openbao-e2e
+      secretKey: seal-key
+    - envName: E2E_TOKEN
+      secretName: openbao-e2e
+      secretKey: token
+  # Only ordinal zero initializes; other replicas join that raft cluster.
+  extraArgs: >-
+    $(if [ "${HOSTNAME##*-}" = "0" ]; then printf '%s' '-config=/openbao/bootstrap/init.hcl'; fi)
+  volumes:
+    - name: bootstrap
+      configMap:
+        name: gitops-openbao-init
+    - name: tls
+      secret:
+        secretName: openbao-tls
+  volumeMounts:
+    - name: bootstrap
+      mountPath: /openbao/bootstrap
+      readOnly: true
+    - name: tls
+      mountPath: /openbao/tls
+      readOnly: true
+  readinessProbe:
+    enabled: true
+    path: /v1/sys/health?standbyok=true
+  dataStorage:
+    enabled: true
+    size: 1Gi
+    storageClass: standard
+  standalone:
+    enabled: false
+  ha:
+    apiAddr: https://$(BAO_K8S_POD_NAME).openbao-internal:8200
+    enabled: true
+    replicas: 3
+    raft:
+      enabled: true
+      setNodeId: true
+      config: |
+        disable_mlock = true
+        ui = true
+        listener "tcp" {
+          address = "0.0.0.0:8200"
+          cluster_address = "0.0.0.0:8201"
+          tls_cert_file = "/openbao/tls/tls.crt"
+          tls_key_file = "/openbao/tls/tls.key"
+        }
+        storage "raft" {
+          path = "/openbao/data"
+          retry_join {
+            leader_api_addr = "https://openbao-0.openbao-internal:8200"
+            leader_ca_cert_file = "/openbao/tls/ca.crt"
+          }
+          retry_join {
+            leader_api_addr = "https://openbao-1.openbao-internal:8200"
+            leader_ca_cert_file = "/openbao/tls/ca.crt"
+          }
+          retry_join {
+            leader_api_addr = "https://openbao-2.openbao-internal:8200"
+            leader_ca_cert_file = "/openbao/tls/ca.crt"
+          }
+        }
+        service_registration "kubernetes" {}
+        seal "static" {
+          current_key_id = "gitops-lab"
+          current_key = "env://BAO_SEAL_KEY"
+        }
