@@ -255,10 +255,10 @@
       "customType": "regex",
       "description": "Flux distribution used by the GitOps regression",
       "managerFilePatterns": [
-        "/^hack/lab/gitops/flux\\.py$/"
+        "/^gitops/flux/flux-instance\\.yaml$/"
       ],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>fluxcd/flux2)\\nFLUX_VERSION = '(?<currentValue>[^']+)'"
+        "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>fluxcd/flux2)\\n\\s+version: (?<currentValue>[^\\s]+)"
       ]
     }
   ],
@@ -267,8 +267,17 @@
       "/^hack/lab/eso-values\\.yaml$/",
       "/^hack/lab/zitadel/values\\.yaml$/",
       "/^hack/lab/authentik/values\\.yaml$/",
-      "/^gitops/.*/values(?:/.*)?\\.yaml$/",
-      "/^gitops/argocd/values/.*\\.yaml$/"
+      "/^gitops/.*/values(?:/.*)?\\.yaml$/"
+    ]
+  },
+  "argocd": {
+    "managerFilePatterns": [
+      "/^gitops/argocd/applications/.*\\.yaml$/"
+    ]
+  },
+  "flux": {
+    "managerFilePatterns": [
+      "/^gitops/flux/.*\\.yaml$/"
     ]
   }
 }

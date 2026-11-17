@@ -93,6 +93,8 @@ class ArgoTests(unittest.TestCase):
         self.assertNotIn('private', str(error.exception))
 
     def test_child_application_health_requires_both_sync_and_health(self):
+        values = argocd.common.load_yaml(argocd.EXAMPLES / 'values/argocd.yaml')
+        source = values['configs']['cm']['resource.customizations.health.argoproj.io_Application']
         cases = [('{}', 'Progressing'),
                  ('{status={sync={status="Synced"},health={}}}', 'Progressing'),
                  ('{status={sync={status="OutOfSync"},health={status="Healthy"}}}', 'Progressing'),
@@ -101,13 +103,16 @@ class ArgoTests(unittest.TestCase):
                  ('{status={operationState={phase="Failed"}}}', 'Degraded')]
         for value, expected in cases:
             with self.subTest(value=value):
-                script = 'obj=' + value + '\nlocal function health()\n' + argocd.APPLICATION_HEALTH + '\nend\nprint(health().status)'
+                script = 'obj=' + value + '\nlocal function health()\n' + source + '\nend\nprint(health().status)'
                 result = subprocess.run(['lua', '-'], input=script, text=True, capture_output=True, check=True)
                 self.assertEqual(result.stdout.strip(), expected)
 
     def test_operator_health_reports_current_failure_before_stale_ready(self):
         text = (argocd.common.ROOT / 'docs/guides/argocd-cm-health.yaml').read_text()
-        source = textwrap.dedent(text.split('      health.lua: |\n', 1)[1])
+        canonical = textwrap.dedent(text.split('      health.lua: |\n', 1)[1])
+        values = argocd.common.load_yaml(argocd.EXAMPLES / 'values/argocd.yaml')
+        source = textwrap.dedent(values['configs']['cm']['resource.customizations'].split('health.lua: |\n', 1)[1])
+        self.assertEqual(source.strip(), canonical.strip())
         cases = [
             ('{metadata={generation=2},status={observedGeneration=1,conditions={{type="Ready",status="True",observedGeneration=1},{type="Synced",status="False",reason="ReconcileError",observedGeneration=2}}}}', 'Degraded'),
             ('{metadata={generation=3},status={observedGeneration=1,conditions={{type="Ready",status="True",observedGeneration=1},{type="Synced",status="False",reason="ReconcileError",observedGeneration=2}}}}', 'Progressing'),

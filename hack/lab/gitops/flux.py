@@ -8,8 +8,6 @@ import common
 # Update the operator chart version and CHART_DIGEST together after verification.
 OPERATOR_VERSION = '0.62.1'
 OPERATOR_DIGEST = 'sha256:1d09a3f96524d0895fb11e8072d84a3dd029cecdec0f869efa371be6b001469c'
-# renovate: datasource=github-releases depName=fluxcd/flux2
-FLUX_VERSION = '2.10.0'
 # Update the chart release and its verified OCI digest together.
 CHART_DIGEST = 'sha256:1135514a01cc11e206f5ff0b568ac30d9defd675022b7a9da88d4a3474fbdf13'
 NAMESPACE = 'flux-system'

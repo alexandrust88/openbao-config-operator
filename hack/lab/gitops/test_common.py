@@ -1,5 +1,9 @@
 """Check public-source trust boundaries and real static configuration contracts."""
 import importlib.util
+import io
+import urllib.request
+import urllib.response
+from email.message import Message
 import os
 import subprocess
 from pathlib import Path
@@ -9,6 +13,35 @@ from unittest.mock import patch
 spec = importlib.util.spec_from_file_location('gitops_common', Path(__file__).with_name('common.py'))
 common = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(common)
+
+
+class BaoRedirectTests(unittest.TestCase):
+    def test_redirects_return_error_without_forwarding_token(self):
+        class RedirectEndpoint(urllib.request.HTTPSHandler):
+            handler_order = 100
+
+            def __init__(self, code):
+                super().__init__()
+                self.code = code
+                self.requests = []
+
+            def https_open(self, request):
+                self.requests.append(request)
+                headers = Message()
+                headers['Location'] = 'https://foreign.example.invalid/collect'
+                response = urllib.response.addinfourl(io.BytesIO(b''), headers, request.full_url, self.code)
+                response.msg = 'Redirect'
+                return response
+
+        for code in (301, 302, 303, 307, 308):
+            with self.subTest(code=code), patch.object(common.ssl, 'create_default_context', return_value=None):
+                bao = common.Bao(12345, 'unused-test-ca', 'FAKE-TEST-TOKEN')
+                endpoint = RedirectEndpoint(code)
+                bao.opener.add_handler(endpoint)
+                self.assertEqual(bao.request('root', 'GET', 'probe'), (code, {}))
+                self.assertEqual(len(endpoint.requests), 1)
+                self.assertEqual(endpoint.requests[0].full_url, 'https://127.0.0.1:12345/v1/probe')
+                self.assertEqual(endpoint.requests[0].get_header('X-vault-token'), 'FAKE-TEST-TOKEN')
 
 
 class FixtureTests(unittest.TestCase):

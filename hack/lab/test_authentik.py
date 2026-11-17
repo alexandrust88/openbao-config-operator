@@ -2,6 +2,7 @@
 import io
 import json
 import os
+import subprocess
 import unittest
 import urllib.error
 from unittest.mock import Mock, patch
@@ -55,6 +56,28 @@ class AuthentikTests(unittest.TestCase):
                          {str(index + 1) for index, (_, path, body) in enumerate(api.calls)
                           if path == '/api/v3/core/users/' and body.get('type') == 'service_account'})
         self.assertTrue(all(token['intent'] == 'app_password' for token in tokens))
+
+    def test_static_values_pin_image_and_keep_credentials_outside_chart(self):
+        yq = os.environ.get('YQ') or str(authentik.identity.ROOT / 'bin/yq')
+        values = json.loads(subprocess.check_output([yq, '-o=json', '.', str(authentik.VALUES_FILE)], text=True))
+        image = values['global']['image']
+        self.assertEqual(image['repository'], 'ghcr.io/goauthentik/server')
+        self.assertRegex(image['tag'], r'^\d+\.\d+\.\d+$')
+        self.assertRegex(image['digest'], r'^sha256:[0-9a-f]{64}$')
+        self.assertEqual(values['authentik']['existingSecret']['secretName'], 'authentik-config')
+        self.assertFalse(values['postgresql']['enabled'])
+        for workload in ('server', 'worker'):
+            self.assertIs(values[workload]['automountServiceAccountToken'], False)
+        forbidden = {'password', 'secret_key', 'bootstrap_password', 'bootstrap_token'}
+        def check_no_inline_credentials(value):
+            if isinstance(value, dict):
+                self.assertFalse(forbidden & set(value))
+                for child in value.values():
+                    check_no_inline_credentials(child)
+            elif isinstance(value, list):
+                for child in value:
+                    check_no_inline_credentials(child)
+        check_no_inline_credentials(values)
 
     def test_install_uses_pinned_helm_or_explicit_override(self):
         for configured, expected in (('', str(authentik.identity.ROOT / 'bin/helm')), ('/fixture/helm', '/fixture/helm')):

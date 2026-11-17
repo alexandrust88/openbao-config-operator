@@ -11,18 +11,6 @@ CHART_VERSION = '10.18.0'
 CHART_REPOSITORY = 'https://argoproj.github.io/argo-helm'
 PUBLIC_REPOSITORY = 'https://github.com/alexandrust88/openbao-config-operator.git'
 EXAMPLES = common.ROOT / 'gitops/argocd'
-APPLICATION_HEALTH = '''local hs = {status = "Progressing", message = "Waiting for child Application sync and health"}
-if obj.status == nil then return hs end
-if obj.status.operationState ~= nil and obj.status.operationState.phase == "Failed" then
-  return {status = "Degraded", message = "Child sync failed"}
-end
-if obj.status.sync ~= nil and obj.status.sync.status == "Synced" and obj.status.health ~= nil then
-  hs.status = obj.status.health.status or "Progressing"
-  hs.message = obj.status.health.message or "Child Application health"
-end
-return hs
-'''
-
 
 def read_object(path):
     """Read the checked-in example using the shared, pinned YAML tool."""

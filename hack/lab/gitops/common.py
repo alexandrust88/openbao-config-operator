@@ -20,7 +20,6 @@ sys.path.insert(0, str(ROOT / 'hack/lab'))
 import identity
 
 NAMESPACE = 'obco-gitops'
-CONNECTION = 'gitops-openbao'
 
 
 def run(args, data=None, cwd=None, timeout=360):
@@ -114,11 +113,18 @@ class Harness:
             eventually(ready, 'current-generation Ready ' + obj['metadata']['name'])
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # A redirect must never forward the privileged lab token to another endpoint.
+        return None
+
+
 class Bao:
     def __init__(self, port, ca, token):
         self.address = f'https://127.0.0.1:{port}/v1/'
         self.token = token
-        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context(cadata=ca)))
+        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(),
+                                                  urllib.request.HTTPSHandler(context=ssl.create_default_context(cadata=ca)))
 
     def request(self, tenant, method, path, payload=None, token=None):
         headers = {'X-Vault-Token': self.token if token is None else token, 'Content-Type': 'application/json'}
@@ -135,7 +141,7 @@ class Bao:
             raise RuntimeError('OpenBao request failed; response withheld') from None
 
 
-def assert_live(h, bao):
+def assert_live(bao):
     for tenant in ('root', 'child'):
         status, body = bao.request(tenant, 'GET', 'sys/policies/acl/gitops-reader')
         if status != 200 or body.get('data', {}).get('policy') != policy():
@@ -183,7 +189,7 @@ def assert_role_access(bao, tenant):
 
 def regression(h, provider, bao):
     h.wait_resources()
-    assert_live(h, bao)
+    assert_live(bao)
     for tenant in ('root', 'child'):
         assert_role_access(bao, tenant)
     print('Public Git configuration: root/tenant auth, ACL denials and transit round trips passed', flush=True)
@@ -197,7 +203,7 @@ def regression(h, provider, bao):
     eventually(lambda: all(bao.request(t, 'GET', 'sys/policies/acl/gitops-reader')[1].get('data', {}).get('policy') == policy() for t in ('root', 'child')), 'operator OpenBao drift repair')
     h.wait_resources()
     provider.wait(h, h.revision, phase='all')
-    assert_live(h, bao)
+    assert_live(bao)
     print('Kubernetes and OpenBao drift repaired from the unchanged public Git revision', flush=True)
 
 
