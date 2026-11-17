@@ -33,6 +33,8 @@ var root = filepath.Join("..", "..")
 // CRDs are not installed, so these manifests are only checked to be valid YAML with apiVersion and kind; any other
 // group the API server does not serve fails.
 var thirdPartyGroups = map[string]bool{
+	// The live ESO lab validates ExternalSecret projection against the installed ESO CRDs.
+	"external-secrets.io":         true,
 	"fluxcd.controlplane.io":      true,
 	"source.toolkit.fluxcd.io":    true,
 	"helm.toolkit.fluxcd.io":      true,
@@ -228,7 +230,7 @@ func TestVersionTokens(t *testing.T) {
 }
 
 // TestNoDuplicatedManifests enforces the single-source rule: a page includes an example file with --8<-- instead of
-// repeating it.
+// repeating it. A fence whose title is that file is the visible copy, checked by TestInlinedExampleMatchesFile.
 func TestNoDuplicatedManifests(t *testing.T) {
 	c := collect(t, root)
 	files := map[string]string{}
@@ -238,8 +240,55 @@ func TestNoDuplicatedManifests(t *testing.T) {
 		}
 	}
 	for _, f := range c.yamlFences {
-		if name, ok := files[strings.TrimSpace(f.text)]; ok {
-			t.Errorf("%s:%d: repeats %s; include it with --8<-- \"%s\"", f.file, f.line, name, name)
+		name, ok := files[strings.TrimSpace(f.text)]
+		if !ok {
+			continue
+		}
+		lines := strings.Split(readFile(t, root, f.file), "\n")
+		if f.line >= 2 && strings.Contains(lines[f.line-2], `title="`+name+`"`) {
+			continue
+		}
+		t.Errorf("%s:%d: repeats %s; include it with --8<-- \"%s\"", f.file, f.line, name, name)
+	}
+}
+
+// TestInlinedExampleMatchesFile checks a yaml fence that pastes a repository file instead of including it.
+func TestInlinedExampleMatchesFile(t *testing.T) {
+	title := regexp.MustCompile("(?m)^([ \t]*)(`{3,}|~{3,})[ \t]*ya?ml title=\"([^\"]+)\"[ \t]*$")
+	for _, page := range walk(t, root, "docs", ".md") {
+		text := readFile(t, root, page)
+		for _, m := range title.FindAllStringSubmatchIndex(text, -1) {
+			indent, marker, file := text[m[2]:m[3]], text[m[4]:m[5]], text[m[6]:m[7]]
+			lines := strings.Split(text[m[1]:], "\n")
+			closeAt := -1
+			for i := 1; i < len(lines); i++ {
+				if fenceClosed(lines[i], marker) {
+					closeAt = i
+					break
+				}
+			}
+			if closeAt < 0 {
+				t.Errorf("%s: fence titled %s is not closed", page, file)
+				continue
+			}
+			kept := make([]string, 0, closeAt-1)
+			for _, l := range lines[1:closeAt] {
+				kept = append(kept, strings.TrimPrefix(l, indent))
+			}
+			body := strings.Trim(strings.Join(kept, "\n"), "\n")
+			if strings.Contains(body, "--8<--") {
+				continue
+			}
+			want := strings.Trim(readFile(t, root, file), "\n")
+			if body != want {
+				t.Errorf("%s: fence titled %s differs from that file", page, file)
+			}
 		}
 	}
+}
+
+// fenceClosed reports a markdown fence closer for marker, including one indented inside a tab.
+func fenceClosed(line, marker string) bool {
+	s := strings.TrimSpace(line)
+	return len(s) >= len(marker) && strings.Trim(s, marker[:1]) == ""
 }

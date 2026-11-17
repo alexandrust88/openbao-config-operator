@@ -1,0 +1,8 @@
+configNamespace: obco-lab
+connectionRef: lab-openbao
+provider: postgresql
+tenant: root
+workloadNamespace: obco-db-postgresql
+database:
+  connection: {}
+  role: {}

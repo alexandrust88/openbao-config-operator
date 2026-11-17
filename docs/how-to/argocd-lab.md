@@ -128,3 +128,11 @@ review the operator's [creation and deletion policies](../adr/0004-creation-and-
 
 For reusable health integration, see [Use Argo CD](../guides/argocd.md). For the
 alternative controller, see [the Flux lab](flux-lab.md).
+
+## PostgreSQL configuration Applications
+
+The regression also deploys the shared database configuration chart through separate root and
+child Applications. It checks Argo ownership, current-revision health and actual database
+credentials with limited permissions. See
+[Deliver the configuration with Argo CD](../tutorials/dynamic-database-credentials.md#deliver-the-configuration-with-argo-cd)
+for the checked-in Applications, AppProject and bootstrap boundaries.

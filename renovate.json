@@ -232,9 +232,10 @@
     },
     {
       "customType": "regex",
-      "description": "Digest-pinned self-hosted identity provider lab images",
+      "description": "Digest-pinned identity provider and database lab images",
       "managerFilePatterns": [
-        "/^hack/lab/(?:authentik|zitadel)\\.py$/"
+        "/^hack/lab/(?:authentik|zitadel)\\.py$/",
+        "/^hack/lab/databases/.+\\.py$/"
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>docker) depName=(?<depName>\\S+)\\n[A-Z_]+\\s*=\\s*['\"]\\S+?:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})['\"]"

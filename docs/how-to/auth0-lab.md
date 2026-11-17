@@ -1,5 +1,5 @@
 ---
-description: Prepare an isolated Auth0 tenant for OpenBao browser OIDC and JWT regression tests, including account permissions, CI credentials and cleanup.
+description: Prepare an isolated Auth0 tenant for OpenBao browser OIDC and JWT tests, including account permissions and cleanup.
 ---
 
 # Prepare Auth0 for the OpenBao identity lab
@@ -8,10 +8,8 @@ Use a dedicated Auth0 development tenant to test human authentication and group-
 OpenBao. The provisioning script creates an application and test identities; the operator
 configures OpenBao through custom resources.
 
-The hosted regression passed for the project's test tenants in
-[this CI run](https://github.com/alexandrust88/openbao-config-operator/actions/runs/43950421921).
-Your tenant's quotas, Actions and login policies still determine whether its users can complete
-the same journeys. Use a disposable tenant, not a production identity directory.
+Your tenant's quotas, Actions and login policies decide whether its users can complete the
+journeys. Use a disposable tenant, not a production identity directory.
 
 ## Create a provisioning application
 
@@ -28,8 +26,8 @@ the same journeys. Use a disposable tenant, not a production identity directory.
     delete:clients delete:connections delete:users delete:actions
     ```
 
-    Deletion permissions are required for CI cleanup. A credential used only for local
-    provisioning can omit them, but cleanup will need a credential with the delete permissions.
+    Cleanup needs the delete permissions. A credential used only to create resources can omit
+    them until you remove the lab.
 4. Save the application's client ID and client secret. This administrative application is separate
     from the web application used for human login.
 
@@ -69,24 +67,11 @@ messages. Users are not marked email-verified; complete verification and enrollm
 Keep the credential file and generated state private. The provisioning credential never enters
 Kubernetes; the operator receives only the generated OIDC application's client secret.
 
-## Configure GitHub Actions
+For an unattended browser run, the application's login policy must let the test users sign in
+without an interactive challenge. The suite does not bypass MFA, consent or CAPTCHA, and it does
+not use the password grant.
 
-Create the GitHub environment `auth0-lab`, restrict it to trusted branches, and store the credential
-JSON as its `SAAS_CREDENTIALS_JSON` secret:
-
-```sh
-gh secret set SAAS_CREDENTIALS_JSON --env auth0-lab < "$LAB_DIR/auth0/credentials.json"
-```
-
-Follow [Run the SaaS identity regression](../guides/saas-identity-lab.md) to dispatch the workflow.
-It provisions disposable resources, runs the operator's OIDC and JWT scenarios and attempts cleanup
-when tests finish or fail.
-
-For unattended tests, the dedicated application must permit a login journey the browser runner can
-complete. Existing MFA, consent, CAPTCHA and login restrictions remain in force. The suite does not
-bypass those controls or use the password grant. Use interactive login when testing MFA itself.
-
-## Preview or run provisioning locally
+## Preview or run provisioning
 
 Choose a unique prefix of 3–31 lowercase letters, digits and hyphens, starting with a letter.
 The preview makes no network requests and needs no credential:
@@ -126,6 +111,23 @@ These commands need the cluster described in the [SaaS identity lab guide](../gu
 State includes generated login credentials as well as the records needed for cleanup; keep it until
 the lab has been removed. Do not upload it as an artifact or include it in a support report.
 
+## Diagnose provisioning failures
+
+Failures identify a fixed API stage, such as `POST users` or `POST connections`, and an
+allowlisted error category when available. For example, `category=password-strength` means
+Auth0 rejected the generated password. Provider response text, user emails, resource IDs
+and credentials are never included in that diagnostic.
+
+The lab keeps Auth0's `excellent` password policy. Its generated passwords satisfy the
+length and character-class requirements and exclude three identical consecutive characters,
+as required by [Auth0's password-policy rules](https://github.com/auth0/auth0-password-policies).
+Randomness alone does not guarantee compliance with that repetition rule.
+
+A rejected HTTP 400 is not retried blindly. Check the reported stage and category, preserve
+the private state and run cleanup before a new attempt. Explicit HTTP 429 rejections have
+bounded retries; ambiguous network failures preserve the pending-create record so cleanup
+cannot silently claim to have removed an unrecorded resource.
+
 ## Clean up and recover
 
 Use the same prefix and state file:
@@ -137,18 +139,14 @@ python3 hack/lab/saas/auth0.py \
   --prefix obco-auth0-demo --cleanup
 ```
 
-Cleanup removes recorded lab resources and its own Action binding, preserving unrelated Actions.
-It can be retried after a partial failure. A provisioning rerun checks recorded resources; it does
-not reset passwords, rotate secrets or repair configuration drift.
+Cleanup removes the resources recorded in the state file, including its own Action binding, and
+leaves other Actions alone. It does not delete a resource only because the name shares the prefix.
+Retry it after a partial failure.
 
-If a create request times out, the resource may exist even if its ID was not returned. Keep the state,
-inspect the run's prefix in the Auth0 dashboard and resolve residual resources before starting a new
-run. Do not delete state and blindly provision the same names again. The cleanup command deliberately
-does not delete resources merely because their names share a prefix.
-
-If an older lab state contains machine grants or a custom API, cleanup also needs
-`delete:client_grants` or `delete:resource_servers` for those recorded resources. New human-authentication
-runs do not require those permissions. Revoke the provisioning credential when retiring the lab.
+Keep the state file until cleanup finishes. If a create request times out, the resource can exist
+even though its ID was not saved. Look up the prefix in the Auth0 dashboard before you delete the
+state or provision the same names again. Revoke the provisioning credential when you stop using
+the lab.
 
 ## Check the script without an account
 
@@ -156,5 +154,5 @@ runs do not require those permissions. Revoke the provisioning credential when r
 python3 -m unittest discover -s hack/lab/saas -p test_auth0.py -v
 ```
 
-Offline tests check provisioning requests, ownership, credential handling and recovery. Hosted browser
-login and OpenBao authorization are verified by the credentialed CI workflow, not by these unit tests.
+These tests do not contact Auth0. Browser login and OpenBao authorization need the lab in the
+[SaaS identity guide](../guides/saas-identity-lab.md).

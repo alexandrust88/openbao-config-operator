@@ -3,12 +3,124 @@
 import argparse
 import base64
 import json
+import os
+import subprocess
 import secrets
 import time
 
 import identity as lab
 
 TENANTS = ("alpha", "beta")
+
+
+def generated_resources(tenant):
+    source = lab.ROOT / "examples/recipes/generated-credentials/credentials.yaml"
+    result = subprocess.run([os.environ.get("YQ") or str(lab.ROOT / "bin/yq"),
+                             "eval-all", "-o=json", "[.]", str(source)],
+                            capture_output=True, text=True, check=True)
+    if tenant not in TENANTS:
+        raise ValueError("Unknown ESO lab tenant")
+    objects = json.loads(result.stdout)
+    for item in objects:
+        if item["apiVersion"].endswith("openbaoconfig.io/v1alpha1"):
+            item["metadata"]["name"] = tenant + item["metadata"]["name"][len("alpha"):]
+            item["metadata"]["namespace"] = lab.NAMESPACE
+            item["spec"]["namespace"] = "lab-" + tenant
+            item["spec"]["connectionRef"]["name"] = lab.CONNECTION
+        else:
+            item["metadata"]["namespace"] = "obco-lab-" + tenant
+    return objects
+
+
+def projection_matches(current, expected):
+    data = current.get("data", {})
+    return set(data) == {"password"} and base64.b64decode(data["password"]).decode() == expected
+
+
+def wait_generated(tenant, expected):
+    deadline = time.monotonic() + 120
+    while time.monotonic() < deadline:
+        raw = lab.kube("-n", "obco-lab-" + tenant, "get", "secret", "generated-application",
+                       "--ignore-not-found", "-o", "json")
+        if raw and projection_matches(json.loads(raw), expected):
+            return
+        time.sleep(2)
+    raise RuntimeError("Generated credential projection did not converge for " + tenant)
+
+
+def wait_absent(namespace, kind, name):
+    deadline = time.monotonic() + 120
+    while time.monotonic() < deadline:
+        if not lab.kube("-n", namespace, "get", kind, name, "--ignore-not-found", "-o", "name").strip():
+            return
+        time.sleep(2)
+    raise RuntimeError("Credential lifecycle cleanup did not converge")
+
+
+def read_generated(bao, tenant, token):
+    status, response = bao.request(tenant, "GET", "kv/data/app/generated", token=token)
+    lab.expect(status, 200, "read generated credential")
+    return response["data"]
+
+
+def test_generated(bao, tenant, token):
+    objects = generated_resources(tenant)
+    managed = objects[:2]
+    lab.apply(objects)
+    lab.wait_ready(managed)
+    original = read_generated(bao, tenant, token)
+    password = original["data"]["password"]
+    wait_generated(tenant, password)
+    # Seed a second key as disposable data: the ESO projection must never copy it.
+    admin = lab.read_secret("lab-bootstrap", lab.NAMESPACE)["token"]
+    extra = secrets.token_urlsafe(24)
+    status, _ = bao.request(tenant, "POST", "kv/data/app/generated",
+                            {"options": {"cas": original["metadata"]["version"]},
+                             "data": {"password": password, "excluded": extra}}, admin)
+    lab.expect(status, 200, "seed excluded credential key")
+    stable = read_generated(bao, tenant, token)
+    resource = managed[1]
+    resource["spec"].pop("passwordPolicyName")
+    resource["spec"]["generator"] = {"length": 48}
+    lab.apply(managed)
+    lab.wait_ready(managed)
+    unchanged = read_generated(bao, tenant, token)
+    if unchanged != stable:
+        raise RuntimeError("Generator configuration unexpectedly changed existing credential")
+    wait_generated(tenant, password)
+    resource["spec"]["refreshNonce"] = secrets.token_hex(12)
+    lab.apply(managed)
+    lab.wait_ready(managed)
+    rotated = read_generated(bao, tenant, token)
+    new_password = rotated["data"]["password"]
+    if new_password == password or rotated["data"].get("excluded") != extra:
+        raise RuntimeError("Explicit credential rotation failed or changed an unrelated key")
+    wait_generated(tenant, new_password)
+    lab.kube("-n", "obco-lab-" + tenant, "delete", "secret", "generated-application")
+    wait_generated(tenant, new_password)
+    if read_generated(bao, tenant, token) != rotated:
+        raise RuntimeError("Projection recovery changed the OpenBao credential")
+    other = "beta" if tenant == "alpha" else "alpha"
+    status, _ = bao.request(other, "GET", "kv/data/app/generated", token=token)
+    lab.expect(status, 403, "generated credential cross-tenant read denied")
+    status, _ = bao.request(tenant, "POST", "kv/data/app/generated",
+                            {"data": {"password": secrets.token_urlsafe(24)}}, token)
+    lab.expect(status, 403, "generated credential write denied")
+    namespace = "obco-lab-" + tenant
+    try:
+        lab.kube("-n", namespace, "delete", "externalsecret", "generated-application")
+        wait_absent(namespace, "secret", "generated-application")
+        lab.kube("-n", lab.NAMESPACE, "delete", "randomsecret", resource["metadata"]["name"])
+        wait_absent(lab.NAMESPACE, "randomsecret", resource["metadata"]["name"])
+        if read_generated(bao, tenant, token) != rotated:
+            raise RuntimeError("Orphan deletion changed the retained OpenBao credential")
+    finally:
+        lab.apply(objects)
+        lab.wait_ready(managed)
+    wait_generated(tenant, new_password)
+    if read_generated(bao, tenant, token) != rotated:
+        raise RuntimeError("Re-adoption changed the retained OpenBao credential")
+    print(tenant + ": generated credential stability, rotation, projection, recovery, deletion and denials passed")
 
 
 def up():
@@ -43,7 +155,9 @@ def up():
                      "target": {"name": "application", "creationPolicy": "Owner"},
                      "data": [{"secretKey": "value", "remoteRef": {"key": "app/config", "property": "value"}}]})]
     lab.apply(stores)
-    print("ESO tenant stores and ExternalSecrets applied")
+    for tenant in TENANTS:
+        lab.apply(generated_resources(tenant))
+    print("ESO tenant stores, generated credentials and ExternalSecrets applied")
 
 
 def wait_value(tenant, expected):
@@ -76,6 +190,7 @@ def test():
                 lab.expect(status, 403, "ESO other tenant read denied")
                 status, _ = bao.request(tenant, "POST", "kv/data/app/config", {"data": {"value": "forbidden"}}, token)
                 lab.expect(status, 403, "ESO write denied")
+                test_generated(bao, tenant, token)
             finally:
                 status, _ = bao.request(tenant, "POST", "auth/token/revoke-self", token=token)
                 lab.expect(status, 204, "revoke ESO test token")

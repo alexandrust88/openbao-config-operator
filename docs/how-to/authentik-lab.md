@@ -46,28 +46,9 @@ source hack/lab/common.sh
 python3 hack/lab/authentik.py test
 ```
 
-## What the tests prove
-
-Nine human identities cover `root`, `alpha` and `beta`, each with `admin`, `read` and `ops` roles.
-The tenant namespaces are `saas-authentik-alpha` and `saas-authentik-beta`; the root
-scenario uses restricted policies, not an OpenBao root token. The operator creates auth mounts, JWT/OIDC configurations, roles, ACL policies,
-external groups, group aliases and internal group memberships.
-
-| Flow | Checks |
-| --- | --- |
-| Browser OIDC | Real Authentik login, group-derived permissions, KV versioning and transit operations, tenant isolation, and operator-managed grant removal and restoration |
-| Human JWT | Authorization-code login with PKCE produces ID tokens; OpenBao validates each token through discovery and direct JWKS configurations |
-| Service JWT | Nine separate Authentik service accounts obtain signed access tokens through the native `client_credentials` grant using app-password tokens |
-| JWT denial cases | Wrong group, wrong tenant, wrong audience, wrong issuer and corrupted signature must fail for the expected reason in both validation modes |
-
-The human JWT matrix has 18 positive sessions and 30 classified denial cases. Service identities
-repeat that matrix using access tokens acquired without a human browser session. Human ID-token
-checks are not counted as machine authentication.
-
-Authentik's `groups` scope mapping supplies each account's group names in tokens. The provider uses
-a generated RSA signing key and a confidential client; the test does not disable signature or
-audience validation. Authentik groups are not OpenBao administrator privileges by themselves:
-the operator's policies determine each group's capabilities within its OpenBao namespace.
+The run covers nine identities, `admin`, `read` and `ops` in `root`, `alpha` and `beta`. The
+tenant namespaces are `saas-authentik-alpha` and `saas-authentik-beta`. What those identities are
+allowed to do is in the [OIDC permissions showcase](../tutorials/oidc-showcase.md).
 
 ## Troubleshoot a failure
 

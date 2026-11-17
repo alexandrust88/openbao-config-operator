@@ -554,7 +554,7 @@ define gomodver
 $(shell go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $(1) 2>/dev/null)
 endef
 
-.PHONY: lab-up lab-identity lab-authentik lab-zitadel lab-eso lab-pki lab-argocd lab-flux
+.PHONY: lab-up lab-identity lab-authentik lab-zitadel lab-transit lab-database lab-eso lab-pki lab-argocd lab-flux
 lab-up: ## Create the disposable kind lab with TLS raft OpenBao and the operator.
 	hack/lab/up.sh $(or $(LAB_PROFILE),raft)
 
@@ -573,7 +573,7 @@ lab-zitadel: ## Exercise ZITADEL OIDC, JWT and tenant access in the local lab.
 	npm ci --ignore-scripts --prefix hack/lab/browser
 	hack/lab/provider-test.sh zitadel
 
-lab-eso: ## Exercise tenant secret delivery and rotation through ESO.
+lab-eso: yq ## Exercise tenant secret delivery and rotation through ESO.
 	hack/lab/eso-up.sh
 	hack/lab/eso-test.sh
 
@@ -586,3 +586,10 @@ lab-argocd: ## Test Argo CD app-of-apps delivery and OpenBao reconciliation in f
 
 lab-flux: ## Test Flux delivery and OpenBao reconciliation in fresh kind.
 	hack/lab/gitops/run.sh flux
+
+lab-transit: ## Exercise application Transit encryption, workload ACLs, rotation and key lifecycle in the lab.
+	hack/lab/transit-test.sh
+
+DATABASE_PROFILE ?= postgresql
+lab-database: helm yq ## Test real dynamic database credentials; set DATABASE_PROFILE to the database provider.
+	hack/lab/database-test.sh "$(DATABASE_PROFILE)"

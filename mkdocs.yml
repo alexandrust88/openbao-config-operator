@@ -60,22 +60,22 @@ theme:
     - toc.follow
   palette:
     - media: "(prefers-color-scheme)"
-      primary: teal
-      accent: amber
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-auto
         name: Switch to light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: teal
-      accent: amber
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: teal
-      accent: amber
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
@@ -138,22 +138,26 @@ nav:
       - Manage several OpenBao servers: tutorials/multiple-instances.md
       - Onboard two tenants: tutorials/tenant-onboarding.md
       - Onboard teams as a tenant: tutorials/team-onboarding.md
-      - Test users and workloads locally: tutorials/local-lab.md
-      - OIDC permissions showcase: tutorials/oidc-showcase.md
+      - Generate credentials and deliver with ESO: tutorials/generated-credentials.md
+      - Encrypt application data: tutorials/application-encryption.md
+      - Issue dynamic database credentials: tutorials/dynamic-database-credentials.md
   - Guides:
       - guides/index.md
       - Authentication:
           - Kubernetes auth: guides/kubernetes-auth.md
           - JWT and OIDC auth: guides/jwt-oidc-auth.md
-          - Test Okta and Auth0: guides/saas-identity-lab.md
-          - Auth0 lab setup: how-to/auth0-lab.md
-          - Okta lab setup: how-to/okta-lab.md
-          - Authentik lab setup: how-to/authentik-lab.md
-          - ZITADEL lab setup: how-to/zitadel-lab.md
           - AppRole: guides/approle.md
       - Secrets engines:
           - KV secrets: guides/kv-secrets.md
           - Database secrets: guides/database-secrets.md
+          - Database recipes:
+              - PostgreSQL: how-to/databases/postgresql.md
+              - MySQL: how-to/databases/mysql.md
+              - MariaDB: how-to/databases/mariadb.md
+              - Cassandra: how-to/databases/cassandra.md
+              - InfluxDB: how-to/databases/influxdb.md
+              - Valkey: how-to/databases/valkey.md
+              - Custom database plugins: how-to/databases/custom.md
           - PKI: guides/pki.md
           - Transit: guides/transit.md
       - Identity and access:
@@ -167,8 +171,6 @@ nav:
           - Migrate to the operator: guides/migration.md
           - Argo CD: guides/argocd.md
           - Flux: guides/flux.md
-          - Test Argo CD app-of-apps: how-to/argocd-lab.md
-          - Test Flux delivery: how-to/flux-lab.md
           - OpenBao self-init: guides/self-init.md
   - Operate:
       - operate/index.md
@@ -185,6 +187,7 @@ nav:
       - security.md
       - Threat model: security/threat-model.md
       - Hardening: security/hardening.md
+      - Non-exportable transit keys: security/transit-key-policy.md
       - CI security: security/ci-security.md
   - Reference:
       - reference/index.md
@@ -210,6 +213,17 @@ nav:
       - Backlog: project/backlog.md
       - Tech debt: project/tech-debt.md
       - Verification guide: project/verification.md
+      - GitOps lab:
+          - Argo CD app-of-apps: how-to/argocd-lab.md
+          - Flux delivery: how-to/flux-lab.md
+      - Identity lab:
+          - Local lab: tutorials/local-lab.md
+          - Permissions showcase: tutorials/oidc-showcase.md
+          - Okta and Auth0: guides/saas-identity-lab.md
+          - Auth0: how-to/auth0-lab.md
+          - Okta: how-to/okta-lab.md
+          - Authentik: how-to/authentik-lab.md
+          - ZITADEL: how-to/zitadel-lab.md
       - Maintainers:
           - Release process: maintainers/release-process.md
           - GitHub settings: maintainers/github-settings.md

@@ -87,10 +87,9 @@ Dev mode starts OpenBao initialised and unsealed, so it is ready as soon as the 
 
 ## 3. Let the operator log in to OpenBao
 
-The operator never uses a root token. It logs in as a Kubernetes ServiceAccount through OpenBao's
-Kubernetes auth method, and the OpenBao policy of that login decides what it may change. This
-policy lets the operator manage ACL policies and Kubernetes auth roles whose names start with
-`quickstart-`, and the KV mount `quickstart-kv`:
+The operator logs in as a Kubernetes ServiceAccount, and the OpenBao policy of that login decides
+what it may change. This policy lets the operator manage ACL policies and Kubernetes auth roles whose
+names start with `quickstart-`, and the KV mount `quickstart-kv`:
 
 ```hcl title="examples/quickstart/operator-quickstart.hcl"
 --8<-- "examples/quickstart/operator-quickstart.hcl"

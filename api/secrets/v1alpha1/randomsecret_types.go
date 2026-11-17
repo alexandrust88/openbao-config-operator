@@ -110,6 +110,11 @@ type RandomSecretStatus struct {
 	// pathCreated is true when this resource created the KV secret rather than adding its key to an existing one; only then does a destructive delete also remove the secret's version history.
 	// +optional
 	PathCreated bool `json:"pathCreated,omitempty"`
+
+	// purgeThroughVersion is the persisted upper version bound for destructive KV v2 cleanup. Newer versions and metadata are retained.
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	PurgeThroughVersion *int64 `json:"purgeThroughVersion,omitempty"`
 }
 
 // +kubebuilder:object:root=true

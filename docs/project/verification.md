@@ -92,21 +92,49 @@ the time required to observe successive reconciles.
 The [local lab tutorial](../tutorials/local-lab.md) runs real user OIDC, user and machine JWT,
 internal/external group membership, tenant-scoped ESO delivery, cert-manager PKI and an external
 LDAP plugin. `make lab-identity`, `make lab-authentik`, `make lab-zitadel`, `make lab-eso` and
-`make lab-pki` exercise their respective profiles after `make lab-up`. LDAP has
+`make lab-pki` exercise their respective profiles after `make lab-up`. The ESO profile also
+checks generated-credential rotation, projection ownership/recovery and retained-value adoption.
+`make lab-transit` runs application encryption, rewrap and cross-key migration with Kubernetes
+workload identities in root and a child namespace, plus all 15 software-backed key algorithms,
+version floors, denied access and destructive-delete guards. It does not cover external-key
+providers or wait for scheduled automatic rotation. LDAP has
 `hack/lab/plugins/up.sh` and `test.sh`.
 
-The `integration lab` workflow runs Keycloak, Authentik and ZITADEL on relevant pull requests
-and weekly; manual dispatch also runs ESO, PKI and LDAP. Each provider has its own kind cluster.
+The `integration lab` workflow runs Keycloak, Authentik, ZITADEL, transit, ESO and the database profiles below on relevant pull
+requests and weekly; manual dispatch also runs PKI and LDAP. Each profile has its own kind cluster.
 Browser tests use the official, digest-pinned Playwright container and a localhost OIDC callback.
 They verify the provider login and OpenBao authorization result; they do not exercise the entire
 OpenBao web UI.
 
-The hosted [Auth0 and Okta workflow](../guides/saas-identity-lab.md) requires protected environment
-credentials and includes provider cleanup. Self-hosted profiles need no external provider account.
+The [Auth0 and Okta lab](../guides/saas-identity-lab.md) needs provider credentials and removes the
+resources it records. Self-hosted profiles need no external provider account.
 All identity matrices cover root and two child namespaces with role-specific access checks;
 provider guides distinguish human ID tokens from service-account access tokens. Unit fixtures
 verify the harness separately and do not count as live provider evidence.
 Cloud plugins requiring accounts or credentials remain outside this lab's live coverage.
+
+## Dynamic database profiles
+
+`make lab-database DATABASE_PROFILE=<provider>` runs the shared lifecycle against PostgreSQL,
+MySQL, MariaDB, Cassandra, InfluxDB or Valkey.
+The [tutorial](../tutorials/dynamic-database-credentials.md) links each engine's setup and limits.
+Each `db-*` workflow job starts its own kind cluster. These jobs are added coverage, not a claim
+that all profiles have already passed on the current commit; inspect the individual job result.
+
+| Assertion | Scope and limit |
+|-----------|-----------------|
+| Dynamic issuance | Two distinct users and renewable leases in root and `lab-alpha`, issued through ServiceAccount-authenticated workload tokens |
+| Database access | Real reader login and fixture read; engine-specific rejection of writes and other-tenant data access |
+| OpenBao tenancy | Issuance in the other namespace is rejected |
+| Lease renewal/revocation | Administrator renews one lease and revokes it; a new database login is rejected, while the independent second lease remains usable |
+| Cleanup | Probe Jobs, temporary credential Secrets, outstanding leases and workload token are removed; persistent lab configuration remains until cluster teardown |
+| PostgreSQL-only extension | Dedicated per-tenant administrator connection with `rotateRootOnCreate`; scheduled `DatabaseStaticRole` rotation and old/new fresh-login checks |
+| Not covered | Static/root rotation for other engines, natural expiry, existing-session termination, database HA and backup/restore |
+
+PostgreSQL, MySQL, MariaDB, Cassandra, InfluxDB and Valkey use built-in database plugins.
+External database plugins, including MongoDB, are outside the runnable suite. Redis alias support is
+not evidence of a tested Redis server, and Elasticsearch remains unverified here. Unit tests
+and chart rendering validate the harness and resource shape, not database interoperability.
 
 ## GitOps delivery regression
 
@@ -167,3 +195,13 @@ Generate with controller-gen scoped to your group, as described in [AGENTS.md](.
 - Bumping the pinned OpenBao release (`BAO_VERSION` in the Makefile and the image in
   `hack/e2e/openbao.yaml`): run `make test-integration` and record any changed wire shape in
   the affected adapter tests.
+
+### Run one integration-lab profile
+
+The `integration lab` workflow accepts a `profile` for manual runs. Select `db-mysql`, for
+example, to diagnose that fixture without scheduling the whole matrix. Pull requests still
+run the complete regression matrix.
+
+```sh
+gh workflow run lab.yml --ref "$(git branch --show-current)" -f profile=db-mysql
+```

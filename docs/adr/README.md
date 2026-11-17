@@ -50,3 +50,7 @@ and the consequences.
 | [0009](0009-openbao-only-target.md) | [OpenBao-only target](0009-openbao-only-target.md) | The operator targets OpenBao 2.6 and later only, with no Vault kinds and no flavor detection. |
 | [0020](0020-crd-versioning-without-webhooks.md) | [CRD versioning without webhooks](0020-crd-versioning-without-webhooks.md) | A new CRD version only adds fields, Kubernetes converts it with `conversion: None`, and a conversion webhook is reserved for a break that cannot be avoided. |
 | [0023](0023-openbao-api-changes-and-crd-lifecycle.md) | [OpenBao API changes and the CRD lifecycle](0023-openbao-api-changes-and-crd-lifecycle.md) | Adapters absorb OpenBao's wire changes, and a CRD changes only when users gain a field or lose one that OpenBao removed, so an OpenBao release does not bump the CRD version. |
+
+## KV cleanup
+
+[0024. Bounded KV history cleanup](0024-bounded-kv-history-cleanup.md) records the version cutoff, retained metadata and permissions.

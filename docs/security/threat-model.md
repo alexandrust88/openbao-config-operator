@@ -3,6 +3,8 @@ title: OpenBao Config Operator threat model
 description: Review trust boundaries, implementation controls, tenant privilege equivalences and documented residual risks.
 ---
 
+<div class="threat-model" markdown="1">
+
 # Threat model
 
 This page is the threat model of the current OpenBao Config Operator design: what it protects, from whom, through
@@ -399,3 +401,5 @@ model did not list. N1 to N6 are fixed; N7 is documentation.
 | N5 | I, S | A token path such as `/proc/self/root/var/run/secrets/kubernetes.io/serviceaccount/token` passes the lexical automount check and sends the API server token to OpenBao. Platform admins only. | L | H | Low | the resolver compares file identity with `os.SameFile` at config time and at every read, and decodes an injected-identity token and refuses an API server `aud` before login (`internal/connection/resolver.go:509,527-537,555-576`) | control |
 | N6 | T, I | `obc-import` sets `allowInsecureHTTP: true` for an `http://` address without saying so, so a port-forward import committed to Git disables the https guard; its output files were world-readable. | L | M | Low | the summary warns for every server with `allowInsecureHTTP`; files are written 0600 in a 0700 directory ([import.md](../guides/import.md)) | control |
 | N7 | D, T | Pause, observe and the path index. A tenant cannot pause another tenant (pause comes from the resource, its Namespace or its `OpenBaoServer`, `reconciler.go:1115-1135`, and tenants cannot patch the last two). Observe resources are not indexed and skip the owner check, so they cannot squat a path (`internal/engine/ownership.go:37`, `reconciler.go:430-431`). A paused server or Namespace holds every finalizer, also in a terminating Namespace, because the pause check runs before the terminating-namespace escape (`reconciler.go:258-267`). `AppRole` `status.id` is the role ID, readable through the `view` aggregate. | L | L | Low | documented: remove a pause before deleting a Namespace ([R-OPS-02](hardening.md#r-ops-02-incidents)); the role ID alone does not log in | residual |
+
+</div>

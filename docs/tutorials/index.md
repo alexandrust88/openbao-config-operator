@@ -48,8 +48,16 @@ When you are done, delete the kind cluster as in
 [step 10 of the quickstart](../get-started/quickstart.md#10-clean-up). Both OpenBao servers and
 everything they hold go with it.
 
-## Local integration lab
+## Application integrations
 
-For a separate TLS raft cluster with real Keycloak users, machine JWTs, ESO and cert-manager,
-follow [Test user and workload access in a local lab](local-lab.md). It starts its own cluster
-and does not depend on the four quickstart lessons above.
+Use these tutorials to connect workloads to operator-managed OpenBao configuration:
+
+- [Generate credentials and deliver them with ESO](generated-credentials.md): rotate a password,
+  project selected keys and recover a workload Secret.
+- [Encrypt application data](application-encryption.md): encrypt, decrypt, rewrap and migrate
+  ciphertext between transit keys using a workload identity.
+- [Issue and revoke dynamic database users](dynamic-database-credentials.md): verify real logins
+  and tenant-specific permissions with PostgreSQL, MySQL, MariaDB, Cassandra, InfluxDB or Valkey.
+
+These tutorials use the separate [local integration lab](local-lab.md), rather than the cluster
+from the four lessons above.

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -135,13 +136,19 @@ func (KVSecretAdapter) Write(ctx context.Context, c openbao.Client, s *secretsv1
 // resource created the path itself (status.pathCreated) and allows destructive deletes, it also deletes the history
 // on KV version 2.
 func (KVSecretAdapter) Delete(ctx context.Context, c openbao.Client, s *secretsv1alpha1.KVSecret) error {
+	if s.Status.PurgeThroughVersion != nil {
+		if !kvOwnsPath(s) || !s.Status.PathCreated {
+			return nil
+		}
+		return kvDestroyHistory(ctx, c, s.Spec.MountPath, s.Spec.Path, *s.Status.PurgeThroughVersion)
+	}
 	if err := kvRemoveKeys(ctx, c, s.Spec.MountPath, s.Spec.Path, s.Spec.KVVersion, s.Status.ManagedKeys); err != nil {
 		return err
 	}
 	if !kvOwnsPath(s) || !s.Status.PathCreated {
 		return nil
 	}
-	return kvPurge(ctx, c, s.Spec.MountPath, s.Spec.Path, s.Spec.KVVersion)
+	return kvPreparePurge(ctx, c, s.Spec.MountPath, s.Spec.Path, s.Spec.KVVersion, &s.Status.PurgeThroughVersion)
 }
 
 // SecretRefs implements engine.SecretReferencer.
@@ -240,17 +247,62 @@ func kvOwnsPath(obj engine.Object) bool {
 		obj.GetAnnotations()[commonv1alpha1.AnnotationAllowDestructiveDelete] == "true"
 }
 
-// kvPurge deletes a KV version 2 secret with every version through its metadata, unless it holds live keys again.
-func kvPurge(ctx context.Context, c openbao.Client, mount, path string, version int32) error {
+// kvPreparePurge checkpoints the empty version before any irreversible destruction.
+func kvPreparePurge(ctx context.Context, c openbao.Client, mount, path string, version int32, cutoff **int64) error {
 	if kvVersion(version) == 1 {
 		return nil
 	}
-	if _, _, found, err := readKV(ctx, c, mount, path, version); err != nil || found {
+	_, current, found, err := readKV(ctx, c, mount, path, version)
+	if err != nil || found || current == 0 {
 		return err
 	}
-	apiPath := mount + "/metadata/" + path
-	if err := c.Delete(ctx, apiPath); err != nil && !errors.Is(err, openbao.ErrNotFound) {
-		return fmt.Errorf("delete %s: %w", apiPath, err)
+	*cutoff = &current
+	return fmt.Errorf("checkpoint KV history cleanup: %w", engine.ErrInProgress)
+}
+
+func kvDestroyHistory(ctx context.Context, c openbao.Client, mount, path string, cutoff int64) error {
+	if cutoff <= 0 {
+		return errors.New("KV history cleanup version must be positive")
+	}
+	metadata, err := c.Read(ctx, mount+"/metadata/"+path)
+	if errors.Is(err, openbao.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read KV history metadata: %w", err)
+	}
+	versions, ok := metadata["versions"].(map[string]any)
+	if !ok {
+		return errors.New("KV history metadata has no versions map")
+	}
+	pending := make([]int64, 0, len(versions))
+	var highest int64
+	for name, raw := range versions {
+		number, err := strconv.ParseInt(name, 10, 64)
+		if err != nil || number <= 0 {
+			return errors.New("KV history metadata has an invalid version")
+		}
+		highest = max(highest, number)
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			return errors.New("KV history metadata has an invalid version entry")
+		}
+		destroyed, ok := entry["destroyed"].(bool)
+		if !ok {
+			return errors.New("KV history metadata has no destroyed flag")
+		}
+		if number <= cutoff && !destroyed {
+			pending = append(pending, number)
+		}
+	}
+	if cutoff > highest {
+		return errors.New("KV history cleanup version exceeds retained history")
+	}
+	slices.Sort(pending)
+	for batch := range slices.Chunk(pending, 64) {
+		if _, err := c.Write(ctx, mount+"/destroy/"+path, map[string]any{"versions": batch}); err != nil {
+			return fmt.Errorf("destroy KV history versions: %w", err)
+		}
 	}
 	return nil
 }

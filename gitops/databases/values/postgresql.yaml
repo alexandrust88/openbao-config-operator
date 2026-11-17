@@ -1,0 +1,22 @@
+configNamespace: obco-lab
+connectionRef: lab-openbao
+provider: postgresql
+tenant: root
+workloadNamespace: obco-db-postgresql
+database:
+  connection:
+    pluginName: postgresql-database-plugin
+    passwordSecretRef:
+      name: database-postgresql-admin
+      key: password
+    postgresql:
+      connectionURL: postgresql://{{username}}:{{password}}@postgresql.obco-db-postgresql.svc:5432/app?sslmode=verify-full&sslrootcert=/database-ca/postgresql/ca.crt
+      username: openbao
+      passwordAuthentication: scram-sha-256
+  role:
+    creationStatements:
+      - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT USAGE ON SCHEMA lab_root TO "{{name}}"; GRANT SELECT ON lab_root.probe TO "{{name}}";
+    renewStatements:
+      - ALTER ROLE "{{name}}" VALID UNTIL '{{expiration}}';
+    revocationStatements:
+      - REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA lab_root FROM "{{name}}"; REVOKE USAGE ON SCHEMA lab_root FROM "{{name}}"; DROP ROLE "{{name}}";

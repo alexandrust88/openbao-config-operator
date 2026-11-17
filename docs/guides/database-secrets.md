@@ -8,6 +8,10 @@ This guide connects OpenBao's database secrets engine to a database and declares
 credentials: a dynamic role that creates a user per request, and a static role that rotates the
 password of an existing user.
 
+For a runnable local environment with real login and revocation checks, start with
+[Issue and revoke dynamic database credentials](../tutorials/dynamic-database-credentials.md).
+This guide describes configuration for a database you already operate.
+
 ## Before you begin
 
 - A database that OpenBao can reach, and a user with the rights to create users (dynamic roles) or
@@ -50,6 +54,21 @@ With `rotateRootOnCreate: true`, OpenBao rotates the root password once, right a
 connection, so only OpenBao knows it. The password in the Secret is then stale and is sent again
 only if the connection is created again. `verifyConnection` (default `true`) makes OpenBao connect
 to the database on every write, so a wrong URL or password fails the write.
+
+### Built-in and registered plugins
+
+For the pinned OpenBao server, PostgreSQL, MySQL (also used by the MariaDB lab), Cassandra,
+InfluxDB and Valkey use built-in plugins. Set `DatabaseConnection.spec.pluginName` to the
+appropriate name and use its typed settings. No `Plugin` resource or `pluginRef` is needed.
+The `valkey` settings also accept the Redis plugin alias, but the live profile tests Valkey,
+not a Redis server.
+
+A plugin that is not built in must be installed on OpenBao and registered separately. A
+`Plugin` CR records the catalog name, executable and checksum; it does not download or
+install a binary. `DatabaseConnection.pluginName` selects that registered name and
+`pluginConfig` carries plugin-specific settings. See the
+[custom-plugin prerequisites](../how-to/databases/custom.md). Elasticsearch is not a built-in
+profile and has no live verification in this suite.
 
 ## 3. Create roles
 

@@ -1,0 +1,33 @@
+{{- $_ := required "database.connection.pluginName is required" .Values.database.connection.pluginName -}}
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  {{- include "database-demo.metadata" (dict "root" . "suffix" "mount") | nindent 2 }}
+spec:
+  {{- include "database-demo.common" . | nindent 2 }}
+  path: lab-db-{{ .Values.provider }}
+  type: database
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseConnection
+metadata:
+  {{- include "database-demo.metadata" (dict "root" . "suffix" "connection") | nindent 2 }}
+spec:
+  {{- include "database-demo.common" . | nindent 2 }}
+  mountPath: lab-db-{{ .Values.provider }}
+  name: database
+  allowedRoles: [reader]
+  {{- .Values.database.connection | toYaml | nindent 2 }}
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: DatabaseRole
+metadata:
+  {{- include "database-demo.metadata" (dict "root" . "suffix" "reader") | nindent 2 }}
+spec:
+  {{- include "database-demo.common" . | nindent 2 }}
+  mountPath: lab-db-{{ .Values.provider }}
+  name: reader
+  dbName: database
+  defaultTTL: 5m
+  maxTTL: 15m
+  {{- .Values.database.role | toYaml | nindent 2 }}

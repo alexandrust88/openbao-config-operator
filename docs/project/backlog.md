@@ -227,3 +227,49 @@ over 100 times the budget. Fix: bound the values (a named string type with `MaxL
 `!has(self.pluginConfig) || !('connection_url' in self.pluginConfig) || <the connectionURL check>` with an envtest
 case for the rejection and a CRD-install test for the cost budget. It changes the Go type of `pluginConfig` and its
 adapter, so it waits for the owner of `databaseconnection_types.go`.
+
+## BL-018: Durable ownership of retained transit keys
+
+Status: design needed; not implemented
+
+`TransitKey` defaults to `Orphan`. Deleting its Kubernetes object retains the key
+but removes the live resource's ownership claim. Transit keys do not carry the
+operator's server-side ownership marker. A replacement resource with `Create`
+therefore conflicts with the existing key; an authorised explicit `Adopt` can
+manage it. This is retention, not a permanent reservation of the key name for a
+former tenant.
+
+Before adding durable reservations, define a record keyed by server identity,
+canonical OpenBao namespace and mount/key path, with an immutable tenant
+identity rather than a reusable namespace name. Decide where the record survives
+namespace deletion, how backups restore it, and how an administrator transfers or
+releases it. A Kubernetes-only record does not protect against another writer
+cluster or direct OpenBao API access. A record inside OpenBao needs a reserved
+storage path and tightly scoped privileges, without pretending transit supports
+arbitrary ownership metadata.
+
+Acceptance tests must cover namespace deletion and name reuse, CR recreation,
+controller restart, backup restore, concurrent adoption, connection retargeting
+and an audited explicit transfer. Keep this a separate shared-engine design
+review under [ADR 0012](../adr/0012-ownership-path-index-and-marker.md); adding a
+second `KMSKey` wrapper would not solve the ownership problem.
+
+## BL-019: Cancellable delayed destruction of key material
+
+Status: design needed; not implemented
+
+The current destructive-delete guard requires `deletionPolicy: Delete` plus the
+annotation; it does not introduce a waiting period. Retaining a terminating CR
+for a timer alone is not cancellable deletion: Kubernetes cannot undo its
+`deletionTimestamp`. A future design needs an explicit scheduling state while
+the CR still exists, durable deadlines, cancellation authorisation and a defined
+response to Kubernetes namespace deletion. Neither a controller restart nor a
+GitOps prune may shorten the waiting period or silently skip the guard.
+
+Specify whether scheduled keys remain usable, how new writes are stopped, how
+ciphertext migration is proved complete, and how deadlines behave during
+outages and clock changes. Require tests for schedule/cancel/reschedule,
+restart, namespace deletion, stale credentials, ownership changes, repeated
+execution and failed OpenBao deletes. Do not change the shared deletion contract
+in an application-example change; review it against
+[ADR 0013](../adr/0013-destructive-delete-guard.md) first.

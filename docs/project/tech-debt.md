@@ -104,15 +104,19 @@ Exit criteria: no adapter holds `engine.Connections` or a `client.Reader` for us
 
 ## TD-008: A KV history purge can destroy a version written right before it
 
-Status: open
+Status: mitigated for concurrent version writes; metadata recreation remains a boundary.
 
-A destructive delete of a KVSecret or RandomSecret that created its KV version 2 path reads
-`<mount>/data/<path>`, and when no live key remains it sends `DELETE <mount>/metadata/<path>`. A version
-another writer creates between that read and the DELETE (one request apart) is destroyed with the history.
-OpenBao cannot close the window: `pathMetadataDelete` takes only the path, with no check-and-set or version
-condition, and deletes every version. The race-free alternative, `POST <mount>/destroy/<path>` for the
-versions up to the one read empty, keeps newer versions but leaves the metadata in place and needs `update` on
-`<kv-mount>/destroy/*` in the operator policy.
+Destructive cleanup of an operator-created `KVSecret` or `RandomSecret` now persists
+`status.purgeThroughVersion` before destroying history. It sends bounded batches to
+`<mount>/destroy/<path>`, never deletes metadata, and never extends that cutoff on retries.
+Newer versions survive even when they are written between observation and destruction.
+The connection needs `read` on metadata and `update` on destroy; see
+[ADR 0024](../adr/0024-bounded-kv-history-cleanup.md).
 
-Exit criteria: OpenBao offers a conditional metadata delete and the purge uses it, or the maintainers accept
-the destroy-versions semantics and policy.
+OpenBao has no conditional path-incarnation check: an administrator who deletes metadata and
+recreates the same path resets its version numbers. Do not do that while cleanup is pending.
+Historical versions up to the cutoff may also contain another writer's older keys; destructive
+cleanup is therefore still opt-in and suitable only for an exclusively administered path.
+
+Exit criteria: an upstream conditional destroy API can bind cleanup to the original metadata
+incarnation, or external metadata deletion/recreation is excluded operationally.

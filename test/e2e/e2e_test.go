@@ -3,6 +3,8 @@
 package e2e
 
 import (
+	"encoding/json"
+	"strconv"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -88,14 +90,48 @@ var _ = Describe("openbao-config-operator", Ordered, func() {
 
 	It("resumes reconciliation after manager leader deletion", testManagerFailover)
 
-	It("deletes the objects from OpenBao when the resources are deleted", func() {
+	It("deletes managed objects and destroys KV history when the resources are deleted", func() {
+		cutoff, err := strconv.Atoi(bao("read", "-field=current_version", "secret/metadata/e2e/app"))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cutoff).To(BeNumerically(">=", 2))
 		mustRun("kubectl", "-n", tenantNamespace, "delete", "--wait", "--timeout=2m",
 			policyResource+"/e2e-policy", kvSecretResource+"/e2e-app", endpointResource+"/e2e-password-policy")
 
-		_, err := baoRun("policy", "read", "e2e-policy")
+		_, err = baoRun("policy", "read", "e2e-policy")
 		Expect(err).To(HaveOccurred())
-		_, err = baoRun("kv", "metadata", "get", "-mount=secret", "e2e/app")
-		Expect(err).To(HaveOccurred())
+		// ADR 0024 retains metadata: deletion destroys only history through its captured cutoff.
+		var metadata struct {
+			Data struct {
+				CurrentVersion int `json:"current_version"`
+				Versions       map[string]struct {
+					Destroyed bool `json:"destroyed"`
+				} `json:"versions"`
+			} `json:"data"`
+		}
+		metadataJSON := bao("kv", "metadata", "get", "-format=json", "-mount=secret", "e2e/app")
+		Expect(json.Unmarshal([]byte(metadataJSON), &metadata)).To(Succeed())
+		Expect(metadata.Data.CurrentVersion).To(Equal(cutoff + 1))
+		for version := 1; version <= metadata.Data.CurrentVersion; version++ {
+			number := strconv.Itoa(version)
+			entry, exists := metadata.Data.Versions[number]
+			Expect(exists).To(BeTrue(), "retained metadata for version %s", number)
+			Expect(entry.Destroyed).To(BeTrue(), "destroyed history version %s", number)
+			var value struct {
+				Data struct {
+					Data     map[string]any `json:"data"`
+					Metadata struct {
+						Destroyed bool `json:"destroyed"`
+						Version   int  `json:"version"`
+					} `json:"metadata"`
+				} `json:"data"`
+			}
+			// The CLI returns success for destroyed versions with null data and destruction metadata.
+			out := bao("kv", "get", "-format=json", "-version="+number, "-mount=secret", "e2e/app")
+			Expect(json.Unmarshal([]byte(out), &value)).To(Succeed())
+			Expect(value.Data.Data).To(BeNil(), "no recoverable values in version %s", number)
+			Expect(value.Data.Metadata.Destroyed).To(BeTrue())
+			Expect(value.Data.Metadata.Version).To(Equal(version))
+		}
 		_, err = baoRun("read", "sys/policies/password/e2e-endpoint")
 		Expect(err).To(HaveOccurred())
 	})

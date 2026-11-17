@@ -19,7 +19,7 @@ To learn the operator step by step on a test cluster first, follow the [tutorial
 
 | Task | Guide | Result to verify |
 | --- | --- | --- |
-| Test GitOps delivery | [Argo CD app-of-apps](../how-to/argocd-lab.md), [Flux](../how-to/flux-lab.md) | Git changes, unhealthy recovery and pruning produce the expected live OpenBao state |
+| Deliver configuration from Git | [Argo CD](argocd.md), [Flux](flux.md) | Delivery waits until the operator reports the configuration ready |
 | Declare an ACL policy | [Manage policies](policies.md) | The resource is Ready and `bao policy read` returns its HCL |
 | Give a workload access | [Kubernetes authentication](kubernetes-auth.md) | Its ServiceAccount can log in with the intended audience and policy |
 | Adopt existing configuration | [Import](import.md), then [migration](migration.md) | Observe reports the intended state before you enable management |
@@ -48,10 +48,6 @@ To learn the operator step by step on a test cluster first, follow the [tutorial
     Machine logins outside Kubernetes, with secret IDs the operator rotates.
 
 </div>
-
-Try these integrations with the [self-hosted identity lab](../tutorials/local-lab.md), including
-[Authentik](../how-to/authentik-lab.md) and [ZITADEL](../how-to/zitadel-lab.md), or use
-[Okta and Auth0](saas-identity-lab.md) for hosted-provider regression tests.
 
 ## Secrets engines
 

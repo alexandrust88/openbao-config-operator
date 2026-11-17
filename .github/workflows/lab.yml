@@ -2,11 +2,34 @@ name: integration lab
 
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: Lab profile to run
+        type: choice
+        default: all
+        options:
+          - all
+          - identity
+          - authentik
+          - zitadel
+          - transit
+          - eso
+          - pki
+          - ldap
+          - db-postgresql
+          - db-mysql
+          - db-mariadb
+          - db-cassandra
+          - db-influxdb
+          - db-valkey
   pull_request:
     paths:
       - '.github/workflows/lab.yml'
       - '.github/actions/setup-go/**'
       - 'hack/lab/**'
+      - 'examples/apps/transit/**'
+      - 'examples/recipes/**'
+      - 'gitops/databases/**'
       - 'hack/e2e/**'
       - 'test/e2e/testdata/**'
       - 'api/**'
@@ -38,7 +61,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["identity", "authentik", "zitadel", "eso", "pki", "ldap"]' || '["identity", "authentik", "zitadel"]') }}
+        profile: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.profile != 'all' && format('["{0}"]', inputs.profile) || github.event_name == 'workflow_dispatch' && '["identity", "authentik", "zitadel", "transit", "eso", "pki", "ldap", "db-postgresql", "db-mysql", "db-mariadb", "db-cassandra", "db-influxdb", "db-valkey"]' || '["identity", "authentik", "zitadel", "transit", "eso", "db-postgresql", "db-mysql", "db-mariadb", "db-cassandra", "db-influxdb", "db-valkey"]') }}
     env:
       LAB_CONTEXT: kind-openbao-config-operator-lab
       PROFILE: ${{ matrix.profile }}
@@ -68,7 +91,14 @@ jobs:
                 npm ci --ignore-scripts --prefix hack/lab/browser
                 hack/lab/provider-test.sh "$PROFILE"
                 ;;
+              db-*)
+                hack/lab/database-test.sh "${PROFILE#db-}"
+                ;;
+              transit)
+                hack/lab/transit-test.sh
+                ;;
               eso)
+                make yq
                 hack/lab/identity-up.sh
                 hack/lab/eso-up.sh
                 hack/lab/eso-test.sh
