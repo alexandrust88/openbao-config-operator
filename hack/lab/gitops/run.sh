@@ -7,6 +7,13 @@ cd "$repo_root"
 export LAB_CONTEXT=${LAB_CONTEXT:-kind-obco-gitops-$profile}
 cluster=${LAB_CONTEXT#kind-}
 [[ $LAB_CONTEXT == kind-* && $cluster =~ ^[a-z0-9][a-z0-9-]*$ ]] || exit 2
+lock_dir="${TMPDIR:-/tmp}/openbao-gitops-${UID}-${cluster}.lock"
+if ! (umask 077; mkdir "$lock_dir") 2>/dev/null; then
+  echo "A GitOps run already holds the cluster lock: $lock_dir" >&2
+  echo 'If a previous run was interrupted, verify it has stopped before removing that lock directory.' >&2
+  exit 1
+fi
+trap 'rmdir "$lock_dir"' EXIT
 out="$repo_root/.tmp/lab/$cluster"
 mkdir -p "$out"
 export KUBECONFIG="$out/kubeconfig"
@@ -14,38 +21,32 @@ export LAB_NAMESPACE=obco-gitops LAB_CONNECTION=gitops-openbao
 kind=${KIND:-$repo_root/bin/kind}
 [[ -x $kind ]] || make kind
 [[ -x "$repo_root/bin/helm" ]] || make helm
+[[ -x "$repo_root/bin/yq" ]] || make yq
 clusters=$("$kind" get clusters)
 if grep -Fxq "$cluster" <<<"$clusters"; then
  echo 'GitOps regression requires a fresh cluster name; refusing to reuse an existing cluster' >&2; exit 1
 fi
 node_image=$(awk '$1=="KIND_NODE_IMAGE" && $2=="?=" {print $3}' Makefile)
+cluster_created=0
 cleanup() {
   result=$?
   trap - EXIT
   if ((result != 0)); then
     python3 hack/lab/gitops/diagnostics.py || true
   fi
-  if [[ ${KEEP_GITOPS_LAB:-0} != 1 ]]; then
+  if [[ $cluster_created == 1 && ${KEEP_GITOPS_LAB:-0} != 1 ]]; then
     if ! "$kind" delete cluster --name "$cluster"; then
       if ((result == 0)); then result=1; fi
     fi
+  fi
+  if ! rmdir "$lock_dir"; then
+    if ((result == 0)); then result=1; fi
   fi
   exit "$result"
 }
 trap cleanup EXIT
 "$kind" create cluster --name "$cluster" --image "$node_image" --kubeconfig "$KUBECONFIG" --wait 180s
+cluster_created=1
 chmod 600 "$KUBECONFIG"
-image=example.com/openbao-config-operator:gitops-build
-make docker-build-host IMG="$image"
-id=$(docker image inspect "$image" --format '{{.Id}}'); id=${id#sha256:}
-export LAB_OPERATOR_IMAGE="${image%:*}:${id:0:12}"
-docker tag "$image" "$LAB_OPERATOR_IMAGE"
-"$kind" load docker-image "$LAB_OPERATOR_IMAGE" --name "$cluster"
-arch=$(docker info --format '{{.Architecture}}'); case "$arch" in aarch64) arch=arm64 ;; x86_64) arch=amd64 ;; esac
-mkdir -p "$out/git-server-build"
-CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -o "$out/git-server-build/server" hack/lab/gitops/server.go
-cp hack/lab/gitops/Dockerfile "$out/git-server-build/Dockerfile"
-docker build -t example.com/obco-gitops-server:lab "$out/git-server-build"
-"$kind" load docker-image example.com/obco-gitops-server:lab --name "$cluster"
 hack/e2e/tls.sh
 python3 hack/lab/gitops/common.py "$profile"

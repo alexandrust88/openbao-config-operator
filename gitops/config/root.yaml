@@ -1,0 +1,111 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: OpenBaoNamespace
+metadata:
+  name: root-namespace
+  namespace: obco-gitops
+spec:
+  connectionRef:
+    name: gitops-openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30s
+  name: gitops-team
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  name: root-reader
+  namespace: obco-gitops
+spec:
+  connectionRef:
+    name: gitops-openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30s
+  name: gitops-reader
+  policy: |-
+    path "gitops-kv/data/app/*" { capabilities = ["read"] }
+    path "gitops-kv/metadata/app/*" { capabilities = ["list"] }
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: root-kv
+  namespace: obco-gitops
+spec:
+  connectionRef:
+    name: gitops-openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30s
+  path: gitops-kv
+  type: kv
+  options:
+    version: "2"
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: SecretsMount
+metadata:
+  name: root-transit
+  namespace: obco-gitops
+spec:
+  connectionRef:
+    name: gitops-openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30s
+  path: gitops-transit
+  type: transit
+---
+apiVersion: secrets.openbaoconfig.io/v1alpha1
+kind: TransitKey
+metadata:
+  name: root-key
+  namespace: obco-gitops
+spec:
+  connectionRef:
+    name: gitops-openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30s
+  mountPath: gitops-transit
+  name: app
+  type: aes256-gcm96
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  name: root-auth
+  namespace: obco-gitops
+spec:
+  connectionRef:
+    name: gitops-openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30s
+  path: gitops-approle
+  type: approle
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: AppRole
+metadata:
+  name: root-role
+  namespace: obco-gitops
+spec:
+  connectionRef:
+    name: gitops-openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30s
+  mountPath: gitops-approle
+  name: reader
+  tokenPolicies:
+    - gitops-reader
+  tokenTTL: 5m

@@ -9,7 +9,10 @@ Use this disposable kind lab to test Authentik identities against OpenBao config
 this operator. It creates its own Authentik instance; no hosted account or credentials are required.
 
 The lab installs the official Authentik Helm chart with a pinned server image and a separate
-PostgreSQL instance. Both the database and identities are disposable. This is a test deployment,
+PostgreSQL instance. Review or adapt the non-secret chart settings in
+[`hack/lab/authentik/values.yaml`](https://github.com/alexandrust88/openbao-config-operator/blob/main/hack/lab/authentik/values.yaml).
+The runner passes that file to Helm; passwords and bootstrap credentials remain runtime-generated
+Kubernetes Secrets, referenced by the values file. Both the database and identities are disposable. This is a test deployment,
 not a production Authentik installation.
 
 ## Before you start

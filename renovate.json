@@ -122,13 +122,6 @@
         "external-secrets",
         "ghcr.io/external-secrets/external-secrets"
       ]
-    },
-    {
-      "description": "The disposable Git server base and Alpine git-daemon package must be updated and tested together",
-      "matchFileNames": [
-        "hack/lab/gitops/Dockerfile"
-      ],
-      "enabled": false
     }
   ],
   "customManagers": [
@@ -249,9 +242,10 @@
     },
     {
       "customType": "regex",
-      "description": "Self-hosted identity provider Helm chart versions",
+      "description": "Identity provider and GitOps bootstrap Helm chart versions",
       "managerFilePatterns": [
-        "/^hack/lab/(?:authentik|zitadel)\\.py$/"
+        "/^hack/lab/(?:authentik|zitadel)\\.py$/",
+        "/^hack/lab/gitops/argocd\\.py$/"
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>helm) depName=(?<depName>\\S+) registryUrl=(?<registryUrl>\\S+)\\n[A-Z_]+\\s*=\\s*['\"](?<currentValue>[^'\"]+)['\"]"
@@ -259,19 +253,31 @@
     },
     {
       "customType": "regex",
-      "description": "Flux distribution used by the GitOps regression; operator chart and Argo pins are manually verified with checksums",
+      "description": "Flux distribution used by the GitOps regression",
       "managerFilePatterns": [
-        "/^hack/lab/gitops/flux\\.py$/"
+        "/^gitops/flux/flux-instance\\.yaml$/"
       ],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>fluxcd/flux2)\\nFLUX_VERSION = '(?<currentValue>[^']+)'"
+        "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>fluxcd/flux2)\\n\\s+version: (?<currentValue>[^\\s]+)"
       ]
     }
   ],
   "helm-values": {
     "managerFilePatterns": [
       "/^hack/lab/eso-values\\.yaml$/",
-      "/^hack/lab/zitadel/values\\.yaml$/"
+      "/^hack/lab/zitadel/values\\.yaml$/",
+      "/^hack/lab/authentik/values\\.yaml$/",
+      "/^gitops/.*/values(?:/.*)?\\.yaml$/"
+    ]
+  },
+  "argocd": {
+    "managerFilePatterns": [
+      "/^gitops/argocd/applications/.*\\.yaml$/"
+    ]
+  },
+  "flux": {
+    "managerFilePatterns": [
+      "/^gitops/flux/.*\\.yaml$/"
     ]
   }
 }

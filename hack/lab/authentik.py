@@ -28,8 +28,7 @@ ORIGIN = 'http://authentik.obco-lab-authentik.svc:9000'
 ISSUER = ORIGIN + '/application/o/openbao/'
 # renovate: datasource=helm depName=authentik registryUrl=https://charts.goauthentik.io
 CHART_VERSION = '2026.8.5'
-# renovate: datasource=docker depName=ghcr.io/goauthentik/server
-IMAGE = 'ghcr.io/goauthentik/server:2026.8.5@sha256:602227a86455d6772e3d16b7d852713c4f864f40df5df894abd1285bb53979a5'
+VALUES_FILE = identity.ROOT / 'hack/lab/authentik/values.yaml'
 # renovate: datasource=docker depName=docker.io/library/postgres
 POSTGRES = 'docker.io/library/postgres:16.16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e'
 
@@ -88,18 +87,6 @@ def deployment_objects(values):
                 'app.kubernetes.io/instance': 'authentik', 'app.kubernetes.io/component': 'server'},
                 'ports': [{'port': 9000, 'targetPort': 9000}]})]
 
-
-def helm_values():
-    repository, rest = IMAGE.split(':', 1)
-    tag, digest = rest.split('@', 1)
-    return {'global': {'image': {'repository': repository, 'tag': tag, 'digest': digest}},
-            'authentik': {'enabled': False, 'existingSecret': {'secretName': 'authentik-config'}},
-            'postgresql': {'enabled': False}, 'geoip': {'enabled': False},
-            'server': {'replicas': 1, 'serviceAccountName': 'default', 'automountServiceAccountToken': False,
-                       'resources': {'requests': {'cpu': '100m', 'memory': '512Mi'}, 'limits': {'memory': '1536Mi'}}},
-            'worker': {'replicas': 1, 'serviceAccountName': 'default', 'automountServiceAccountToken': False,
-                       'resources': {'requests': {'cpu': '100m', 'memory': '512Mi'}, 'limits': {'memory': '1536Mi'}}},
-            'serviceAccount': {'create': False}}
 
 
 class API:
@@ -187,9 +174,9 @@ def up():
     values = new_credentials()
     identity.apply([identity.secret('authentik-lab-users', NAMESPACE, values)] + deployment_objects(values))
     identity.kube('-n', NAMESPACE, 'rollout', 'status', 'deployment/authentik-postgres', '--timeout=180s')
-    result = subprocess.run(['helm', 'upgrade', '--install', 'authentik', 'authentik', '--repo', 'https://charts.goauthentik.io',
-        '--version', CHART_VERSION, '--kube-context', identity.CONTEXT, '-n', NAMESPACE, '--values', '-', '--wait', '--timeout', '10m'],
-        input=json.dumps(helm_values()), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=660)
+    result = subprocess.run([os.environ.get('HELM') or str(identity.ROOT / 'bin/helm'), 'upgrade', '--install', 'authentik', 'authentik', '--repo', 'https://charts.goauthentik.io',
+        '--version', CHART_VERSION, '--kube-context', identity.CONTEXT, '-n', NAMESPACE, '--values', str(VALUES_FILE), '--wait', '--timeout', '10m'],
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=660)
     if result.returncode:
         raise RuntimeError('Authentik Helm installation failed; inspect pod readiness')
     with identity.forward(NAMESPACE, 'authentik', 9000) as port:

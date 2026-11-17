@@ -7,11 +7,10 @@ import json
 import os
 from pathlib import Path
 import secrets
-import shutil
+import re
 import ssl
 import subprocess
 import sys
-import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -21,8 +20,6 @@ sys.path.insert(0, str(ROOT / 'hack/lab'))
 import identity
 
 NAMESPACE = 'obco-gitops'
-CONNECTION = 'gitops-openbao'
-GROUPS = {'Policy': 'sys', 'SecretsMount': 'sys', 'AuthMount': 'sys', 'OpenBaoNamespace': 'sys', 'AppRole': 'auth', 'TransitKey': 'secrets'}
 
 
 def run(args, data=None, cwd=None, timeout=360):
@@ -41,58 +38,25 @@ def eventually(check, label, timeout=180):
     raise RuntimeError('Timed out: ' + label)
 
 
-def write_json(path, value):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2) + '\n')
+def statefulset_ready(value):
+    replicas = value.get('spec', {}).get('replicas', 0)
+    generation = value.get('metadata', {}).get('generation')
+    status = value.get('status', {})
+    return (isinstance(replicas, int) and replicas > 0 and generation is not None
+            and status.get('observedGeneration') == generation and status.get('readyReplicas') == replicas)
 
 
-class Repository:
-    def __init__(self, path, push_url):
-        self.path = Path(path)
-        self.url = 'http://git.obco-gitops.svc:8080/repo.git'
-        self.path.mkdir(parents=True, exist_ok=False)
-        run(['git', 'init', '--initial-branch=main'], cwd=self.path)
-        run(['git', 'config', 'user.email', 'gitops-lab@example.invalid'], cwd=self.path)
-        run(['git', 'config', 'user.name', 'GitOps regression'], cwd=self.path)
-        run(['git', 'remote', 'add', 'origin', push_url], cwd=self.path)
-
-    @property
-    def revision(self):
-        return run(['git', 'rev-parse', 'HEAD'], cwd=self.path).strip()
-
-    def commit(self, message):
-        run(['git', 'add', '.'], cwd=self.path)
-        run(['git', 'commit', '-m', message], cwd=self.path)
-        run(['git', '-c', 'http.proxy=', 'push', 'origin', 'main'], cwd=self.path)
-        return self.revision
+def load_yaml(path):
+    return json.loads(run([os.environ.get('YQ', str(ROOT / 'bin/yq')), '-o=json', '.', str(path)]))
 
 
-def resource(kind, name, spec, tenant='root'):
-    shared = {'connectionRef': {'name': CONNECTION}, 'creationPolicy': 'Create',
-              'deletionPolicy': 'Orphan', 'driftDetection': 'Enabled', 'driftInterval': '30s'}
-    if tenant != 'root':
-        shared['namespace'] = 'gitops-team'
-    return {'apiVersion': GROUPS[kind] + '.openbaoconfig.io/v1alpha1', 'kind': kind,
-            'metadata': {'name': tenant + '-' + name, 'namespace': NAMESPACE}, 'spec': {**shared, **spec}}
+def fixtures():
+    return json.loads(run([os.environ.get('YQ', str(ROOT / 'bin/yq')), 'eval-all', '-o=json', '[.]',
+                           str(ROOT / 'gitops/config/root.yaml'), str(ROOT / 'gitops/config/child.yaml')]))
 
 
-def policy(version=1):
-    base = 'path "gitops-kv/data/app/*" { capabilities = ["read"] }'
-    return base + ('\npath "gitops-kv/metadata/app/*" { capabilities = ["list"] }' if version == 2 else '')
-
-
-def fixtures(version=1):
-    values = [resource('OpenBaoNamespace', 'namespace', {'name': 'gitops-team'})]
-    for tenant in ('root', 'child'):
-        values += [resource('Policy', 'reader', {'name': 'gitops-reader', 'policy': policy(version)}, tenant),
-                   resource('Policy', 'delete', {'name': 'gitops-delete', 'policy': policy(), 'deletionPolicy': 'Delete'}, tenant),
-                   resource('Policy', 'orphan', {'name': 'gitops-orphan', 'policy': policy()}, tenant),
-                   resource('SecretsMount', 'kv', {'path': 'gitops-kv', 'type': 'kv', 'options': {'version': '2'}}, tenant),
-                   resource('SecretsMount', 'transit', {'path': 'gitops-transit', 'type': 'transit'}, tenant),
-                   resource('TransitKey', 'key', {'mountPath': 'gitops-transit', 'name': 'app', 'type': 'aes256-gcm96'}, tenant),
-                   resource('AuthMount', 'auth', {'path': 'gitops-approle', 'type': 'approle'}, tenant),
-                   resource('AppRole', 'role', {'mountPath': 'gitops-approle', 'name': 'reader', 'tokenPolicies': ['gitops-reader'], 'tokenTTL': '5m'}, tenant)]
-    return values
+def policy():
+    return next(obj['spec']['policy'] for obj in fixtures() if obj['metadata']['name'] == 'root-reader')
 
 
 class Harness:
@@ -101,11 +65,18 @@ class Harness:
         if not self.context.startswith('kind-'):
             raise ValueError('Only disposable kind contexts are allowed')
         self.namespace = NAMESPACE
-        image = os.environ['LAB_OPERATOR_IMAGE']
-        repository, tag = image.rsplit(':', 1)
-        self.operator_values = {'image': {'repository': repository, 'tag': tag, 'digest': '', 'pullPolicy': 'IfNotPresent'},
-                                'resources': {'requests': {'cpu': '50m', 'memory': '128Mi'}, 'limits': {'memory': '512Mi'}}}
-        self.repo = None
+        self.public_url = os.environ.get('GITOPS_REPOSITORY', 'https://github.com/alexandrust88/openbao-config-operator.git')
+        if not re.fullmatch(r'https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git', self.public_url):
+            raise ValueError('GitOps source must be a public HTTPS github.com repository without credentials')
+        self.revision = os.environ.get('GITOPS_REVISION', 'main')
+        if self.revision == 'main':
+            advertised = run(['git', '-c', 'credential.helper=', '-c', 'http.extraHeader=', 'ls-remote', self.public_url, 'refs/heads/main'])
+            rows = [row.split() for row in advertised.splitlines()]
+            if len(rows) != 1 or len(rows[0]) != 2 or rows[0][1] != 'refs/heads/main':
+                raise RuntimeError('Public Git main branch could not be resolved')
+            self.revision = rows[0][0]
+        if not re.fullmatch(r'[0-9a-f]{40}', self.revision):
+            raise ValueError('GitOps revision must be main or a full commit SHA')
 
     def kubectl(self, *args, data=None):
         return run(['kubectl', '--context', self.context, *args], data=json.dumps(data) if data is not None else None)
@@ -123,63 +94,16 @@ class Harness:
     def bootstrap(self):
         self.apply({'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': NAMESPACE}})
         self.apply({'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'openbao-e2e', 'namespace': 'openbao'},
-                    'stringData': {'seal-key': secrets.token_hex(32), 'role-id': secrets.token_hex(16),
-                                   'secret-id': secrets.token_urlsafe(32), 'token': secrets.token_urlsafe(32)}})
-        labels = {'app': 'gitops-git'}
-        self.apply([{'apiVersion': 'apps/v1', 'kind': 'Deployment', 'metadata': {'name': 'git', 'namespace': NAMESPACE},
-            'spec': {'replicas': 1, 'selector': {'matchLabels': labels}, 'template': {'metadata': {'labels': labels}, 'spec': {
-                'automountServiceAccountToken': False, 'securityContext': {'runAsUser': 1000, 'runAsGroup': 1000, 'fsGroup': 1000},
-                'containers': [{'name': 'git', 'image': 'example.com/obco-gitops-server:lab', 'imagePullPolicy': 'Never',
-                    'securityContext': {'allowPrivilegeEscalation': False, 'capabilities': {'drop': ['ALL']}},
-                    'ports': [{'containerPort': 8080}], 'readinessProbe': {'tcpSocket': {'port': 8080}},
-                    'resources': {'requests': {'cpu': '20m', 'memory': '32Mi'}, 'limits': {'memory': '256Mi'}},
-                    'volumeMounts': [{'name': 'repo', 'mountPath': '/git'}]}], 'volumes': [{'name': 'repo', 'emptyDir': {}}]}}}},
-            {'apiVersion': 'v1', 'kind': 'Service', 'metadata': {'name': 'git', 'namespace': NAMESPACE},
-             'spec': {'selector': labels, 'ports': [{'port': 8080, 'targetPort': 8080}]}}])
-        self.kubectl('-n', NAMESPACE, 'rollout', 'status', 'deployment/git', '--timeout=180s')
-
-    def prepare_repository(self, port):
-        parent = ROOT / '.tmp/lab' / self.context.removeprefix('kind-')
-        parent.mkdir(parents=True, exist_ok=True)
-        path = Path(tempfile.mkdtemp(prefix='gitops-run-', dir=parent)) / 'repository'
-        self.repo = Repository(path, f'http://127.0.0.1:{port}/repo.git')
-        # The source fixture's Secret is deliberately replaced by random bootstrap-only material.
-        docs = (ROOT / 'hack/e2e/openbao.yaml').read_text().split('\n---\n')
-        docs = [doc for doc in docs if '\nkind: Secret\n' not in '\n' + doc]
-        directory = self.repo.path / 'openbao'
-        directory.mkdir()
-        (directory / 'openbao.yaml').write_text('\n---\n'.join(docs))
-        write_json(directory / 'kustomization.yaml', {'apiVersion': 'kustomize.config.k8s.io/v1beta1', 'kind': 'Kustomization', 'resources': ['openbao.yaml']})
-        shutil.copytree(ROOT / 'charts/openbao-config-operator', self.repo.path / 'operator')
-        write_json(self.repo.path / 'operator-values.yaml', self.operator_values)
-        ca = self.get('configmap', 'openbao-ca', 'openbao')['data']['ca.crt']
-        connection = [
-            {'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': {'name': 'openbao-ca', 'namespace': NAMESPACE}, 'data': {'ca.crt': ca}},
-            {'apiVersion': 'core.openbaoconfig.io/v1alpha1', 'kind': 'OpenBaoServer', 'metadata': {'name': CONNECTION}, 'spec': {
-                'address': 'https://openbao-active.openbao.svc:8200', 'caBundle': {'configMapRef': {'name': 'openbao-ca', 'namespace': NAMESPACE, 'key': 'ca.crt'}},
-                'allowedNamespaces': {'matchLabels': {'kubernetes.io/metadata.name': NAMESPACE}}, 'allowedAudiences': ['openbao']}},
-            {'apiVersion': 'core.openbaoconfig.io/v1alpha1', 'kind': 'OpenBaoConnection', 'metadata': {'name': CONNECTION, 'namespace': NAMESPACE},
-             'spec': {'serverRef': {'name': CONNECTION}, 'auth': {'token': {'secretRef': {'name': 'gitops-bootstrap', 'key': 'token'}}}}}]
-        write_json(self.repo.path / 'config/connection.json', {'apiVersion': 'v1', 'kind': 'List', 'items': connection})
-        self.write_fixtures()
-        self.repo.commit('Declare OpenBao, operator chart and root/tenant configuration')
-
-    def write_fixtures(self, version=1, prune=False):
-        objects = fixtures(version)
-        if prune:
-            objects = [obj for obj in objects if obj['metadata']['name'] not in ('root-delete', 'root-orphan', 'child-delete', 'child-orphan')]
-        write_json(self.repo.path / 'config/objects.json', {'apiVersion': 'v1', 'kind': 'List', 'items': objects})
-        write_json(self.repo.path / 'config/kustomization.yaml', {'apiVersion': 'kustomize.config.k8s.io/v1beta1', 'kind': 'Kustomization', 'resources': ['connection.json', 'objects.json']})
-
+                    'stringData': {'seal-key': secrets.token_hex(32), 'token': secrets.token_urlsafe(32)}})
     def connect_credentials(self):
         token = self.get('secret', 'openbao-e2e', 'openbao')['data']['token']
         self.apply({'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'gitops-bootstrap', 'namespace': NAMESPACE}, 'data': {'token': token}})
+        ca = self.get('configmap', 'openbao-ca', 'openbao')['data']['ca.crt']
+        self.apply({'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': {'name': 'openbao-ca', 'namespace': NAMESPACE}, 'data': {'ca.crt': ca}})
         return base64.b64decode(token).decode()
 
-    def wait_resources(self, prune=False):
+    def wait_resources(self):
         for obj in fixtures():
-            if prune and obj['metadata']['name'].endswith(('-delete', '-orphan')):
-                continue
             kind = obj['kind'] + '.' + obj['apiVersion'].split('/')[0]
             def ready():
                 current = self.get(kind, obj['metadata']['name'], NAMESPACE, missing_ok=True)
@@ -189,11 +113,18 @@ class Harness:
             eventually(ready, 'current-generation Ready ' + obj['metadata']['name'])
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # A redirect must never forward the privileged lab token to another endpoint.
+        return None
+
+
 class Bao:
     def __init__(self, port, ca, token):
         self.address = f'https://127.0.0.1:{port}/v1/'
         self.token = token
-        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context(cadata=ca)))
+        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(),
+                                                  urllib.request.HTTPSHandler(context=ssl.create_default_context(cadata=ca)))
 
     def request(self, tenant, method, path, payload=None, token=None):
         headers = {'X-Vault-Token': self.token if token is None else token, 'Content-Type': 'application/json'}
@@ -210,10 +141,10 @@ class Bao:
             raise RuntimeError('OpenBao request failed; response withheld') from None
 
 
-def assert_live(h, bao, version=1):
+def assert_live(bao):
     for tenant in ('root', 'child'):
         status, body = bao.request(tenant, 'GET', 'sys/policies/acl/gitops-reader')
-        if status != 200 or body.get('data', {}).get('policy') != policy(version):
+        if status != 200 or body.get('data', {}).get('policy') != policy():
             raise RuntimeError('Git policy did not reach OpenBao: ' + tenant)
         for path in ('gitops-transit/keys/app', 'auth/gitops-approle/role/reader', 'sys/mounts/gitops-kv/tune'):
             if bao.request(tenant, 'GET', path)[0] != 200:
@@ -226,7 +157,7 @@ def assert_live(h, bao, version=1):
             raise RuntimeError('Transit round trip failed')
 
 
-def assert_role_access(bao, tenant, version=1):
+def assert_role_access(bao, tenant):
     status, role = bao.request(tenant, 'GET', 'auth/gitops-approle/role/reader/role-id')
     if status != 200: raise RuntimeError('AppRole role ID unavailable')
     status, secret = bao.request(tenant, 'POST', 'auth/gitops-approle/role/reader/secret-id', {})
@@ -242,10 +173,8 @@ def assert_role_access(bao, tenant, version=1):
         if status != 200 or read.get('data', {}).get('data', {}).get('value') != 'gitops-public-probe':
             raise RuntimeError('AppRole reader could not read its application probe')
         status, listing = bao.request(tenant, 'LIST', 'gitops-kv/metadata/app/', token=token)
-        if version == 1 and status != 403:
-            raise RuntimeError('Initial reader policy unexpectedly allowed metadata listing')
-        if version == 2 and (status != 200 or 'probe' not in listing.get('data', {}).get('keys', [])):
-            raise RuntimeError('Git permission update did not enable application secret listing')
+        if status != 200 or 'probe' not in listing.get('data', {}).get('keys', []):
+            raise RuntimeError('Declared reader policy did not allow application secret listing')
         for method, path, payload in [('POST', 'gitops-kv/data/app/probe', {'data': {'value': 'forbidden'}}),
                                       ('GET', 'sys/mounts', None), ('GET', 'gitops-kv/data/other/probe', None)]:
             if bao.request(tenant, method, path, payload, token=token)[0] != 403:
@@ -258,67 +187,24 @@ def assert_role_access(bao, tenant, version=1):
             raise RuntimeError('Unable to revoke the fixture login token')
 
 
-def invalid_policy_rejected(current):
-    if current.get('spec', {}).get('policy') != 'path "unterminated {':
-        return False
-    generation = current.get('metadata', {}).get('generation')
-    return generation is not None and any(
-        c.get('type') == 'Synced' and c.get('status') == 'False' and c.get('reason') == 'ReconcileError'
-        and c.get('observedGeneration') == generation
-        for c in current.get('status', {}).get('conditions', []))
-
-
 def regression(h, provider, bao):
     h.wait_resources()
-    assert_live(h, bao)
+    assert_live(bao)
     for tenant in ('root', 'child'):
         assert_role_access(bao, tenant)
-    print('Git initial revision: root/tenant objects Ready and live transit round trips passed', flush=True)
-    h.write_fixtures(version=2)
-    revision = h.repo.commit('Update reader policies through Git')
-    provider.wait(h, revision, phase='all')
-    h.wait_resources()
-    assert_live(h, bao, 2)
+    print('Public Git configuration: root/tenant auth, ACL denials and transit round trips passed', flush=True)
+    drift = 'path "gitops-kv/data/app/*" { capabilities = ["read"] }'
     for tenant in ('root', 'child'):
-        assert_role_access(bao, tenant, 2)
-    print('Git update reached both Kubernetes and OpenBao', flush=True)
-    file = h.repo.path / 'config/objects.json'
-    invalid = json.loads(file.read_text())
-    next(obj for obj in invalid['items'] if obj['metadata']['name'] == 'root-reader')['spec']['policy'] = 'path "unterminated {'
-    write_json(file, invalid)
-    broken_revision = h.repo.commit('Prove unhealthy policy reporting')
-    def rejected_policy():
-        current = h.get('policies.sys.openbaoconfig.io', 'root-reader', NAMESPACE)
-        return invalid_policy_rejected(current)
-    eventually(rejected_policy, 'current-generation failed policy')
-    provider.assert_unhealthy(h, broken_revision)
-    h.write_fixtures(version=2)
-    recovered_revision = h.repo.commit('Repair invalid policy through Git')
-    provider.wait(h, recovered_revision, phase='all')
-    h.wait_resources()
-    assert_live(h, bao, 2)
-    print('Invalid Git policy surfaced unhealthy status; Git correction restored health and live state', flush=True)
+        h.kubectl('-n', NAMESPACE, 'patch', 'policies.sys.openbaoconfig.io', tenant + '-reader', '--type=merge', '-p', json.dumps({'spec': {'policy': drift}}))
+    eventually(lambda: all(h.get('policies.sys.openbaoconfig.io', t + '-reader', NAMESPACE)['spec']['policy'] == policy() for t in ('root', 'child')), 'GitOps Kubernetes drift repair')
     for tenant in ('root', 'child'):
-        h.kubectl('-n', NAMESPACE, 'patch', 'policies.sys.openbaoconfig.io', tenant + '-reader', '--type=merge', '-p', json.dumps({'spec': {'policy': policy()}}))
-    eventually(lambda: all(h.get('policies.sys.openbaoconfig.io', t + '-reader', NAMESPACE)['spec']['policy'] == policy(2) for t in ('root', 'child')), 'GitOps Kubernetes drift repair')
-    for tenant in ('root', 'child'):
-        if bao.request(tenant, 'PUT', 'sys/policies/acl/gitops-reader', {'policy': policy()})[0] != 204:
+        if bao.request(tenant, 'PUT', 'sys/policies/acl/gitops-reader', {'policy': drift})[0] != 204:
             raise RuntimeError('Unable to introduce OpenBao policy drift')
-    eventually(lambda: all(bao.request(t, 'GET', 'sys/policies/acl/gitops-reader')[1].get('data', {}).get('policy') == policy(2) for t in ('root', 'child')), 'operator OpenBao drift repair')
-    print('Kubernetes drift and OpenBao drift repaired through their respective controllers', flush=True)
-    h.write_fixtures(version=2, prune=True)
-    revision = h.repo.commit('Prune explicit Delete and default Orphan policies')
-    provider.wait(h, revision, phase='all')
-    for tenant in ('root', 'child'):
-        for suffix in ('delete', 'orphan'):
-            h.kubectl('-n', NAMESPACE, 'wait', '--for=delete', 'policies.sys.openbaoconfig.io/' + tenant + '-' + suffix, '--timeout=120s')
-        if bao.request(tenant, 'GET', 'sys/policies/acl/gitops-delete')[0] != 404:
-            raise RuntimeError('Delete policy survived Git prune')
-        if bao.request(tenant, 'GET', 'sys/policies/acl/gitops-orphan')[0] != 200:
-            raise RuntimeError('Orphan policy was removed by Git prune')
-    h.wait_resources(prune=True)
-    assert_live(h, bao, 2)
-    print('Git prune: Delete removed remote policies; Orphan retained them in root and tenant', flush=True)
+    eventually(lambda: all(bao.request(t, 'GET', 'sys/policies/acl/gitops-reader')[1].get('data', {}).get('policy') == policy() for t in ('root', 'child')), 'operator OpenBao drift repair')
+    h.wait_resources()
+    provider.wait(h, h.revision, phase='all')
+    assert_live(bao)
+    print('Kubernetes and OpenBao drift repaired from the unchanged public Git revision', flush=True)
 
 
 def main():
@@ -327,19 +213,17 @@ def main():
     args = parser.parse_args()
     h = Harness()
     h.bootstrap()
-    print('Git service and private bootstrap material ready', flush=True)
+    print('Private bootstrap material ready', flush=True)
     provider = importlib.import_module(args.provider)
-    with identity.forward(NAMESPACE, 'git', 8080) as port:
-        h.prepare_repository(port)
-        print('Configuration committed and pushed to the in-cluster Git service', flush=True)
-        provider.install(h)
-        provider.wait(h, h.repo.revision, phase='infrastructure')
-        h.kubectl('-n', 'openbao', 'rollout', 'status', 'statefulset/openbao', '--timeout=300s')
-        token = h.connect_credentials()
-        provider.wait(h, h.repo.revision, phase='all')
-        with identity.forward('openbao', 'openbao-active', 8200) as bao_port:
-            ca = h.get('configmap', 'openbao-ca', 'openbao')['data']['ca.crt']
-            regression(h, provider, Bao(bao_port, ca, token))
+    provider.install(h)
+    provider.wait(h, h.revision, phase='infrastructure')
+    eventually(lambda: statefulset_ready(h.get('statefulset', 'openbao', 'openbao')),
+               'OpenBao StatefulSet current generation and all replicas Ready', timeout=300)
+    token = h.connect_credentials()
+    provider.wait(h, h.revision, phase='all')
+    with identity.forward('openbao', 'openbao-active', 8200) as bao_port:
+        ca = h.get('configmap', 'openbao-ca', 'openbao')['data']['ca.crt']
+        regression(h, provider, Bao(bao_port, ca, token))
 
 
 if __name__ == '__main__':

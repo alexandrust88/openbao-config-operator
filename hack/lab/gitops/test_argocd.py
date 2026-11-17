@@ -1,8 +1,9 @@
 """Argo CD hierarchy, permission boundary and convergence regression contracts."""
-import hashlib
 import json
+import re
 import subprocess
 import types
+import textwrap
 import unittest
 from unittest.mock import patch
 
@@ -10,32 +11,54 @@ import argocd
 
 
 class ArgoTests(unittest.TestCase):
-    def setUp(self):
-        self.h = types.SimpleNamespace(repo=types.SimpleNamespace(url='http://git.obco-gitops.svc:8080/repo.git'),
-                                      namespace='obco-gitops', operator_values={'image': {'tag': 'immutable-build'}})
+    def test_checked_in_applications_reference_public_charts_and_git(self):
+        rendered = subprocess.run(['kubectl', 'kustomize', str(argocd.EXAMPLES / 'applications')],
+                                  text=True, capture_output=True, check=True).stdout
+        for value in ('https://openbao.github.io/openbao-helm',
+                      'https://alexandrust88.github.io/openbao-config-operator/charts',
+                      'chart: openbao-config-operator', 'targetRevision: 0.4.0',
+                      'path: gitops/config', 'path: gitops/openbao/bootstrap'):
+            self.assertIn(value, rendered)
+        self.assertNotIn('obco-gitops.svc', rendered)
+        self.assertNotIn('example.com', rendered)
 
-    def test_root_children_are_real_git_sources_and_helm_chart(self):
-        children, root = argocd.manifests(self.h)
-        self.assertEqual(root['spec']['source']['path'], 'argocd/root')
-        self.assertEqual([a['spec']['source']['path'] for a in children], ['openbao', 'operator', 'config'])
-        self.assertEqual([a['metadata']['annotations']['argocd.argoproj.io/sync-wave'] for a in children], ['0', '10', '20'])
-        self.assertEqual(children[1]['spec']['source']['helm']['valuesObject'], self.h.operator_values)
-        for app in [root, *children]:
-            self.assertEqual(app['spec']['source']['repoURL'], self.h.repo.url)
-            self.assertTrue(app['spec']['syncPolicy']['automated']['selfHeal'])
-            self.assertTrue(app['spec']['syncPolicy']['automated']['prune'])
+    def test_checked_in_controller_image_digests_are_valid(self):
+        values = (argocd.EXAMPLES / 'values/argocd.yaml').read_text()
+        digests = re.findall(r'sha256:([a-f0-9]+)', values)
+        self.assertEqual(len(digests), 2)
+        self.assertTrue(all(len(value) == 64 for value in digests))
+        self.assertIn('server:\n  enabled: true', values)
 
     def test_config_project_cannot_manage_workloads_or_secrets(self):
-        projects = {p['metadata']['name']: p['spec'] for p in argocd.projects(self.h)}
-        for spec in projects.values():
-            self.assertEqual(spec['sourceRepos'], [self.h.repo.url])
-            self.assertEqual(len(spec['destinations']), 1)
-            self.assertFalse(any(item['kind'] == '*' for item in spec['namespaceResourceWhitelist']))
-        config = projects['gitops-config']
-        self.assertEqual(config['destinations'][0]['namespace'], self.h.namespace)
-        self.assertEqual(config['clusterResourceWhitelist'], [{'group': 'core.openbaoconfig.io', 'kind': 'OpenBaoServer'}])
-        self.assertFalse({'Secret', 'Application', 'Deployment', 'RoleBinding'} & {x['kind'] for x in config['namespaceResourceWhitelist']})
-        self.assertEqual(projects['gitops-root']['namespaceResourceWhitelist'], [{'group': 'argoproj.io', 'kind': 'Application'}])
+        project = argocd.read_object(argocd.EXAMPLES / 'projects/gitops-config.yaml')['spec']
+        allowed = {item['kind'] for item in project['namespaceResourceWhitelist']}
+        self.assertFalse({'Secret', 'Deployment', 'RoleBinding', 'Application', '*'} & allowed)
+        self.assertEqual(project['destinations'], [{'server': 'https://kubernetes.default.svc', 'namespace': 'obco-gitops'}])
+        self.assertEqual(project['clusterResourceWhitelist'], [{'group': 'core.openbaoconfig.io', 'kind': 'OpenBaoServer'}])
+
+    def test_exact_revision_override_preserves_chart_versions(self):
+        base = {'spec': {'source': {'path': 'gitops/argocd/applications'}}}
+        with patch.object(argocd, 'read_object', return_value=base):
+            root = argocd.root_application('https://github.com/owner/repo.git', 'a' * 40)
+        source = root['spec']['source']
+        self.assertEqual(source['targetRevision'], 'a' * 40)
+        patches = source['kustomize']['patches']
+        self.assertEqual(len(patches), 3)
+        for entry in patches:
+            for operation in json.loads(entry['patch']):
+                self.assertNotIn('/sources/0/', operation['path'])
+                self.assertIn(operation['value'], ('a' * 40, 'https://github.com/owner/repo.git'))
+
+    def test_multisource_requires_every_git_revision_and_chart_version(self):
+        app = {'spec': {'sources': [{'chart': 'openbao', 'targetRevision': '0.30.7'},
+                                   {'ref': 'values'}, {'path': 'bootstrap'}]},
+               'status': {'sync': {'status': 'Synced', 'revisions': ['0.30.7', 'sha', 'sha']},
+                          'health': {'status': 'Healthy'}}}
+        self.assertTrue(argocd.synced(app, 'sha'))
+        app['status']['sync']['revisions'][2] = 'old'
+        self.assertFalse(argocd.synced(app, 'sha'))
+        app['status']['sync']['revisions'] = ['0.30.7', 'sha']
+        self.assertFalse(argocd.synced(app, 'sha'))
 
     def test_wrong_revision_or_unhealthy_cannot_pass(self):
         app = {'status': {'sync': {'status': 'Synced', 'revision': 'expected'}, 'health': {'status': 'Healthy'}}}
@@ -69,19 +92,9 @@ class ArgoTests(unittest.TestCase):
                 argocd.bootstrap_command(h, 'rollout', 'rollout', 'status')
         self.assertNotIn('private', str(error.exception))
 
-    def test_install_checksum_and_image_inventory_fail_closed(self):
-        with self.assertRaisesRegex(RuntimeError, 'checksum'):
-            argocd.pinned_manifest(b'changed release')
-        raw = b'  image: unexpected/image:latest\n'
-        with patch.object(argocd, 'MANIFEST_SHA256', hashlib.sha256(raw).hexdigest()):
-            with self.assertRaisesRegex(RuntimeError, 'inventory'):
-                argocd.pinned_manifest(raw)
-        raw = ''.join('  image: ' + image + '\n' for image in argocd.IMAGES).encode()
-        with patch.object(argocd, 'MANIFEST_SHA256', hashlib.sha256(raw).hexdigest()):
-            rendered = argocd.pinned_manifest(raw)
-        self.assertEqual(rendered.count('@sha256:'), len(argocd.IMAGES))
-
     def test_child_application_health_requires_both_sync_and_health(self):
+        values = argocd.common.load_yaml(argocd.EXAMPLES / 'values/argocd.yaml')
+        source = values['configs']['cm']['resource.customizations.health.argoproj.io_Application']
         cases = [('{}', 'Progressing'),
                  ('{status={sync={status="Synced"},health={}}}', 'Progressing'),
                  ('{status={sync={status="OutOfSync"},health={status="Healthy"}}}', 'Progressing'),
@@ -90,13 +103,16 @@ class ArgoTests(unittest.TestCase):
                  ('{status={operationState={phase="Failed"}}}', 'Degraded')]
         for value, expected in cases:
             with self.subTest(value=value):
-                script = 'obj=' + value + '\nlocal function health()\n' + argocd.APPLICATION_HEALTH + '\nend\nprint(health().status)'
+                script = 'obj=' + value + '\nlocal function health()\n' + source + '\nend\nprint(health().status)'
                 result = subprocess.run(['lua', '-'], input=script, text=True, capture_output=True, check=True)
                 self.assertEqual(result.stdout.strip(), expected)
 
     def test_operator_health_reports_current_failure_before_stale_ready(self):
         text = (argocd.common.ROOT / 'docs/guides/argocd-cm-health.yaml').read_text()
-        source = argocd.textwrap.dedent(text.split('      health.lua: |\n', 1)[1])
+        canonical = textwrap.dedent(text.split('      health.lua: |\n', 1)[1])
+        values = argocd.common.load_yaml(argocd.EXAMPLES / 'values/argocd.yaml')
+        source = textwrap.dedent(values['configs']['cm']['resource.customizations'].split('health.lua: |\n', 1)[1])
+        self.assertEqual(source.strip(), canonical.strip())
         cases = [
             ('{metadata={generation=2},status={observedGeneration=1,conditions={{type="Ready",status="True",observedGeneration=1},{type="Synced",status="False",reason="ReconcileError",observedGeneration=2}}}}', 'Degraded'),
             ('{metadata={generation=3},status={observedGeneration=1,conditions={{type="Ready",status="True",observedGeneration=1},{type="Synced",status="False",reason="ReconcileError",observedGeneration=2}}}}', 'Progressing'),

@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: gitops-config
+  namespace: argocd
+spec:
+  sourceRepos:
+    - https://github.com/alexandrust88/openbao-config-operator.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: obco-gitops
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: core.openbaoconfig.io
+      kind: OpenBaoConnection
+    - group: sys.openbaoconfig.io
+      kind: Policy
+    - group: sys.openbaoconfig.io
+      kind: SecretsMount
+    - group: sys.openbaoconfig.io
+      kind: AuthMount
+    - group: sys.openbaoconfig.io
+      kind: OpenBaoNamespace
+    - group: auth.openbaoconfig.io
+      kind: AppRole
+    - group: secrets.openbaoconfig.io
+      kind: TransitKey
+  clusterResourceWhitelist:
+    - group: core.openbaoconfig.io
+      kind: OpenBaoServer
+  orphanedResources:
+    warn: false

@@ -1,0 +1,36 @@
+# Disposable local test deployment; credentials come from authentik-config.
+global:
+  image:
+    repository: ghcr.io/goauthentik/server
+    tag: 2026.8.5
+    digest: sha256:602227a86455d6772e3d16b7d852713c4f864f40df5df894abd1285bb53979a5
+authentik:
+  enabled: false
+  existingSecret:
+    secretName: authentik-config
+postgresql:
+  enabled: false
+geoip:
+  enabled: false
+server:
+  replicas: 1
+  serviceAccountName: default
+  automountServiceAccountToken: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1536Mi
+worker:
+  replicas: 1
+  serviceAccountName: default
+  automountServiceAccountToken: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1536Mi
+serviceAccount:
+  create: false

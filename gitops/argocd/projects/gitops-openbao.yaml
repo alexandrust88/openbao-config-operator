@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: gitops-openbao
+  namespace: argocd
+spec:
+  sourceRepos:
+    - https://github.com/alexandrust88/openbao-config-operator.git
+    - https://openbao.github.io/openbao-helm
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: openbao
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ServiceAccount
+    - group: apps
+      kind: StatefulSet
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
+    - group: policy
+      kind: PodDisruptionBudget
+    - group: ""
+      kind: Secret
+    - group: apps
+      kind: Deployment
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+  orphanedResources:
+    warn: false
