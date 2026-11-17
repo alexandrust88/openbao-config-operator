@@ -26,7 +26,23 @@ data:
             observed = c.observedGeneration
           end
         end
-        if generation ~= nil and observed ~= nil and observed < generation then
+        local waiting = {
+          ReconcileInProgress = true,
+          ReferenceNotReady = true,
+          ConnectionNotReady = true,
+          PluginNotRegistered = true,
+          ServerNotReady = true,
+          WriteBudgetExceeded = true,
+        }
+        if generation ~= nil and synced ~= nil and synced.observedGeneration == generation and synced.status == "False"
+          and synced.reason ~= "Paused" and not waiting[synced.reason] then
+          hs.status = "Degraded"
+          hs.message = (synced.reason or "") .. ": " .. (synced.message or "")
+          return hs
+        end
+        if generation ~= nil and ((observed == nil or observed < generation)
+          or (ready ~= nil and ready.observedGeneration ~= nil and ready.observedGeneration < generation)
+          or (synced ~= nil and synced.observedGeneration ~= nil and synced.observedGeneration < generation)) then
           hs.message = "Waiting for the operator to observe generation " .. generation
           return hs
         end
@@ -40,18 +56,12 @@ data:
         if ready == nil then
           return hs
         end
-        local waiting = {
-          ReconcileInProgress = true,
-          ReferenceNotReady = true,
-          ConnectionNotReady = true,
-          PluginNotRegistered = true,
-          ServerNotReady = true,
-          WriteBudgetExceeded = true,
-        }
         local message = ready.message or ""
         if ready.status == "True" then
-          if synced ~= nil and synced.status == "False" and not waiting[synced.reason] then
-            hs.status = "Degraded"
+          if synced ~= nil and synced.status == "False" then
+            if not waiting[synced.reason] then
+              hs.status = "Degraded"
+            end
             hs.message = (synced.reason or "") .. ": " .. (synced.message or "")
             return hs
           end

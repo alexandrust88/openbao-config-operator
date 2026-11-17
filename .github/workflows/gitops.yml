@@ -1,0 +1,70 @@
+name: GitOps regression
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/gitops.yml'
+      - '.github/actions/setup-go/**'
+      - 'hack/lab/gitops/**'
+      - 'hack/lab/identity.py'
+      - 'hack/e2e/**'
+      - 'api/**'
+      - 'internal/**'
+      - 'cmd/**'
+      - 'config/**'
+      - 'charts/**'
+      - 'docs/how-to/argocd-lab.md'
+      - 'docs/how-to/flux-lab.md'
+      - 'docs/guides/argocd*'
+      - 'docs/guides/flux.md'
+      - 'Makefile'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'go.mod'
+      - 'go.sum'
+  schedule:
+    - cron: '17 5 * * 3'
+
+permissions: {}
+
+concurrency:
+  group: gitops-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  regression:
+    name: GitOps / ${{ matrix.provider }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        provider: [argocd, flux]
+    env:
+      PROVIDER: ${{ matrix.provider }}
+      LAB_CONTEXT: kind-obco-gitops-${{ matrix.provider }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
+      - name: Exercise the documented GitOps command
+        run: |
+          set -o pipefail
+          make "lab-$PROVIDER" 2>&1 | tee "$RUNNER_TEMP/gitops.log"
+      - name: Delete the disposable cluster
+        if: always()
+        run: |
+          if [ -x bin/kind ]; then
+            bin/kind delete cluster --name "obco-gitops-$PROVIDER"
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: gitops-${{ matrix.provider }}-results
+          path: ${{ runner.temp }}/gitops.log
+          retention-days: 7
+          if-no-files-found: warn

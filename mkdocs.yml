@@ -167,6 +167,8 @@ nav:
           - Migrate to the operator: guides/migration.md
           - Argo CD: guides/argocd.md
           - Flux: guides/flux.md
+          - Test Argo CD app-of-apps: how-to/argocd-lab.md
+          - Test Flux delivery: how-to/flux-lab.md
           - OpenBao self-init: guides/self-init.md
   - Operate:
       - operate/index.md

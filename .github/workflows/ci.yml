@@ -30,7 +30,7 @@ jobs:
       - run: make lint-config lint
       - name: Validate local lab scripts
         run: |
-          shellcheck -x hack/lab/*.sh hack/lab/plugins/*.sh hack/lab/saas/*.sh
+          shellcheck -x hack/lab/*.sh hack/lab/plugins/*.sh hack/lab/saas/*.sh hack/lab/gitops/*.sh
           python3 - <<'PYTHON'
           import ast
           from pathlib import Path
@@ -41,6 +41,8 @@ jobs:
           node --check hack/lab/browser/oidc.mjs
           python3 -m unittest discover -s hack/lab -p 'test_*.py' -v
           python3 -m unittest discover -s hack/lab/saas -p 'test_*.py' -v
+          command -v lua >/dev/null || { sudo apt-get update && sudo apt-get install -y --no-install-recommends lua5.4; }
+          python3 -m unittest discover -s hack/lab/gitops -p 'test_*.py' -v
       - name: Validate external plugin fixture module
         working-directory: test/livekit/pluginfixture
         run: |
