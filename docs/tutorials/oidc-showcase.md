@@ -36,7 +36,8 @@ hack/lab/saas/run.sh apply --state "$STATE"
 ```
 
 Wait for `SaaS identity CRDs Ready`. The operator has configured an OIDC mount at root and in
-`saas-auth0-alpha` and `saas-auth0-beta`. Each namespace has three external identity groups,
+`saas-<provider>-alpha` and `saas-<provider>-beta`: for example, `saas-auth0-alpha`
+for Auth0 or `saas-okta-alpha` for Okta. Each namespace has three external identity groups,
 an internal session group, a KV v2 mount and a Transit key. The groups receive policies through
 `Group`, `GroupAlias` and `GroupMembership` resources; the OIDC roles have no direct token policies.
 

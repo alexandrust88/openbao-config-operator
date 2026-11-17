@@ -26,11 +26,6 @@ def health_expressions():
     return next(item for item in roots if item['metadata']['name'] == 'config')['spec']['healthCheckExprs']
 
 
-def health_expression(managed):
-    return next(item['current'] for item in health_expressions()
-                if (not item['apiVersion'].startswith('core.')) == managed)
-
-
 def bootstrap(h):
     source = load('bootstrap/source.yaml')
     source['spec']['url'] = h.public_url

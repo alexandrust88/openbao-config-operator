@@ -1,6 +1,7 @@
 """Contract checks for the disposable Authentik provider and service identities."""
 import io
 import json
+import os
 import unittest
 import urllib.error
 from unittest.mock import Mock, patch
@@ -55,13 +56,19 @@ class AuthentikTests(unittest.TestCase):
                           if path == '/api/v3/core/users/' and body.get('type') == 'service_account'})
         self.assertTrue(all(token['intent'] == 'app_password' for token in tokens))
 
-    def test_helm_values_contain_only_secret_reference_and_digest(self):
-        values = authentik.helm_values()
-        self.assertEqual(values['authentik']['existingSecret']['secretName'], 'authentik-config')
-        self.assertFalse(values['postgresql']['enabled'])
-        self.assertTrue(values['global']['image']['digest'].startswith('sha256:'))
-        self.assertFalse(values['worker']['automountServiceAccountToken'])
-        self.assertNotIn('bootstrap-token', json.dumps(values))
+    def test_install_uses_pinned_helm_or_explicit_override(self):
+        for configured, expected in (('', str(authentik.identity.ROOT / 'bin/helm')), ('/fixture/helm', '/fixture/helm')):
+            with patch.dict(os.environ, {'HELM': configured}), patch.object(authentik.identity, 'kube', return_value=''), \
+                 patch.object(authentik.identity, 'apply'), patch.object(authentik.subprocess, 'run', return_value=Mock(returncode=1)) as run:
+                with self.assertRaisesRegex(RuntimeError, 'Authentik Helm installation failed'):
+                    authentik.up()
+                command = run.call_args.args[0]
+                self.assertEqual(command[0], expected)
+                self.assertEqual(command[command.index('--values') + 1], str(authentik.VALUES_FILE))
+                self.assertNotIn('input', run.call_args.kwargs)
+                self.assertIn('--kube-context', command)
+                self.assertIn('--version', command)
+                self.assertNotIn('bootstrap-token', ' '.join(command))
 
     def test_api_error_is_sanitized_and_never_retries_mutations(self):
         api = authentik.API(1234, 'private-token')

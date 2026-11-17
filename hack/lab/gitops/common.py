@@ -21,7 +21,6 @@ import identity
 
 NAMESPACE = 'obco-gitops'
 CONNECTION = 'gitops-openbao'
-GROUPS = {'Policy': 'sys', 'SecretsMount': 'sys', 'AuthMount': 'sys', 'OpenBaoNamespace': 'sys', 'AppRole': 'auth', 'TransitKey': 'secrets'}
 
 
 def run(args, data=None, cwd=None, timeout=360):
@@ -38,11 +37,6 @@ def eventually(check, label, timeout=180):
             return
         time.sleep(2)
     raise RuntimeError('Timed out: ' + label)
-
-
-def write_json(path, value):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2) + '\n')
 
 
 def statefulset_ready(value):

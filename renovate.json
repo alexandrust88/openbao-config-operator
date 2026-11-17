@@ -265,7 +265,10 @@
   "helm-values": {
     "managerFilePatterns": [
       "/^hack/lab/eso-values\\.yaml$/",
-      "/^hack/lab/zitadel/values\\.yaml$/"
+      "/^hack/lab/zitadel/values\\.yaml$/",
+      "/^hack/lab/authentik/values\\.yaml$/",
+      "/^gitops/.*/values(?:/.*)?\\.yaml$/",
+      "/^gitops/argocd/values/.*\\.yaml$/"
     ]
   }
 }

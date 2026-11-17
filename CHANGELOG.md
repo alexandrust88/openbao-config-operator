@@ -16,6 +16,7 @@ conventional-commit titles of merged pull requests. Do not edit released entries
 - Add Argo CD app-of-apps and Flux labs with CI regressions for Git-driven deployment,
   published Helm charts, root and child namespace authentication and drift repair.
   Keep Applications, Flux resources and sample values in `gitops/` using public repositories.
+- Use a checked-in Authentik values file and the repository-managed Helm binary in the identity lab.
 - Correct the Argo CD health example to report current reconciliation failures even when
   an earlier generation remains Ready, and keep pending generations Progressing.
 
