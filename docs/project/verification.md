@@ -108,6 +108,29 @@ provider guides distinguish human ID tokens from service-account access tokens. 
 verify the harness separately and do not count as live provider evidence.
 Cloud plugins requiring accounts or credentials remain outside this lab's live coverage.
 
+## GitOps delivery regression
+
+`make lab-argocd` and `make lab-flux` each create a fresh kind cluster, build the current operator
+image, and run the same regression through a real GitOps controller. They do not need a hosted
+Git account: a disposable smart-HTTP Git server holds the test repository inside the cluster.
+The `GitOps regression` workflow runs these exact commands in separate jobs on relevant pull
+requests, weekly and on manual dispatch. Its live controllers validate their third-party resources;
+the documentation envtest suite checks those examples as YAML because it installs only this
+operator’s CRDs.
+
+The controllers deploy OpenBao and the operator from Git before reconciling root and child
+namespace configuration. The tests then grant KV metadata listing through a Git policy change, reject and repair an invalid
+policy, introduce Kubernetes and OpenBao drift, and remove policies from Git to verify `Delete`
+and `Orphan` separately. Readiness must
+refer to the current generation and source revision. Live requests verify the resulting OpenBao
+policies, authentication and transit operations; a green GitOps resource alone is insufficient.
+
+TLS and initial credentials are generated outside Git. This is a disposable integration fixture,
+not a production Git hosting or OpenBao bootstrap design. The tests do not cover Git provider
+webhooks, SSO for GitOps dashboards or multi-cluster promotion. See the
+[Argo CD app-of-apps lab](../how-to/argocd-lab.md) and
+[Flux delivery lab](../how-to/flux-lab.md) for commands, dependency graphs and production boundaries.
+
 ## Scoped checks
 
 When several changes are in progress in one tree, check only your packages:

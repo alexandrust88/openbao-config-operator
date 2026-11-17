@@ -554,7 +554,7 @@ define gomodver
 $(shell go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $(1) 2>/dev/null)
 endef
 
-.PHONY: lab-up lab-identity lab-authentik lab-zitadel lab-eso lab-pki
+.PHONY: lab-up lab-identity lab-authentik lab-zitadel lab-eso lab-pki lab-argocd lab-flux
 lab-up: ## Create the disposable kind lab with TLS raft OpenBao and the operator.
 	hack/lab/up.sh $(or $(LAB_PROFILE),raft)
 
@@ -580,3 +580,9 @@ lab-eso: ## Exercise tenant secret delivery and rotation through ESO.
 lab-pki: ## Issue and verify localhost certificates through cert-manager and operator PKI CRDs.
 	hack/lab/pki-up.sh
 	hack/lab/pki-test.sh
+
+lab-argocd: ## Test Argo CD app-of-apps delivery and OpenBao reconciliation in fresh kind.
+	hack/lab/gitops/run.sh argocd
+
+lab-flux: ## Test Flux delivery and OpenBao reconciliation in fresh kind.
+	hack/lab/gitops/run.sh flux

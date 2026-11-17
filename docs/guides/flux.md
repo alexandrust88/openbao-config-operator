@@ -119,3 +119,7 @@ kinds also require the operator's deletion annotation. See [deletion and orphane
 Readiness proves that the operator reconciled the declared configuration. It does not prove a
 workload can log in, that every ACL is correct, or that a deleted Kubernetes Secret remains
 available. Include application login and allowed/denied access tests in your deployment checks.
+
+## Test the complete deployment
+
+For a complete, CI-tested deployment with Flux Operator, ordered Kustomizations and an operator HelmRelease, run the [Flux delivery lab](../how-to/flux-lab.md).

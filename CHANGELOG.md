@@ -9,6 +9,16 @@ App is configured, [release-please](https://github.com/googleapis/release-please
 conventional-commit titles of merged pull requests. Do not edit released entries. The process is in
 [docs/maintainers/release-process.md](docs/maintainers/release-process.md).
 
+## Unreleased
+
+### Testing and documentation
+
+- Add Argo CD app-of-apps and Flux labs with CI regressions for Git-driven deployment,
+  root and child namespace authentication, policy updates, invalid-policy recovery, drift
+  repair and Delete/Orphan pruning.
+- Correct the Argo CD health example to report current reconciliation failures even when
+  an earlier generation remains Ready, and keep pending generations Progressing.
+
 ## [0.4.0](https://github.com/alexandrust88/openbao-config-operator/releases/tag/v0.4.0) (2026-11-16)
 
 ### Features

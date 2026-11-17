@@ -122,6 +122,13 @@
         "external-secrets",
         "ghcr.io/external-secrets/external-secrets"
       ]
+    },
+    {
+      "description": "The disposable Git server base and Alpine git-daemon package must be updated and tested together",
+      "matchFileNames": [
+        "hack/lab/gitops/Dockerfile"
+      ],
+      "enabled": false
     }
   ],
   "customManagers": [
@@ -248,6 +255,16 @@
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>helm) depName=(?<depName>\\S+) registryUrl=(?<registryUrl>\\S+)\\n[A-Z_]+\\s*=\\s*['\"](?<currentValue>[^'\"]+)['\"]"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Flux distribution used by the GitOps regression; operator chart and Argo pins are manually verified with checksums",
+      "managerFilePatterns": [
+        "/^hack/lab/gitops/flux\\.py$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>github-releases) depName=(?<depName>fluxcd/flux2)\\nFLUX_VERSION = '(?<currentValue>[^']+)'"
       ]
     }
   ],

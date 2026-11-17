@@ -33,6 +33,8 @@ var root = filepath.Join("..", "..")
 // CRDs are not installed, so these manifests are only checked to be valid YAML with apiVersion and kind; any other
 // group the API server does not serve fails.
 var thirdPartyGroups = map[string]bool{
+	"fluxcd.controlplane.io":      true,
+	"helm.toolkit.fluxcd.io":      true,
 	"kustomize.toolkit.fluxcd.io": true,
 	"policies.kyverno.io":         true,
 	"monitoring.coreos.com":       true,
@@ -41,6 +43,7 @@ var thirdPartyGroups = map[string]bool{
 
 func TestManifestsDryRun(t *testing.T) {
 	c := collect(t, root)
+	c.generated = append(c.generated, gitopsFixtures(t)...)
 	total := 0
 	for _, s := range c.all() {
 		total += len(s.manifests)

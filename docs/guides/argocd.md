@@ -67,17 +67,24 @@ The check reads `Ready`, `Synced` and `observedGeneration` (the top-level one, o
 
 | status | when |
 |--------|------|
-| Progressing | no status yet, or `observedGeneration` is older than `metadata.generation` |
+| Degraded | A current-generation `Synced=False` reports a terminal error, even if `Ready` still describes the previous successful generation |
+| Progressing | no status yet, no observed generation, or the observed/Ready generation is older than `metadata.generation`, without a current terminal sync error |
 | Suspended | `Ready` or `Synced` has the reason `Paused` (annotation `openbaoconfig.io/paused`) |
-| Healthy | `Ready=True`, and `Synced` is `True`, absent (connections) or waiting (see below) |
+| Healthy | `Ready=True` for the current generation, and `Synced` is `True` or absent (connections/server) |
+| Progressing | `Ready=True` but `Synced=False` reports a waiting reason |
 | Degraded | `Ready=True` but `Synced=False` with a reason that is not waiting, for example `ReconcileError`, `PermissionDenied` or `Drifted` |
 | Degraded | `Ready=False` with a reason that is not waiting, for example `Conflict`, `InvalidSpec`, `AuthenticationFailed` |
 | Progressing | `Ready=False` with a waiting reason, or `Ready=Unknown` |
 
+A failed update can retain `Ready=True` from the last successful generation while setting
+`Synced=False` for the new generation. The health check examines that current sync failure before
+waiting for Ready to advance; otherwise an invalid Git change would remain `Progressing` forever.
+An error from an older generation does not override pending reconciliation of a newer spec.
+
 Waiting reasons are the ones that resolve without a change to the object: `ReconcileInProgress`,
 `ReferenceNotReady`, `ConnectionNotReady`, `PluginNotRegistered`, `ServerNotReady` and
-`WriteBudgetExceeded`. A `Ready=True` object whose connection is down stays `Healthy`: what is in
-OpenBao still matches the last check.
+`WriteBudgetExceeded`. A `Ready=True` object whose connection is down reports `Progressing` while `Synced=False`
+records that waiting state. A dependency gate must not advance while reconciliation is known to be pending.
 
 
 ## Troubleshooting
@@ -102,3 +109,7 @@ not delete Kubernetes resources or OpenBao configuration.
 Before enabling GitOps pruning, review each resource's `deletionPolicy` and the
 [destructive-delete safeguards](../operate/backup-restore.md#deletion-policy-and-orphaned-objects).
 Continue with [importing existing configuration](import.md) or [tenant onboarding](../tutorials/tenant-onboarding.md).
+
+## Test the complete deployment
+
+For a complete, CI-tested deployment with separate OpenBao, operator and configuration applications, run the [Argo CD app-of-apps lab](../how-to/argocd-lab.md).

@@ -41,7 +41,8 @@ OCI chart, the Helm repository or `install.yaml`, and how to verify them.
 | Task | Start here |
 |------|------------|
 | Create an ACL policy and verify reconciliation | [Policy guide](docs/guides/policies.md) |
-| Manage policies, auth roles and mounts from Git | [Argo CD integration](docs/guides/argocd.md) |
+| Manage policies, auth roles and mounts from Git | [Argo CD](docs/guides/argocd.md), [Flux](docs/guides/flux.md) |
+| Test deployment, drift repair and pruning from Git | [Argo CD app-of-apps lab](docs/how-to/argocd-lab.md), [Flux lab](docs/how-to/flux-lab.md) |
 | Give each team its own OpenBao namespace and connection | [Tenant onboarding](docs/tutorials/tenant-onboarding.md) |
 | Configure OIDC login and JWT authentication | [JWT and OIDC guide](docs/guides/jwt-oidc-auth.md) |
 | Test user groups, ACL denials and changes to access | [OIDC permissions showcase](docs/tutorials/oidc-showcase.md) |
