@@ -27,7 +27,7 @@ func gitopsFixtures(t *testing.T) []source {
 	if len(variants) != 2 || len(variants[0]) == 0 || len(variants[1]) == 0 {
 		t.Fatal("GitOps renderer must produce both nonempty policy revisions")
 	}
-	var sources []source
+	sources := make([]source, 0, len(variants))
 	for version, objects := range variants {
 		name := fmt.Sprintf("hack/lab/gitops/common.py:fixtures-v%d", version+1)
 		s := source{name: name}
