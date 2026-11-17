@@ -2,6 +2,7 @@
 import hashlib
 import json
 import re
+import subprocess
 import textwrap
 import time
 import urllib.request
@@ -97,23 +98,40 @@ def pinned_manifest(raw):
     return source
 
 
+def bootstrap_command(h, stage, *args, data=None):
+    """Report a fixed bootstrap stage, never manifests or arbitrary API responses."""
+    try:
+        result = subprocess.run(['kubectl', '--context', h.context, *args], input=data,
+                                text=True, capture_output=True, timeout=360)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f'Argo CD bootstrap {stage} failed (command timeout)') from None
+    if result.returncode:
+        # Only known error categories are exposed: kubectl can include request
+        # bodies in errors, so forwarding stderr would risk disclosing Secrets.
+        categories = ('Conflict', 'NotFound', 'Forbidden', 'Invalid',
+                      'no matches for kind', 'timed out', 'connection refused')
+        category = next((value for value in categories if value.lower() in result.stderr.lower()), 'unclassified')
+        raise RuntimeError(f'Argo CD bootstrap {stage} failed (exit {result.returncode}; {category})')
+    return result.stdout
+
+
 def install(h):
     h.apply({'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': NAMESPACE}})
     url = f'https://raw.githubusercontent.com/argoproj/argo-cd/{VERSION}/manifests/core-install.yaml'
     with urllib.request.urlopen(url, timeout=60) as response:
         manifest = pinned_manifest(response.read())
-    common.run(['kubectl', '--context', h.context, '-n', NAMESPACE, 'apply', '--server-side', '-f', '-'], data=manifest)
+    bootstrap_command(h, 'install pinned controller manifest', '-n', NAMESPACE, 'apply', '--server-side', '-f', '-', data=manifest)
     for crd in ('applications.argoproj.io', 'appprojects.argoproj.io'):
-        h.kubectl('wait', '--for=condition=Established', 'crd/' + crd, '--timeout=90s')
+        bootstrap_command(h, 'establish ' + crd, 'wait', '--for=condition=Established', 'crd/' + crd, '--timeout=90s')
     health = (common.ROOT / 'docs/guides/argocd-cm-health.yaml').read_text()
     customizations = textwrap.dedent(health.split('  resource.customizations: |\n', 1)[1])
-    h.kubectl('-n', NAMESPACE, 'patch', 'configmap', 'argocd-cm', '--type=merge', '-p', json.dumps({'data': {
+    bootstrap_command(h, 'configure health checks', '-n', NAMESPACE, 'patch', 'configmap', 'argocd-cm', '--type=merge', '-p', json.dumps({'data': {
         'resource.customizations': customizations,
         'resource.customizations.health.argoproj.io_Application': APPLICATION_HEALTH,
         'timeout.reconciliation': '15s', 'timeout.reconciliation.jitter': '0s',
         'application.resourceTrackingMethod': 'annotation'}}))
     for workload in ('deployment/argocd-redis', 'deployment/argocd-repo-server', 'statefulset/argocd-application-controller'):
-        h.kubectl('-n', NAMESPACE, 'rollout', 'status', workload, '--timeout=300s')
+        bootstrap_command(h, 'rollout ' + workload, '-n', NAMESPACE, 'rollout', 'status', workload, '--timeout=300s')
     h.apply(projects(h))
     children, root = manifests(h)
     common.write_json(h.repo.path / 'argocd/root/applications.json', {'apiVersion': 'v1', 'kind': 'List', 'items': children})

@@ -52,6 +52,23 @@ class ArgoTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'creation order'):
             argocd.verify_order({'gitops-openbao': app('2026-01-01T00:00:02Z'), 'gitops-operator': app('2026-01-01T00:00:01Z')})
 
+    def test_bootstrap_error_names_stage_without_response_or_secret(self):
+        h = types.SimpleNamespace(context='kind-disposable')
+        result = types.SimpleNamespace(returncode=1, stderr='Error from server (Conflict): private-value', stdout='private-value')
+        with patch.object(argocd.subprocess, 'run', return_value=result):
+            with self.assertRaisesRegex(RuntimeError, 'bootstrap install.*Conflict') as error:
+                argocd.bootstrap_command(h, 'install', 'apply', '-f', '-', data='private-input')
+        self.assertNotIn('private', str(error.exception))
+        result.stderr = 'unrecognised private-value'
+        with patch.object(argocd.subprocess, 'run', return_value=result):
+            with self.assertRaisesRegex(RuntimeError, 'unclassified') as error:
+                argocd.bootstrap_command(h, 'establish CRD', 'wait')
+        self.assertNotIn('private', str(error.exception))
+        with patch.object(argocd.subprocess, 'run', side_effect=subprocess.TimeoutExpired(['private'], 360)):
+            with self.assertRaisesRegex(RuntimeError, 'command timeout') as error:
+                argocd.bootstrap_command(h, 'rollout', 'rollout', 'status')
+        self.assertNotIn('private', str(error.exception))
+
     def test_install_checksum_and_image_inventory_fail_closed(self):
         with self.assertRaisesRegex(RuntimeError, 'checksum'):
             argocd.pinned_manifest(b'changed release')
