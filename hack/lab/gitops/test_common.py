@@ -32,6 +32,20 @@ class FixtureTests(unittest.TestCase):
                                              env={**os.environ, 'HOSTNAME': 'openbao-' + str(ordinal)}, text=True)
             self.assertEqual(result, expected)
 
+    def test_ondelete_statefulset_requires_current_generation_and_all_replicas(self):
+        value = {'metadata': {'generation': 2}, 'spec': {'replicas': 3, 'updateStrategy': {'type': 'OnDelete'}},
+                 'status': {'observedGeneration': 2, 'readyReplicas': 3}}
+        self.assertTrue(common.statefulset_ready(value))
+        value['status']['observedGeneration'] = 1
+        self.assertFalse(common.statefulset_ready(value))
+        value['status']['observedGeneration'] = 2
+        value['status']['readyReplicas'] = 2
+        self.assertFalse(common.statefulset_ready(value))
+        value['spec']['replicas'] = 0
+        value['status']['readyReplicas'] = 0
+        self.assertFalse(common.statefulset_ready(value))
+        self.assertFalse(common.statefulset_ready({}))
+
     def test_no_shared_context(self):
         with patch.dict(os.environ, {'LAB_CONTEXT': 'production'}):
             with self.assertRaises(ValueError): common.Harness()

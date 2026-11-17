@@ -45,6 +45,14 @@ def write_json(path, value):
     path.write_text(json.dumps(value, indent=2) + '\n')
 
 
+def statefulset_ready(value):
+    replicas = value.get('spec', {}).get('replicas', 0)
+    generation = value.get('metadata', {}).get('generation')
+    status = value.get('status', {})
+    return (isinstance(replicas, int) and replicas > 0 and generation is not None
+            and status.get('observedGeneration') == generation and status.get('readyReplicas') == replicas)
+
+
 def load_yaml(path):
     return json.loads(run([os.environ.get('YQ', str(ROOT / 'bin/yq')), '-o=json', '.', str(path)]))
 
@@ -209,7 +217,8 @@ def main():
     provider = importlib.import_module(args.provider)
     provider.install(h)
     provider.wait(h, h.revision, phase='infrastructure')
-    h.kubectl('-n', 'openbao', 'rollout', 'status', 'statefulset/openbao', '--timeout=300s')
+    eventually(lambda: statefulset_ready(h.get('statefulset', 'openbao', 'openbao')),
+               'OpenBao StatefulSet current generation and all replicas Ready', timeout=300)
     token = h.connect_credentials()
     provider.wait(h, h.revision, phase='all')
     with identity.forward('openbao', 'openbao-active', 8200) as bao_port:
