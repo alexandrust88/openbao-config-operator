@@ -1,0 +1,31 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: openbao-transit-non-exportable
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [secrets.openbaoconfig.io]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [transitkeys]
+  validations:
+    - expression: '!has(object.spec.exportable) || !object.spec.exportable'
+      reason: Forbidden
+      message: Transit keys must not be exportable in this namespace
+    - expression: '!has(object.spec.allowPlaintextBackup) || !object.spec.allowPlaintextBackup'
+      reason: Forbidden
+      message: Transit keys must not allow plaintext backup in this namespace
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: openbao-transit-non-exportable
+spec:
+  policyName: openbao-transit-non-exportable
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        openbaoconfig.io/non-exportable-transit: 'true'

@@ -259,10 +259,15 @@ class LoginForm(html.parser.HTMLParser):
             self.action = attrs.get("action")
 
 
+class NoBaoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        raise RuntimeError("OpenBao lab client refused an HTTP redirect")
+
+
 class Bao:
     def __init__(self, port):
         ca = json.loads(kube("-n", "openbao", "get", "configmap", "openbao-ca", "-o", "json"))["data"]["ca.crt"]
-        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoBaoRedirect(),
                                                   urllib.request.HTTPSHandler(context=ssl.create_default_context(cadata=ca)))
         self.base = "https://127.0.0.1:" + str(port) + "/v1/"
 

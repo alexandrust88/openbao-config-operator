@@ -128,13 +128,9 @@ Each resource records the cluster id of the OpenBao it was written to in `status
 ```
 
 Notice two different ids: the resources of `platform`, including `platform-auditor` from the first
-tutorial, show the id of the first server, and those of `platform-2` the id of the second. The
-operator binds each object to that id. If a connection later reaches a different OpenBao cluster,
-the resource stops with `ServerChanged` and writes nothing there:
-[Concepts: ownership and adoption](../concepts/index.md#ownership-and-adoption) explains the rule,
-[ADR 0010](../adr/0010-openbaoserver-owns-address-and-audiences.md) why only the server holds the
-address, and [ADR 0021](../adr/0021-one-writer-cluster-per-namespace.md) why one Kubernetes cluster
-writes to each OpenBao namespace.
+tutorial, show the id of the first server, and those of `platform-2` the id of the second.
+[Concepts: ownership and adoption](../concepts/index.md#ownership-and-adoption) explains why each
+object stays bound to that id.
 
 ## 6. Check each server in OpenBao
 

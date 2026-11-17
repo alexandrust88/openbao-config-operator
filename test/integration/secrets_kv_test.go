@@ -183,7 +183,7 @@ func testKVSecret(ctx context.Context, t *testing.T, e env) {
 		t.Fatal(err)
 	}
 	waitFor(t, "kv secret owning every key deleted", func() error {
-		return expectAbsent(ctx, e.bao, secretsKV2+"/metadata/team/sole")
+		return expectKVHistoryDestroyed(ctx, e.bao, "team/sole", true)
 	})
 	waitFor(t, "sole kv secret resource gone", func() error { return expectGone(ctx, e.k8s, sole) })
 }
@@ -254,10 +254,36 @@ func testKVSecretPathHistory(ctx context.Context, t *testing.T, e env) {
 			t.Fatal(err)
 		}
 		waitFor(t, path+" kv secret resource gone", func() error { return expectGone(ctx, e.k8s, kv) })
-		err := expectAbsent(ctx, e.bao, secretsKV2+"/metadata/"+path)
-		if purged && err != nil || !purged && err == nil {
-			t.Errorf("%s: metadata absent = %v, want %v", path, err == nil, purged)
+		if err := expectKVHistoryDestroyed(ctx, e.bao, path, purged); err != nil {
+			t.Fatal(err)
 		}
+		if purged {
+			replacement := kv.DeepCopy()
+			replacement.ObjectMeta = metav1.ObjectMeta{Name: kv.Name + "-reuse", Namespace: namespace, Annotations: secretsAllowDestructiveDelete}
+			replacement.Status = secretsv1alpha1.KVSecretStatus{}
+			mustCreate(ctx, t, e.k8s, replacement)
+			waitFor(t, "reuse retained KV metadata", func() error { return expectReady(ctx, e.k8s, replacement) })
+			if replacement.Status.PathCreated {
+				t.Fatal("reused metadata was claimed as a new path")
+			}
+			if err := e.k8s.Delete(ctx, replacement); err != nil {
+				t.Fatal(err)
+			}
+			waitFor(t, "reused KV resource gone", func() error { return expectGone(ctx, e.k8s, replacement) })
+			metadata, err := e.bao.Read(ctx, secretsKV2+"/metadata/"+path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			versions, ok := metadata["versions"].(map[string]any)
+			if !ok {
+				t.Fatal("retained metadata has no versions")
+			}
+			latest, ok := versions[fmt.Sprint(metadata["current_version"])].(map[string]any)
+			if !ok || latest["destroyed"] != false {
+				t.Fatal("reused path history was destroyed")
+			}
+		}
+
 	}
 }
 
@@ -439,9 +465,8 @@ func testRandomSecretPathHistory(ctx context.Context, t *testing.T, e env) {
 			t.Fatal(err)
 		}
 		waitFor(t, path+" random secret resource gone", func() error { return expectGone(ctx, e.k8s, rs) })
-		err := expectAbsent(ctx, e.bao, secretsKV2+"/metadata/"+path)
-		if purged && err != nil || !purged && err == nil {
-			t.Errorf("%s: metadata absent = %v, want %v", path, err == nil, purged)
+		if err := expectKVHistoryDestroyed(ctx, e.bao, path, purged); err != nil {
+			t.Fatal(err)
 		}
 	}
 }
@@ -647,4 +672,22 @@ func secretsSetup(ctx context.Context, t *testing.T) env {
 func secretsPrerequisites(t *testing.T, root string) (baoBin, assets string) {
 	t.Helper()
 	return testenv.RequireBao(t), testenv.RequireAssets(t, root)
+}
+
+func expectKVHistoryDestroyed(ctx context.Context, bao openbao.Client, path string, destroyed bool) error {
+	metadata, err := bao.Read(ctx, secretsKV2+"/metadata/"+path)
+	if err != nil {
+		return err
+	}
+	versions, ok := metadata["versions"].(map[string]any)
+	if !ok || len(versions) == 0 {
+		return errors.New("expected retained version metadata")
+	}
+	for _, raw := range versions {
+		entry, ok := raw.(map[string]any)
+		if !ok || entry["destroyed"] != destroyed {
+			return errors.New("unexpected history destruction state")
+		}
+	}
+	return nil
 }

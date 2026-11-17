@@ -27,6 +27,11 @@ server:
   extraArgs: >-
     $(if [ "${HOSTNAME##*-}" = "0" ]; then printf '%s' '-config=/openbao/bootstrap/init.hcl'; fi)
   volumes:
+    # Public CA for the optional PostgreSQL GitOps demo; no database key is mounted here.
+    - name: database-postgresql-ca
+      configMap:
+        name: database-postgresql-ca
+        optional: true
     - name: bootstrap
       configMap:
         name: gitops-openbao-init
@@ -34,6 +39,9 @@ server:
       secret:
         secretName: openbao-tls
   volumeMounts:
+    - name: database-postgresql-ca
+      mountPath: /database-ca/postgresql
+      readOnly: true
     - name: bootstrap
       mountPath: /openbao/bootstrap
       readOnly: true

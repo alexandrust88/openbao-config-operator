@@ -33,21 +33,16 @@ remain separate; secret delivery tools such as External Secrets Operator consume
 | Give teams their own OpenBao namespaces and identities | [Tenant onboarding](tutorials/tenant-onboarding.md) |
 | Reconcile OpenBao configuration from Git | [Argo CD integration](guides/argocd.md) |
 | Configure OIDC login, JWT roles and group mappings | [JWT and OIDC authentication](guides/jwt-oidc-auth.md) |
-| Test user permissions, rejected access and policy changes | [OIDC permissions showcase](tutorials/oidc-showcase.md) |
-| Connect Keycloak, ESO or cert-manager in a disposable cluster | [Local integration lab](tutorials/local-lab.md) |
 | Adopt configuration already present in OpenBao | [Import and observe mode](guides/import.md) |
 
 ## Why this operator
 
-Platform teams that run OpenBao for many tenants want its configuration in Git, reviewed and reconciled like the
-rest of the cluster. The operator gives each OpenBao object a typed custom resource, and each tenant configures
-OpenBao through its own connection, logged in with an identity of its own namespace (a ServiceAccount, or a
-token or AppRole from a Secret there), so the OpenBao policy bound to that identity is the limit of what the tenant can change. It re-reads OpenBao on a drift schedule, writes only
-when OpenBao differs from the spec, and can observe and import a server that already has configuration before it
-takes over. [Why this operator exists](concepts/why.md) compares it with Crossplane provider-vault,
-vault-config-operator and External Secrets Operator.
+Keep OpenBao configuration in Git. Each object is one custom resource, and each tenant logs in through a
+connection in its own namespace, so that tenant's OpenBao policy is the limit of what it can change. The
+operator writes only when OpenBao differs from the spec.
 
-The [decisions](adr/README.md) list each architecture choice in one sentence.
+[Why this operator exists](concepts/why.md) compares it with other tools. The [decisions](adr/README.md) list
+each architecture choice in one sentence.
 
 !!! warning "Status: alpha"
 
@@ -74,11 +69,8 @@ The [decisions](adr/README.md) list each architecture choice in one sentence.
 
     ---
 
-    The platform team owns the cluster-scoped `OpenBaoServer`: address, CA, allowed namespaces and token
-    audiences. A tenant's `OpenBaoConnection` logs in with a ServiceAccount, token or AppRole of its own namespace,
-    never as the operator. The tenant's OpenBao policy is the limit; the [e2e tests](https://github.com/alexandrust88/openbao-config-operator/tree/main/test/e2e) exercise it, and
-    a two-tenant e2e test checks that one tenant cannot write to another's configuration; the
-    [known limitations](reference/limitations.md#verification) say what is not proven yet.
+    The platform team owns `OpenBaoServer`. A tenant's `OpenBaoConnection` logs in with an identity from that
+    tenant's namespace, never as the operator. The tenant's OpenBao policy is the limit.
 
     [:octicons-arrow-right-24: Connections](reference/connections.md)
 
@@ -98,7 +90,7 @@ The [decisions](adr/README.md) list each architecture choice in one sentence.
     Access-critical kinds such as policies and auth roles are re-read every 15 minutes, everything else every
     hour, inside a per-server request budget. Each resource can set its own interval.
 
-    [:octicons-arrow-right-24: ADR 0014](adr/0014-drift-tiers-and-request-budget.md)
+    [:octicons-arrow-right-24: Intervals](reference/constants.md)
 
 -   :material-import:{ .lg .middle } **Observe and import**
 
@@ -121,64 +113,6 @@ The [decisions](adr/README.md) list each architecture choice in one sentence.
 
 </div>
 
-## A policy resource and its status
-
-This example shows how a policy is reconciled after its connection and referenced auth mounts exist. For a complete
-installation and first policy, follow the [quickstart](get-started/quickstart.md). The policy below uses identity
-templating; `accessorRefs` names auth mounts by placeholder instead of hard-coding their accessors.
-
-=== "1. The manifest"
-
-    ```yaml
-    --8<-- "examples/sys/policy.yaml"
-    ```
-
-=== "2. What the operator does"
-
-    1. Resolves `connectionRef` to the `OpenBaoConnection` named `openbao` and uses the authenticated client it
-       keeps for that connection.
-    2. Waits until the `AuthMount` resources `obco-kubernetes` and `obco-approle` report their accessors, then
-       replaces `${accessor:k8s}` and `${accessor:ci}` in the policy text.
-    3. Reads `sys/policies/acl/team-a-reader`. With `creationPolicy: CreateOrAdopt` it creates the policy when it
-       is missing and adopts it when it exists, and it writes only when OpenBao differs from the spec.
-    4. Re-reads the policy every 15 minutes (`driftInterval`) and repairs drift. The `Updated` event names the keys
-       that differed, never their values.
-    5. Deletes the policy from OpenBao when you delete the resource, because `deletionPolicy` is `Delete`. The
-       default, `Orphan`, leaves it in place.
-
-=== "3. The status you see"
-
-    `Ready=True` means the policy in OpenBao matches the spec. `Synced=True` means the last reconcile succeeded.
-
-    ```sh
-    kubectl get policy.sys.openbaoconfig.io obco-team-a-reader -n openbao-config
-    ```
-
-    ```text
-    NAME                 READY   SYNCED   AGE
-    obco-team-a-reader   True    True     40s
-    ```
-
-    The status records the OpenBao path and how the operator came to own the object (trimmed):
-
-    ```yaml
-    status:
-      conditions:
-        - type: Ready
-          status: "True"
-          reason: Available
-        - type: Synced
-          status: "True"
-          reason: ReconcileSuccess
-      observedGeneration: 1
-      path: sys/policies/acl/team-a-reader
-      acquired: Created
-    ```
-
-    When the connection works in an OpenBao namespace, `path` starts with that namespace.
-
-More examples, one for every kind, are in the [examples gallery](reference/examples/index.md).
-
 ## Where it fits
 
 The operator configures OpenBao. It does not deploy, initialise, unseal or upgrade OpenBao, and it does not copy
@@ -200,10 +134,3 @@ flowchart LR
   writes the policy and the Kubernetes auth role, and the delivery tool logs in with that role to read the secret.
 - **One exception.** When OpenBao returns a generated value only once, such as an AppRole secret ID, the operator
   writes that value to a Kubernetes Secret it owns, through `writeSecretRef`.
-
-## Next steps
-
-- [Choose a path](get-started/index.md): evaluate on kind, install on a cluster or import existing configuration.
-- [Configure JWT and OIDC authentication](guides/jwt-oidc-auth.md): declare auth mounts, roles and group mappings.
-- [Concepts](concepts/index.md): servers, connections, the engine and its design rules.
-- [API reference](reference/api/index.md): every kind and field, generated from the CRDs.

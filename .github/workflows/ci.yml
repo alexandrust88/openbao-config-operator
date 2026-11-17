@@ -39,7 +39,7 @@ jobs:
                   ast.parse(path.read_text(), filename=str(path))
           PYTHON
           node --check hack/lab/browser/oidc.mjs
-          make yq
+          make yq helm
           python3 -m unittest discover -s hack/lab -p 'test_*.py' -v
           python3 -m unittest discover -s hack/lab/saas -p 'test_*.py' -v
           command -v lua >/dev/null || { sudo apt-get update && sudo apt-get install -y --no-install-recommends lua5.4; }

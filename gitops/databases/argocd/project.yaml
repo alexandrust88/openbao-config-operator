@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: database-lab
+  namespace: argocd
+spec:
+  sourceRepos:
+    - https://github.com/alexandrust88/openbao-config-operator.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: obco-gitops
+  namespaceResourceWhitelist:
+    - {group: sys.openbaoconfig.io, kind: OpenBaoNamespace}
+    - {group: sys.openbaoconfig.io, kind: SecretsMount}
+    - {group: sys.openbaoconfig.io, kind: AuthMount}
+    - {group: sys.openbaoconfig.io, kind: Policy}
+    - {group: auth.openbaoconfig.io, kind: KubernetesAuthConfig}
+    - {group: auth.openbaoconfig.io, kind: KubernetesAuthRole}
+    - {group: secrets.openbaoconfig.io, kind: DatabaseConnection}
+    - {group: secrets.openbaoconfig.io, kind: DatabaseRole}
+  clusterResourceWhitelist: []

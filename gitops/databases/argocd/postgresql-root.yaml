@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: database-postgresql-root
+  namespace: argocd
+spec:
+  project: database-lab
+  source:
+    repoURL: https://github.com/alexandrust88/openbao-config-operator.git
+    targetRevision: main
+    path: gitops/databases/chart
+    helm:
+      valueFiles:
+        - ../values/postgresql.yaml
+      valuesObject:
+        configNamespace: obco-gitops
+        connectionRef: gitops-openbao
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: obco-gitops
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

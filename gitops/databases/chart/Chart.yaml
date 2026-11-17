@@ -1,0 +1,5 @@
+apiVersion: v2
+name: openbao-database-demo
+description: Operator-managed database credentials for the disposable OpenBao integration lab
+type: application
+version: 0.1.0

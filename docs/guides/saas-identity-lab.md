@@ -5,9 +5,8 @@ description: "Verify Okta and Auth0 OIDC login, JWT validation and tenant permis
 
 # Test OpenBao access with Okta and Auth0
 
-Verify real hosted login and group-based access against an OpenBao cluster configured by the
-operator. Run the regression in GitHub Actions, or use the same scripts locally to investigate
-an integration. The operator manages OpenBao through its CRDs; provider scripts create and
+Verify hosted login and group-based access against an OpenBao cluster configured by the
+operator. The operator manages OpenBao through its CRDs. The provider scripts create and
 remove the disposable identity-provider resources.
 
 The tests cover OIDC browser login and JWT validation through both discovery and an explicit
@@ -24,76 +23,15 @@ quotas and sign-in policies must support the setup described in the provider gui
 - [Prepare Okta](../how-to/okta-lab.md): prepare the lab API token and custom authorization server prerequisites.
 
 For unattended tests, the dedicated application's policy must allow the disposable users to
-sign in without an interactive challenge. The runner does not bypass MFA, CAPTCHA, enrollment
-or consent, and a blocked journey fails the test. Use an interactive login to test those flows
-separately; a passing automated regression does not establish MFA coverage.
+sign in without an interactive challenge. The browser test does not bypass MFA, CAPTCHA,
+enrollment or consent, and a blocked journey fails the test. Use an interactive login to test
+those flows separately; a passing automated run does not establish MFA coverage.
 
-## What a successful run proves
+A successful run exercises `admin`, `read` and `ops` in the root namespace and in two tenant
+namespaces. None of those users receives the OpenBao `root` policy. The journeys and the expected
+permissions are in the [OIDC permissions showcase](../tutorials/oidc-showcase.md).
 
-Each provider is tested in the OpenBao root namespace and two isolated tenant namespaces,
-with `admin`, `read` and `ops` identities in each. These are application-data roles: even in the
-root namespace, no user receives the OpenBao `root` policy.
-
-| Role | Access to the lab's resources |
-|------|-------------------------------|
-| `read` | Read application data from KV |
-| `ops` | Read KV data and encrypt/decrypt with the transit key |
-| `admin` | Create, read, update and delete KV data; encrypt/decrypt with the transit key |
-
-All roles must be denied system administration, destruction of KV versions, transit key
-rotation/export and access to other tenants. Group claims must produce the expected identity
-policies through external groups, aliases and inherited internal-group membership.
-
-The OIDC suite runs 17 browser journeys: nine successful role logins, six rejected role/tenant
-combinations, and two logins proving that an operator-managed group policy can remove and restore
-access. The JWT suite checks the same role permissions with discovery and JWKS validation,
-including rejection of wrong groups, tenants, audiences, issuers and signatures. Successful
-sessions also check KV history where permitted and rejection after token revocation.
-
-See the [OIDC permissions showcase](../tutorials/oidc-showcase.md) for the executable scenario
-catalogue, CRDs involved and expected results.
-
-## Run in GitHub Actions
-
-### Configure provider credentials
-
-Create GitHub environments named **`auth0-lab`** and **`okta-lab`**. Add a secret named
-**`SAAS_CREDENTIALS_JSON`** to each, using the credential JSON described in the corresponding
-provider guide. Include deletion permissions so the workflow can clean up after a failed test.
-Restrict access to trusted branches and use required reviewers where appropriate.
-
-You can enter the JSON in GitHub's environment settings. If you prepared local credential
-files using the provider guides, upload them without placing their contents in command arguments:
-
-```sh
-export LAB_DIR="${LAB_DIR:-$PWD/.local/saas-lab}"
-gh secret set SAAS_CREDENTIALS_JSON --env auth0-lab < "$LAB_DIR/auth0/credentials.json"
-gh secret set SAAS_CREDENTIALS_JSON --env okta-lab < "$LAB_DIR/okta/credentials.json"
-```
-
-### Start and verify the workflow
-
-Run **SaaS OIDC regression** from the repository's Actions tab once the workflow is available
-on the default branch, or use the CLI:
-
-```sh
-gh workflow run saas-lab.yml
-```
-
-Both provider jobs run independently. Each provisions an isolated application and nine users,
-deploys the TLS raft lab, applies the operator resources, runs the OIDC and JWT suites, then
-removes its recorded provider resources and kind cluster. A unique run prefix separates CI
-resources from local tests.
-
-A successful job requires provisioning, both authentication suites and cleanup to pass. Missing
-credentials or a blocked login is a failure. The ordinary CI login fixtures run without provider
-accounts; they test the browser harness, not the hosted integration.
-
-After both providers pass, set repository variable **`SAAS_REGRESSION_ENABLED=true`** to enable
-weekly runs and relevant pull requests from branches in this repository. Fork pull requests do
-not receive the credentials. Manual runs remain available before recurring runs are enabled.
-
-## Run locally
+## Run the lab
 
 Run commands from the repository root. You need the [local lab prerequisites](../tutorials/local-lab.md),
 Node.js, npm and a running Docker daemon. The browser uses the repository's pinned Playwright image.
@@ -155,9 +93,9 @@ admin role but sign in as the same tenant's read user:
 hack/lab/saas/run.sh oidc --state "$STATE" --tenant alpha --role admin --expect-denied
 ```
 
-## Clean up and recover
+## Clean up
 
-For local tests, run the provider guide's `--cleanup` command with the original prefix,
+Run the provider guide's `--cleanup` command with the original prefix,
 credentials and state. Then remove the disposable cluster:
 
 ```sh
@@ -168,13 +106,7 @@ The lab CRDs use `Orphan` deletion policy. Deleting only the Kubernetes resource
 configuration in a retained OpenBao server. Keep the lab disposable or review those objects
 before reusing the server.
 
-CI attempts cleanup even when a test fails. If provider cleanup fails, the job publishes a
-`saas-<provider>-recovery` artifact containing only the provider identity, run prefix and owned
-resource IDs. Download it into a private directory, set the JSON file to mode `0600`, and follow
-the provider guide's recovery procedure using a fresh management credential. Full state,
-passwords, browser traces and screenshots are not published.
-
-An interrupted provider request or a forcibly stopped runner can leave resources behind. Inspect
-the run prefix and provider audit log before retrying; do not discard incomplete state or delete
-shared provider configuration. Retire the provisioning credentials and GitHub environment
-secrets when you stop using the lab.
+Keep the state file until cleanup finishes. If a provider request is interrupted, the resource
+can exist even though the script did not record its ID. Check that provider before you delete
+the state file or create the same names again. Retire the provisioning credential when you stop
+using the lab.

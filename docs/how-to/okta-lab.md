@@ -67,10 +67,10 @@ when `email_address` is absent. Every user has a different generated password. U
 with assigned passwords and activation enabled; the script does not request one-time activation
 links. Provider enrollment and verification rules can still require interaction.
 
-For unattended CI browser regression, create a dedicated application authentication policy once
+For an unattended browser run, create a dedicated application authentication policy once
 in the test org and set its ID in optional `app_sign_on_policy_id`. Configure it deliberately for
-the disposable test users and application; it must permit the login journey your CI runner can
-complete. The provisioner first verifies that the supplied policy is an active `ACCESS_POLICY`,
+the disposable test users and application; it must permit the login the browser can
+complete. The script first verifies that the supplied policy is an active `ACCESS_POLICY`,
 then assigns it only to the newly created OIDC web application. It never modifies the policy and
 never deletes it during cleanup. Omit the field to retain the app's default authentication policy.
 The SSWS token creator needs permission to read the selected policy.
@@ -81,25 +81,7 @@ require interaction it cannot perform; use interactive login to test MFA separat
 [Okta application sign-on policy assignment](https://developer.okta.com/docs/guides/configure-signon-policy/main/)
 
 `domain` is the canonical org hostname, without an `/oauth2` path. The file stays local and is not
-a Kubernetes Secret. Never attach the credential file or generated state to CI artifacts, issue reports or screenshots.
-
-## Configure CI
-
-Create the GitHub environment `okta-lab` and store the same private credential JSON as its
-`SAAS_CREDENTIALS_JSON` secret:
-
-```sh
-gh secret set SAAS_CREDENTIALS_JSON --env okta-lab < "$LAB_DIR/okta/credentials.json"
-```
-
-This credential provisions and removes the disposable OIDC app,
-authorization server, users and groups. The regression covers human browser login and group-based
-OpenBao access in root, alpha and beta; it does not need machine-to-machine applications or
-client-credentials grants.
-
-Provide `email_address` (preferred) or `email_domain` before running provisioning. The script does
-not invent a mailbox or reuse the administrator's address without that explicit configuration. Review the selected application
-authentication policy and org enrollment rules before enabling unattended runs.
+a Kubernetes Secret. Do not attach the credential file or generated state to an issue or a screenshot.
 
 ## Review and apply
 
@@ -144,20 +126,7 @@ hack/lab/saas/run.sh showcase --state "$LAB_DIR/okta/state.json"
 hack/lab/saas/run.sh jwt --state "$LAB_DIR/okta/state.json"
 ```
 
-## Re-run and recover
-
-A successful re-run checks that each recorded resource still exists and does not change provider
-configuration. This is an existence check, not drift reconciliation. Preserve the state file: the
-script refuses to adopt matching resources when state is missing and refuses to replay an
-incomplete apply. If a request fails or times out, inspect the recorded IDs, `pending` operation and
-Okta System Log before taking action. A request can have succeeded remotely even if its response
-was lost.
-
-Concurrent applies to one state file are refused by a lock file. After an interrupted process,
-check that no provisioner is still running before removing its `.lock` file; this does not clear
-the incomplete-state guard.
-
-Run cleanup after a test, including a failed CI test:
+## Clean up
 
 ```sh
 python3 hack/lab/saas/okta.py \
@@ -167,35 +136,18 @@ python3 hack/lab/saas/okta.py \
   --cleanup
 ```
 
-Cleanup uses the same private state lock and deletes only recorded resource IDs, in reverse
-creation order. It deactivates users, applications and the authorization server when needed.
-Missing resources are accepted; other errors stop cleanup and preserve the remaining IDs for a
-retry. Each successful deletion is recorded before proceeding. The command clears generated
-passwords/client secrets once recorded resources are removed, but keeps the ownership summary.
-It never searches the org and deletes objects by prefix.
+Cleanup deletes only the resource IDs recorded in the state file. It does not search the org
+or delete an object because its name shares the prefix. Keep the state file until the command
+finishes. If a create request times out, the object can exist in Okta without an ID in that
+file. Check the Okta System Log for the prefix before you delete the state or run apply again.
 
-If an interrupted create has no returned ID, cleanup removes known resources and exits with an
-explicit warning about the ambiguous pending creation. Inspect the Okta System Log and that
-run's prefix manually; a lost response can leave an object that cannot safely be deleted from
-state alone. Do not discard state before cleanup. Give every CI run a unique prefix and state
-path, run cleanup in an `always()` step, and keep provider credentials available until cleanup
-finishes. The bootstrap token needs the same management privileges for deletion. Revoke it when
-the lab campaign is finished.
+Revoke the API token when you stop using the lab.
 [Okta application lifecycle](https://developer.okta.com/docs/api/openapi/okta-management/management/tags/application)
-[Okta user lifecycle](https://developer.okta.com/okta-sdk-nodejs/jsdocs/index.html)
 
-## Verification
-
-The hosted regression passed for both providers in
-[this CI run](https://github.com/alexandrust88/openbao-config-operator/actions/runs/43950421921).
-That result applies to the configured test accounts, not every subscription or login policy.
-
-
-The offline tests check the role matrix, client restrictions, claim filter, private-file handling,
-redirect rejection and fail-closed replay. They do not prove an Okta subscription supports the
-configuration. Live provisioning, enrollment, browser login and issued-token checks require your
-new test account and must be run before treating the SaaS integration as validated.
+## Check the script without an account
 
 ```sh
 python3 -m unittest discover -s hack/lab/saas -p test_okta.py -v
 ```
+
+These tests do not contact Okta. Provisioning, enrollment and browser login need your test account.

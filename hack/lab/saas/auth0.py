@@ -37,9 +37,59 @@ DELETE_SCOPES = ("delete:clients", "delete:connections", "delete:users", "delete
 
 
 class APIError(LabError):
-    def __init__(self, method, status):
-        super().__init__(f"Auth0 {method} request failed (HTTP {status}); inspect the Auth0 dashboard")
+    def __init__(self, method, status, resource="request", category=None):
+        detail = f"; category={category}" if category else ""
+        super().__init__(f"Auth0 {method} {resource} failed (HTTP {status}{detail}); inspect the Auth0 dashboard")
         self.status = status
+
+
+def resource_label(path):
+    """Return a fixed API stage label, never a resource ID, query or user identity."""
+    path = urllib.parse.urlsplit(path).path
+    if re.fullmatch(r"/api/v2/actions/actions/[^/]+/deploy", path):
+        return "action-deployment"
+    routes = {"/oauth/token": "management-token", "/api/v2/actions/triggers/post-login/bindings": "post-login-bindings",
+              "/api/v2/clients": "clients", "/api/v2/connections": "connections", "/api/v2/users": "users",
+              "/api/v2/actions/actions": "actions", "/api/v2/resource-servers": "legacy-resource-servers",
+              "/api/v2/client-grants": "legacy-client-grants"}
+    for route, label in routes.items():
+        if path == route or path.startswith(route + "/"):
+            return label
+    return "request"
+
+
+def error_category(error):
+    """Recognise only fixed categories from a bounded provider error; discard all free text."""
+    try:
+        raw = error.read(4097)
+        value = json.loads(raw) if len(raw) <= 4096 else None
+    except (OSError, ValueError, TypeError):
+        return None
+    if not isinstance(value, dict):
+        return None
+    message = value.get("message")
+    if value.get("name") == "PasswordStrengthError" or (
+            isinstance(message, str) and message.startswith("PasswordStrengthError:")):
+        return "password-strength"
+    allowed = {"invalid_password", "password_strength_error", "auth0_idp_error", "invalid_body",
+               "invalid_query_string", "invalid_token", "insufficient_scope", "too_many_requests",
+               "invalid_client", "invalid_grant", "unauthorized_client", "access_denied"}
+    for field in ("errorCode", "code", "error"):
+        code = value.get(field)
+        if isinstance(code, str) and code in allowed:
+            return code
+    return None
+
+
+def generated_password():
+    """Generate 48 characters satisfying the configured Auth0 excellent password policy."""
+    groups = (string.ascii_uppercase, string.ascii_lowercase, string.digits, "!@#$%")
+    characters = [secrets.choice(group) for group in groups]
+    alphabet = string.ascii_letters + string.digits + "-_!@#$%"
+    for _ in range(44):
+        choices = alphabet.replace(characters[-1], "") if characters[-1] == characters[-2] else alphabet
+        characters.append(secrets.choice(choices))
+    return "".join(characters)
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -153,14 +203,17 @@ class API:
             except urllib.error.HTTPError as error:
                 status = error.code
                 delay = rate_limit_delay(error.headers, attempt)
-                error.close()
+                try:
+                    category = error_category(error)
+                finally:
+                    error.close()
                 # An explicit rejection is safe to retry, including POST. Network
                 # failures are ambiguous and must never repeat a resource creation.
                 if status != 429 or attempt == 6 or delay >= deadline - time.monotonic():
-                    raise APIError(method, status) from None
+                    raise APIError(method, status, resource_label(path), category) from None
                 time.sleep(delay)
             except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
-                raise LabError("Auth0 request failed; inspect connectivity and the Auth0 dashboard") from None
+                raise LabError(f"Auth0 {method} {resource_label(path)} failed; inspect connectivity and the Auth0 dashboard") from None
 
     def collection(self, path, field=None):
         result = []
@@ -252,9 +305,7 @@ def provision(api, state, path, prefix, domain, email_domain="example.invalid", 
     for namespace in NAMESPACES:
         for role in ROLES:
             group = f"{prefix}-{namespace}-{role}"
-            password = "".join(secrets.choice(chars) for chars in (
-                string.ascii_uppercase, string.ascii_lowercase, string.digits, "!@#$%"
-            )) + secrets.token_urlsafe(32)
+            password = generated_password()
             if email_address:
                 local, mailbox_domain = email_address.split("@")
                 username = local + "+" + group + "@" + mailbox_domain

@@ -149,9 +149,10 @@ path "identity/mfa/method"                 { capabilities = ["list"] }
 path "identity/mfa/method/*"               { capabilities = ["create", "read", "update", "delete", "list"] }
 path "identity/mfa/login-enforcement/*"    { capabilities = ["create", "read", "update", "delete"] }
 
-# KVSecret and RandomSecret on a KV version 2 mount: delete removes the metadata (every version)
+# KVSecret and RandomSecret: destructive cleanup retains metadata and destroys bounded versions
 path "<kv-mount>/data/*"     { capabilities = ["create", "read", "update"] }
-path "<kv-mount>/metadata/*" { capabilities = ["delete"] }
+path "<kv-mount>/metadata/*" { capabilities = ["read"] }
+path "<kv-mount>/destroy/*"  { capabilities = ["update"] }
 path "<kv-mount>/config"     { capabilities = ["read", "update"] }
 
 # secrets engine kinds, one block per mount, for example PKI and database
@@ -211,7 +212,8 @@ path "tenants/team-a/auth/kubernetes/role/team-a-*" {
 
 # KVSecret, RandomSecret
 path "tenants/team-a/secret/data/*"     { capabilities = ["create", "read", "update"] }
-path "tenants/team-a/secret/metadata/*" { capabilities = ["delete"] }
+path "tenants/team-a/secret/metadata/*" { capabilities = ["read"] }
+path "tenants/team-a/secret/destroy/*"  { capabilities = ["update"] }
 ```
 
 If the tenant's auth mount lives inside `tenants/team-a` (connection `authNamespace` unset), write

@@ -50,18 +50,10 @@ The identity profile creates a root namespace scenario and two tenant scenarios,
 and `lab-beta`. A root-namespace user is an ordinary policy-restricted identity, not an OpenBao
 root-token holder. Each scenario has editors, viewers and a machine client.
 
-Keycloak group claims map through `GroupAlias` resources to external OpenBao groups. Internal
-group membership grants shared access. The tests check the resulting permissions, including
-allowed reads, viewer write rejection, inherited shared reads, forbidden paths and cross-tenant
-rejection. JWT and OIDC authentication are exercised separately.
-
-The browser profile uses a digest-pinned public Playwright image. It submits the Keycloak login
-form and completes an OpenBao OIDC authorization-code flow, then tests a user whose group does
-not match the requested role. This checks the browser authentication journey; it does not claim
-coverage of every OpenBao UI screen. The non-browser suite additionally tests machine clients.
-
-The additional `keycloak-test.sh` matrix uses admin, read and ops users in root, alpha and beta.
-The operator configures a separate auth mount for each validation mode:
+Keycloak group claims map through `GroupAlias` resources to external OpenBao groups. The tests
+check allowed reads, viewer write rejection, inherited shared reads, forbidden paths and
+cross-tenant rejection. `keycloak-test.sh` repeats that for `admin`, `read` and `ops` in root,
+alpha and beta, on one auth mount per mode:
 
 | Mode | Operator configuration | Login |
 | --- | --- | --- |
@@ -70,10 +62,7 @@ The operator configures a separate auth mount for each validation mode:
 | JWT with JWKS | `JWTAuthConfig.jwksURL` and `boundIssuer` | The same signed JWT verified through the realm's key endpoint |
 
 JWKS supplies public signing keys; it does not replace the OIDC client or browser redirect flow.
-Each mode checks external-group aliases, inherited internal-group policies, namespace isolation
-and role-specific data access. JWT denial cases distinguish group, issuer, audience and signature
-failures. All configuration is applied through operator CRDs. The existing editor/viewer and
-machine-client scenarios remain available for the ESO integration.
+JWT denial cases distinguish group, issuer, audience and signature failures.
 
 Keycloak runs with HTTP inside this isolated development setup. OpenBao API connections use
 HTTPS with the lab CA. Do not expose this lab or reuse its credentials in another environment.
@@ -107,14 +96,26 @@ run in CI.
 ## Deliver secrets to workloads with ESO
 
 ```sh
-hack/lab/eso-up.sh
-hack/lab/eso-test.sh
+hack/lab/identity-up.sh
+make lab-eso
 ```
 
 ESO uses its `vault` provider to connect to OpenBao. Each tenant's SecretStore authenticates
 with a tenant ServiceAccount. The checks cover initial delivery, source-value rotation and
 cross-tenant rejection. The configuration operator manages the auth mounts, roles and policies;
-ESO manages the application Secrets.
+ESO manages the application Secrets. The [generated-credential tutorial](generated-credentials.md)
+adds explicit password rotation, selected-key projection, recovery and Orphan retention.
+
+## Encrypt application data with transit keys
+
+```sh
+make lab-transit
+```
+
+The [application-encryption tutorial](application-encryption.md) runs a Go workload using its
+own projected ServiceAccount token in root and a child OpenBao namespace. It tests encryption,
+same-key rewrap, cross-key migration, all 15 software key algorithms and key lifecycle guards.
+It requires only the base lab, not an identity-provider deployment.
 
 ## Issue a localhost certificate with cert-manager
 
@@ -146,12 +147,27 @@ registration and process recovery in the live kit.
 
 ## Run the profiles in CI
 
-The **integration lab** GitHub Actions workflow runs Keycloak (`identity`), Authentik and ZITADEL
-in separate jobs on relevant pull requests and weekly. Manual runs also include ESO, PKI and LDAP.
+The **integration lab** GitHub Actions workflow runs Keycloak (`identity`), Authentik, ZITADEL,
+transit and ESO in separate jobs on relevant pull requests and weekly. Manual runs also include
+PKI and LDAP.
 The identity-provider jobs exercise browser OIDC and JWT discovery/JWKS. Providers run inside
 the cluster, so these tests need no external identity-provider account or GitHub secret.
 Each job creates and deletes its own kind cluster.
 It uploads test logs and pod status, never the lab state directory, kubeconfig or credentials.
+
+## Test dynamic database credentials
+
+After starting the lab, select one provider:
+
+```sh
+make lab-database DATABASE_PROFILE=postgresql
+```
+
+Use the [database tutorial](dynamic-database-credentials.md) for the root/child lease lifecycle
+and recipes for MySQL, MariaDB, Cassandra, InfluxDB and Valkey.
+[Custom database plugins](../how-to/databases/custom.md) are documented separately and are not installed by the lab.
+These are actual login, permission and revocation tests. PostgreSQL adds isolated static-role
+and root-password rotation checks; the other profiles do not cover those rotations.
 
 ## Remove the lab
 

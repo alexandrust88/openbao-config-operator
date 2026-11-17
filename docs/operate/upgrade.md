@@ -7,6 +7,18 @@ description: "Upgrade OpenBao Config Operator, its Helm chart and CRDs while rev
 This page covers the compatibility rules of the API and the chart, and how to upgrade and roll
 back the operator.
 
+## Pending release: KV v2 cleanup permissions
+
+`KVSecret` and `RandomSecret` destructive deletion now keeps metadata and destroys only
+versions up to a persisted cutoff. Before upgrading, grant their connections `read` on
+`<mount>/metadata/*` and `update` on `<mount>/destroy/*`; metadata `delete` is no longer needed
+for these two kinds. Other kinds such as `KVSecretMetadata` have separate deletion contracts.
+Missing permissions leave the resource finalizer with `CleanupBlocked`; they never fall back
+to deleting metadata. Upgrade the CRDs with the manager so the cutoff survives retries.
+Do not downgrade a manager while resources have `status.purgeThroughVersion`: older managers
+do not understand the checkpoint and can resume the previous metadata-delete behaviour.
+See [the decision and remaining boundary](../adr/0024-bounded-kv-history-cleanup.md).
+
 ## API compatibility
 
 Every group is at `v1alpha1`. The project is pre-1.0, and these rules apply until a `v1beta1` is

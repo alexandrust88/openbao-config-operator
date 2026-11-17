@@ -53,7 +53,7 @@ entry leaves this page when its source is closed.
 | A proxy or a standby without request forwarding answers with a redirect | the operator never follows redirects: resource `ReconcileError`, connection `AuthenticationFailed` | point the address at the active node or a service that forwards | [troubleshooting](../operate/troubleshooting.md#common-openbao-errors) |
 | Nine sys kinds exist only in the root namespace | `Audit`, `AuditRequestHeader`, `RateLimitQuota`, `QuotaConfig`, `Plugin`, `CORSConfig`, `UIHeader`, `Logger` and `RaftAutopilot` in a child namespace stop with `RootOnlyKind` | use a connection based in the root namespace | [architecture](../architecture.md#namespace-scope) |
 | `KeyRotationConfig` needs the root or a sealable namespace | `Unsupported` elsewhere | | [architecture](../architecture.md#namespace-scope) |
-| A KV version 2 history purge cannot be conditional | a destructive delete of a `KVSecret` or `RandomSecret` that created its path can destroy a version another writer created in the instant between the operator's read and its delete | | [TD-008](../project/tech-debt.md#td-008-a-kv-history-purge-can-destroy-a-version-written-right-before-it) |
+| A KV version 2 history purge cannot be conditional | bounded version destruction preserves later writes but cannot distinguish metadata deleted and recreated concurrently | do not delete/recreate metadata while cleanup is pending | [TD-008](../project/tech-debt.md#td-008-a-kv-history-purge-can-destroy-a-version-written-right-before-it) |
 
 ## Kinds and features
 

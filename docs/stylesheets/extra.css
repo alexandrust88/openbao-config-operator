@@ -1,24 +1,95 @@
+/* OpenBao bao greens: #78c0ab and #86d6be, darkened so white header text stays readable. */
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #145544;
+  --md-primary-fg-color--light: #78c0ab;
+  --md-primary-fg-color--dark: #0e3d32;
+  --md-primary-bg-color: #ffffff;
+  --md-accent-fg-color: #1a6b58;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #1c6b56;
+  --md-primary-fg-color--light: #86d6be;
+  --md-primary-fg-color--dark: #78c0ab;
+  --md-accent-fg-color: #86d6be;
+}
+
 .md-grid {
   max-width: 1440px;
 }
 
-.md-typeset table:not([class]) {
-  font-size: 0.7rem;
+/* Keep tables inside the content column. Material sizes the wrapper to the
+   unwrapped text, which is what forces the sideways scroll. */
+.md-typeset .md-typeset__scrollwrap {
+  margin-inline: 0;
+  overflow-x: clip;
 }
 
-.md-typeset table:not([class]) td:first-child code {
-  white-space: nowrap;
+.md-typeset .md-typeset__table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+}
+
+.md-typeset .md-typeset__table table:not([class]) {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  font-size: 0.8rem;
+}
+
+.md-typeset table:not([class]) :is(th, td) {
+  padding: 0.45em 0.5em;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* Kind catalogue: short columns stay narrow so the path and notes can wrap as words. */
+.kind-catalogue table:not([class]):has(> thead > tr > :nth-child(7):last-child) :is(th, td):nth-child(1) { width: 16%; }
+.kind-catalogue table:not([class]):has(> thead > tr > :nth-child(7):last-child) :is(th, td):nth-child(2) { width: 20%; }
+.kind-catalogue table:not([class]):has(> thead > tr > :nth-child(7):last-child) :is(th, td):nth-child(3) { width: 12%; }
+.kind-catalogue table:not([class]):has(> thead > tr > :nth-child(7):last-child) :is(th, td):nth-child(4) { width: 7%; }
+.kind-catalogue table:not([class]):has(> thead > tr > :nth-child(7):last-child) :is(th, td):nth-child(5) { width: 14%; }
+.kind-catalogue table:not([class]):has(> thead > tr > :nth-child(7):last-child) :is(th, td):nth-child(6) { width: 14%; }
+.kind-catalogue table:not([class]):has(> thead > tr > :nth-child(7):last-child) :is(th, td):nth-child(7) { width: 17%; }
+
+.threat-model table:not([class]):has(> thead > tr > :nth-child(8):last-child) :is(th, td):nth-child(1) { width: 8%; }
+.threat-model table:not([class]):has(> thead > tr > :nth-child(8):last-child) :is(th, td):nth-child(2) { width: 10%; }
+.threat-model table:not([class]):has(> thead > tr > :nth-child(8):last-child) :is(th, td):nth-child(3) { width: 22%; }
+.threat-model table:not([class]):has(> thead > tr > :nth-child(8):last-child) :is(th, td):nth-child(4) { width: 5%; }
+.threat-model table:not([class]):has(> thead > tr > :nth-child(8):last-child) :is(th, td):nth-child(5) { width: 5%; }
+.threat-model table:not([class]):has(> thead > tr > :nth-child(8):last-child) :is(th, td):nth-child(6) { width: 12%; }
+.threat-model table:not([class]):has(> thead > tr > :nth-child(8):last-child) :is(th, td):nth-child(7) { width: 24%; }
+.threat-model table:not([class]):has(> thead > tr > :nth-child(8):last-child) :is(th, td):nth-child(8) { width: 14%; }
+
+.md-typeset table:not([class]) code {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.md-typeset table:not([class]) pre,
+.md-typeset table:not([class]) pre code {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 
 .md-typeset table:not([class]) td pre {
   margin: 0.4em 0;
 }
 
+.md-typeset .highlight {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .obco-hero {
   margin: 1.5rem 0 2rem;
   padding: 2rem 1.5rem;
-  border-radius: 0.4rem;
-  background: var(--md-code-bg-color);
+  border-radius: 0.6rem;
+  border: 1px solid color-mix(in srgb, #78c0ab 45%, transparent);
+  background: linear-gradient(155deg, color-mix(in srgb, #86d6be 38%, transparent), transparent 70%);
 }
 
 .obco-hero h1 {

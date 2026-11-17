@@ -98,14 +98,4 @@ run. Reapply the lab resources before retrying:
 hack/lab/saas/run.sh apply --state "$STATE"
 ```
 
-## Interpret the evidence
-
-The ordinary CI browser-fixture tests use Chromium against synthetic hosted login pages. They
-verify the browser harness, state checking and challenge failures without requiring accounts.
-The credentialed `showcase` run is the evidence for the actual Auth0 or Okta login and the
-operator's resulting OpenBao configuration.
-
-Hosted MFA, CAPTCHA and consent screens are not bypassed. They fail the automated journey if the
-dedicated test application requires an unsupported interaction. This suite does not establish
-MFA coverage, enterprise-provider capabilities, or production readiness of an account policy.
-See the [setup and account requirements](../guides/saas-identity-lab.md) before enabling scheduled runs.
+What this run does and does not prove is in the [setup and account requirements](../guides/saas-identity-lab.md).

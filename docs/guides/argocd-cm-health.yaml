@@ -1,5 +1,4 @@
-# Argo CD health check for every openbao-config-operator kind. Merge this entry into existing resource.customizations.
-# docs/guides/argocd.md explains the mapping.
+# Merge "*.openbaoconfig.io/*" into the existing resource.customizations value.
 apiVersion: v1
 kind: ConfigMap
 metadata:

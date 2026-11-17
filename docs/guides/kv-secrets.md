@@ -16,7 +16,7 @@ Kubernetes Secret (`writeSecretRef`).
 
 A `Ready` connection whose OpenBao policy allows `sys/mounts` (`read`), `sys/mounts/<mount>` and
 `sys/mounts/<mount>/tune` to manage the engine, and `<mount>/data/*` (`create`, `read`,
-`update`), `<mount>/metadata/*` (`read`, `delete`) for the secrets, and `<mount>/config`
+`update`), `<mount>/metadata/*` (`read`) and `<mount>/destroy/*` (`update`) for destructive history cleanup, and `<mount>/config`
 (`read`, `update`) for the engine configuration
 ([OpenBao policy for the operator](../operate/openbao-policy.md)).
 

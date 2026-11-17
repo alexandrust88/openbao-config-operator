@@ -21,11 +21,85 @@ than relying on the presence of its custom resources. The check covers every
 
 The complete configuration is in [argocd-cm-health.yaml](argocd-cm-health.yaml):
 
-??? example "ConfigMap containing the wildcard health check"
-
-    ```yaml
-    --8<-- "docs/guides/argocd-cm-health.yaml"
-    ```
+```yaml title="docs/guides/argocd-cm-health.yaml"
+# Merge "*.openbaoconfig.io/*" into the existing resource.customizations value.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  resource.customizations: |
+    "*.openbaoconfig.io/*":
+      health.lua: |
+        local hs = {status = "Progressing", message = "Waiting for the operator to reconcile"}
+        if obj.status == nil or obj.status.conditions == nil then
+          return hs
+        end
+        local generation = obj.metadata.generation
+        local observed = obj.status.observedGeneration
+        local ready, synced
+        for _, c in ipairs(obj.status.conditions) do
+          if c.type == "Ready" then
+            ready = c
+          elseif c.type == "Synced" then
+            synced = c
+          end
+          if observed == nil and c.type == "Ready" then
+            observed = c.observedGeneration
+          end
+        end
+        local waiting = {
+          ReconcileInProgress = true,
+          ReferenceNotReady = true,
+          ConnectionNotReady = true,
+          PluginNotRegistered = true,
+          ServerNotReady = true,
+          WriteBudgetExceeded = true,
+        }
+        if generation ~= nil and synced ~= nil and synced.observedGeneration == generation and synced.status == "False"
+          and synced.reason ~= "Paused" and not waiting[synced.reason] then
+          hs.status = "Degraded"
+          hs.message = (synced.reason or "") .. ": " .. (synced.message or "")
+          return hs
+        end
+        if generation ~= nil and ((observed == nil or observed < generation)
+          or (ready ~= nil and ready.observedGeneration ~= nil and ready.observedGeneration < generation)
+          or (synced ~= nil and synced.observedGeneration ~= nil and synced.observedGeneration < generation)) then
+          hs.message = "Waiting for the operator to observe generation " .. generation
+          return hs
+        end
+        for _, c in pairs({ready = ready, synced = synced}) do
+          if c.reason == "Paused" then
+            hs.status = "Suspended"
+            hs.message = c.message or "Paused"
+            return hs
+          end
+        end
+        if ready == nil then
+          return hs
+        end
+        local message = ready.message or ""
+        if ready.status == "True" then
+          if synced ~= nil and synced.status == "False" then
+            if not waiting[synced.reason] then
+              hs.status = "Degraded"
+            end
+            hs.message = (synced.reason or "") .. ": " .. (synced.message or "")
+            return hs
+          end
+          hs.status = "Healthy"
+          hs.message = message
+          return hs
+        end
+        if ready.status == "False" and not waiting[ready.reason] then
+          hs.status = "Degraded"
+          hs.message = (ready.reason or "") .. ": " .. message
+          return hs
+        end
+        hs.message = (ready.reason or "") .. ": " .. message
+        return hs
+```
 
 Merge the `"*.openbaoconfig.io/*"` entry into the YAML string stored under
 `data.resource.customizations` of your existing `argocd-cm`. If Argo CD is installed with Helm,
@@ -109,7 +183,3 @@ not delete Kubernetes resources or OpenBao configuration.
 Before enabling GitOps pruning, review each resource's `deletionPolicy` and the
 [destructive-delete safeguards](../operate/backup-restore.md#deletion-policy-and-orphaned-objects).
 Continue with [importing existing configuration](import.md) or [tenant onboarding](../tutorials/tenant-onboarding.md).
-
-## Test the complete deployment
-
-For a complete, CI-tested deployment with separate OpenBao, operator and configuration applications, run the [Argo CD app-of-apps lab](../how-to/argocd-lab.md).

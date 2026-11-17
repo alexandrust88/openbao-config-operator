@@ -179,13 +179,19 @@ func (RandomSecretAdapter) OutputSecretName(s *secretsv1alpha1.RandomSecret) str
 // key remains and the resource created the path itself (status.pathCreated) and allows destructive deletes, it also
 // deletes the history on KV version 2.
 func (RandomSecretAdapter) Delete(ctx context.Context, c openbao.Client, s *secretsv1alpha1.RandomSecret) error {
+	if s.Status.PurgeThroughVersion != nil {
+		if !kvOwnsPath(s) || !s.Status.PathCreated {
+			return nil
+		}
+		return kvDestroyHistory(ctx, c, s.Spec.MountPath, s.Spec.Path, *s.Status.PurgeThroughVersion)
+	}
 	if err := kvRemoveKeys(ctx, c, s.Spec.MountPath, s.Spec.Path, s.Spec.KVVersion, []string{randomKey(s)}); err != nil {
 		return err
 	}
 	if !kvOwnsPath(s) || !s.Status.PathCreated {
 		return nil
 	}
-	return kvPurge(ctx, c, s.Spec.MountPath, s.Spec.Path, s.Spec.KVVersion)
+	return kvPreparePurge(ctx, c, s.Spec.MountPath, s.Spec.Path, s.Spec.KVVersion, &s.Status.PurgeThroughVersion)
 }
 
 func randomKey(s *secretsv1alpha1.RandomSecret) string {

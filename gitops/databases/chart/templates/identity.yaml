@@ -1,0 +1,44 @@
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: AuthMount
+metadata:
+  {{- include "database-demo.metadata" (dict "root" . "suffix" "auth") | nindent 2 }}
+spec:
+  {{- include "database-demo.common" . | nindent 2 }}
+  path: db-{{ .Values.provider }}-k8s
+  type: kubernetes
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthConfig
+metadata:
+  {{- include "database-demo.metadata" (dict "root" . "suffix" "auth") | nindent 2 }}
+spec:
+  {{- include "database-demo.common" . | nindent 2 }}
+  mountPath: db-{{ .Values.provider }}-k8s
+  kubernetesHost: https://kubernetes.default.svc:443
+---
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: Policy
+metadata:
+  {{- include "database-demo.metadata" (dict "root" . "suffix" "reader") | nindent 2 }}
+spec:
+  {{- include "database-demo.common" . | nindent 2 }}
+  name: db-{{ .Values.provider }}-reader
+  policy: |
+    path "lab-db-{{ .Values.provider }}/creds/reader" { capabilities = ["read"] }
+    path "auth/token/revoke-self" { capabilities = ["update"] }
+---
+apiVersion: auth.openbaoconfig.io/v1alpha1
+kind: KubernetesAuthRole
+metadata:
+  {{- include "database-demo.metadata" (dict "root" . "suffix" "reader") | nindent 2 }}
+spec:
+  {{- include "database-demo.common" . | nindent 2 }}
+  mountPath: db-{{ .Values.provider }}-k8s
+  name: reader
+  boundServiceAccountNames: [db-{{ .Values.tenant }}]
+  boundServiceAccountNamespaces: [{{ .Values.workloadNamespace }}]
+  audience: openbao
+  tokenPolicies: [db-{{ .Values.provider }}-reader]
+  tokenTTL: 15m
+  tokenMaxTTL: 20m
+  tokenNoDefaultPolicy: true

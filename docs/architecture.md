@@ -502,6 +502,9 @@ purpose, release it: clear its status (`kubectl patch <kind> <name> --subresourc
 - [Destructive kinds](kinds.md) delete only with the annotation `openbaoconfig.io/allow-destructive-delete: "true"`;
   otherwise, in a live Namespace, the finalizer holds with reason `DeleteGuarded`. The same annotation gates an
   update that would recreate the object ([ADR 0013](adr/0013-destructive-delete-guard.md)).
+- `KVSecret` and `RandomSecret` retain KV v2 metadata. For an operator-created path with destructive
+  deletion allowed, the adapter checkpoints `status.purgeThroughVersion`, then destroys only versions
+  up to that bound in batches of 64; retries never widen it ([ADR 0024](adr/0024-bounded-kv-history-cleanup.md)).
 - `AccessLayout` keeps its human-access guard; `AccessLevel` cannot be deleted while cited.
 
 ### References

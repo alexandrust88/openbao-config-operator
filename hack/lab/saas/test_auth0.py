@@ -4,6 +4,8 @@ import contextlib
 import io
 import json
 import os
+import re
+import string
 from pathlib import Path
 import tempfile
 import unittest
@@ -76,6 +78,27 @@ class ProvisionTests(unittest.TestCase):
         self.assertIn(state["oidc_client_id"], action["code"])
         self.assertIn("app_metadata", action["code"])
         self.assertNotIn("user_metadata", action["code"])
+
+    def test_password_generation_obeys_excellent_policy_even_with_repeated_random_choices(self):
+        request = self.api.request
+
+        def enforce_policy(method, path, body=None):
+            if method == "POST" and path == "/api/v2/users":
+                password = body["password"]
+                self.assertGreaterEqual(len(password), 10)
+                self.assertLessEqual(len(password.encode()), 72)
+                self.assertFalse(re.search(r"(.)\1\1", password), "excellent policy rejects triple repeated characters")
+                for group in (string.ascii_uppercase, string.ascii_lowercase, string.digits, "!@#$%"):
+                    self.assertTrue(any(character in group for character in password))
+            return request(method, path, body)
+
+        self.api.request = enforce_policy
+        # The previous generator would append this invalid suffix unconditionally.
+        with patch.object(auth0.secrets, "choice", side_effect=lambda choices: choices[0]), \
+                patch.object(auth0.secrets, "token_urlsafe", return_value="aaa" + "b" * 40):
+            state = self.provision()
+        self.assertEqual(len(state["users"]), 9)
+        self.assertTrue(all(len(user["password"]) == 48 for user in state["users"]))
 
     def test_provisioning_scopes_do_not_manage_machine_clients_or_apis(self):
         self.assertFalse(any("resource_servers" in scope or "client_grants" in scope for scope in auth0.SCOPES))
@@ -233,6 +256,47 @@ class ProvisionTests(unittest.TestCase):
         self.assertNotIn("secret-value", str(caught.exception))
         self.assertTrue(body.closed)
         self.assertEqual(api.opener.open.call_count, 1)
+
+    def test_rejected_password_reports_safe_stage_and_category_without_retry(self):
+        api = auth0.API.__new__(auth0.API)
+        api.origin, api.token, api.opener = "https://example.us.auth0.com", "management-secret", Mock()
+        body = io.BytesIO(json.dumps({"errorCode": "auth0_idp_error",
+                                    "message": "PasswordStrengthError: private-password user@example.com"}).encode())
+        api.opener.open.side_effect = urllib.error.HTTPError(api.origin, 400, "private-status", {}, body)
+        with self.assertRaises(auth0.APIError) as caught:
+            api.request("POST", "/api/v2/users", {"password": "private-password"})
+        self.assertIn("POST users", str(caught.exception))
+        self.assertIn("category=password-strength", str(caught.exception))
+        self.assertEqual(caught.exception.status, 400)
+        self.assertNotIn("private", str(caught.exception))
+        self.assertNotIn("user@example.com", str(caught.exception))
+        self.assertTrue(body.closed)
+        self.assertEqual(api.opener.open.call_count, 1)
+
+    def test_diagnostics_discard_unknown_or_malformed_provider_values(self):
+        for raw in (b'{"errorCode":"private-secret","message":"private-message"}', b'[]', b'not-json',
+                    b'{"errorCode":["private-secret"]}', b'x' * 4097):
+            with self.subTest(raw_size=len(raw)):
+                error = urllib.error.HTTPError("https://example.invalid", 400, "private", {}, io.BytesIO(raw))
+                try:
+                    self.assertIsNone(auth0.error_category(error))
+                finally:
+                    error.close()
+        error = urllib.error.HTTPError("https://example.invalid", 403, "private", {},
+                                      io.BytesIO(b'{"errorCode":"insufficient_scope","message":"private"}'))
+        try:
+            self.assertEqual(auth0.error_category(error), "insufficient_scope")
+        finally:
+            error.close()
+
+    def test_resource_labels_never_include_identifiers_or_queries(self):
+        cases = {"/oauth/token": "management-token", "/api/v2/users/auth0%7Cprivate": "users",
+                 "/api/v2/clients?email=private@example.com": "clients",
+                 "/api/v2/actions/actions/private-id/deploy": "action-deployment",
+                 "/api/v2/actions/triggers/post-login/bindings": "post-login-bindings",
+                 "/unrecognised/private-id": "request"}
+        for path, expected in cases.items():
+            self.assertEqual(auth0.resource_label(path), expected)
 
     def test_rate_limit_headers(self):
         with patch.object(auth0.time, "time", return_value=1000):

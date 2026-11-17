@@ -2,6 +2,8 @@
 description: "Browse supported OpenBao custom resources, their managed API paths, implementation status and plugin requirements."
 ---
 
+<div class="kind-catalogue" markdown="1">
+
 # Kind catalogue
 
 Every typed kind, with links to its fields, YAML examples and test evidence. The design is in the
@@ -144,7 +146,7 @@ each built-in kind, except the cases in `test/conformance/exceptions.yaml`
 
 | kind | path | availability | phase | status | evidence | notes |
 |------|------|--------------|-------|--------|----------|-------|
-| [`KVSecret`](reference/api/secrets-kvsecret.md) · [example](reference/examples/secrets.md#kvsecret) | v2: `<m>/data/<path>` (+ `<m>/metadata/<path>`); v1: `<m>/<path>` | builtin | 4 | integration-tested | `secrets_kv_test.go`, live | values from Secret refs; delete via metadata (`Deleter`); default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| [`KVSecret`](reference/api/secrets-kvsecret.md) · [example](reference/examples/secrets.md#kvsecret) | v2: `<m>/data/<path>` (+ `<m>/metadata/<path>`); v1: `<m>/<path>` | builtin | 4 | integration-tested | `secrets_kv_test.go`, live | values from Secret refs; bounded version destruction retaining metadata (`Deleter`); default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | [`KVConfig`](reference/api/secrets-kvconfig.md) · [example](reference/examples/secrets.md#kvconfig) | `<m>/config` | builtin | 4 | integration-tested | `secrets_kv_test.go`, live | singleton per mount: `max_versions`, `cas_required`, `delete_version_after` |
 | [`KVSecretMetadata`](reference/api/secrets-kvsecretmetadata.md) · [example](reference/examples/secrets.md#kvsecretmetadata) | `<m>/metadata/<path>` | builtin | 4 | integration-tested | `secrets_gaps_test.go`, live | per-secret retention and `custom_metadata`; an omitted field is left stored, and a set map replaces the stored keys; delete removes every version, so it is destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | [`RandomSecret`](reference/api/secrets-randomsecret.md) · [example](reference/examples/secrets.md#randomsecret) | `<m>/data/<path>`; value from `sys/policies/password/<name>/generate` | builtin | 4 | integration-tested | `secrets_kv_test.go`, live | OpenBao generates the value from the password policy; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
@@ -252,3 +254,5 @@ These features have no typed kind: OpenBao does not have them, or they are actio
 Reachable with `OpenBaoEndpoint` and candidates for later typed kinds: OpenBao
 sealable-namespace operations, user lockout config (tune `user_lockout_config` on `AuthMount`), plugin reload,
 control groups, and the namespace API lock.
+
+</div>

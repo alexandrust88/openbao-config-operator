@@ -129,3 +129,19 @@ Goal: large shared servers with many tenants.
 
 Open a pull request against this page. New outcomes go into the [backlog](../project/backlog.md) first with acceptance
 criteria; this page only orders them. Maintainers review the roadmap at each minor release.
+
+## Hash-key rotation design constraints
+
+Rewriting-free rotation is deferred. A future implementation must verify a recorded HMAC against
+an explicitly bounded previous-key set before moving status to the new key, without writing
+unchanged remote inputs. It must still write a changed Secret, never accept an unmatched old
+hash as equal, and distinguish key retirement from restoring lost status. Multi-replica rollout,
+status patch failure and rollback need tests before enabling this behaviour.
+
+The current key also participates in adapter credential fingerprints, beyond the generic
+`writeOnlyHash` check. A keyring cannot safely be introduced only in that generic comparison.
+Compromise recovery still requires retiring the old key; keeping it indefinitely to avoid writes
+is not a security fix. Until these contracts are designed and tested, use the existing
+[controlled replacement procedure](../security/hardening.md#r-keys-01-hash-key), which deliberately
+rewrites current write-only inputs. Out-of-band drift in values OpenBao never returns remains
+unobservable, regardless of key rotation.

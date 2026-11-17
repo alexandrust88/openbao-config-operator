@@ -3,7 +3,6 @@ package secrets
 import (
 	"context"
 	"encoding/json"
-	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -111,27 +110,25 @@ func assertDelivered(t *testing.T, k8s client.Client, s *secretsv1alpha1.RandomS
 	}
 }
 
-// TestRandomSecretDeletePurgesOwnedPath: a RandomSecret that created its KV v2 path and allows destructive deletes
-// removes the path with its history once its key was the last one.
+// TestRandomSecretDeletePurgesOwnedPath also checks that revoking permission stops a checkpointed purge.
 func TestRandomSecretDeletePurgesOwnedPath(t *testing.T) {
 	s := newRandomSecret()
 	s.Status.Acquired, s.Status.PathCreated = commonv1alpha1.AcquiredCreated, true
 	s.Annotations = map[string]string{commonv1alpha1.AnnotationAllowDestructiveDelete: "true"}
-	bao := &kvStoreBao{data: map[string]map[string]any{"kv/data/team/db": {"password": "x"}}}
-	if err := (RandomSecretAdapter{}).Delete(context.Background(), bao, s); err != nil {
+	bao := &kvStore{versions: []map[string]any{{"password": "x"}}}
+	if err := finishKVDelete(func() error { return (RandomSecretAdapter{}).Delete(t.Context(), bao, s) }); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(bao.deletes, "kv/metadata/team/db") {
-		t.Errorf("deletes = %v, want the metadata of the owned path", bao.deletes)
+	if !bao.purged || len(bao.versions) != 2 {
+		t.Fatal("expected destroyed history with retained metadata")
 	}
-
 	s.Annotations = nil
-	bao = &kvStoreBao{data: map[string]map[string]any{"kv/data/team/db": {"password": "x"}}}
-	if err := (RandomSecretAdapter{}).Delete(context.Background(), bao, s); err != nil {
+	bao = &kvStore{versions: []map[string]any{{"password": "x"}}}
+	if err := (RandomSecretAdapter{}).Delete(t.Context(), bao, s); err != nil {
 		t.Fatal(err)
 	}
-	if len(bao.deletes) != 0 {
-		t.Errorf("deletes = %v without the destructive annotation, want the history kept", bao.deletes)
+	if bao.purged {
+		t.Fatal("checkpoint bypassed revoked destructive permission")
 	}
 }
 

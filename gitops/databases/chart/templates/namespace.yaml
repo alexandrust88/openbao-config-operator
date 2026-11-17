@@ -1,0 +1,14 @@
+{{- if ne .Values.tenant "root" }}
+apiVersion: sys.openbaoconfig.io/v1alpha1
+kind: OpenBaoNamespace
+metadata:
+  name: lab-{{ .Values.tenant }}
+  namespace: {{ .Values.configNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  connectionRef:
+    name: {{ .Values.connectionRef }}
+  deletionPolicy: Orphan
+  name: lab-{{ .Values.tenant }}
+{{- end }}

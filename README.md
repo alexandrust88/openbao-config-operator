@@ -144,14 +144,15 @@ Supported OpenBao, Kubernetes and Helm versions are listed in the [compatibility
 
 ## Risks
 
-- **KV history purge race.** A destructive delete of a KV version 2 secret can destroy a version another writer
-  created in the instant before the delete ([TD-008](docs/project/tech-debt.md#td-008-a-kv-history-purge-can-destroy-a-version-written-right-before-it)).
+- **KV path recreation needs coordination.** Version-bounded cleanup preserves later writes, but administrators
+  must not delete and recreate KV metadata while cleanup is running ([TD-008](docs/project/tech-debt.md#td-008-a-kv-history-purge-can-destroy-a-version-written-right-before-it)).
 - **Write-only drift is invisible.** OpenBao never returns passwords and similar fields, so a change made to them
   outside Git is not detected ([known limitations](docs/reference/limitations.md#drift-detection-and-comparison)).
-- **The hash key cannot be rotated.** Replacing the key of `status.writeOnlyHash` rewrites every object with
+- **Hash-key rotation triggers writes.** Controlled key replacement is supported, but rewriting-free rotation is not.
+  Replacing the key of `status.writeOnlyHash` rewrites every object with
   write-only inputs once ([known limitations](docs/reference/limitations.md#ownership-and-restore)).
-- **The self-init platform identity can rewrite its own policy.** OpenBao has no Sentinel or EGP to stop it;
-  split the identity ([RR-02](docs/security/threat-model.md#residual-risks-and-recommendations)).
+- **Broad platform permissions can escalate.** The self-init identity denies edits to its own bootstrap objects,
+  but policy-authoring and role-binding permissions still permit escalation; split the identity ([RR-02](docs/security/threat-model.md#residual-risks-and-recommendations)).
 - **One maintainer.** The project has a single maintainer today, and the bus-factor risk is stated in the
   governance ([GOVERNANCE.md](GOVERNANCE.md#single-maintainer-phase)).
 

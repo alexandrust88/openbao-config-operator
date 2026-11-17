@@ -214,6 +214,9 @@ def main():
     h = Harness()
     h.bootstrap()
     print('Private bootstrap material ready', flush=True)
+    if args.provider == 'argocd':
+        import database_regression
+        database_regression.prepare(h)
     provider = importlib.import_module(args.provider)
     provider.install(h)
     provider.wait(h, h.revision, phase='infrastructure')
@@ -224,6 +227,8 @@ def main():
     with identity.forward('openbao', 'openbao-active', 8200) as bao_port:
         ca = h.get('configmap', 'openbao-ca', 'openbao')['data']['ca.crt']
         regression(h, provider, Bao(bao_port, ca, token))
+    if args.provider == 'argocd':
+        database_regression.regression(h)
 
 
 if __name__ == '__main__':
