@@ -1,0 +1,32 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: openbao-config-operator
+  namespace: flux-system
+spec:
+  interval: 1m
+  releaseName: openbao-config-operator
+  targetNamespace: openbao-config-operator-system
+  serviceAccountName: platform-reconciler
+  install:
+    createNamespace: true
+    strategy:
+      name: RetryOnFailure
+      retryInterval: 30s
+  upgrade:
+    strategy:
+      name: RetryOnFailure
+      retryInterval: 30s
+  driftDetection:
+    mode: enabled
+  chartRef:
+    kind: OCIRepository
+    name: operator-chart
+  # Keep the published chart's signed release image and CRD defaults.
+  values:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi

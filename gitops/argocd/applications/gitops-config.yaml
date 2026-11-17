@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitops-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  project: gitops-config
+  source:
+    repoURL: https://github.com/alexandrust88/openbao-config-operator.git
+    targetRevision: main
+    path: gitops/config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: obco-gitops
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 8
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 30s
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - PruneLast=true

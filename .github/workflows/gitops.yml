@@ -7,6 +7,7 @@ on:
       - '.github/workflows/gitops.yml'
       - '.github/actions/setup-go/**'
       - 'hack/lab/gitops/**'
+      - 'gitops/**'
       - 'hack/lab/identity.py'
       - 'hack/e2e/**'
       - 'api/**'
@@ -46,10 +47,13 @@ jobs:
     env:
       PROVIDER: ${{ matrix.provider }}
       LAB_CONTEXT: kind-obco-gitops-${{ matrix.provider }}
+      GITOPS_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+      GITOPS_REPOSITORY: https://github.com/${{ github.event.pull_request.head.repo.full_name || github.repository }}.git
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: ./.github/actions/setup-go # zizmor: ignore[self-repository]
       - name: Exercise the documented GitOps command
         run: |

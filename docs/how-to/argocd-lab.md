@@ -1,227 +1,130 @@
 ---
-title: Deploy and test OpenBao with Argo CD app-of-apps
-description: Run a real Argo CD app-of-apps lab that deploys OpenBao, the configuration operator and tenant resources from Git, then verifies health, self-healing and pruning.
+title: Deploy OpenBao with Argo CD and Helm
+description: Deploy OpenBao and the configuration operator with published Helm charts, public Git Applications and the Argo CD UI.
 ---
 
-# Deploy and test OpenBao with Argo CD app-of-apps
+# Deploy OpenBao with Argo CD and Helm
 
-This lab starts an empty kind cluster and lets Argo CD deploy OpenBao, the operator Helm chart
-and the operator's configuration resources from Git. It then changes Git, introduces drift and
-prunes selected resources while checking the resulting state in OpenBao.
+Use this disposable kind lab to see Argo CD deploy OpenBao, the configuration
+operator and root/tenant configuration from public Git and published Helm charts.
+The checked-in examples are in [`gitops/argocd/`](https://github.com/alexandrust88/openbao-config-operator/tree/main/gitops/argocd).
 
-It uses Argo CD Core: the real application controller, repository server and Redis, without a
-web UI or external login service. This is a disposable integration test, not a production Argo CD
-installation or an OpenBao lifecycle feature of the configuration operator.
+## Prerequisites
 
-## Before you start
+Clone this repository and install Docker, Go, Python 3, kubectl and make. Run the
+commands from the repository root. Allow outbound access to GitHub, the Helm
+repositories and container registries. The lab uses a fresh kind cluster named
+`obco-gitops-argocd`; it refuses to reuse an existing cluster with that name.
 
-Install the [local lab prerequisites](../tutorials/local-lab.md): Docker, Go, Python 3, kubectl,
-OpenSSL, and the repository's kind and Helm tools. Allow memory for a three-node OpenBao raft
-cluster, Argo CD and the operator. The fixture downloads a checksum-verified Argo CD release
-manifest and pins its container images by digest.
-
-Run from the repository root:
+## Deploy and test
 
 ```bash
 make lab-argocd
 ```
 
-The command requires a fresh cluster named `obco-gitops-argocd`; it refuses to reuse an existing
-cluster. To retain it for inspection:
+The command installs the upstream `argo-cd` Helm chart, including the API server
+and UI. It then applies the checked-in AppProjects and root Application. Argo CD
+installs both workloads; the test runner does not install OpenBao or the operator
+first. The controller bootstrap uses chart version **10.18.0**, OpenBao uses its
+official chart **0.30.7**, and the operator uses published chart **0.4.0**.
+
+The runner uses the standard Helm installation commands:
+
+```bash
+helm repo add argo https://argoproj.github.io/argo-helm --force-update
+helm repo update argo
+helm upgrade --install argocd argo/argo-cd --version 10.18.0 \
+  --namespace argocd --create-namespace \
+  --values gitops/argocd/values/argocd.yaml --wait --timeout 10m
+```
+
+These commands install Argo CD only; `make lab-argocd` also performs the private
+OpenBao bootstrap, applies the Projects/root Application, and runs the smoke test.
+
+The source examples follow `main`. CI overrides Git sources with the commit being
+tested, including the values-file sources; chart versions remain pinned. This
+smoke test reads the public repository and never pushes test changes to GitHub.
+
+| Application | Source | Order |
+| --- | --- | --- |
+| `gitops-root` | Public Git: `gitops/argocd/applications` | Creates the children |
+| `gitops-openbao` | Official OpenBao chart and `gitops/openbao/values.yaml` | Wave 0 |
+| `gitops-operator` | Published operator chart and `gitops/argocd/values/operator.yaml` | Wave 10 |
+| `gitops-config` | Public Git: `gitops/config` | Wave 20 |
+
+The root's child-Application health check waits for sync and health before
+advancing to the next wave. Operator health checks distinguish pending
+reconciliation from a current-generation error. The test verifies the expected
+Git revision, healthy Applications and real OpenBao behaviour in root and tenant
+namespaces. Kubernetes edits and OpenBao drift are repaired by their respective
+controllers. This public smoke test does not claim Git-commit mutation or prune
+coverage: those require changes to the source repository.
+
+## Inspect the checked-in configuration
+
+The root Application's source is a normal public Git repository:
+
+```yaml
+source:
+  repoURL: https://github.com/alexandrust88/openbao-config-operator.git
+  targetRevision: main
+  path: gitops/argocd/applications
+```
+
+Each chart Application has a second Git source named `values`. Its Helm source
+uses `valueFiles` such as `$values/gitops/openbao/values.yaml`. To adapt the example,
+copy it into your own repository, change **all** Git source URLs and revisions,
+and update the matching AppProject `sourceRepos` permissions. The root repository
+is an administrator trust boundary: someone who can change its Applications can
+change what Argo CD deploys within those Projects.
+
+Separate AppProjects constrain sources, destinations and managed resource kinds.
+The configuration Project cannot manage Secrets, Deployments or RBAC objects.
+These are sync restrictions, not a restriction on the Argo controller's Kubernetes
+read permissions. Review Kubernetes RBAC separately for a production deployment.
+
+## Open the Argo CD UI
+
+Keep the disposable cluster after the test:
 
 ```bash
 KEEP_GITOPS_LAB=1 make lab-argocd
+export KUBECONFIG="$PWD/.tmp/lab/obco-gitops-argocd/kubeconfig"
+kubectl -n argocd port-forward service/argocd-server 8443:443
 ```
 
-No external Git account or API credentials are needed. A disposable in-cluster Git server holds
-real commits and serves them to Argo CD. The runner pushes changes through a loopback
-port-forward. This isolated HTTP transport is for the lab; use your authenticated HTTPS or SSH
-repository for a real deployment.
-
-## Understand the hierarchy
-
-```text
-gitops-root                         Git: argocd/root
-├── gitops-openbao    wave 0         Git: openbao
-├── gitops-operator   wave 10        Git: operator (Helm chart)
-└── gitops-config     wave 20        Git: config
-```
-
-| Application | Owns | Readiness gate |
-| --- | --- | --- |
-| `gitops-openbao` | OpenBao TLS raft manifests, Services, RBAC and disruption budget | StatefulSet and other resources healthy |
-| `gitops-operator` | This checkout's operator chart, CRDs and RBAC | Manager Deployment healthy |
-| `gitops-config` | Connection, policies, auth mounts and roles, secrets mounts, transit keys and a child namespace | Operator reconciliation health |
-
-The root creates its children in sync-wave order. An explicit Application health customization
-requires each child to be both `Synced` and `Healthy` before the next wave advances. The lab also
-checks creation and successful-sync timestamps. Sync waves alone are not a replacement for child
-Application health assessment.
-
-The root has this shape; the complete fixture is generated by
-[`argocd.py`](https://github.com/alexandrust88/openbao-config-operator/blob/main/hack/lab/gitops/argocd.py):
-
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: gitops-root
-  namespace: argocd
-spec:
-  project: gitops-root
-  source:
-    repoURL: http://git.obco-gitops.svc:8080/repo.git
-    targetRevision: main
-    path: argocd/root
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: argocd
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - ServerSideApply=true
-      - PruneLast=true
-```
-
-The operator child renders the chart directly from Git, using the image built from the checkout:
-
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: gitops-operator
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "10"
-spec:
-  project: gitops-operator
-  source:
-    repoURL: http://git.obco-gitops.svc:8080/repo.git
-    targetRevision: main
-    path: operator
-    helm:
-      releaseName: openbao-config-operator
-      valuesObject:
-        image:
-          repository: example.com/openbao-config-operator
-          tag: CHECKOUT_IMAGE_ID
-          digest: ""
-          pullPolicy: IfNotPresent
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: openbao-config-operator-system
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-      - PruneLast=true
-```
-
-`CHECKOUT_IMAGE_ID` illustrates the runner-generated immutable image tag; it is not a published
-image to install. The runner supplies the real tag and loads that image into kind. When adapting
-the hierarchy, replace the repository URL, revision, paths and image with your own verified inputs.
-
-## Keep application permissions separate
-
-The fixture creates four AppProjects. Each allows only its repository and destination namespace.
-The root may manage child Applications; the infrastructure projects may manage their required
-workload, CRD and RBAC kinds. The configuration project has no permission to manage Secrets,
-Applications, workloads or RBAC resources:
-
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: AppProject
-metadata:
-  name: gitops-config
-  namespace: argocd
-spec:
-  sourceRepos:
-    - http://git.obco-gitops.svc:8080/repo.git
-  destinations:
-    - server: https://kubernetes.default.svc
-      namespace: obco-gitops
-  clusterResourceWhitelist:
-    - group: core.openbaoconfig.io
-      kind: OpenBaoServer
-  namespaceResourceWhitelist:
-    - group: ""
-      kind: ConfigMap
-    - group: core.openbaoconfig.io
-      kind: OpenBaoConnection
-    - group: sys.openbaoconfig.io
-      kind: OpenBaoNamespace
-    - group: sys.openbaoconfig.io
-      kind: Policy
-    - group: sys.openbaoconfig.io
-      kind: SecretsMount
-    - group: sys.openbaoconfig.io
-      kind: AuthMount
-    - group: auth.openbaoconfig.io
-      kind: AppRole
-    - group: secrets.openbaoconfig.io
-      kind: TransitKey
-```
-
-AppProjects constrain what Argo CD applications may sync. They do not remove the controller's
-Kubernetes read permissions. Treat the root repository and infrastructure projects as trusted
-platform administration; changing a chart or its RBAC is privileged work.
-
-## What is bootstrapped outside Git
-
-The runner creates the empty cluster, Git transport, TLS material, random test bootstrap
-credentials and Argo CD itself. It applies the AppProjects and root Application. It does **not**
-install OpenBao or the configuration operator before Argo CD starts.
-
-After Git-deployed OpenBao and the operator become healthy, the runner copies the generated lab
-credential into the connection's referenced Kubernetes Secret. That credential and TLS private
-keys never enter Git. The configuration Application can then become healthy. Public CA data and
-Secret references can be committed; private values cannot.
-
-For production, choose a credential bootstrap mechanism appropriate to your platform. This lab's
-generated test credential is not a recommendation to store an administrative token in Git.
-
-## What success means
-
-The suite checks the controller's expected Git revision, resource health and real OpenBao state.
-It covers:
-
-- Git deployment of the server, chart and root/child-namespace configuration.
-- A Git policy change reaching Kubernetes and OpenBao.
-- An invalid policy becoming an explicit `Degraded` Application, followed by recovery through Git.
-- Kubernetes drift repaired by Argo CD self-healing, and OpenBao drift repaired by the operator.
-- Pruning `Policy` resources with `deletionPolicy: Delete` removing their OpenBao policies.
-- Pruning `Policy` resources with `deletionPolicy: Orphan` retaining their OpenBao policies.
-
-A timeout does not count as a successful health or denial assertion. The
-[operator health customization](../guides/argocd.md) checks the reported reconciliation result;
-a manifest being `Synced` does not itself prove OpenBao accepted it.
-
-Pruning is tested on disposable policies. The lab does not remove key material or disable the
-operator's destructive-delete safeguards. Child Applications deliberately omit cascading-deletion
-finalizers: cluster teardown, rather than deleting the root Application, is the cleanup boundary.
-
-## Inspect or remove a retained lab
+Open `https://localhost:8443`. The lab server uses a self-signed certificate.
+In another terminal, retrieve its generated administrator password privately:
 
 ```bash
-export KUBECONFIG="$PWD/.tmp/lab/obco-gitops-argocd/kubeconfig"
-kubectl -n argocd get applications
-kubectl -n obco-gitops get openbao
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 --decode
 ```
 
-Do not publish Secrets, private repository data or raw authentication responses. If an Application
-is not healthy, inspect its conditions and the affected resource's conditions first. Check image
-pulls and pod readiness for infrastructure failures; check the configured Git revision and
-operator status for configuration failures.
+Sign in as `admin` and inspect `gitops-root` and its three children. Do not paste
+that password into logs or commit it. No ingress or public administrative endpoint
+is enabled. These values are a small local example, not a production hardening
+baseline; configure trusted TLS, SSO, access policies, backups and availability
+for an actual deployment.
+
+## Secrets and cleanup
+
+The runner creates a private lab CA, TLS Secret and random bootstrap credentials
+outside Git. Public configuration contains references, not credentials. It copies
+the generated connection credential only after the OpenBao and operator
+Applications are healthy; configuration can then reconcile.
+
+The command deletes its cluster when it finishes unless `KEEP_GITOPS_LAB=1` is set.
+To remove a retained lab:
 
 ```bash
 bin/kind delete cluster --name obco-gitops-argocd
 ```
 
-Continue with the [Argo CD configuration guide](../guides/argocd.md),
-[connection setup](../get-started/connect.md) and
-[deletion-policy safeguards](../operate/backup-restore.md#deletion-policy-and-orphaned-objects).
+The Applications intentionally omit cascading-deletion finalizers. Deleting an
+Application alone does not prove that its workloads or OpenBao data were removed.
+Cluster deletion is the lab cleanup boundary. Before enabling production prune,
+review the operator's [creation and deletion policies](../adr/0004-creation-and-deletion-policy-defaults.md).
+
+For reusable health integration, see [Use Argo CD](../guides/argocd.md). For the
+alternative controller, see [the Flux lab](flux-lab.md).

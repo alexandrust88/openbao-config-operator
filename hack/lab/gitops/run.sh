@@ -14,6 +14,7 @@ export LAB_NAMESPACE=obco-gitops LAB_CONNECTION=gitops-openbao
 kind=${KIND:-$repo_root/bin/kind}
 [[ -x $kind ]] || make kind
 [[ -x "$repo_root/bin/helm" ]] || make helm
+[[ -x "$repo_root/bin/yq" ]] || make yq
 clusters=$("$kind" get clusters)
 if grep -Fxq "$cluster" <<<"$clusters"; then
  echo 'GitOps regression requires a fresh cluster name; refusing to reuse an existing cluster' >&2; exit 1
@@ -35,17 +36,5 @@ cleanup() {
 trap cleanup EXIT
 "$kind" create cluster --name "$cluster" --image "$node_image" --kubeconfig "$KUBECONFIG" --wait 180s
 chmod 600 "$KUBECONFIG"
-image=example.com/openbao-config-operator:gitops-build
-make docker-build-host IMG="$image"
-id=$(docker image inspect "$image" --format '{{.Id}}'); id=${id#sha256:}
-export LAB_OPERATOR_IMAGE="${image%:*}:${id:0:12}"
-docker tag "$image" "$LAB_OPERATOR_IMAGE"
-"$kind" load docker-image "$LAB_OPERATOR_IMAGE" --name "$cluster"
-arch=$(docker info --format '{{.Architecture}}'); case "$arch" in aarch64) arch=arm64 ;; x86_64) arch=amd64 ;; esac
-mkdir -p "$out/git-server-build"
-CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -o "$out/git-server-build/server" hack/lab/gitops/server.go
-cp hack/lab/gitops/Dockerfile "$out/git-server-build/Dockerfile"
-docker build -t example.com/obco-gitops-server:lab "$out/git-server-build"
-"$kind" load docker-image example.com/obco-gitops-server:lab --name "$cluster"
 hack/e2e/tls.sh
 python3 hack/lab/gitops/common.py "$profile"
