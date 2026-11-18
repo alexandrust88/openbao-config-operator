@@ -13,8 +13,8 @@ import (
 )
 
 func TestParseSeries(t *testing.T) {
-	name, labels := parseSeries(`openbao_requests_total{code="200",connection="c",method="GET"}`)
-	if name != "openbao_requests_total" || labels["code"] != "200" || labels["method"] != "GET" {
+	name, labels := parseSeries(`obco_requests_total{code="200",connection="c",method="GET"}`)
+	if name != "obco_requests_total" || labels["code"] != "200" || labels["method"] != "GET" {
 		t.Fatalf("got %q %v", name, labels)
 	}
 	if name, labels := parseSeries("go_goroutines"); name != "go_goroutines" || labels != nil {
@@ -25,7 +25,7 @@ func TestParseSeries(t *testing.T) {
 func TestSnapshotAddSkipsConnectionControllers(t *testing.T) {
 	s := snapshot{}
 	s.add("controller_runtime_reconcile_total", map[string]string{"controller": "policy.sys", "result": "success"}, 3)
-	s.add("controller_runtime_reconcile_total", map[string]string{"controller": "openbaoconnection", "result": "success"}, 5)
+	s.add("controller_runtime_reconcile_total", map[string]string{"controller": "baoconnection", "result": "success"}, 5)
 	if s["controller_runtime_reconcile_total"] != 3 || s["controller_runtime_reconcile_total:result=success"] != 3 {
 		t.Fatalf("got %v", s)
 	}
@@ -33,22 +33,22 @@ func TestSnapshotAddSkipsConnectionControllers(t *testing.T) {
 
 func TestCarryKeepsDeletedConnectionCounters(t *testing.T) {
 	seen := map[string]float64{}
-	first := map[string]float64{`openbao_requests_total{code="200",connection="a"}`: 5,
-		`openbao_requests_total{code="200",connection="b"}`: 7, "go_goroutines": 10}
+	first := map[string]float64{`obco_requests_total{code="200",connection="a"}`: 5,
+		`obco_requests_total{code="200",connection="b"}`: 7, "go_goroutines": 10}
 	carry(seen, first)
-	second := map[string]float64{`openbao_requests_total{code="200",connection="a"}`: 6, "go_goroutines": 9}
+	second := map[string]float64{`obco_requests_total{code="200",connection="a"}`: 6, "go_goroutines": 9}
 	carry(seen, second)
-	if got := aggregate(second)["openbao_requests_total"]; got != 13 {
-		t.Fatalf("openbao_requests_total = %v, want 13: a deleted connection must not lower the sum", got)
+	if got := aggregate(second)["obco_requests_total"]; got != 13 {
+		t.Fatalf("obco_requests_total = %v, want 13: a deleted connection must not lower the sum", got)
 	}
 	if got := aggregate(second)["go_goroutines"]; got != 9 {
 		t.Fatalf("go_goroutines = %v, want 9", got)
 	}
-	third := map[string]float64{`openbao_requests_total{code="200",connection="a"}`: 6,
-		`openbao_requests_total{code="200",connection="b"}`: 1}
+	third := map[string]float64{`obco_requests_total{code="200",connection="a"}`: 6,
+		`obco_requests_total{code="200",connection="b"}`: 1}
 	carry(seen, third)
-	if got := aggregate(third)["openbao_requests_total"]; got != 13 {
-		t.Fatalf("openbao_requests_total = %v, want 13: a restarted series must not lower the sum", got)
+	if got := aggregate(third)["obco_requests_total"]; got != 13 {
+		t.Fatalf("obco_requests_total = %v, want 13: a restarted series must not lower the sum", got)
 	}
 }
 
@@ -123,7 +123,7 @@ func TestPlanReferrers(t *testing.T) {
 	if ref != objects[1].name {
 		t.Fatalf("alias %s references %q, want %q", objects[0].name, ref, objects[1].name)
 	}
-	if alias.GetAnnotations()["openbaoconfig.io/allow-destructive-delete"] != "true" {
+	if alias.GetAnnotations()["obco.dev/allow-destructive-delete"] != "true" {
 		t.Fatal("generated objects must allow destructive delete")
 	}
 }
@@ -169,10 +169,10 @@ func TestPlanTree(t *testing.T) {
 	for name, want := range map[string]map[string]any{
 		"p001":                {"connectionRef": map[string]any{litName: "bao"}},
 		"p002-c03":            {"connectionRef": map[string]any{litName: "bao-p002"}},
-		"p001-kv-04":          {"connectionRef": map[string]any{litName: "bao"}, "namespace": "p001", "deletionPolicy": "Delete"},
-		"p002-c03-k8s-role-2": {"connectionRef": map[string]any{litName: "bao-p002"}, "namespace": "p002-c03", litMountPath: "p002-c03-k8s", "deletionPolicy": "Delete"},
-		"p002-c03-k8s-config": {"connectionRef": map[string]any{litName: "bao-p002"}, "namespace": "p002-c03", litMountPath: "p002-c03-k8s"},
-		"bao-p002":            {"namespace": "p002", "authNamespace": ""},
+		"p001-kv-04":          {"connectionRef": map[string]any{litName: "bao"}, "openbaoNamespace": "p001", "deletionPolicy": "Delete"},
+		"p002-c03-k8s-role-2": {"connectionRef": map[string]any{litName: "bao-p002"}, "openbaoNamespace": "p002-c03", litMountPath: "p002-c03-k8s", "deletionPolicy": "Delete"},
+		"p002-c03-k8s-config": {"connectionRef": map[string]any{litName: "bao-p002"}, "openbaoNamespace": "p002-c03", litMountPath: "p002-c03-k8s"},
+		"bao-p002":            {"openbaoNamespace": "p002", "openbaoAuthNamespace": ""},
 	} {
 		got := spec(name)
 		for k, v := range want {

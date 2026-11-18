@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=passwordpolicies,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=passwordpolicies/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=passwordpolicies/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=passwordpolicies,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=passwordpolicies/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=passwordpolicies/finalizers,verbs=update
 
 // SetupPasswordPolicy registers the PasswordPolicy controller with the manager.
 func SetupPasswordPolicy(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

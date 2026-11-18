@@ -29,14 +29,14 @@ const (
 	keySpec       = "spec"
 	kindSecret    = "Secret"
 	kindConfigMap = "ConfigMap"
-	labelNested   = "live.openbaoconfig.io/nested"
-	labelOverlay  = "live.openbaoconfig.io/overlay"
+	labelNested   = "live.obco.dev/nested"
+	labelOverlay  = "live.obco.dev/overlay"
 	variantMin    = "minimal"
 	variantFull   = "full"
 )
 
 // coreKinds are configured by the kit's base and modes rather than by the scenario components.
-var coreKinds = map[string]bool{"OpenBaoServer": true, "OpenBaoConnection": true, "ClusterOpenBaoConnection": true}
+var coreKinds = map[string]bool{"BaoServer": true, "BaoConnection": true, "ClusterBaoConnection": true}
 
 func repoRoot(t testing.TB) string {
 	t.Helper()
@@ -346,5 +346,5 @@ func managed(o *unstructured.Unstructured) bool {
 }
 
 func isOperatorKind(o *unstructured.Unstructured) bool {
-	return strings.HasSuffix(o.GroupVersionKind().Group, ".openbaoconfig.io")
+	return strings.HasSuffix(o.GroupVersionKind().Group, ".obco.dev")
 }

@@ -1,5 +1,5 @@
 name: New kind request
-description: Ask for a typed kind for an OpenBao API path that today needs OpenBaoEndpoint.
+description: Ask for a typed kind for an OpenBao API path that today needs BaoEndpoint.
 title: "New kind: "
 labels: ["kind/new-kind", "triage/needs-triage"]
 body:
@@ -8,7 +8,7 @@ body:
       value: |
         Check the [kind catalogue](https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/kinds.md)
         and the [API coverage report](https://github.com/alexandrust88/openbao-config-operator/blob/main/docs/api-coverage.md)
-        first: the path may already be typed, planned, or deliberately left to `OpenBaoEndpoint` (one-off actions
+        first: the path may already be typed, planned, or deliberately left to `BaoEndpoint` (one-off actions
         such as login, issue, sign, rotate or tidy get no typed kind).
   - type: input
     id: api-path
@@ -61,8 +61,8 @@ body:
   - type: textarea
     id: endpoint
     attributes:
-      label: Current OpenBaoEndpoint workaround
-      description: The OpenBaoEndpoint you use today, if any. Remove secret values.
+      label: Current BaoEndpoint workaround
+      description: The BaoEndpoint you use today, if any. Remove secret values.
       render: yaml
   - type: checkboxes
     id: contribute

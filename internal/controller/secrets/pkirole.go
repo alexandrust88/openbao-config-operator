@@ -9,10 +9,10 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiroles/finalizers,verbs=update
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiissuers,verbs=get;list;watch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiissuers,verbs=get;list;watch
 
 // SetupPKIRole registers the PKIRole controller with the manager.
 func SetupPKIRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

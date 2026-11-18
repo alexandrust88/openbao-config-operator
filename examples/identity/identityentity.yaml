@@ -1,0 +1,38 @@
+# Identity entities for two people, with policies and metadata; logins are linked to them by IdentityEntityAlias resources.
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntity
+metadata:
+  name: obco-alice
+  namespace: openbao-config
+  labels:
+    obco.example.com/team: platform
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: obco-alice
+  policies:
+    - obco-reader
+    - obco-writer
+  metadata:
+    team: platform
+    email: alice@example.com
+  disabled: false
+---
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntity
+metadata:
+  name: obco-bob
+  namespace: openbao-config
+  labels:
+    obco.example.com/team: platform
+spec:
+  connectionRef:
+    name: openbao
+  policies:
+    - obco-reader

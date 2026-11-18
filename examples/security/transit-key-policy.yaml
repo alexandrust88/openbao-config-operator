@@ -6,7 +6,7 @@ spec:
   failurePolicy: Fail
   matchConstraints:
     resourceRules:
-      - apiGroups: [secrets.openbaoconfig.io]
+      - apiGroups: [secrets.obco.dev]
         apiVersions: [v1alpha1]
         operations: [CREATE, UPDATE]
         resources: [transitkeys]
@@ -28,4 +28,4 @@ spec:
   matchResources:
     namespaceSelector:
       matchLabels:
-        openbaoconfig.io/non-exportable-transit: 'true'
+        obco.dev/non-exportable-transit: 'true'

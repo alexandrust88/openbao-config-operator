@@ -4,7 +4,7 @@ description: "Design decision for OpenBao Config Operator: observe mode and impo
 
 # 0016. Observe mode and import tool
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; implemented. Date: 2026-11-14.
 
 ## Context
 

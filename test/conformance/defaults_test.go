@@ -26,7 +26,7 @@ const (
 )
 
 // confDefaults runs the default test for one kind in its own Kubernetes namespace, OpenBao namespace (root for
-// root-only kinds) and manager process, so openbao_writes_total{kind} counts only the object under test:
+// root-only kinds) and manager process, so obco_writes_total{kind} counts only the object under test:
 // a minimal spec (required fields only) must not write on its second pass; then each optional field is set
 // (one write), removed (one write restoring the default) and left alone for a further pass (no write).
 func confDefaults(ctx context.Context, t *testing.T, e *confEnv, c *confCatalog, r *confResult) {

@@ -1,14 +1,14 @@
-# A tenant-a attempt to write a policy in the OpenBao root namespace through the platform's ClusterOpenBaoConnection.
+# A tenant-a attempt to write a policy in the OpenBao root namespace through the platform's ClusterBaoConnection.
 # The connection admits only the Kubernetes namespace platform, so the resource stays not Ready with reason
 # ConnectionDenied and nothing is written.
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: reach-root
   namespace: tenant-a
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: platform
   name: tenant-a-in-root
   policy: |

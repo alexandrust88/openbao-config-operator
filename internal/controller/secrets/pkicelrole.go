@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkicelroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkicelroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkicelroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkicelroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkicelroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkicelroles/finalizers,verbs=update
 
 // SetupPKICELRole registers the PKICELRole controller with the manager.
 func SetupPKICELRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

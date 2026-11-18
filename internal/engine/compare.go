@@ -66,7 +66,7 @@ func WriteOnlyHash(key []byte, desired Payload, spec FieldSpec) string {
 
 // ObjectHashKey derives the key of one resource's status.writeOnlyHash from the operator's key, the resource's UID
 // and its group and kind. Equal inputs of two resources then hash differently, so a hash cannot be matched against a
-// guess hashed through another resource, such as an OpenBaoEndpoint in another tenant's namespace.
+// guess hashed through another resource, such as a BaoEndpoint in another tenant's namespace.
 func ObjectHashKey(key []byte, uid types.UID, groupKind schema.GroupKind) []byte {
 	mac := hmac.New(sha256.New, key)
 	mac.Write([]byte(uid))

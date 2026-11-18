@@ -5,8 +5,8 @@ description: Configure tenant isolation, restricted credentials, network access 
 
 # Hardening
 
-This page turns the [threat model](threat-model.md) into a checklist for running
-openbao-config-operator in production. It follows the layout of the ControlPlane cert-manager
+A checklist for running the OpenBao Config Operator in production, derived from the
+[threat model](threat-model.md). It follows the layout of the ControlPlane cert-manager
 hardening guide: each recommendation has an id `R-<CATEGORY>-nn`, a priority and the threats it
 mitigates (`T-nn`, `GAP-nn`, `RR-nn` in the threat model).
 
@@ -32,8 +32,8 @@ only on this page, in [verify the release](#verify-the-release); other pages lin
 | [R-POD-03](#r-pod-03-resources-and-availability) | Medium | resource limits, two replicas, leader election, PDB | T-23 |
 | [R-POD-04](#r-pod-04-no-sidecar-injection) | Medium | no sidecar injection into the operator pod | T-22 |
 | [R-SUPPLY-01](#r-supply-01-verify-and-enforce-signatures) | High | verify image and chart ([verify the release](#verify-the-release)); enforce at admission; pin by digest | T-25, RR-11 |
-| [R-CONFIG-01](#r-config-01-openbaoserver) | High | `OpenBaoServer`: https, CA bundle, allow-lists, rate limit | T-14, T-17, T-18, T-28, N1 |
-| [R-CONFIG-02](#r-config-02-clusteropenbaoconnection) | High | `ClusterOpenBaoConnection`: `allowedNamespaces`, projected token, explicit audiences | T-01, T-15, T-16, N5 |
+| [R-CONFIG-01](#r-config-01-baoserver) | High | `BaoServer`: https, CA bundle, allow-lists, rate limit | T-14, T-17, T-18, T-28, N1 |
+| [R-CONFIG-02](#r-config-02-clusterbaoconnection) | High | `ClusterBaoConnection`: `allowedNamespaces`, projected token, explicit audiences | T-01, T-15, T-16, N5 |
 | [R-CONFIG-03](#r-config-03-forbid-the-escape-hatches-in-production) | Medium | forbid `allowInsecureHTTP` and `{}` selectors in production | T-17, T-18, N6 |
 | [R-CONFIG-04](#r-config-04-manager-flags) | Medium | `apiServerAudiences`, `--cluster-id`, plugin kinds off, metrics TLS | T-03, T-24, T-35 |
 | [R-OPENBAO-01](#r-openbao-01-least-privilege-policies) | High | least-privilege policies; split the platform identity | T-33, T-34, RR-02 |
@@ -54,13 +54,13 @@ only on this page, in [verify the release](#verify-the-release); other pages lin
 
 ### R-RBAC-01: Install namespace-scoped
 
-By default the manager's ClusterRole grants Secrets `get`, `list`, `watch`, `create`, `update`,
-`patch` and `serviceaccounts/token` `create` in every namespace
-(`templates/rbac/_manager-rules.tpl:60-76`). A compromised manager can then read every Secret
+By default the manager's ClusterRole grants Secrets `get`, `list`, `watch`, `create`, `update`
+and `serviceaccounts/token` `create` in every namespace
+(`templates/rbac/_manager-rules.tpl:60-75`). A compromised manager can then read every Secret
 and mint a token for any ServiceAccount, cluster-admin-bound ones included.
 
 List the namespaces that hold resources, connections and the Secrets or ServiceAccounts they
-reference, including those a `ClusterOpenBaoConnection` names:
+reference, including those a `ClusterBaoConnection` names:
 
 ```yaml
 watchNamespaces:
@@ -73,7 +73,7 @@ The chart then moves the Secret, ConfigMap, token and Event rules, and every rul
 managed kind with its `status` and `finalizers`, into a Role per listed namespace
 (`templates/rbac/manager.yaml:30-70`). An unlisted release namespace gets only `get` on the
 hash-key Secret and `create` on Secrets. The ClusterRole keeps only the cluster-scoped
-kinds (`openbaoservers`, `clusteropenbaoconnections`), Namespace reads and the OIDC discovery URL.
+kinds (`baoservers`, `clusterbaoconnections`), Namespace reads and the OIDC discovery URL.
 The manager caches only those namespaces and lists live only inside them (`cmd/main.go:232-244`,
 `internal/engine/ownership.go:326-333`). Resources in other namespaces are not reconciled, and the
 manager cannot read or patch them. Adding a tenant means a chart upgrade, which is the point:
@@ -82,10 +82,10 @@ enrolment becomes a reviewed change.
 Check that the manager can no longer mint tokens or patch managed resources outside the list; both
 should print `no`:
 
-```sh
+```bash
 kubectl auth can-i create serviceaccounts/token -n kube-system \
   --as=system:serviceaccount:openbao-config-operator:openbao-config-operator
-kubectl auth can-i patch policies.sys.openbaoconfig.io -n kube-system \
+kubectl auth can-i patch aclpolicies.sys.obco.dev -n kube-system \
   --as=system:serviceaccount:openbao-config-operator:openbao-config-operator
 ```
 
@@ -95,14 +95,14 @@ Grant these only to the platform team or its GitOps identity:
 
 | right | why |
 |-------|-----|
-| `openbaoservers`, `clusteropenbaoconnections` | choose where credentials go and which identity is used ([privilege equivalences](threat-model.md#privilege-equivalences)) |
-| `openbaoconnections` | choose which ServiceAccount or Secret of the namespace logs in; the chart's tenant role already leaves it out (`templates/rbac/user-roles.yaml:14-16`) |
-| `patch` on Namespaces (labels, annotations) | labels enrol a namespace in a server; `openbaoconfig.io/paused` on a Namespace stops drift repair for it |
+| `baoservers`, `clusterbaoconnections` | choose where credentials go and which identity is used ([privilege equivalences](threat-model.md#privilege-equivalences)) |
+| `baoconnections` | choose which ServiceAccount or Secret of the namespace logs in; the chart's tenant role already leaves it out (`templates/rbac/user-roles.yaml:14-16`) |
+| `patch` on Namespaces (labels, annotations) | labels enrol a namespace in a server; `obco.dev/paused` on a Namespace stops drift repair for it |
 | `update`, `patch` on `*/status` of managed kinds | `status.path` steers deletes; the chart's roles grant only `get` (`templates/_helpers.tpl:85-91`) |
 
-RBAC cannot restrict annotations. The engine requires `openbaoconfig.io/allow-destructive-delete`
+RBAC cannot restrict annotations. The engine requires `obco.dev/allow-destructive-delete`
 before deleting the objects of every kind that reports `Destructive()`, listed in the
-[kind catalogue](../kinds.md) (for example `internal/controller/core/openbaoendpoint.go:60`). If tenants must not delete data at all, add an
+[kind catalogue](../kinds.md) (for example `internal/controller/core/baoendpoint.go:60`). If tenants must not delete data at all, add an
 admission rule that allows that annotation only for platform subjects, in the same way as
 [R-CONFIG-03](#r-config-03-forbid-the-escape-hatches-in-production).
 
@@ -110,10 +110,10 @@ admission rule that allows that annotation only for platform subjects, in the sa
 
 Every managed kind with a `<field>SecretRef` reads the Secret with the manager's rights, and the
 value can be written to an OpenBao path the author can read back. The chart aggregates
-`<release>-tenant-editor` into `admin` and `edit` (`values.yaml:77-81`), which already read
+`<release>-tenant-editor` into `admin` and `edit` (`values.yaml:86-90`), which already read
 Secrets, so nothing is gained there. Do not bind `<release>-tenant-editor` on its own to a subject
 that must not read the namespace's Secrets. To keep plain `edit` users away from OpenBao entirely,
-set `rbac.aggregate.edit=false` and bind the role explicitly. To keep a single kind, such as the raw-path `OpenBaoEndpoint`
+set `rbac.aggregate.edit=false` and bind the role explicitly. To keep a single kind, such as the raw-path `BaoEndpoint`
 ([ADR 0006](../adr/0006-endpoint-escape-hatch.md)), for platform admins, list it in
 `rbac.tenantEditor.excludeKinds`.
 
@@ -196,7 +196,7 @@ tenant policies ([R-OPENBAO-01](#r-openbao-01-least-privilege-policies)).
 The chart's defaults meet the `restricted` profile. Enforce it on the namespace so an override
 cannot weaken it:
 
-```sh
+```bash
 kubectl label namespace openbao-config-operator \
   pod-security.kubernetes.io/enforce=restricted \
   pod-security.kubernetes.io/enforce-version=latest
@@ -207,7 +207,7 @@ would violate the profile.
 
 ### R-POD-02: Keep the security context
 
-Do not override these values (`values.yaml:152-168`):
+Do not override these values (`values.yaml:184-212`):
 
 | setting | value |
 |---------|-------|
@@ -223,11 +223,11 @@ token; the chart refuses the automount directory (`templates/deployment.yaml:4-7
 ### R-POD-03: Resources and availability
 
 - Keep the memory limit (`512Mi` by default) and size it from the object count; the chart sets a
-  CPU request and no CPU limit (`values.yaml:145-150`).
-- Run two replicas with leader election (`values.yaml:36-40`); the chart refuses more than one
+  CPU request and no CPU limit (`values.yaml:173-181`).
+- Run two replicas with leader election (`values.yaml:36-41`); the chart refuses more than one
   replica without it (`templates/deployment.yaml:1-3`). Only the leader reconciles.
 - Keep the PodDisruptionBudget (`unhealthyPodEvictionPolicy: AlwaysAllow`, so a crash-looping
-  pod does not block a node drain) and the topology spread (`values.yaml:177-188`); set a
+  pod does not block a node drain) and the topology spread (`values.yaml:227-239`); set a
   `priorityClassName` so the operator is not the first pod evicted.
 
 ### R-POD-04: No sidecar injection
@@ -239,7 +239,7 @@ namespace, or per pod through `podAnnotations` (`sidecar.istio.io/inject: "false
 `linkerd.io/inject: disabled`); the chart does not set them, because a mesh-only OpenBao or an
 agent token sink can need a sidecar. Check that only `manager` runs:
 
-```sh
+```bash
 kubectl get pod -n openbao-config-operator -o jsonpath='{.items[*].spec.containers[*].name}'
 ```
 
@@ -249,8 +249,8 @@ kubectl get pod -n openbao-config-operator -o jsonpath='{.items[*].spec.containe
 
 1. Verify the image and the chart before every install or upgrade
    ([verify the release](#verify-the-release)).
-2. Install by digest: the released chart pins the image index digest in `image.digest`
-   (`hack/release/package-chart.sh`); keep it set when you mirror the image.
+2. Install by digest: the released chart pins the image index digest in `image.digest`;
+   keep it set when you mirror the image.
 3. Enforce the signature at admission, so a replaced image never starts. With Kyverno 1.18 or
    later (API `policies.kyverno.io/v1`):
 
@@ -289,54 +289,41 @@ signature travels with the digest.
 
 #### Verify the release
 
-`.github/workflows/release.yml` runs only on a `v*` tag that is a SemVer 2.0 version, after the
-full CI and e2e suites, and signs with keyless cosign (GitHub OIDC, logged in Rekor), so no cosign
-key exists. The only signing key is the GPG key of the chart's Helm provenance, described in
-[Helm provenance](#helm-provenance-gpg). A release refuses to overwrite an existing GitHub release, image tag or chart version, and
-stops when it cannot tell whether one exists. It pushes the image and the chart by digest and tags
-them only after the signatures and attestations are in place (the image also after the
-vulnerability gate, `hack/release/scan.sh`, high and critical).
+Each `v*` SemVer release signs with keyless cosign (GitHub OIDC, logged in Rekor), so no long-lived
+cosign key exists. The only packaging signing key is the GPG key of the chart's Helm provenance,
+described in [Helm provenance](#helm-provenance-gpg). A release refuses to overwrite an existing
+GitHub release, image tag or chart version, and stops when it cannot tell whether one exists. It
+pushes the image and the chart by digest and tags them only after the signatures and attestations
+are in place (the image also after a high and critical vulnerability gate).
 
-Provenance comes in two forms: GitHub artifact attestations (`actions/attest-build-provenance`,
-SLSA Build L2) and a cosign `slsaprovenance1` statement written by the release job
-(`hack/release/provenance.sh`, no SLSA level). Nothing reaches SLSA Build L3. The cosign statement
-lists the source commit and the Dockerfile base images as `resolvedDependencies`;
-`verify-release.sh` checks that it is signed by the release run and names the release tag, not the
-base images.
+Provenance comes in two forms: GitHub artifact attestations (SLSA Build L2) and a cosign
+`slsaprovenance1` statement from the release job (no SLSA level). Nothing reaches SLSA Build L3.
+The cosign statement lists the source commit and the Dockerfile base images as
+`resolvedDependencies`; verify that the attestation is signed by the release run and names the
+release tag, not only the base images.
 
 | Subject | Signed | Attestations |
 | --- | --- | --- |
-| image index | cosign | SPDX and CycloneDX SBOM per platform, provenance (cosign `slsaprovenance1` and GitHub), OpenVEX when `hack/release/vex.openvex.json` has statements |
+| image index | cosign | SPDX and CycloneDX SBOM per platform, provenance (cosign `slsaprovenance1` and GitHub), OpenVEX when the release publishes statements |
 | each platform image (amd64, arm64) | cosign | SPDX and CycloneDX SBOM, provenance (cosign `slsaprovenance1`) |
-| chart (OCI) | cosign (Sigstore bundle and legacy `sha256-<digest>.sig`); from v0.3.0 also GPG (Helm provenance, `.tgz.prov` layer) | SPDX and CycloneDX SBOM (the chart and the image it pins), provenance (cosign `slsaprovenance1` and GitHub) |
-| chart release asset (`.tgz`), from v0.3.0 | GPG (`.tgz.prov` next to it) | covered by `sha256sums.txt` |
+| chart (OCI) | cosign (Sigstore bundle and legacy `sha256-<digest>.sig`) and GPG (Helm provenance, `.tgz.prov` layer) | SPDX and CycloneDX SBOM (the chart and the image it pins), provenance (cosign `slsaprovenance1` and GitHub) |
+| chart release asset (`.tgz`) | GPG (`.tgz.prov` next to it) | covered by `sha256sums.txt` |
 | release assets | `sha256sums.txt.sigstore.json` | GitHub provenance for every file in `sha256sums.txt`, also attached as `openbao-config-operator.intoto.jsonl` |
 | OCM component descriptor ([below](#verify-and-transfer-the-ocm-component)) | cosign | provenance (cosign `slsaprovenance1`) |
 
-The release notes list the image index digest, each platform digest and the chart digest. One
-script checks every row above, and that the verified chart pins the verified image. Run it from a
-checkout of the repository with cosign v3, crane, jq, yq, curl and Helm v4 on `PATH`:
+From a clone of the repository, `hack/release/verify-release.sh @TAG@` runs the checks below and
+ends with `release @TAG@ verified`. It needs cosign v3, crane, jq, yq, curl and Helm 4. Set
+`ASSETS_DIR` to a directory with the downloaded release assets to add the `sha256sums.txt` and
+asset provenance checks; with the `gh` and `ocm` CLIs on `PATH` it also checks the GitHub
+attestations and the OCM component.
 
-```sh
-hack/release/verify-release.sh @TAG@
-```
+The release notes list the image index digest, each platform digest and the chart digest. Verify
+every subject you install with cosign v3 and crane (`IMAGE_DIGEST` and `CHART_DIGEST` from the
+release notes). Every signature must come from the release run of exactly the version you install.
+A pattern that accepts any `v*` tag also accepts an older, signed release whose tags were moved in
+a registry or a mirror, so pin the full identity:
 
-The script prints one `ok` line per check and ends with `release @TAG@ verified`. Optional parts:
-
-- Helm v4 is required to verify the Helm provenance, because the script passes the armored public
-  key. If `helm` on `PATH` is Helm v3, set `HELM` to a Helm v4 binary; otherwise the check fails
-  with `needs Helm v4 to read the armored key`.
-- With `ASSETS_DIR` set to a directory of downloaded release assets, it also checks the signed
-  `sha256sums.txt`, the assets against it and their provenance.
-- With the `gh` CLI on `PATH`, it also checks the GitHub artifact attestations; with the ocm CLI, the
-  [OCM component](#verify-and-transfer-the-ocm-component).
-
-Every signature must come from the release run of exactly the version you install. A pattern that
-accepts any `v*` tag also accepts an older, signed release whose tags were moved in a registry or a
-mirror, so pin the full identity. By hand, with cosign v3 and crane (`IMAGE_DIGEST` and
-`CHART_DIGEST` from the release notes):
-
-```sh
+```bash
 REPO=alexandrust88/openbao-config-operator
 IMAGE=ghcr.io/alexandrust88/openbao-config-operator
 CHART=ghcr.io/alexandrust88/charts/openbao-config-operator
@@ -367,14 +354,14 @@ looks for.
 The platform digests verify the same way (`crane manifest "$IMAGE@$IMAGE_DIGEST"` lists them).
 To read an SBOM, decode the verified payload:
 
-```sh
+```bash
 cosign verify-attestation "${PIN[@]}" --type cyclonedx "$CHART@$CHART_DIGEST" |
   jq -r .payload | base64 -d | jq '.predicate.components'
 ```
 
 With the GitHub CLI, the GitHub attestations of the image, the chart and the release assets:
 
-```sh
+```bash
 GH_PIN=(--repo "$REPO" --signer-workflow "$REPO/.github/workflows/release.yml" --source-ref "refs/tags/v$VERSION")
 gh attestation verify "oci://$IMAGE@$IMAGE_DIGEST" "${GH_PIN[@]}"
 gh attestation verify "oci://$CHART@$CHART_DIGEST" "${GH_PIN[@]}"
@@ -389,23 +376,22 @@ cosign verify-blob "${PIN[@]}" --bundle assets/sha256sums.txt.sigstore.json asse
 `helm pull oci://$CHART --version $VERSION` prints the digest it pulled; compare it with
 `$CHART_DIGEST` before you install. The classic Helm repository on GitHub Pages
 (`/charts/index.yaml`) lists only release tags, and only charts that match their release's signed
-`sha256sums.txt` (`hack/docs/chart-index.sh`); `helm install` from it checks no signature unless you
+`sha256sums.txt`; `helm install` from it checks no signature unless you
 pass `--verify`.
 
 #### Helm provenance (GPG)
 
-From v0.3.0 the chart is also signed with the project's GPG chart signing key (Helm provenance).
-v0.2.0 and earlier have no provenance file.
+Every chart is also signed with the project's GPG chart signing key (Helm provenance).
 
 | item | value |
 |------|-------|
 | provenance file | `openbao-config-operator-<version>.tgz.prov`, next to the chart in the GitHub release and as a layer of the OCI chart |
 | key fingerprint | `FECBF5840F506776191497D4561068F2CF22E472`, also in the chart's `artifacthub.io/signKey` annotation |
-| public key | `https://alexandrust88.github.io/openbao-config-operator/charts/pgp-public-key.asc` |
+| public key | `https://docs.obco.dev/charts/pgp-public-key.asc` |
 | Helm v3 | needs the key dearmored (`gpg --dearmor`) |
 | Helm v4 | reads the armored key |
 
-Artifact Hub shows the chart as signed because of the `.prov` file. `verify-release.sh` checks it.
+Artifact Hub shows the chart as signed because of the `.prov` file.
 To verify during `helm install` with `--verify`, follow
 [Install: verify the chart signature](../get-started/install.md#verify-the-chart-signature). The GPG
 signature proves who packaged the chart; the cosign commands in this section also prove which
@@ -421,20 +407,33 @@ Each release also publishes an [OCM](https://ocm.software) component version,
 signed, never overwrites a published version, and signs the component descriptor manifest with
 keyless cosign (the identity above, pinned to the release tag) plus a `slsaprovenance1` attestation.
 
-Verify it at the source, with the ocm CLI v0.54.0, cosign, crane and yq:
+Verify it at the source with the ocm CLI v0.54.0, cosign, crane, yq and jq. The commands reuse
+`PIN`, `VERSION`, `IMAGE`, `CHART`, `IMAGE_DIGEST` and `CHART_DIGEST` from
+[verify the release](#verify-the-release). They check the signature and provenance of the
+descriptor manifest, read the descriptor by that verified digest, not by its tag, and let
+`ocm verify componentversions` re-digest every resource:
 
-```sh
-hack/ocm/verify.sh @TAG@
+```bash
+COMPONENT=github.com/alexandrust88/openbao-config-operator:@VERSION@
+DESCRIPTOR=ghcr.io/alexandrust88/ocm/component-descriptors/github.com/alexandrust88/openbao-config-operator
+DESCRIPTOR_DIGEST=$(crane digest "$DESCRIPTOR:$VERSION")
+cosign verify "${PIN[@]}" "$DESCRIPTOR@$DESCRIPTOR_DIGEST"
+cosign verify-attestation "${PIN[@]}" --type slsaprovenance1 "$DESCRIPTOR@$DESCRIPTOR_DIGEST"
+LAYER=$(crane manifest "$DESCRIPTOR@$DESCRIPTOR_DIGEST" |
+  jq -r '[.layers[] | select(.mediaType | startswith("application/vnd.ocm.software.component-descriptor."))][0].digest')
+crane blob "$DESCRIPTOR@$LAYER" | tar -xOf - component-descriptor.yaml | yq -o json |
+  jq -r '"\(.component.name):\(.component.version)",
+    (.component.resources[] | select(.name == "operator-image" or .name == "helm-chart")
+      | "\(.name) \(.access.imageReference // .access.localReference) sha256:\(.digest.value)")'
+ocm verify componentversions "ghcr.io/alexandrust88/ocm//$COMPONENT"
 ```
 
-It checks the descriptor signature and provenance, that the descriptor is this component and
-version, that `operator-image` and `helm-chart` are the signed release digests, and runs
-`ocm verify componentversions`, which re-digests every resource. `verify-release.sh` runs it when
-the ocm CLI is on `PATH` and skips it, with a message, for a release that has no component.
-Then transfer it through a CTF directory into the air-gapped registry:
+The first printed line must be `$COMPONENT`. The `operator-image` line must show
+`$IMAGE@$IMAGE_DIGEST` and `$IMAGE_DIGEST`, and the `helm-chart` line `$CHART@$CHART_DIGEST` and
+`$CHART_DIGEST`: the digests you verified above. Then transfer the component through a CTF
+directory into the air-gapped registry:
 
-```sh
-COMPONENT=github.com/alexandrust88/openbao-config-operator:@VERSION@
+```bash
 ocm transfer componentversions --copy-resources "ghcr.io/alexandrust88/ocm//$COMPONENT" ./ocm-ctf
 ocm transfer ctf ./ocm-ctf registry.example.internal/ocm
 ocm verify componentversions "registry.example.internal/ocm//$COMPONENT"
@@ -453,11 +452,11 @@ the digests the descriptor records.
 
 ## Configuration
 
-### R-CONFIG-01: OpenBaoServer
+### R-CONFIG-01: BaoServer
 
 ```yaml
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoServer
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoServer
 metadata:
   name: openbao
 spec:
@@ -468,7 +467,7 @@ spec:
       name: openbao-ca
   allowedNamespaces:
     matchLabels:
-      openbaoconfig.io/tenant: "true"
+      obco.dev/tenant: "true"
   allowedAudiences: ["openbao"]
   rateLimit:
     qps: 50
@@ -477,7 +476,7 @@ spec:
 ```
 
 - Always `https://`. CEL and the resolver refuse `http://` unless `allowInsecureHTTP: true`
-  (`api/core/v1alpha1/openbaoserver_types.go:8`, `internal/connection/resolver.go:332-334`); keep
+  (`api/core/v1alpha1/baoserver_types.go:8`, `internal/connection/resolver.go:332-334`); keep
   that flag for local test servers and forbid it in production with
   [R-CONFIG-03](#r-config-03-forbid-the-escape-hatches-in-production). The import CLI sets it for an
   `http://` address and warns; review its output before committing it.
@@ -493,11 +492,11 @@ spec:
 - Size `rateLimit` from the OpenBao capacity you can give the operator; it is shared by every
   connection to the server.
 
-### R-CONFIG-02: ClusterOpenBaoConnection
+### R-CONFIG-02: ClusterBaoConnection
 
 ```yaml
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: ClusterOpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
 metadata:
   name: openbao
 spec:
@@ -536,14 +535,14 @@ injectedIdentity:
   `/var/run/secrets/kubernetes.io/serviceaccount/`.
 - `mountPath` is a clean relative path (CRD pattern, and the login path is checked again before the
   request), so a login cannot reach `sys/` or another mount through `..` or empty segments.
-- Resources that use the connection see only "ClusterOpenBaoConnection <name> is not ready (see its
+- Resources that use the connection see only "ClusterBaoConnection <name> is not ready (see its
   status)"; read the connection's own status for the Secret, ServiceAccount, file or login error.
 
 ### R-CONFIG-03: Forbid the escape hatches in production
 
 The CRDs and the resolver now refuse the unsafe defaults the first threat model found (open cluster
 connections, plaintext addresses, the automounted token, API server audiences). Two deliberate
-escape hatches remain: `allowInsecureHTTP: true` on an `OpenBaoServer`, and an empty selector
+escape hatches remain: `allowInsecureHTTP: true` on a `BaoServer`, and an empty selector
 (`{}`) in `allowedNamespaces`, which admits every namespace. In production clusters, forbid both
 with a native `ValidatingAdmissionPolicy` (Kubernetes 1.30 or later):
 
@@ -556,10 +555,10 @@ spec:
   failurePolicy: Fail
   matchConstraints:
     resourceRules:
-      - apiGroups: ["core.openbaoconfig.io"]
+      - apiGroups: ["core.obco.dev"]
         apiVersions: ["v1alpha1"]
         operations: ["CREATE", "UPDATE"]
-        resources: ["openbaoservers", "clusteropenbaoconnections"]
+        resources: ["baoservers", "clusterbaoconnections"]
   validations:
     - expression: "!has(object.spec.allowInsecureHTTP) || !object.spec.allowInsecureHTTP"
       message: "allowInsecureHTTP is not allowed in this cluster"
@@ -585,19 +584,19 @@ spec:
 | `apiServerAudiences` | every audience in the API server's `--api-audiences` | the operator always refuses the built-in audiences (including `rke2` and `k3s`) and the discovered issuer (`internal/connection/audiences.go:17-23,29-54`), but not other custom audiences |
 | `extraArgs: ["--cluster-id=<name>"]` | a stable name per cluster | the ownership marker carries it, so a second cluster writing the same OpenBao namespace gets `Conflict`; the default is the `kube-system` UID, which changes when a cluster is rebuilt (`cmd/main.go:178-180`) |
 | `pluginKinds.enabled` | `false` unless you use those plugins | fewer CRDs, fewer controllers, smaller RBAC |
-| `metrics.certSecret` and `serviceMonitor.tlsConfig` | a certificate from your CA, and that CA and `serverName` in the ServiceMonitor | the default ServiceMonitor skips TLS verification of the self-signed certificate (`values.yaml:104-105`); with `metrics.certSecret` the chart refuses to render without `ca` (or `caFile`) and `serverName`, or with `insecureSkipVerify` |
+| `metrics.certSecret` and `serviceMonitor.tlsConfig` | a certificate from your CA, and that CA and `serverName` in the ServiceMonitor | the default ServiceMonitor skips TLS verification of the self-signed certificate (`values.yaml:116-121`); with `metrics.certSecret` the chart refuses to render without `ca` (or `caFile`) and `serverName`, or with `insecureSkipVerify` |
 | `--write-budget-per-minute` | default 60; lower for a small OpenBao | caps drift repairs and default-change rewrites per server during upgrades; changed write-only inputs (Secret or hash-key rotation) are exempt and paced only by `rateLimit` |
 
 ## OpenBao side
 
 ### R-OPENBAO-01: Least-privilege policies
 
-[openbao-policy.md](../operate/openbao-policy.md) derives the paths each kind needs. On top of
+[OpenBao policy for the operator](../operate/openbao-policy.md) derives the paths each kind needs. On top of
 it:
 
 - **Split the platform identity.** One identity that can write `sys/policies/acl/*` and auth roles
   can grant itself anything (T-33); OpenBao has no Sentinel or EGP to stop it. Use separate
-  `ClusterOpenBaoConnection`s, each with its own role and policy: one for policies and roles, one
+  `ClusterBaoConnection`s, each with its own role and policy: one for policies and roles, one
   for mounts and engines, one for identity. Keep the policy that grants the operator itself out of
   every identity's reach: name it outside the paths the policy-writing identity may write, for
   example by granting `sys/policies/acl/tenant-*` and `sys/policies/acl/app-*` instead of
@@ -606,7 +605,7 @@ it:
   endpoints. Grant `sys/audit/*` (with `sudo`) only to an identity that manages `Audit` resources.
 - **Tenant identities** are written inside the tenant's OpenBao namespace or prefixed with it, use
   name prefixes (`team-a-*`) and pin `bound_service_account_namespaces` with `allowed_parameters`,
-  as in the tenant example of openbao-policy.md. Do not grant tenants `auth/<mount>/config` or
+  as in the tenant example of that page. Do not grant tenants `auth/<mount>/config` or
   engine configuration paths (T-13).
 - Leave out `delete` when every resource of a kind uses `deletionPolicy: Orphan`.
 
@@ -622,7 +621,7 @@ For every connection's role:
 | `bound_service_account_names`, `bound_service_account_namespaces` | exactly one ServiceAccount and namespace, no globs |
 | `audience` | the dedicated audience: for the operator's own role the chart's projected-token audience (`openbao-config-operator` by default), for a tenant role an entry of the server's `allowedAudiences` |
 | `token_policies` | one policy for this connection; `token_no_default_policy=true` only when that policy grants `lookup-self` and `renew-self` itself |
-| `token_ttl`, `token_max_ttl` | `1h` and `24h`, as in `examples/self-init/openbao.hcl:68-69`; the operator renews at a third of the TTL and logs in again before the max |
+| `token_ttl`, `token_max_ttl` | `1h` and `24h`, as in `examples/self-init/openbao.hcl:74-75`; the operator renews at a third of the TTL and logs in again before the max |
 | `token_bound_cidrs` | the pod CIDR of the cluster, where it is stable |
 
 Avoid `auth.token` (a long-lived token in a Secret). If AppRole is unavoidable, set
@@ -641,14 +640,14 @@ The operator sends `X-Openbao-Config-Resource: <group>/<kind>/<namespace>/<name>
 or the same with a platform connection:
 
 ```yaml
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuditRequestHeader
 metadata:
   name: x-openbao-config-resource
   namespace: openbao-platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: openbao
   name: X-Openbao-Config-Resource
   hmac: false
@@ -661,7 +660,7 @@ operator's role before trusting it.
 ### R-OPENBAO-04: Self-init and no root token
 
 - Create the operator's auth method, role and policy with self-init
-  ([self-init.md](../guides/self-init.md)); it revokes the root token it used.
+  ([self-init guide](../guides/self-init.md)); it revokes the root token it used.
 - Keep recovery keys under split custody, and treat `sys/generate-root` as an incident.
 - Check now and then that no token with the `root` policy exists: list
   `bao list auth/token/accessors` and look each one up with `bao token lookup -accessor`.
@@ -670,27 +669,27 @@ operator's role before trusting it.
 
 ### R-TENANCY-01: Server allow-lists
 
-- Select tenant namespaces in `OpenBaoServer.spec.allowedNamespaces` by a label only platform
+- Select tenant namespaces in `BaoServer.spec.allowedNamespaces` by a label only platform
   admins may set. Anyone who can label a Namespace enrols it; protect the label with an admission
   rule if namespace owners can edit labels.
 - Use one dedicated audience per server in `allowedAudiences`, such as `openbao`. The API server's
   audiences are refused for tenants whatever the list says (`internal/connection/resolver.go:364-368`).
-- Every `ClusterOpenBaoConnection` selects only platform namespaces
-  ([R-CONFIG-02](#r-config-02-clusteropenbaoconnection)).
+- Every `ClusterBaoConnection` selects only platform namespaces
+  ([R-CONFIG-02](#r-config-02-clusterbaoconnection)).
 
 ### R-TENANCY-02: Quotas
 
 Cap object counts per tenant namespace with a `ResourceQuota`
-([tenant-quotas.md](../operate/tenant-quotas.md)). The request budget and the write budget are
+([tenant quotas](../operate/tenant-quotas.md)). The request budget and the write budget are
 per server, not per tenant, so one namespace can otherwise slow every other one (T-10). Set a
-`rateLimit` on every `OpenBaoServer`: without it, nothing paces the requests of one tenant. A
+`rateLimit` on every `BaoServer`: without it, nothing paces the requests of one tenant. A
 resource cannot poll faster than every 30 s: CEL and the engine floor `spec.driftInterval`
 (`api/common/v1alpha1/types.go:120`, `internal/engine/drift.go:42-47`).
 
 ### R-TENANCY-03: One OpenBao namespace per tenant
 
-- One OpenBao namespace per tenant, created by the platform with `OpenBaoNamespace`.
-- One `OpenBaoConnection` per tenant namespace, written by the platform, with `namespace` set to the
+- One OpenBao namespace per tenant, created by the platform with `BaoNamespace`.
+- One `BaoConnection` per tenant namespace, written by the platform, with `openbaoNamespace` set to the
   tenant's OpenBao namespace and a role whose policy reaches only that subtree.
 - Shared namespaces (several tenants in one OpenBao namespace) depend entirely on name prefixes in
   policies; avoid them, because `Adopt` lets a tenant take over any object its policy can write
@@ -707,7 +706,7 @@ offline against the status of every resource.
 - Restrict `get` on Secrets in the operator namespace
   ([R-RBAC-04](#r-rbac-04-isolate-the-operator-namespace)).
 - Back it up with the namespace
-  ([backup-restore.md](../operate/backup-restore.md#the-hash-key-secret)).
+  ([backup and restore](../operate/backup-restore.md#the-hash-key-secret)).
 
 Rotate it only when it may have leaked. Effect: every resource with write-only inputs sees a new
 hash with an unchanged spec, so it writes once and re-sends the **current** values of its
@@ -719,21 +718,21 @@ go out as fast as each server's `rateLimit` allows. Set `rateLimit` before you r
    overwrite the server.
 2. Count the resources that will write:
 
-   ```sh
-   kubectl get openbao -A -o json | jq '[.items[] | select((.status.writeOnlyHash // "") != "")] | length'
+   ```bash
+   kubectl get obco -A -o json | jq '[.items[] | select((.status.writeOnlyHash // "") != "")] | length'
    ```
 
 3. Keep the old key for a rollback, then delete it and restart every replica, so no pod keeps the
    old key in memory:
 
-   ```sh
+   ```bash
    kubectl -n openbao-config-operator get secret openbao-config-operator-hash-key -o yaml > hash-key-old.yaml
    kubectl -n openbao-config-operator delete secret openbao-config-operator-hash-key
    kubectl -n openbao-config-operator rollout restart deployment/openbao-config-operator
    kubectl -n openbao-config-operator rollout status deployment/openbao-config-operator
    ```
 
-4. Watch `openbao_writes_total` rise and return to zero, and the `Updated` events that name
+4. Watch `obco_writes_total` rise and return to zero, and the `Updated` events that name
    `write-only inputs`. The new Secret is created immutable on first start.
 5. Delete `hash-key-old.yaml` once the wave has finished.
 
@@ -762,11 +761,11 @@ who can restore them (T-26).
 ### R-MONITORING-01: Alerts and audit
 
 - Enable `prometheusRule.enabled` and `serviceMonitor.enabled`; the alerts and their runbooks are
-  in [runbooks.md](../operate/runbooks.md). `OpenBaoConfigOperatorSteadyStateWrites` catches a
+  in [runbooks](../operate/runbooks.md). `OpenBaoConfigOperatorSteadyStateWrites` catches a
   rewrite loop; `OpenBaoConfigOperatorOpenBaoDenied` catches a policy that is too narrow or an
   identity being probed.
 - Kubernetes audit policy: log at `Metadata` level the manager ServiceAccount's
-  `create` on `serviceaccounts/token` and its `create`, `update`, `patch` on Secrets. Alert on
+  `create` on `serviceaccounts/token` and its `create` and `update` on Secrets. Alert on
   TokenRequests for ServiceAccounts that no connection references, and on any API request made
   with the manager's identity from outside its pod IPs.
 - OpenBao audit: alert when an operator identity writes the policy bound to an operator role, when
@@ -777,22 +776,22 @@ who can restore them (T-26).
 
 ### R-OPS-01: Upgrades
 
-Follow [upgrade.md](../operate/upgrade.md), and in addition:
+Follow [upgrade](../operate/upgrade.md), and in addition:
 
 1. Verify the new image and chart ([R-SUPPLY-01](#r-supply-01-verify-and-enforce-signatures)).
 2. Read the release notes for changed defaults: a changed default can rewrite many objects. The
    write budget caps the rate, not the total.
-3. After the upgrade, watch `openbao_writes_total` by kind and the `Updated` events. Steady state
+3. After the upgrade, watch `obco_writes_total` by kind and the `Updated` events. Steady state
    writes nothing.
 4. To stop the operator touching a server while you investigate, annotate the server; nothing is
    read, written or deleted for resources that use it, and deletions keep their finalizers
    (`internal/engine/reconciler.go:258-264,1115-1148`):
 
-   ```sh
-   kubectl annotate openbaoservers.core.openbaoconfig.io openbao openbaoconfig.io/paused=true
+   ```bash
+   kubectl annotate baoservers.core.obco.dev openbao obco.dev/paused=true
    ```
 
-   Remove the annotation (`openbaoconfig.io/paused-`) to resume. To roll back while paused, pin the
+   Remove the annotation (`obco.dev/paused-`) to resume. To roll back while paused, pin the
    earlier image as in [Upgrade: rolling back](../operate/upgrade.md#rolling-back), not with
    `helm rollback`, which also replaces the CRDs; keep the hash-key Secret.
 
@@ -803,9 +802,9 @@ The tools, from narrow to wide:
 | scope | tool | effect |
 |-------|------|--------|
 | one resource | `managementPolicy: Observe` in Git | reads and reports drift (`Drifted` with the differing keys), never writes or deletes, and removes the finalizer (`internal/engine/reconciler.go:295-297,1090-1098`) |
-| one resource | `openbaoconfig.io/paused: "true"` on it | no reads, writes or deletes |
+| one resource | `obco.dev/paused: "true"` on it | no reads, writes or deletes |
 | one tenant | the annotation on its Namespace | the same for every resource in it |
-| one server | the annotation on the `OpenBaoServer` | the same for every resource that uses it |
+| one server | the annotation on the `BaoServer` | the same for every resource that uses it |
 | everything | scale the Deployment to 0 | the only option when the manager itself is not trusted |
 
 A pause also holds every finalizer, including those in a terminating Namespace, so remove a server
@@ -813,7 +812,7 @@ or Namespace pause before deleting the Namespace (N7).
 
 **A tenant abuses its connection** (unexpected writes in OpenBao, T-08, T-10, T-13):
 
-1. Pause its Namespace: `kubectl annotate namespace team-a openbaoconfig.io/paused=true`.
+1. Pause its Namespace: `kubectl annotate namespace team-a obco.dev/paused=true`.
 2. Find its requests in the OpenBao audit log by `X-Openbao-Config-Resource` and the role's
    `display_name`.
 3. Narrow the tenant's OpenBao policy, then remove the annotation. Deleting the connection does not
@@ -828,7 +827,7 @@ resources, and revert them.
 
 1. Scale to 0; deleting the pods also invalidates their pod-bound ServiceAccount tokens:
 
-   ```sh
+   ```bash
    kubectl -n openbao-config-operator scale deployment openbao-config-operator --replicas=0
    ```
 

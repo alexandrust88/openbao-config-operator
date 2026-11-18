@@ -1,4 +1,4 @@
-# OCIAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# OCIAuthConfig (auth.obco.dev/v1alpha1)
 # OCIAuthConfig manages the configuration of an OpenBao Oracle Cloud Infrastructure (OCI) auth method at
 # auth/<mountPath>/config.
 #
@@ -6,16 +6,16 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef, homeTenancyID.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#ociauthconfig
+# Reference: https://docs.obco.dev/reference/api/auth/#ociauthconfig
 # Curated example: examples/auth/ociauthconfig.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: OCIAuthConfig
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -24,4 +24,4 @@ spec:
   homeTenancyID: example
   managementPolicy: Manage
   mountPath: oci
-  namespace: example
+  openbaoNamespace: example

@@ -11,8 +11,8 @@ class GeneratedCredentialTests(unittest.TestCase):
     def test_recipe_has_one_destination_owner_and_tenant_scoped_source(self):
         for tenant in eso.TENANTS:
             policy, generated, projection = eso.generated_resources(tenant)
-            self.assertEqual(policy['spec']['namespace'], 'lab-' + tenant)
-            self.assertEqual(generated['spec']['namespace'], 'lab-' + tenant)
+            self.assertEqual(policy['spec']['openbaoNamespace'], 'lab-' + tenant)
+            self.assertEqual(generated['spec']['openbaoNamespace'], 'lab-' + tenant)
             self.assertNotIn('writeSecretRef', generated['spec'])
             self.assertEqual(generated['spec']['passwordPolicyName'], policy['spec']['name'])
             self.assertEqual(projection['metadata']['namespace'], 'obco-lab-' + tenant)

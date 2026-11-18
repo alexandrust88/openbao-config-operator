@@ -11,9 +11,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=awssecretsconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=awssecretsconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=awssecretsconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=awssecretsconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=awssecretsconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=awssecretsconfigs/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupAWSSecretsConfig registers the AWSSecretsConfig controller with the manager.

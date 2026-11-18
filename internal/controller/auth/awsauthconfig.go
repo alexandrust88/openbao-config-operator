@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthconfigs/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupAWSAuthConfig registers the AWSAuthConfig controller with the manager.

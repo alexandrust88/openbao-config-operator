@@ -5,136 +5,80 @@ description: Task guides for managing OpenBao policies, Kubernetes authenticatio
 
 # Guides
 
-Each guide reaches one goal with the operator. They assume an installed operator and a `Ready`
-connection ([Install](../get-started/install.md), [Connect to OpenBao](../get-started/connect.md)).
+Each guide reaches one goal with the OpenBao Config Operator: the manifest to apply, the command
+to run and how to check the result. They assume an installed operator and a `Ready` connection
+([Install](../get-started/install.md), [Connect to OpenBao](../get-started/connect.md)).
 
-The manifests come from `examples/`, where CI checks every file against the CRDs. They use the
-Kubernetes namespace `openbao-config` and a connection named `openbao`; change both to yours. Values
-such as passwords, keys and certificates in them are fake placeholders. The check steps read
-OpenBao with the `bao` CLI, so set `BAO_ADDR` and a token that may read the paths.
+The manifests use the Kubernetes namespace `openbao-config` and a connection named `openbao`;
+change both to yours. Passwords, keys and certificates in them are fake placeholders. The check
+steps read OpenBao with the `bao` CLI, so set `BAO_ADDR` and a token that can read the paths.
 
 To learn the operator step by step on a test cluster first, follow the [tutorials](../tutorials/index.md).
 
-## Start with a configuration task
+## Let workloads and people log in
 
-| Task | Guide | Result to verify |
-| --- | --- | --- |
-| Deliver configuration from Git | [Argo CD](argocd.md), [Flux](flux.md) | Delivery waits until the operator reports the configuration ready |
-| Declare an ACL policy | [Manage policies](policies.md) | The resource is Ready and `bao policy read` returns its HCL |
-| Give a workload access | [Kubernetes authentication](kubernetes-auth.md) | Its ServiceAccount can log in with the intended audience and policy |
-| Adopt existing configuration | [Import](import.md), then [migration](migration.md) | Observe reports the intended state before you enable management |
-| Check the tenant boundary | [Security model](../security.md#the-tenant-boundary) | Connections use scoped identities and tenant policies limit managed paths |
+| goal | guide |
+|------|-------|
+| Let a workload log in with its Kubernetes ServiceAccount token | [Kubernetes auth](kubernetes-auth.md) |
+| Let people log in through an identity provider, and CI jobs with a signed JWT | [JWT and OIDC auth](jwt-oidc-auth.md) |
+| Give a machine outside Kubernetes, such as a CI runner or a VM, a login | [AppRole](approle.md) |
 
-## Authentication
+## Control who can access what
 
-<div class="grid cards" markdown>
+Pick how you write access rules:
 
--   :material-kubernetes: **[Kubernetes auth](kubernetes-auth.md)**
+- `ACLPolicy`: you write the ACL text yourself, for any path and capability OpenBao supports.
+- A templated `ACLPolicy`: one policy whose paths OpenBao fills in from the identity of each token,
+  so every workload gets its own path.
+- `AccessGrant` and `AccessLayout`: you name subjects, KV version 2 paths and an access level,
+  and the operator writes the policies, plus Kubernetes auth roles for a grant or identity groups
+  for a layout.
 
-    ---
+| goal | guide |
+|------|-------|
+| Keep an ACL policy in Git and check what OpenBao holds | [Manage ACL policies](policies.md) |
+| Give every workload its own path with one policy | [Templated policies](templated-policies.md) |
+| Grant KV access to ServiceAccounts and to identity provider groups without writing policies | [Access model](access-model.md) |
+| Declare entities, groups and aliases, or use OpenBao as an OIDC provider | [Identity](identity.md) |
+| Give a tenant its own OpenBao namespace and its own connection | [Namespaces and tenants](namespaces-and-tenants.md) |
 
-    Let workloads log in with their ServiceAccount token.
+Before tenants get their own connections, read [the tenant boundary](../security.md#the-tenant-boundary).
 
--   :material-badge-account: **[JWT and OIDC auth](jwt-oidc-auth.md)**
+## Store and issue secrets
 
-    ---
+| goal | guide |
+|------|-------|
+| Create a KV version 2 mount and fill it from Kubernetes Secrets or generated values | [KV secrets](kv-secrets.md) |
+| Issue certificates from a root and an intermediate CA | [PKI](pki.md) |
+| Declare encryption keys and rotate them on a schedule | [Transit](transit.md) |
+| Issue dynamic and static database credentials | [Database secrets](database-secrets.md) |
 
-    Browser logins through an identity provider, and CI jobs with their job JWT.
+The database recipes configure dynamic credentials for one database each:
+[PostgreSQL](../how-to/databases/postgresql.md), [MySQL](../how-to/databases/mysql.md),
+[MariaDB](../how-to/databases/mariadb.md), [Cassandra](../how-to/databases/cassandra.md),
+[InfluxDB](../how-to/databases/influxdb.md) and [Valkey](../how-to/databases/valkey.md). For a
+database whose plugin is not built into OpenBao, start with
+[external database plugins](../how-to/databases/custom.md).
 
--   :material-robot: **[AppRole](approle.md)**
+## Use OpenBao from an application
 
-    ---
+| goal | guide |
+|------|-------|
+| Generate a credential in OpenBao and deliver it to a workload with External Secrets Operator | [Generate credentials and deliver with ESO](../tutorials/generated-credentials.md) |
+| Encrypt application data with a transit key | [Encrypt application data](../tutorials/application-encryption.md) |
+| Give an application short-lived database credentials, from the connection to the revoked lease | [Issue dynamic database credentials](../tutorials/dynamic-database-credentials.md) |
 
-    Machine logins outside Kubernetes, with secret IDs the operator rotates.
+## Start with a new or an existing OpenBao
 
-</div>
+| goal | guide |
+|------|-------|
+| Create the operator's login at OpenBao's first start, without a root token | [OpenBao self-init](self-init.md) |
+| Generate resources from a running OpenBao and review them before the operator writes anything | [Import existing configuration](import.md) |
+| Hand existing objects over from another tool or from manual changes, one at a time | [Migrate to the operator](migration.md) |
 
-## Secrets engines
+## Deliver configuration from Git
 
-<div class="grid cards" markdown>
-
--   :material-key-variant: **[KV secrets](kv-secrets.md)**
-
-    ---
-
-    KV version 2 mounts, secrets from Kubernetes Secrets, and generated values.
-
--   :material-database: **[Database secrets](database-secrets.md)**
-
-    ---
-
-    Dynamic and static database credentials.
-
--   :material-certificate: **[PKI](pki.md)**
-
-    ---
-
-    A root and an intermediate CA, and a role that issues certificates.
-
--   :material-lock: **[Transit](transit.md)**
-
-    ---
-
-    Encryption keys with scheduled rotation.
-
-</div>
-
-## Identity and access
-
-<div class="grid cards" markdown>
-
--   :material-account-group: **[Identity](identity.md)**
-
-    ---
-
-    Entities, groups, aliases, and OpenBao as an OIDC provider.
-
--   :material-shield-account: **[Access model](access-model.md)**
-
-    ---
-
-    Grant KV access to ServiceAccounts and to identity provider groups without writing policies.
-
--   :material-code-braces: **[Templated policies](templated-policies.md)**
-
-    ---
-
-    One policy that gives every workload its own path.
-
--   :material-domain: **[Namespaces and tenants](namespaces-and-tenants.md)**
-
-    ---
-
-    One OpenBao namespace and one connection per team.
-
-</div>
-
-## Adopt and deliver
-
-<div class="grid cards" markdown>
-
--   :material-import: **[Import existing configuration](import.md)**
-
-    ---
-
-    Generate resources from a running OpenBao server.
-
--   :material-swap-horizontal: **[Migrate to the operator](migration.md)**
-
-    ---
-
-    Hand objects over from another tool, one at a time.
-
--   :material-sync: **[Argo CD](argocd.md)**
-
-    ---
-
-    A health check so sync waves wait for OpenBao.
-
--   :material-power: **[OpenBao self-init](self-init.md)**
-
-    ---
-
-    Create the operator's login at OpenBao's first boot, without a root token.
-
-</div>
+| goal | guide |
+|------|-------|
+| Install Argo CD and deploy OpenBao, the operator and its configuration from Git, with health checks | [Argo CD](argocd.md) |
+| Install Flux and deploy OpenBao, the operator and its configuration from Git, with readiness gates | [Flux](flux.md) |

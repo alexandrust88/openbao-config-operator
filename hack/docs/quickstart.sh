@@ -99,8 +99,8 @@ helm upgrade --install openbao-config-operator "$CHART_REF" \
 kubectl apply -f examples/quickstart/namespace.yaml \
   -f examples/quickstart/openbaoserver.yaml \
   -f examples/quickstart/openbaoconnection.yaml
-kubectl wait openbaoserver/quickstart --for=condition=Ready --timeout=2m
-kubectl -n quickstart wait openbaoconnection/openbao --for=condition=Ready --timeout=2m
+kubectl wait baoserver/quickstart --for=condition=Ready --timeout=2m
+kubectl -n quickstart wait baoconnection/openbao --for=condition=Ready --timeout=2m
 # --8<-- [end:connect]
 
 # --8<-- [start:resources]
@@ -109,14 +109,14 @@ kubectl apply -f examples/quickstart/policy.yaml \
   -f examples/quickstart/kubernetesauthrole.yaml \
   -f examples/quickstart/randomsecret.yaml
 kubectl -n quickstart wait --for=condition=Ready --timeout=3m \
-  policy.sys.openbaoconfig.io/quickstart-app-read \
-  secretsmount.sys.openbaoconfig.io/quickstart-kv \
-  kubernetesauthrole.auth.openbaoconfig.io/quickstart-app \
-  randomsecret.secrets.openbaoconfig.io/quickstart-app-password
+  aclpolicy.sys.obco.dev/quickstart-app-read \
+  secretsmount.sys.obco.dev/quickstart-kv \
+  kubernetesauthrole.auth.obco.dev/quickstart-app \
+  randomsecret.secrets.obco.dev/quickstart-app-password
 # --8<-- [end:resources]
 
 # --8<-- [start:status]
-kubectl -n quickstart get openbao
+kubectl -n quickstart get obco
 # --8<-- [end:status]
 
 # --8<-- [start:verify]

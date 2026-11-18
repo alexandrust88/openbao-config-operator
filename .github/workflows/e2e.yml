@@ -119,7 +119,7 @@ jobs:
           {
             kubectl get pods -A -o wide || true
             kubectl get events -A --sort-by=.lastTimestamp | tail -n 100 || true
-            for ns in openbao-config-operator openbao-config-operator-system openbao openbao-2 openbao-live postgres; do
+            for ns in openbao-config-operator openbao-config-operator-system obco-system openbao openbao-2 openbao-live postgres; do
               kubectl -n "$ns" logs --all-containers --prefix --tail=200 -l app.kubernetes.io/name || true
             done
           } 2>&1 | tee "$RUNNER_TEMP/e2e/diagnostics.log"

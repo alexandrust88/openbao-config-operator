@@ -13,9 +13,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=plugins,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=plugins/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=plugins/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=plugins,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=plugins/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=plugins/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 const pluginCatalogPath = "sys/plugins/catalog"

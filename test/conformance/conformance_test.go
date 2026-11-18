@@ -186,7 +186,7 @@ func TestConformance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = os.Stat(filepath.Join(cfg.crdDir, "core.openbaoconfig.io_openbaoservers.yaml"))
+	_, err = os.Stat(filepath.Join(cfg.crdDir, "core.obco.dev_baoservers.yaml"))
 	e := &confEnv{
 		root: cfg.root, cluster: confStartCluster(t, cfg.assets, cfg.crdDir, cfg.logDir), bao: bao,
 		roleID: roleID, secretID: secretID, managerBin: cfg.managerBin, managerSource: cfg.managerSource,

@@ -1,7 +1,7 @@
 # The access kinds render the identity templates for you: {sa.namespace} and {sa.name} become
 # {{identity.entity.aliases.<accessor>.metadata.service_account_namespace}} and ..._name, with the
 # accessor of the AuthMount named by authMountRef. Log in with the role in status.roles.
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessLevel
 metadata:
   name: read-write
@@ -15,7 +15,7 @@ spec:
     - read
     - list
 ---
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessGrant
 metadata:
   name: team-apps

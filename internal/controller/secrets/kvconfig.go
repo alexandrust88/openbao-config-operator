@@ -13,9 +13,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=kvconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=kvconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=kvconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=kvconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=kvconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=kvconfigs/finalizers,verbs=update
 
 // SetupKVConfig registers the KVConfig controller with the manager.
 func SetupKVConfig(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

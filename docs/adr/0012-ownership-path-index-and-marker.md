@@ -4,7 +4,9 @@ description: "Design decision for OpenBao Config Operator: ownership: path index
 
 # 0012. Ownership: path index and server-side marker
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; implemented (path index and markers on entities, groups and namespaces, and the KV version 2 metadata marker). Date: 2026-11-14.
+
+Update 2026-11-18: the KV version 2 metadata marker is no longer planned. The `KVSecretMetadata` kind writes and reads it in `custom_metadata` (`internal/controller/secrets/kvsecretmetadata.go`). `KVSecret` and `RandomSecret` write no marker and rely on `status.acquired` and the path index.
 
 ## Context
 

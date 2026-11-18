@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcconfigs/finalizers,verbs=update
 
 const oidcConfigPath = "identity/oidc/config"
 

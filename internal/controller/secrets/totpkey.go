@@ -18,9 +18,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=totpkeys,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=totpkeys/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=totpkeys/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=totpkeys,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=totpkeys/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=totpkeys/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update
 
 // SetupTOTPKey registers the TOTPKey controller with the manager.

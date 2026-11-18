@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=terraformcloudsecretsconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=terraformcloudsecretsconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=terraformcloudsecretsconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=terraformcloudsecretsconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=terraformcloudsecretsconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=terraformcloudsecretsconfigs/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupTerraformCloudSecretsConfig registers the TerraformCloudSecretsConfig controller with the manager.

@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=sshroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=sshroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=sshroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=sshroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=sshroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=sshroles/finalizers,verbs=update
 
 // SetupSSHRole registers the SSHRole controller with the manager.
 func SetupSSHRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

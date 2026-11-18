@@ -1,4 +1,4 @@
-# OIDCRole (identity.openbaoconfig.io/v1alpha1)
+# OIDCRole (identity.obco.dev/v1alpha1)
 # OIDCRole manages a role at `identity/oidc/role/<name>` that OpenBao identity tokens are issued against
 # (`identity/oidc/token/<name>`).
 #
@@ -6,9 +6,9 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef, key.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/identity/#oidcrole
+# Reference: https://docs.obco.dev/reference/api/identity/#oidcrole
 # Curated example: examples/identity/oidcrole.yaml
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCRole
 metadata:
   name: example
@@ -16,7 +16,7 @@ metadata:
 spec:
   clientID: example
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -25,6 +25,6 @@ spec:
   key: example
   managementPolicy: Manage
   name: example
-  namespace: example
+  openbaoNamespace: example
   template: '{'
   ttl: 1h

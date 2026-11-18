@@ -16,10 +16,10 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/refs"
 )
 
-// +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accesslayouts,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accesslayouts/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accesslayouts/finalizers,verbs=update
-// +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accesslevels,verbs=get;list;watch
+// +kubebuilder:rbac:groups=access.obco.dev,resources=accesslayouts,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=access.obco.dev,resources=accesslayouts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=access.obco.dev,resources=accesslayouts/finalizers,verbs=update
+// +kubebuilder:rbac:groups=access.obco.dev,resources=accesslevels,verbs=get;list;watch
 
 // SetupAccessLayout registers the AccessLayout controller with the manager.
 func SetupAccessLayout(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

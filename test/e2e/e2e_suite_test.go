@@ -31,7 +31,7 @@ var (
 )
 
 // TestE2E installs the Helm chart and a three-node OpenBao on the current kind cluster and drives a tenant
-// connection, a Policy, a KVSecret and an OpenBaoEndpoint through create, drift repair and deletion.
+// connection, an ACLPolicy, a KVSecret and a BaoEndpoint through create, drift repair and deletion.
 // Set E2E_SKIP_IMAGE_BUILD=true when the manager image is already loaded into the cluster, and E2E_KEEP=true to
 // leave the chart and OpenBao installed for test/livekit/kind.sh.
 func TestE2E(t *testing.T) {

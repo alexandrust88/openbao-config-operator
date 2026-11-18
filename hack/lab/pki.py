@@ -17,15 +17,15 @@ from bootstrap import apply, connection, kubectl, namespace
 
 APP_NAMESPACE = "obco-lab-pki"
 BAO_NAMESPACE = "lab-pki"
-LABEL = {"lab.openbaoconfig.io/profile": "pki"}
+LABEL = {"lab.obco.dev/profile": "pki"}
 
 
 def resource(group, kind, name, spec):
-    full_spec = {"connectionRef": {"name": connection}, "namespace": BAO_NAMESPACE,
+    full_spec = {"connectionRef": {"name": connection}, "openbaoNamespace": BAO_NAMESPACE,
                  "creationPolicy": "CreateOrAdopt", "deletionPolicy": "Orphan", **spec}
-    if not full_spec["namespace"]:
-        del full_spec["namespace"]
-    apply({"apiVersion": group + ".openbaoconfig.io/v1alpha1", "kind": kind,
+    if not full_spec["openbaoNamespace"]:
+        del full_spec["openbaoNamespace"]
+    apply({"apiVersion": group + ".obco.dev/v1alpha1", "kind": kind,
            "metadata": {"name": name, "namespace": namespace, "labels": LABEL},
            "spec": full_spec})
 
@@ -46,8 +46,8 @@ def wait_ready(kind, name, ns=namespace):
 
 def up():
     apply({"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": APP_NAMESPACE}})
-    resource("sys", "OpenBaoNamespace", "lab-pki", {"namespace": "", "name": BAO_NAMESPACE})
-    wait_ready("openbaonamespace", "lab-pki")
+    resource("sys", "BaoNamespace", "lab-pki", {"openbaoNamespace": "", "name": BAO_NAMESPACE})
+    wait_ready("baonamespace", "lab-pki")
     for name in ("root", "intermediate"):
         resource("sys", "SecretsMount", "pki-" + name,
                  {"path": "pki-" + name, "type": "pki", "maxLeaseTTL": "8760h"})
@@ -74,7 +74,7 @@ def up():
     wait_ready("authmount", "pki-kubernetes")
     resource("auth", "KubernetesAuthConfig", "pki-kubernetes", {
         "mountPath": "cert-manager", "kubernetesHost": "https://kubernetes.default.svc:443"})
-    resource("sys", "Policy", "pki-sign", {"name": "cert-manager-sign",
+    resource("sys", "ACLPolicy", "pki-sign", {"name": "cert-manager-sign",
         "policy": 'path "pki-intermediate/sign/localhost" { capabilities = ["update"] }'})
     resource("auth", "KubernetesAuthRole", "pki-cert-manager", {
         "mountPath": "cert-manager", "name": "cert-manager",
@@ -83,7 +83,7 @@ def up():
         "audience": "vault://" + APP_NAMESPACE + "/openbao",
         "policyRefs": [{"name": "pki-sign"}], "tokenTTL": "5m", "tokenMaxTTL": "10m"})
     for kind, name in [("pkirole", "pki-localhost"), ("kubernetesauthconfig", "pki-kubernetes"),
-                       ("policy.sys.openbaoconfig.io", "pki-sign"), ("kubernetesauthrole", "pki-cert-manager")]:
+                       ("aclpolicy.sys.obco.dev", "pki-sign"), ("kubernetesauthrole", "pki-cert-manager")]:
         wait_ready(kind, name)
     apply({"apiVersion": "v1", "kind": "ServiceAccount", "metadata": {"name": "cert-manager-issuer", "namespace": APP_NAMESPACE}})
     apply({"apiVersion": "rbac.authorization.k8s.io/v1", "kind": "Role", "metadata": {"name": "issuer-token", "namespace": APP_NAMESPACE},
@@ -166,7 +166,7 @@ def test_permissions():
             wait_ready("pkiissuer", name)
             issuer = json.loads(kubectl("-n", namespace, "get", "pkiissuer", name, "-o", "json"))
             issuer_id = issuer["status"].get("id")
-            if not issuer_id or issuer["spec"].get("namespace") != BAO_NAMESPACE:
+            if not issuer_id or issuer["spec"].get("openbaoNamespace") != BAO_NAMESPACE:
                 raise RuntimeError("Expected lab issuer identity is missing or in another namespace")
             path = issuer["spec"]["mountPath"] + "/issuer/" + urllib.parse.quote(issuer_id, safe="") + "/pem"
             req = urllib.request.Request(f"https://localhost:{port}/v1/" + path,

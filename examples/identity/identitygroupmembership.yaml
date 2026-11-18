@@ -1,0 +1,106 @@
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupMembership
+metadata:
+  name: obco-developers-platform
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  groupRef:
+    name: obco-developers
+  entitySelector:
+    matchLabels:
+      obco.example.com/oncall: "true"
+---
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupMembership
+metadata:
+  name: obco-developers-alice
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  groupName: obco-developers
+  entityRef:
+    name: obco-alice
+---
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupMembership
+metadata:
+  name: obco-developers-bob
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  groupSelector:
+    matchLabels:
+      obco.example.com/role: developers
+  entityName: obco-bob
+---
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupMembership
+metadata:
+  name: obco-developers-legacy
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  groupID: 6f1e3c2a-0000-4000-8000-000000000002
+  entityID: 6f1e3c2a-0000-4000-8000-000000000001
+---
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupMembership
+metadata:
+  name: obco-developers-operators
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  groupRef:
+    name: obco-developers
+  memberGroupRef:
+    name: obco-operators
+---
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupMembership
+metadata:
+  name: obco-developers-nested
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  groupRef:
+    name: obco-developers
+  memberGroupName: obco-reviewers
+---
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupMembership
+metadata:
+  name: obco-developers-selected-groups
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  groupRef:
+    name: obco-developers
+  memberGroupSelector:
+    matchLabels:
+      obco.example.com/nested-in: developers
+---
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupMembership
+metadata:
+  name: obco-developers-legacy-group
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  groupRef:
+    name: obco-developers
+  memberGroupID: 6f1e3c2a-0000-4000-8000-000000000004

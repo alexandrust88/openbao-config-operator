@@ -20,9 +20,9 @@ import "path"
 
 const (
 	// InUseFinalizer keeps an AccessLevel while an AccessGrant or AccessLayout cites it.
-	InUseFinalizer = "openbaoconfig.io/in-use"
+	InUseFinalizer = "obco.dev/in-use"
 	// AllowDisruptiveUpdateAnnotation set to "true" lets an AccessLayout delete policies and groups it created before.
-	AllowDisruptiveUpdateAnnotation = "openbaoconfig.io/allow-disruptive-update"
+	AllowDisruptiveUpdateAnnotation = "obco.dev/allow-disruptive-update"
 	// ReasonInUse is the Ready reason of an AccessLevel whose deletion waits for its citers.
 	ReasonInUse = "InUse"
 )
@@ -58,24 +58,24 @@ type AccessPath struct {
 }
 
 // AccessChildKind is the kind of an OpenBao object written by an AccessGrant or AccessLayout.
-// +kubebuilder:validation:Enum=Policy;KubernetesAuthRole;Group
+// +kubebuilder:validation:Enum=ACLPolicy;KubernetesAuthRole;IdentityGroup
 type AccessChildKind string
 
 const (
-	AccessChildPolicy             AccessChildKind = "Policy"
+	AccessChildPolicy             AccessChildKind = "ACLPolicy"
 	AccessChildKubernetesAuthRole AccessChildKind = "KubernetesAuthRole"
-	AccessChildGroup              AccessChildKind = "Group"
+	AccessChildGroup              AccessChildKind = "IdentityGroup"
 )
 
 // One OpenBao object created and owned by this resource; with deletionPolicy Delete it is removed when the resource is deleted.
 type AccessChild struct {
-	// Kind of the OpenBao object: Policy (an ACL policy), KubernetesAuthRole (a Kubernetes auth role) or Group (an external identity group, together with its group alias).
+	// Kind of the OpenBao object: ACLPolicy (an ACL policy), KubernetesAuthRole (a Kubernetes auth role) or IdentityGroup (an external identity group, together with its group alias).
 	// +required
 	Kind AccessChildKind `json:"kind"`
 
-	// OpenBao namespace of the object, relative to status.namespace; empty means status.namespace itself. Example: team-a
+	// OpenBao namespace of the object, relative to status.openbaoNamespace; empty means status.openbaoNamespace itself. Example: team-a
 	// +optional
-	Namespace string `json:"namespace,omitempty"`
+	Namespace string `json:"openbaoNamespace,omitempty"`
 
 	// OpenBao API path of the object in its namespace. Example: sys/policies/acl/grant_apps_reader
 	// +required

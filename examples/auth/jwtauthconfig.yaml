@@ -19,13 +19,13 @@ type: Opaque
 stringData:
   config: '{"gsuite_service_account": "{\"type\": \"service_account\", \"private_key\": \"fake-not-a-real-key\"}"}'
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: JWTAuthConfig
 metadata:
   name: oidc
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
@@ -54,7 +54,7 @@ spec:
   namespaceInState: true
   skipJWKSValidation: false
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: JWTAuthConfig
 metadata:
   name: jwt-jwks
@@ -69,7 +69,7 @@ spec:
     -----END CERTIFICATE-----
   boundIssuer: https://gitlab.example.com
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: JWTAuthConfig
 metadata:
   name: jwt
@@ -84,7 +84,7 @@ spec:
       -----END PUBLIC KEY-----
   boundIssuer: https://kubernetes.default.svc.cluster.local
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: JWTAuthConfig
 metadata:
   name: gsuite

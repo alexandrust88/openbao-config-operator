@@ -11,7 +11,7 @@ required-check list must match the job names). The workflows themselves and thei
 
 `hack/github/apply-settings.sh` applies everything that has an API. Run it as a repository admin:
 
-```sh
+```bash
 gh auth login --scopes repo,read:user
 hack/github/apply-settings.sh alexandrust88/openbao-config-operator
 ```
@@ -38,7 +38,7 @@ no force pushes or deletions, the tag ruleset, and the rest of this page.
 Switch to strict mode in the pull request that adds the second maintainer to [MAINTAINERS.md](../../MAINTAINERS.md):
 add them as collaborators and code owners, merge, then run
 
-```sh
+```bash
 SOLO_MAINTAINER=false hack/github/apply-settings.sh alexandrust88/openbao-config-operator
 ```
 
@@ -262,7 +262,7 @@ When the repository becomes public (or moves to a paid plan):
 
 ## Check the result
 
-```sh
+```bash
 gh api repos/alexandrust88/openbao-config-operator/rulesets --jq '.[] | [.name, .target, .enforcement] | @tsv'
 gh api repos/alexandrust88/openbao-config-operator/actions/permissions
 gh api repos/alexandrust88/openbao-config-operator --jq .security_and_analysis

@@ -10,11 +10,11 @@ configuration of an existing OpenBao server from Git with typed custom resources
 [![Release](https://img.shields.io/github/v/release/alexandrust88/openbao-config-operator?sort=semver)](https://github.com/alexandrust88/openbao-config-operator/releases)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/openbao-config-operator)](https://artifacthub.io/packages/search?repo=openbao-config-operator)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-site-blue)](https://alexandrust88.github.io/openbao-config-operator/)
+[![Docs](https://img.shields.io/badge/docs-site-blue)](https://docs.obco.dev/)
 
-[Quickstart](docs/get-started/quickstart.md) · [Documentation](https://alexandrust88.github.io/openbao-config-operator/) · [Supported resources](docs/kinds.md) · [Security model](docs/security.md) · [Releases](https://github.com/alexandrust88/openbao-config-operator/releases)
+[Quickstart](docs/get-started/quickstart.md) · [Documentation](https://docs.obco.dev/) · [Supported resources](docs/kinds.md) · [Security model](docs/security.md) · [Releases](https://github.com/alexandrust88/openbao-config-operator/releases)
 
-openbao-config-operator keeps the configuration of an existing [OpenBao](https://openbao.org) server in the
+OpenBao Config Operator keeps the configuration of an existing [OpenBao](https://openbao.org) server in the
 state that Kubernetes custom resources declare: policies, namespaces, mounts, auth methods and roles, secrets
 engines, identity, the OIDC provider and MFA. One custom resource is one object at one OpenBao API path. Commit
 YAML to Git, let Argo CD or Flux apply it, and the operator converges OpenBao, reports drift and repairs it.
@@ -22,9 +22,10 @@ YAML to Git, let Argo CD or Flux apply it, and the operator converges OpenBao, r
 It does not deploy, initialise, unseal or upgrade OpenBao, and it does not copy secret values into Kubernetes
 (use [External Secrets Operator](https://external-secrets.io) for that).
 
-> **Status: alpha.** Each [release](https://github.com/alexandrust88/openbao-config-operator/releases) ships a
-> signed image, Helm chart and `install.yaml`. The API is `v1alpha1`;
-> the API group domain `openbaoconfig.io` is final ([ADR 0008](docs/adr/0008-provisional-api-group-domain.md)).
+> **Status: 1.0.0, API `v1alpha1`:** fields can still change in a minor release under the
+> [deprecation policy](docs/reference/compatibility.md#deprecation-policy). Each
+> [release](https://github.com/alexandrust88/openbao-config-operator/releases) ships a signed image, Helm chart and
+> `install.yaml`. The API groups are `<area>.obco.dev/v1alpha1` ([ADR 0025](docs/adr/0025-move-the-api-to-obco-dev.md)).
 > Read the [risks](#risks) and the [known limitations](docs/reference/limitations.md) before you rely on it; the
 > [roadmap](docs/maintainers/roadmap.md) says what comes next.
 
@@ -40,14 +41,17 @@ OCI chart, the Helm repository or `install.yaml`, and how to verify them.
 
 | Task | Start here |
 |------|------------|
-| Create an ACL policy and verify reconciliation | [Policy guide](docs/guides/policies.md) |
-| Manage policies, auth roles and mounts from Git | [Argo CD](docs/guides/argocd.md), [Flux](docs/guides/flux.md) |
-| Test deployment, drift repair and pruning from Git | [Argo CD app-of-apps lab](docs/how-to/argocd-lab.md), [Flux lab](docs/how-to/flux-lab.md) |
-| Give each team its own OpenBao namespace and connection | [Tenant onboarding](docs/tutorials/tenant-onboarding.md) |
-| Configure OIDC login and JWT authentication | [JWT and OIDC guide](docs/guides/jwt-oidc-auth.md) |
-| Test user groups, ACL denials and changes to access | [OIDC permissions showcase](docs/tutorials/oidc-showcase.md) |
-| Test identity providers, ESO or cert-manager with OpenBao | [Local integration lab](docs/tutorials/local-lab.md) |
-| Bring existing configuration under reconciliation | [Import and observe mode](docs/guides/import.md) |
+| Learn the workflow from installation to a Ready policy | [Quickstart on kind](docs/get-started/quickstart.md) |
+| Define and update an ACL policy | [Manage OpenBao policies](docs/guides/policies.md) |
+| Reconcile OpenBao configuration from Git | [Argo CD](docs/guides/argocd.md), [Flux](docs/guides/flux.md) |
+| Give each tenant its own OpenBao namespace and connection | [Namespaces and tenants](docs/guides/namespaces-and-tenants.md); to learn it on kind, [Onboard two tenants](docs/tutorials/tenant-onboarding.md) |
+| Configure OIDC login, JWT roles and group mappings | [JWT and OIDC authentication](docs/guides/jwt-oidc-auth.md) |
+| Adopt configuration already present in OpenBao | [Import and observe mode](docs/guides/import.md) |
+
+For contributors, from a clone: the [Argo CD lab](docs/how-to/argocd-lab.md) and the [Flux lab](docs/how-to/flux-lab.md)
+test deployment and drift repair from Git, the [OIDC permissions showcase](docs/tutorials/oidc-showcase.md) tests
+user groups, ACL denials and changes to access, and the [local lab](docs/tutorials/local-lab.md) tests identity
+providers, ESO and cert-manager with OpenBao.
 
 ## Architecture
 
@@ -59,12 +63,12 @@ flowchart LR
   subgraph k8s["Kubernetes"]
     gitops["Argo CD / Flux"]
     subgraph tenant["tenant namespace"]
-      crs["Policy, KubernetesAuthRole, KVSecret, ..."]
-      conn["OpenBaoConnection"]
+      crs["ACLPolicy, KubernetesAuthRole, KVSecret, ..."]
+      conn["BaoConnection"]
       sa["ServiceAccount"]
       sec["Secrets (inputs and one-time outputs)"]
     end
-    server["OpenBaoServer (cluster-scoped, platform-owned)"]
+    server["BaoServer (cluster-scoped, platform-owned)"]
     subgraph op["openbao-config-operator"]
       engine["generic engine: ownership, drift tiers, write budget, conditions"]
       adapters["one adapter per kind: path, payload, field rules"]
@@ -89,7 +93,7 @@ requeues; each kind contributes a small adapter with its path, payload and compa
 
 ## Security model
 
-The platform team controls server addresses, trust roots and allowed tenant namespaces through `OpenBaoServer`.
+The platform team controls server addresses, trust roots and allowed tenant namespaces through `BaoServer`.
 Each tenant connection authenticates with its own identity; OpenBao ACLs limit the configuration it can change.
 Credentials are supplied by Secret reference. Resources default to leaving their OpenBao objects in place on
 Kubernetes deletion, with an additional opt-in for destructive deletes.
@@ -100,22 +104,22 @@ installation is cluster-wide; namespace isolation requires the documented contro
 
 ## Supported resources and verification
 
-- **74 built-in kinds** (70 typed OpenBao kinds plus the server, two connection kinds and `OpenBaoEndpoint`), with
+- **74 built-in kinds** (70 typed OpenBao kinds plus the server, two connection kinds and `BaoEndpoint`), with
   per-kind availability and test evidence in the [kind catalogue](docs/kinds.md). Built-in kinds cover 92.2%
   of configuration paths on OpenBao 2.7.2 (106 of 115; 30.1% of all 352 writable paths), classified per release in CI ([API coverage](docs/api-coverage.md)).
   52 further kinds are experimental and disabled by default behind `--enable-plugin-kinds`; check the catalogue
   for their paths and verification limits.
-- **`OpenBaoEndpoint` escape hatch** for every path without a typed kind, with the same drift, ownership and
+- **`BaoEndpoint` escape hatch** for every path without a typed kind, with the same drift, ownership and
   delete-guard rules ([ADR 0006](docs/adr/0006-endpoint-escape-hatch.md)).
-- **Tenants act as themselves.** The platform team declares a cluster-scoped `OpenBaoServer` (address, CA, allowed
-  namespaces and token audiences). A tenant's `OpenBaoConnection` logs in as a ServiceAccount of its own namespace
+- **Tenants act as themselves.** The platform team declares a cluster-scoped `BaoServer` (address, CA, allowed
+  namespaces and token audiences). A tenant's `BaoConnection` logs in as a ServiceAccount of its own namespace
   through TokenRequest, never as the operator, so the tenant's OpenBao policy is the limit
   ([ADR 0003](docs/adr/0003-connections-and-tenant-boundary.md),
   [ADR 0010](docs/adr/0010-openbaoserver-owns-address-and-audiences.md)). The [e2e tests](test/e2e) exercise
   tenant connections and a [two-tenant isolation test](test/e2e/isolation_test.go); the
   [known limitations](docs/reference/limitations.md#verification) list what is not proven yet, and the default
   install is cluster-wide (RR-01 in the [threat model](docs/security/threat-model.md)).
-- **Silent at rest.** A steady-state reconcile reads and never writes; `openbao_writes_total` stays flat. The load
+- **Silent at rest.** A steady-state reconcile reads and never writes; `obco_writes_total` stays flat. The load
   test shows zero OpenBao and Kubernetes writes over three drift intervals at 5,000 objects
   ([load testing](docs/operate/load-testing.md#steady-state)).
 - **Drift tiers.** Access-critical kinds (policies, auth) are checked every 15 minutes and everything else hourly,
@@ -125,7 +129,7 @@ installation is cluster-wide; namespace isolation requires the documented contro
   [ADR 0016](docs/adr/0016-observe-mode-and-import-tool.md)).
 - **Safe by default.** `creationPolicy: Create` and `deletionPolicy: Orphan` by default, one owner per path, a
   second guard before deleting mounts, namespaces, KV data, audit devices, key material, MFA methods, entities or
-  the target of an `OpenBaoEndpoint`, and a write circuit breaker
+  the target of a `BaoEndpoint`, and a write circuit breaker
   ([ADR 0013](docs/adr/0013-destructive-delete-guard.md), [ADR 0018](docs/adr/0018-write-circuit-breaker.md)).
 - **No webhooks, no cert-manager.** Validation is OpenAPI and CEL in the CRDs ([ADR 0005](docs/adr/0005-cel-validation-without-webhooks.md)).
 - **Secrets only by reference.** Inputs come from Kubernetes Secrets; write-only values are tracked as an HMAC in
@@ -134,7 +138,7 @@ installation is cluster-wide; namespace isolation requires the documented contro
   checksums with keyless cosign, and attests SPDX and CycloneDX SBOMs and provenance: GitHub artifact
   attestations (SLSA Build L2, as GitHub documents it) plus a cosign `slsaprovenance1` statement that the
   release job writes itself, which claims no SLSA level. Nothing reaches Build L3
-  ([verify a release](SECURITY.md#verifying-releases)). Since v0.3.0 the chart also carries a GPG signature
+  ([verify a release](SECURITY.md#verifying-releases)). The chart also carries a GPG signature
   (Helm provenance), which `helm install --verify` checks. Threat model and hardening guide in
   [docs/security](docs/security/).
 
@@ -176,13 +180,13 @@ that integration.
 ## Documentation
 
 The full documentation is published at
-[alexandrust88.github.io/openbao-config-operator](https://alexandrust88.github.io/openbao-config-operator/).
+[docs.obco.dev](https://docs.obco.dev/).
 
 | | |
 |---|---|
 | [Quickstart on kind](docs/get-started/quickstart.md) | a local tutorial: OpenBao dev server, the operator and first resources |
 | [Guides](docs/guides/) | auth methods, secrets engines, identity, the access model, tenants, Argo CD |
-| [Install](docs/get-started/install.md) and [connections](docs/reference/connections.md) | install modes, tenancy models, server and connection fields |
+| [Install](docs/get-started/install.md), [install options](docs/operate/install-options.md) and [connections](docs/reference/connections.md) | install methods, CRDs, scope, tenancy models, HA, server and connection fields |
 | [Kind catalogue](docs/kinds.md) | every kind, its path, availability and test evidence |
 | [Import a running OpenBao](docs/guides/import.md) | `obc-import` and observe mode |
 | [Operations](docs/operate/) | Argo CD health, backup and restore, runbooks, troubleshooting |
@@ -190,7 +194,7 @@ The full documentation is published at
 | [Security](docs/security.md), [threat model](docs/security/threat-model.md), [hardening](docs/security/hardening.md) | controls, residual risks, recommended settings |
 | [Architecture](docs/architecture.md) and [ADRs](docs/adr/) | design rules and decisions |
 | [Load testing](docs/operate/load-testing.md), [API coverage](docs/api-coverage.md), [verification](docs/project/verification.md) | the evidence behind the claims above |
-| [Live testing](docs/operate/live-testing.md) | a kustomize kit that applies every built-in kind to a running OpenBao, per connection mode |
+| [Live kit lab](docs/operate/live-testing.md) | for contributors: a kustomize kit that applies every built-in kind to a running OpenBao, per connection mode |
 | [Roadmap](docs/maintainers/roadmap.md) and [release process](docs/maintainers/release-process.md) | what comes next, versioning, support window, deprecation policy |
 
 ## Community

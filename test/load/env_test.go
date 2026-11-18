@@ -289,8 +289,8 @@ func startCluster(t *testing.T, cfg config, dir string) cluster {
 	return cluster{k8s: k8s, dyn: dyn, kubeconfig: kubeconfig, caPEM: string(restCfg.CAData)}
 }
 
-// createConnection stores the operator's AppRole credentials in a Secret, declares the server as an OpenBaoServer
-// and points an OpenBaoConnection at it; design rule 9 keeps the root token away from the operator.
+// createConnection stores the operator's AppRole credentials in a Secret, declares the server as a BaoServer
+// and points a BaoConnection at it; design rule 9 keeps the root token away from the operator.
 func createConnection(ctx context.Context, t *testing.T, c cluster, addr, roleID, secretID string) {
 	t.Helper()
 	secret := &corev1.Secret{
@@ -301,8 +301,8 @@ func createConnection(ctx context.Context, t *testing.T, c cluster, addr, roleID
 		t.Fatal(err)
 	}
 	server := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "core.openbaoconfig.io/v1alpha1",
-		"kind":       "OpenBaoServer",
+		"apiVersion": "core.obco.dev/v1alpha1",
+		"kind":       "BaoServer",
 		litMetadata:  map[string]any{litName: connectionName},
 		"spec": map[string]any{
 			"address":           addr,
@@ -315,7 +315,7 @@ func createConnection(ctx context.Context, t *testing.T, c cluster, addr, roleID
 		t.Fatal(err)
 	}
 	conn := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "core.openbaoconfig.io/v1alpha1",
+		"apiVersion": "core.obco.dev/v1alpha1",
 		"kind":       kindConnection,
 		litMetadata:  map[string]any{litName: connectionName, "namespace": objectNamespace},
 		"spec": map[string]any{

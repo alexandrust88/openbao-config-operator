@@ -8,6 +8,7 @@ with a pymdown snippet so the page always shows the file CI tests.
 
 import html
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -16,6 +17,14 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 GROUP_ORDER = ["core", "sys", "auth", "secrets", "identity", "access"]
 GROUP_LABELS = {"core": "Connection", "sys": "System", "auth": "Authentication", "secrets": "Secrets engine", "identity": "Identity", "access": "Access"}
+GROUP_SUMMARIES = {
+    "core": "The OpenBao server, the connections that log in to it and BaoEndpoint, the escape hatch for any API path.",
+    "sys": "Server settings: namespaces, mounts, ACL policies, audit devices, quotas, plugins and logging.",
+    "auth": "Auth method configuration, roles and users: Kubernetes, JWT and OIDC, AppRole, LDAP, certificates and cloud logins.",
+    "secrets": "Secrets engine configuration, roles and secrets: KV, PKI, transit, databases, SSH and cloud credentials.",
+    "identity": "Entities, groups and their aliases, login MFA, and the OpenBao OIDC provider and identity tokens.",
+    "access": "Access models that write ACL policies for KV version 2 secrets, for workloads and for people.",
+}
 SKIPPED_ROOT_FIELDS = {"apiVersion", "kind", "metadata"}
 # Links from a page under docs/reference/<dir>/ to a repository file; hooks.py turns them into GitHub links.
 REPO_LINK = "../../../"
@@ -79,6 +88,18 @@ def code(text):
     return f"<code>{esc(text)}</code>"
 
 
+def inline_code(escaped):
+    """Turn markdown `code` spans of already escaped text into <code>; the table is raw HTML, so markdown never runs."""
+    return re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
+
+
+def break_after(escaped, *marks):
+    """Allow line breaks after the given marks only, so paths and types never split mid-word."""
+    for mark in marks:
+        escaped = escaped.replace(mark, mark + "<wbr>")
+    return escaped
+
+
 def describe(text):
     """Render a godoc-style description: tab-indented paragraphs are code, others are prose."""
     if not text:
@@ -94,9 +115,9 @@ def describe(text):
         for line in lines:
             stripped = line.strip()
             if parts and stripped.startswith(("- ", "* ")):
-                parts.append("<br>" + esc(stripped))
+                parts.append("<br>" + inline_code(esc(stripped)))
             else:
-                parts.append(esc(stripped))
+                parts.append(inline_code(esc(stripped)))
         out.append(" ".join(parts).replace(" <br>", "<br>"))
     return "<br><br>".join(p for p in out if p)
 
@@ -125,7 +146,7 @@ def bounds(lo, hi, lo_excl=False, hi_excl=False):
 
 
 def rules(schema, prefix=""):
-    """Validation rules of one schema node, as escaped HTML fragments."""
+    """Short validation rules of one schema node (CEL excluded), as escaped HTML fragments."""
     out = []
     if "enum" in schema:
         out.append("one of: " + ", ".join(code(json.dumps(v) if not isinstance(v, str) else v) for v in schema["enum"]))
@@ -160,6 +181,12 @@ def rules(schema, prefix=""):
         out.append(esc(text))
     if "x-kubernetes-map-type" in schema:
         out.append(esc(f"map type: {schema['x-kubernetes-map-type']}"))
+    return [(prefix + r)[:1].upper() + (prefix + r)[1:] for r in out]
+
+
+def cel_rules(schema, prefix=""):
+    """CEL rules of one schema node, as escaped HTML fragments."""
+    out = []
     for rule in schema.get("x-kubernetes-validations", []):
         text = "CEL: " + code(rule["rule"])
         message = rule.get("message") or rule.get("messageExpression")
@@ -168,7 +195,7 @@ def rules(schema, prefix=""):
         if rule.get("fieldPath"):
             text += " on " + code(rule["fieldPath"])
         out.append(text)
-    return [prefix + r for r in out]
+    return [(prefix + r)[:1].upper() + (prefix + r)[1:] for r in out]
 
 
 def is_scalar_container(schema):
@@ -180,26 +207,35 @@ def is_scalar_container(schema):
 def walk(schema, path, required, rows):
     """Append one row per field, depth first; scalar list items and map values fold into their parent row."""
     validation = rules(schema)
+    cel = cel_rules(schema)
     child_paths = []
     items = schema.get("items")
     values = schema.get("additionalProperties")
     if isinstance(items, dict):
         if is_scalar_container(items):
-            validation += rules(items, "each item: ")
+            validation += rules(items, "each item ")
+            cel += cel_rules(items, "each item: ")
         else:
             child_paths.append((items, path + "[]"))
     if isinstance(values, dict):
         if is_scalar_container(values):
-            validation += rules(values, "each value: ")
+            validation += rules(values, "each value ")
+            cel += cel_rules(values, "each value: ")
         else:
             child_paths.append((values, path + ".<key>"))
+    default = ""
+    if "default" in schema:
+        # Non-empty strings read better unquoted, like the enum values; "" and non-strings stay JSON.
+        value = schema["default"]
+        default = value if isinstance(value, str) and value else json.dumps(value)
     rows.append(
         {
             "path": path,
             "type": type_of(schema),
             "required": required,
-            "default": json.dumps(schema["default"]) if "default" in schema else "",
+            "default": default,
             "validation": validation,
+            "cel": cel,
             "description": schema.get("description", ""),
         }
     )
@@ -221,22 +257,23 @@ def field_table(schema):
         if name not in SKIPPED_ROOT_FIELDS:
             walk(schema["properties"][name], name, name in needed, rows)
     lines = [
+        '<div class="api-fields">',
         "<table>",
-        "<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th><th>Validation</th></tr></thead>",
+        "<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>",
         "<tbody>",
     ]
     for row in rows:
-        kind = esc(row["type"])
-        required = "yes" if row["required"] else "no"
-        default = code(row["default"]) if row["default"] else ""
-        validation = "<br>".join(row["validation"])
-        if validation:
-            validation = f"<details><summary>Constraints</summary>{validation}</details>"
-        lines.append(
-            f"<tr><td>{code(row['path'])}</td><td>{kind}</td><td>{required}</td><td>{default}</td>"
-            f"<td>{describe(row['description'])}</td><td>{validation}</td></tr>"
-        )
-    lines += ["</tbody>", "</table>"]
+        path = f"<code>{break_after(esc(row['path']), '.')}</code>"
+        kind = f"<code>{break_after(esc(row['type']), 'map[string]')}</code>"
+        meta = (["Required"] if row["required"] else []) + (["Default: " + code(row["default"])] if row["default"] else [])
+        meta += row["validation"]
+        cell = describe(row["description"])
+        if meta:
+            cell += '<div class="api-meta">' + " · ".join(meta) + "</div>"
+        if row["cel"]:
+            cell += '<ul class="api-rules">' + "".join(f"<li>{r}</li>" for r in row["cel"]) + "</ul>"
+        lines.append(f"<tr><td>{path}</td><td>{kind}</td><td>{cell}</td></tr>")
+    lines += ["</tbody>", "</table>", "</div>"]
     return "\n".join(lines)
 
 
@@ -261,17 +298,23 @@ def kind_section(crd, root=ROOT, level=2):
             out += [f"{'#' * (level + 1)} {version['name']} ({state})", ""]
         if version.get("deprecated"):
             out += [f"Deprecated: {esc(version.get('deprecationWarning', 'yes'))}", ""]
-        description = describe(schema.get("description", ""))
+        description = schema.get("description", "")
+        example = example_section(root, crd, heading) if version.get("storage") else []
+        if example:
+            # The full example file follows, so the description's inline snippet would repeat it.
+            description = description.split("\n\nExample:", 1)[0]
+        description = describe(description)
         if description:
             out += [f"<div>{description}</div>", ""]
         if version.get("storage"):
-            out += example_section(root, crd, heading)
+            out += example
             notes = root / "hack/docs/resource-notes" / f"{names['kind'].lower()}.md"
             if notes.is_file():
                 out += [f"{heading} Behaviour and permissions", "", notes.read_text().strip(), ""]
-        out += [f"{heading} Fields", "", "Defaults below are CRD schema defaults. A blank cell does not imply zero, false or an empty value; see the field description for omission behaviour. Required fields inside an optional object apply only when that object is set.", ""]
-        if rules(schema):
-            out += ["<div><strong>Object validation:</strong><br>" + "<br>".join(rules(schema)) + "</div>", ""]
+        out += [f"{heading} Fields", "", "Defaults below are CRD schema defaults. A field without a listed default does not imply zero, false or an empty value; see the field description for omission behaviour. Required fields inside an optional object apply only when that object is set.", ""]
+        object_rules = rules(schema) + cel_rules(schema)
+        if object_rules:
+            out += ['<div class="api-rules"><strong>Object validation:</strong><ul>' + "".join(f"<li>{r}</li>" for r in object_rules) + "</ul></div>", ""]
         out += [field_table(schema), ""]
     return "\n".join(out)
 
@@ -299,19 +342,18 @@ def render(crd_dir, root=ROOT):
         "description, after an example manifest. The [kind catalogue](../../kinds.md) has the implementation status of",
         "each kind; the [example gallery](../examples/index.md) lists every example.",
         "",
-        "| group | kinds |",
-        "|-------|-------|",
     ]
     for group in sorted(groups, key=group_key):
         crds = sorted(groups[group], key=lambda c: c["spec"]["names"]["kind"])
         name = short_group(group)
-        index.append(f"| [`{group}`]({name}.md) | {len(crds)} |")
         label = GROUP_LABELS.get(name, name)
+        index += [f"## {label}", "", f"[`{group}`]({name}.md): {GROUP_SUMMARIES.get(name, '')}", "",
+                  " · ".join(f"[{c['spec']['names']['kind']}]({kind_filename(c)})" for c in crds), ""]
         page = ["---", f"title: {label} CRD reference",
                 f"description: OpenBao {label.lower()} custom resource fields, defaults, validation rules and YAML examples for the {group} API group.",
                 "---", "", f"# {group}", ""]
         page += [", ".join(f"[{c['spec']['names']['kind']}](#{c['spec']['names']['kind'].lower()})" for c in crds), ""]
-        page += ["Choose a kind for its complete field reference, validation rules and tested example manifests.", ""]
+        page += ["Choose a kind for its complete field reference, validation rules and example manifests.", ""]
         for crd in crds:
             kind = crd["spec"]["names"]["kind"]
             filename = kind_filename(crd)
@@ -322,14 +364,14 @@ def render(crd_dir, root=ROOT):
             page += [f"## {kind}", "", esc(summary), "",
                      f"[{kind} fields and YAML example]({filename}) · [Example gallery](../examples/{name}.md#{kind.lower()})", ""]
             description = f"{kind} Kubernetes CRD fields, defaults, validation and YAML examples for OpenBao. {summary}"
+            heading, body = kind_section(crd, root, level=1).split("\n\n", 1)
             pages[f"reference/api/{filename}"] = "\n".join([
                 "---", "title: " + json.dumps(f"{kind} CRD reference"),
-                "description: " + json.dumps(description), "---", "",
+                "description: " + json.dumps(description), "---", "", heading, "",
                 f"[{label} resources]({name}.md) · [Kind catalogue](../../kinds.md) · [Examples](../examples/{name}.md#{kind.lower()})", "",
-                kind_section(crd, root, level=1),
+                body,
             ])
         pages[f"reference/api/{name}.md"] = "\n".join(page)
-    index.append("")
     pages["reference/api/index.md"] = "\n".join(index)
     return pages
 

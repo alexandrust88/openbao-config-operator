@@ -13,9 +13,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=databaseroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=databaseroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=databaseroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=databaseroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=databaseroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=databaseroles/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupDatabaseRole registers the DatabaseRole controller with the manager.

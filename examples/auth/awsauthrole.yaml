@@ -1,11 +1,11 @@
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AWSAuthRole
 metadata:
   name: aws-app
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Delete
@@ -51,14 +51,14 @@ spec:
   tokenNoDefaultPolicy: false
   tokenStrictlyBindIP: false
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AWSAuthRole
 metadata:
   name: aws-ec2
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Delete

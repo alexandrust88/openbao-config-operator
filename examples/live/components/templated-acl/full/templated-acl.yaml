@@ -1,12 +1,12 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: tacl-kubernetes
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -16,15 +16,15 @@ spec:
   path: tacl-kubernetes
   type: kubernetes
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: tacl-approle
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -34,15 +34,15 @@ spec:
   path: tacl-approle
   type: approle
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: tacl-userpass
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -52,15 +52,15 @@ spec:
   path: tacl-userpass
   type: userpass
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: tacl-kv
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -70,15 +70,15 @@ spec:
   path: tacl-kv
   type: kv-v2
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Entity
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntity
 metadata:
   name: tacl-billing
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -91,13 +91,13 @@ spec:
   metadata:
     app: billing
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: tacl-sa-folder
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -129,13 +129,13 @@ spec:
   allowWildcardsInIdentityTemplates: false
   casRequired: true
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: tacl-entity-folder
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -154,13 +154,13 @@ spec:
   allowWildcardsInIdentityTemplates: true
   casRequired: false
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: tacl-user-home
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete

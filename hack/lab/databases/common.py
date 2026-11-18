@@ -10,7 +10,7 @@ import identity as lab
 
 TENANTS = ('root', 'alpha')
 ROOT = Path(__file__).resolve().parents[3]
-LABEL = {'lab.openbaoconfig.io/profile': 'database'}
+LABEL = {'lab.obco.dev/profile': 'database'}
 
 
 def mount(provider):
@@ -214,7 +214,7 @@ def database_tls(namespace, service):
 def mount_bao_ca(name, certificate, extra_env=None):
     # PostgreSQL's pgx driver accepts a CA file path on the OpenBao server, not an inline PEM.
     statefulset = json.loads(lab.kube('-n', 'openbao', 'get', 'statefulset', 'openbao', '-o', 'json'))
-    owner = statefulset['metadata'].get('labels', {}).get('lab.openbaoconfig.io/cluster')
+    owner = statefulset['metadata'].get('labels', {}).get('lab.obco.dev/cluster')
     if owner != lab.CONTEXT.removeprefix('kind-'):
         raise RuntimeError('Refusing to mount a database CA into an unowned OpenBao fixture')
     lab.apply([lab.obj('ConfigMap', 'database-' + name + '-ca', 'openbao', data={'ca.crt': certificate})])

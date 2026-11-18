@@ -1,60 +1,173 @@
 ---
-description: "Configure and test OpenBao dynamic MariaDB credentials with tenant-scoped permissions, verified TLS and lease revocation."
+title: Issue dynamic OpenBao MariaDB credentials
+description: "Connect MariaDB through the MySQL database plugin over verified TLS and create a dynamic reader role with SELECT grants."
 ---
 
-# Test dynamic MariaDB credentials
+# Issue dynamic MariaDB credentials
 
-Use this recipe after [starting the disposable database lab](../../tutorials/dynamic-database-credentials.md#1-start-a-separate-lab).
-It selects the pinned MariaDB 11.8 fixture; exact image tags and digests live in the
-[provider source](../../../hack/lab/databases/mariadb.py) and [manifest](../../../hack/lab/databases/mariadb.yaml).
+Configure a `DatabaseConnection` and a `DatabaseRole` with OpenBao Config Operator so OpenBao
+issues short-lived MariaDB users. MariaDB uses the MySQL plugin built into OpenBao: set
+`pluginName: mysql-database-plugin` and the `spec.mysql` section.
 
-## Run
+## Before you begin
 
-```sh
-make lab-database DATABASE_PROFILE=mariadb
+- The operator is installed and the `BaoConnection` named `openbao` in the Kubernetes namespace
+  `openbao-config` is `Ready` ([Install](../../get-started/install.md),
+  [Connect to OpenBao](../../get-started/connect.md)).
+- The connection's OpenBao policy allows these paths
+  ([OpenBao policy for the operator](../../operate/openbao-policy.md)):
+
+    ```hcl
+    path "database/config/*" { capabilities = ["create", "read", "update", "delete"] }
+    path "database/roles/*"  { capabilities = ["create", "read", "update", "delete"] }
+    ```
+
+    Append these lines to `openbao-configurer.hcl`, the connection's policy from Connect to OpenBao,
+    and write it again with `bao policy write openbao-configurer openbao-configurer.hcl`.
+
+- A `SecretsMount` with `type: database` at path `database` is `Ready`
+  ([Configure OpenBao database secrets](../../guides/database-secrets.md#1-enable-the-engine)).
+- A MariaDB server OpenBao can reach over TLS, with the database the application reads and an
+  administrator that can `CREATE USER` and `GRANT`.
+- The `bao` CLI, with `BAO_ADDR` and a token that can read the paths in the last step and revoke
+  leases (`sys/leases/revoke`, `update`).
+
+## 1. Store the administrator password
+
+OpenBao never returns the administrator password, so it comes from a Secret in the same
+Kubernetes namespace as the `DatabaseConnection`. Save this as `mariadb-root.yaml`; the password value
+is fake, replace it before you apply:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mariadb-root
+  namespace: openbao-config
+type: Opaque
+stringData:
+  password: fake-root-password-not-real
 ```
 
-The runner configures root and `lab-alpha`, then performs real authentication, privilege,
-renewal and revocation checks. See the [shared assertions and boundaries](../../tutorials/dynamic-database-credentials.md#4-understand-the-assertions).
+```bash
+kubectl apply -f mariadb-root.yaml
+```
 
-## Connection settings
+## 2. Connect the database
 
-| Setting | Lab value |
-|---------|-----------|
-| `DatabaseConnection.spec.pluginName` | `mysql-database-plugin` |
-| Typed plugin settings | `spec.mysql` |
-| Database service | `mariadb.obco-db-mariadb.svc` |
-| Administrator password | `passwordSecretRef` to `database-mariadb-admin`, key `password`, in `obco-lab` |
-| Database mount | `lab-db-mariadb` in each OpenBao namespace |
-| Role | `reader`, the only entry in `allowedRoles` |
+Each `DatabaseConnection` holds one plugin and `pluginName` cannot change: use one connection per database
+engine. Save this as `database-connection.yaml`:
 
-This plugin is built into the pinned OpenBao server. No `Plugin` registration or `pluginRef`
-is required. The administrator Secret is generated outside Git; do not put its value in Helm values.
+```yaml
+apiVersion: secrets.obco.dev/v1alpha1
+kind: DatabaseConnection
+metadata:
+  name: mariadb
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: database
+  name: mariadb
+  pluginName: mysql-database-plugin
+  allowedRoles:
+    - mariadb-reader
+  passwordSecretRef:
+    name: mariadb-root
+    key: password
+  mysql:
+    connectionURL: '{{username}}:{{password}}@tcp(<mariadb-host>:3306)/'
+    username: openbao
+    tlsCA: |
+      -----BEGIN CERTIFICATE-----
+      <ca-certificate-pem>
+      -----END CERTIFICATE-----
+    tlsServerName: <mariadb-host>
+    tlsSkipVerify: false
+```
 
-## Permissions and lease lifecycle
+Replace `<mariadb-host>` with a hostname OpenBao can resolve and `<ca-certificate-pem>` with the PEM
+body of the CA that signed the server certificate. `tlsServerName` and `tlsSkipVerify: false`
+make OpenBao check the server certificate and its hostname.
 
-MariaDB uses the MySQL database plugin and the CRD's `mysql` settings, not a separate
-`mariadb` section. Separate `lab_root` and `lab_alpha` databases contain the fixture tables.
-Generated users receive `SELECT` only on their own table and are removed with `DROP USER`.
-The actual server and probe client are MariaDB, so this profile is distinct from the MySQL test.
+```bash
+kubectl apply -f database-connection.yaml
+kubectl -n openbao-config wait databaseconnection/mariadb --for=condition=Ready --timeout=2m
+```
 
-The workload's OpenBao token can issue only this role. The test administrator performs renewal
-and revocation; the suite does not grant those capabilities to the workload. Static-role
-rotation, root-password rotation and termination of existing sessions are not tested here.
+## 3. Create a dynamic role
 
-## TLS and engine-specific limits
+Save this as `database-role.yaml`:
 
-The connection sets `tlsCA`, `tlsServerName` and `tlsSkipVerify: false`. The MariaDB CLI
-uses `--ssl --ssl-verify-server-cert --ssl-ca=/ca/ca.crt`; the probe also checks the negotiated
-cipher. The bootstrap `root` account remains a disposable administrator, not a workload credential.
+```yaml
+apiVersion: secrets.obco.dev/v1alpha1
+kind: DatabaseRole
+metadata:
+  name: mariadb-reader
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: database
+  name: mariadb-reader
+  dbName: mariadb
+  defaultTTL: 1h
+  maxTTL: 24h
+  creationStatements:
+    - CREATE USER '{{name}}'@'%' IDENTIFIED BY '{{password}}' REQUIRE SSL;
+    - GRANT SELECT ON <database>.* TO '{{name}}'@'%';
+  revocationStatements:
+    - DROP USER '{{name}}'@'%';
+```
 
-## Adapt or clean up
+Replace `<database>` with the database the application reads. `REQUIRE SSL` refuses logins of
+generated users that do not use TLS.
 
-Keep the database administrator capable of the configured creation and revocation statements,
-but scope generated users to their actual application data. A successful connection check is
-not proof that those statements work: rerun the lifecycle after changing them.
-The [database configuration chart](../../../gitops/databases/chart/Chart.yaml) supplies the shared
-mount, connection, role and workload-auth resources; provider-specific settings and statements
-come from the fixture source linked above.
+```bash
+kubectl apply -f database-role.yaml
+kubectl -n openbao-config wait databaserole/mariadb-reader --for=condition=Ready --timeout=2m
+```
 
-Follow the [shared cleanup](../../tutorials/dynamic-database-credentials.md#remove-the-lab) when finished.
+Keep the administrator able to run the creation and revocation statements, and scope generated
+users to the data the application needs. A `Ready` connection does not prove that the statements
+work; the next step logs in to check them.
+
+## 4. Check that it worked
+
+The resources are `Ready`:
+
+```bash
+kubectl -n openbao-config wait databaseconnection/mariadb databaserole/mariadb-reader \
+  --for=condition=Ready --timeout=2m
+```
+
+OpenBao issues credentials:
+
+```bash
+bao read database/creds/mariadb-reader
+```
+
+OpenBao returns a `username`, a `password` and a `lease_id`. Log in to MariaDB with them over TLS
+and confirm that the grants match the creation statements. Then revoke the lease:
+
+```bash
+bao lease revoke <lease_id>
+```
+
+`<lease_id>` is the `lease_id` from the previous output. A new login with the same password is
+refused.
+
+## Troubleshooting
+
+| symptom | check |
+|---------|-------|
+| `DatabaseConnection` is not `Ready` | the administrator Secret, a hostname OpenBao can resolve, `tlsCA` and `tlsServerName`, and the administrator's privileges |
+| `bao read database/creds/mariadb-reader` fails with `is not an allowed role` | `allowedRoles` includes `mariadb-reader` |
+| login works but grants are wrong | the creation statements and the object names in the database |
+
+## Related
+
+- API reference: [DatabaseConnection](../../reference/api/secrets.md#databaseconnection),
+  [DatabaseRole](../../reference/api/secrets.md#databaserole)
+- [Configure OpenBao database secrets](../../guides/database-secrets.md)
+- [Issue dynamic database credentials](../../tutorials/dynamic-database-credentials.md)

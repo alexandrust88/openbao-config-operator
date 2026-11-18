@@ -1,20 +1,20 @@
-# MFAMethod (identity.openbaoconfig.io/v1alpha1)
+# MFAMethod (identity.obco.dev/v1alpha1)
 # MFAMethod manages a login MFA method (TOTP, Duo, Okta or PingID) at `identity/mfa/method/<type>/<id>`.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/identity/#mfamethod
+# Reference: https://docs.obco.dev/reference/api/identity/#mfamethod
 # Curated example: examples/identity/mfamethod.yaml
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: MFAMethod
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -22,7 +22,7 @@ spec:
   driftInterval: 1h
   managementPolicy: Manage
   name: example
-  namespace: example
+  openbaoNamespace: example
   totp:
     algorithm: SHA1
     digits: 6

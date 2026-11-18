@@ -297,18 +297,18 @@ func filteredOverlay(t *testing.T, kit, dir string, filter *regexp.Regexp) strin
 	return tmp
 }
 
-// rewriteConnection points the kit's OpenBaoServer at the dev server and makes its connections log in with the
+// rewriteConnection points the kit's BaoServer at the dev server and makes its connections log in with the
 // AppRole Secret instead of the Kubernetes auth the kit declares.
 func rewriteConnection(o *unstructured.Unstructured, addr, mount, secret, ns string) {
 	switch o.GetKind() {
-	case "OpenBaoServer":
+	case "BaoServer":
 		_ = unstructured.SetNestedField(o.Object, addr, keySpec, "address")
 		_ = unstructured.SetNestedField(o.Object, true, keySpec, "allowInsecureHTTP")
 		unstructured.RemoveNestedField(o.Object, keySpec, "caBundle")
-	case "OpenBaoConnection", "ClusterOpenBaoConnection":
+	case "BaoConnection", "ClusterBaoConnection":
 		ref := func(key string) map[string]any {
 			r := map[string]any{keyName: secret, "key": key}
-			if o.GetKind() == "ClusterOpenBaoConnection" {
+			if o.GetKind() == "ClusterBaoConnection" {
 				r["namespace"] = ns
 			}
 			return r

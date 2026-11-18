@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=mongodbatlassecretsconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=mongodbatlassecretsconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=mongodbatlassecretsconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=mongodbatlassecretsconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=mongodbatlassecretsconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=mongodbatlassecretsconfigs/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupMongoDBAtlasSecretsConfig registers the MongoDBAtlasSecretsConfig controller with the manager.

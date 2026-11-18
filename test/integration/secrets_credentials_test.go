@@ -511,7 +511,7 @@ func secCredSetup(ctx context.Context, t *testing.T) env {
 		"kubernetessecretsconfigs", "kubernetessecretsroles"}
 	crds := make([]string, 0, len(kinds))
 	for _, kind := range kinds {
-		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "secrets.openbaoconfig.io_"+kind+".yaml"))
+		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "secrets.obco.dev_"+kind+".yaml"))
 	}
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,

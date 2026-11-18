@@ -49,7 +49,7 @@ func confWriteReport(t *testing.T, path string, e *confEnv, results []*confResul
 		e.readyDuration.Round(time.Millisecond), e.cleanupDuration.Round(time.Millisecond),
 		e.defaultsDuration.Round(time.Millisecond), e.parallelism)
 	b.WriteString("no-write: examples applied together (root namespace, deletionPolicy Delete), Ready, then " +
-		"3.5 drift intervals: openbao_writes_total{kind} must not move. default: per kind its own manager, " +
+		"3.5 drift intervals: obco_writes_total{kind} must not move. default: per kind its own manager, " +
 		"namespace and OpenBao namespace; minimal spec (required fields, creationPolicy CreateOrAdopt) then each " +
 		"optional top-level field set (1 write), removed (1 write) and one more pass (0 writes). " +
 		"AccessLevel instead checks current-generation Ready after each template edit and zero writes over two drift intervals; it has no periodic requeue. n/a = could " +

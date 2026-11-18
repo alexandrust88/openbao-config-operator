@@ -12,9 +12,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkikeys,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkikeys/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkikeys/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkikeys,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkikeys/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkikeys/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update
 
 // SetupPKIKey registers the PKIKey controller with the manager.

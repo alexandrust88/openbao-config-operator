@@ -1,4 +1,4 @@
-# CertAuthCRL (auth.openbaoconfig.io/v1alpha1)
+# CertAuthCRL (auth.obco.dev/v1alpha1)
 # CertAuthCRL installs a certificate revocation list on a TLS certificate auth method at auth/<mountPath>/crls/<name>,
 # either as a fetched URL or as embedded PEM data.
 #
@@ -6,16 +6,16 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#certauthcrl
+# Reference: https://docs.obco.dev/reference/api/auth/#certauthcrl
 # Curated example: examples/auth/certauthcrl.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthCRL
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   crl: example
@@ -25,4 +25,4 @@ spec:
   managementPolicy: Manage
   mountPath: cert
   name: example
-  namespace: example
+  openbaoNamespace: example

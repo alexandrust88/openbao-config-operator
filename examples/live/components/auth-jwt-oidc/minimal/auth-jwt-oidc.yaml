@@ -1,4 +1,4 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: jwt
@@ -7,7 +7,7 @@ spec:
     name: openbao
   type: jwt
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: JWTAuthConfig
 metadata:
   name: jwt-config
@@ -22,7 +22,7 @@ spec:
       ypmt/55X4LSKYghscKyiXopP0hUMJSdEknOumXTEkCPrJsy+yRGchptgJQ==
       -----END PUBLIC KEY-----
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: JWTAuthRole
 metadata:
   name: jwt-ci
@@ -34,7 +34,7 @@ spec:
   boundAudiences:
     - openbao
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: JWTCELRole
 metadata:
   name: jwt-cel

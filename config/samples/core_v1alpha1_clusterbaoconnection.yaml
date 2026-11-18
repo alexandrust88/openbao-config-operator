@@ -1,0 +1,16 @@
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
+metadata:
+  labels:
+    app.kubernetes.io/name: openbao-config-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: clusterbaoconnection-sample
+spec:
+  serverRef:
+    name: openbao
+  auth:
+    token:
+      secretRef:
+        name: openbao-token
+        namespace: obco-system
+        key: token

@@ -35,7 +35,7 @@ type kind struct {
 }
 
 func newKind(prefix, group, kindName, resource string, secret bool, spec func(string, int) map[string]any) kind {
-	gv := schema.GroupVersion{Group: group + ".openbaoconfig.io", Version: "v1alpha1"}
+	gv := schema.GroupVersion{Group: group + ".obco.dev", Version: "v1alpha1"}
 	return kind{prefix: prefix, gvr: gv.WithResource(resource), gvk: gv.WithKind(kindName), spec: spec, secret: secret}
 }
 
@@ -53,28 +53,28 @@ func kvPath(name string) string { return "load/" + name }
 func secretValue(name string) string { return "load-value-" + name }
 
 var (
-	policyKind = newKind("pol", "sys", kindPolicy, "policies", false, func(n string, _ int) map[string]any {
+	policyKind = newKind("pol", "sys", kindPolicy, "aclpolicies", false, func(n string, _ int) map[string]any {
 		return map[string]any{litPolicy: policyText(n)}
 	})
 	kvKind = newKind("kv", "secrets", kindKVSecret, "kvsecrets", true, func(n string, _ int) map[string]any {
 		return map[string]any{litMountPath: "secret", "path": kvPath(n),
 			"dataFrom": []any{map[string]any{"secretRef": map[string]any{litName: n}}}}
 	})
-	entityKind = newKind("ent", "identity", "Entity", "entities", false, func(string, int) map[string]any {
+	entityKind = newKind("ent", "identity", "IdentityEntity", "identityentities", false, func(string, int) map[string]any {
 		return map[string]any{"policies": []any{litDefault}, litMetadata: map[string]any{"team": "load"}}
 	})
 	// entityAliasKind precedes entityKind in the refs set: the alias at index i names the entity at i+1.
-	entityAliasKind = newKind("eal", "identity", "EntityAlias", "entityaliases", false,
+	entityAliasKind = newKind("eal", "identity", "IdentityEntityAlias", "identityentityaliases", false,
 		func(n string, i int) map[string]any {
 			return map[string]any{"aliasName": n, litMountPath: litUserpass,
 				"entityRef": map[string]any{litName: fmt.Sprintf("%s-%05d", entityKind.prefix, i+1)}}
 		}).asReferrer()
-	groupKind = newKind("grp", "identity", "Group", "groups", false, func(string, int) map[string]any {
+	groupKind = newKind("grp", "identity", "IdentityGroup", "identitygroups", false, func(string, int) map[string]any {
 		return map[string]any{litType: "internal", "policies": []any{litDefault}}
 	})
 	// groupMembershipKind precedes entityKind and groupKind in the members set: the membership at index i adds the
 	// entity at i+1 to the group at i+2.
-	groupMembershipKind = newKind("gmb", "identity", "GroupMembership", "groupmemberships", false,
+	groupMembershipKind = newKind("gmb", "identity", "IdentityGroupMembership", "identitygroupmemberships", false,
 		func(_ string, i int) map[string]any {
 			return map[string]any{
 				"entityRef": map[string]any{litName: fmt.Sprintf("%s-%05d", entityKind.prefix, i+1)},
@@ -106,8 +106,8 @@ var (
 			return map[string]any{litMountPath: "transit", litType: "aes256-gcm96", "deletionAllowed": true}
 		}),
 	}
-	connectionGVR = schema.GroupVersionResource{Group: "core.openbaoconfig.io", Version: "v1alpha1",
-		Resource: "openbaoconnections"}
+	connectionGVR = schema.GroupVersionResource{Group: "core.obco.dev", Version: "v1alpha1",
+		Resource: "baoconnections"}
 )
 
 func kindSet(name string) ([]kind, error) {
@@ -166,7 +166,7 @@ func (o object) unstructured() *unstructured.Unstructured {
 			spec["deletionPolicy"] = "Delete"
 		}
 		// The harness deletes everything it creates, including kinds whose delete destroys data.
-		meta["annotations"] = map[string]any{"openbaoconfig.io/allow-destructive-delete": "true"}
+		meta["annotations"] = map[string]any{"obco.dev/allow-destructive-delete": "true"}
 	}
 	u := &unstructured.Unstructured{Object: map[string]any{litMetadata: meta, "spec": spec}}
 	u.SetGroupVersionKind(o.kind.gvk)
@@ -251,7 +251,7 @@ func deleteObjects(ctx context.Context, k8s client.Client, tr *tracker, objects 
 	})
 }
 
-// tamper changes the OpenBao object behind o out of band. Only Policy and KVSecret are tampered.
+// tamper changes the OpenBao object behind o out of band. Only ACLPolicy and KVSecret are tampered.
 func tamper(bao *baoServer, o object) error {
 	switch o.kind.gvk.Kind {
 	case kindPolicy:

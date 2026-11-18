@@ -34,14 +34,14 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/test/testenv"
 )
 
-// TestIntegrationSysCore runs OpenBaoNamespace, AuthMount, SecretsMount, PasswordPolicy, RateLimitQuota and the
-// Policy flags against envtest and bao server -dev.
+// TestIntegrationSysCore runs BaoNamespace, AuthMount, SecretsMount, PasswordPolicy, RateLimitQuota and the
+// ACLPolicy flags against envtest and bao server -dev.
 func TestIntegrationSysCore(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	e := sysCoreSetup(ctx, t)
 
-	t.Run("openbaonamespace", func(t *testing.T) { testOpenBaoNamespace(ctx, t, e) })
+	t.Run("baonamespace", func(t *testing.T) { testBaoNamespace(ctx, t, e) })
 	t.Run("authmount", func(t *testing.T) { testAuthMount(ctx, t, e) })
 	t.Run("secretsmount", func(t *testing.T) { testSecretsMount(ctx, t, e) })
 	t.Run("passwordpolicy", func(t *testing.T) { testPasswordPolicy(ctx, t, e) })
@@ -51,7 +51,7 @@ func TestIntegrationSysCore(t *testing.T) {
 	t.Run("policy accessor refs", func(t *testing.T) { testSysRevPolicyAccessor(ctx, t, e) })
 }
 
-// testSysRevPolicyAccessor checks ${accessor:<name>} in a Policy: the accessor of the referenced AuthMount is
+// testSysRevPolicyAccessor checks ${accessor:<name>} in an ACLPolicy: the accessor of the referenced AuthMount is
 // written, and a recreated mount with a new accessor rewrites the policy.
 func testSysRevPolicyAccessor(ctx context.Context, t *testing.T, e env) {
 	const policyPath = "sys/policies/acl/itest-accessor"
@@ -63,12 +63,12 @@ func testSysRevPolicyAccessor(ctx context.Context, t *testing.T, e env) {
 	waitFor(t, "auth mount ready", func() error { return expectReady(ctx, e.k8s, m) })
 	first := m.Status.ID
 
-	p := &sysv1alpha1.Policy{
+	p := &sysv1alpha1.ACLPolicy{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-accessor", Namespace: namespace},
-		Spec: sysv1alpha1.PolicySpec{
+		Spec: sysv1alpha1.ACLPolicySpec{
 			ResourceSpec: sysRevDeleteSpec(),
 			Policy:       "path \"kv/{{identity.entity.aliases.${accessor:up}.name}}/*\" {\n  capabilities = [\"read\"]\n}\n",
-			AccessorRefs: map[string]sysv1alpha1.PolicyAccessorRef{
+			AccessorRefs: map[string]sysv1alpha1.ACLPolicyAccessorRef{
 				"up": {AuthMountRef: &commonv1alpha1.LocalObjectReference{Name: m.Name}},
 			},
 		},
@@ -99,7 +99,7 @@ func testSysRevPolicyAccessor(ctx context.Context, t *testing.T, e env) {
 		return nil
 	})
 	waitFor(t, "policy rewritten with the new accessor", sysRevPolicyText(m.Status.ID))
-	expectNoWrites(t, "Policy")
+	expectNoWrites(t, "ACLPolicy")
 
 	if err := e.k8s.Delete(ctx, p); err != nil {
 		t.Fatal(err)
@@ -135,9 +135,9 @@ func testSysRevQuotaDefaults(ctx context.Context, t *testing.T, e env) {
 func testSysRevPolicyFlags(ctx context.Context, t *testing.T, e env) {
 	const path = "sys/policies/acl/itest-flags"
 	text := "path \"kv/{{identity.entity.name}}/*\" {\n  capabilities = [\"read\"]\n}\n"
-	p := &sysv1alpha1.Policy{
+	p := &sysv1alpha1.ACLPolicy{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-flags", Namespace: namespace},
-		Spec: sysv1alpha1.PolicySpec{
+		Spec: sysv1alpha1.ACLPolicySpec{
 			ResourceSpec:                    sysRevDeleteSpec(),
 			Policy:                          text,
 			CASRequired:                     true,
@@ -158,7 +158,7 @@ func testSysRevPolicyFlags(ctx context.Context, t *testing.T, e env) {
 	}
 	mustWrite(ctx, t, e.bao, path, map[string]any{"policy": text, "cas_required": true, "cas": current["version"]})
 	waitFor(t, "policy flags repaired", func() error { return expectFields(ctx, e.bao, path, want) })
-	expectNoWrites(t, "Policy")
+	expectNoWrites(t, "ACLPolicy")
 
 	if err := e.k8s.Delete(ctx, p); err != nil {
 		t.Fatal(err)
@@ -192,18 +192,18 @@ func sysCoreSpec() commonv1alpha1.ResourceSpec {
 	return commonv1alpha1.ResourceSpec{ConnectionRef: commonv1alpha1.ConnectionReference{Name: "dev"}}
 }
 
-func testOpenBaoNamespace(ctx context.Context, t *testing.T, e env) {
-	parent := &sysv1alpha1.OpenBaoNamespace{
+func testBaoNamespace(ctx context.Context, t *testing.T, e env) {
+	parent := &sysv1alpha1.BaoNamespace{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-parent", Namespace: namespace},
-		Spec: sysv1alpha1.OpenBaoNamespaceSpec{
+		Spec: sysv1alpha1.BaoNamespaceSpec{
 			ResourceSpec:   sysCoreSpec(),
 			CustomMetadata: map[string]string{"team": "a"},
 		},
 	}
 	parent.Spec.DeletionPolicy = commonv1alpha1.DeletionPolicyDelete
-	child := &sysv1alpha1.OpenBaoNamespace{
+	child := &sysv1alpha1.BaoNamespace{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-child", Namespace: namespace},
-		Spec:       sysv1alpha1.OpenBaoNamespaceSpec{ResourceSpec: sysCoreSpec()},
+		Spec:       sysv1alpha1.BaoNamespaceSpec{ResourceSpec: sysCoreSpec()},
 	}
 	child.Spec.Namespace = "itest-parent"
 	child.Spec.DeletionPolicy = commonv1alpha1.DeletionPolicyDelete
@@ -234,7 +234,7 @@ func testOpenBaoNamespace(ctx context.Context, t *testing.T, e env) {
 	waitFor(t, "custom metadata repaired", func() error {
 		return expectMetadata(ctx, e.bao, parentPath, map[string]any{"team": "a"})
 	})
-	expectNoWrites(t, "OpenBaoNamespace")
+	expectNoWrites(t, "BaoNamespace")
 
 	if err := e.k8s.Delete(ctx, parent); err != nil {
 		t.Fatal(err)
@@ -252,9 +252,9 @@ func testOpenBaoNamespace(ctx context.Context, t *testing.T, e env) {
 	waitFor(t, "parent deleted", func() error { return expectAbsent(ctx, e.bao, parentPath) })
 	waitFor(t, "parent resource gone", func() error { return expectGone(ctx, e.k8s, parent) })
 
-	orphan := &sysv1alpha1.OpenBaoNamespace{
+	orphan := &sysv1alpha1.BaoNamespace{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-orphan", Namespace: namespace},
-		Spec:       sysv1alpha1.OpenBaoNamespaceSpec{ResourceSpec: sysCoreSpec()},
+		Spec:       sysv1alpha1.BaoNamespaceSpec{ResourceSpec: sysCoreSpec()},
 	}
 	mustCreate(ctx, t, e.k8s, orphan)
 	waitFor(t, "orphan ready", func() error { return expectReady(ctx, e.k8s, orphan) })
@@ -446,7 +446,7 @@ func sysCoreWrites(t *testing.T, kind string) float64 {
 		t.Fatal(err)
 	}
 	for _, family := range families {
-		if family.GetName() != "openbao_writes_total" {
+		if family.GetName() != "obco_writes_total" {
 			continue
 		}
 		for _, m := range family.GetMetric() {
@@ -565,11 +565,11 @@ func sysCoreSetup(ctx context.Context, t *testing.T) env {
 	}
 
 	names := []string{
-		"openbaonamespaces", "authmounts", "secretsmounts", "passwordpolicies", "ratelimitquotas", "policies", "plugins",
+		"baonamespaces", "authmounts", "secretsmounts", "passwordpolicies", "ratelimitquotas", "aclpolicies", "plugins",
 	}
 	crds := make([]string, 0, len(names))
 	for _, name := range names {
-		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_"+name+".yaml"))
+		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_"+name+".yaml"))
 	}
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,
@@ -604,8 +604,8 @@ func sysCoreSetup(ctx context.Context, t *testing.T) env {
 	conns := staticConnections{client: bao}
 	opts := itestEngineOptions()
 	for _, setupKind := range []func(ctrl.Manager, engine.Connections, engine.Options) error{
-		sys.SetupOpenBaoNamespace, sys.SetupAuthMount, sys.SetupSecretsMount, sys.SetupPasswordPolicy, sys.SetupRateLimitQuota,
-		sys.SetupPolicy,
+		sys.SetupBaoNamespace, sys.SetupAuthMount, sys.SetupSecretsMount, sys.SetupPasswordPolicy, sys.SetupRateLimitQuota,
+		sys.SetupACLPolicy,
 	} {
 		if err := setupKind(mgr, conns, opts); err != nil {
 			t.Fatal(err)

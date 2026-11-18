@@ -1,4 +1,4 @@
-# OIDCAssignment (identity.openbaoconfig.io/v1alpha1)
+# OIDCAssignment (identity.obco.dev/v1alpha1)
 # OIDCAssignment manages an assignment of the OpenBao OIDC provider at `identity/oidc/assignment/<name>`: the entities
 # and groups allowed to log in to the OIDCClient objects that list it in assignments.
 #
@@ -6,16 +6,16 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/identity/#oidcassignment
+# Reference: https://docs.obco.dev/reference/api/identity/#oidcassignment
 # Curated example: examples/identity/oidcassignment.yaml
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCAssignment
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -27,4 +27,4 @@ spec:
   - groupID: example
   managementPolicy: Manage
   name: example
-  namespace: example
+  openbaoNamespace: example

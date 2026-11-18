@@ -1,84 +1,60 @@
 ---
-title: Test OpenBao OIDC and JWT with Authentik
-description: Run an isolated Authentik lab to verify operator-managed OpenBao login, group policies and tenant isolation with browser and service identities.
+title: Run the Authentik OpenBao lab
+description: "Run the kind Authentik profile that exercises operator-managed OpenBao OIDC, JWT and tenant isolation from a clone."
 ---
 
-# Test OpenBao OIDC and JWT with Authentik
+# Run the Authentik lab
 
-Use this disposable kind lab to test Authentik identities against OpenBao configuration managed by
-this operator. It creates its own Authentik instance; no hosted account or credentials are required.
+For contributors working in a clone, this page runs the in-cluster Authentik profile (`make lab-authentik` / `hack/lab/provider-test.sh authentik`) against a disposable kind OpenBao lab.
 
-The lab installs the official Authentik Helm chart with a pinned server image and a separate
-PostgreSQL instance. Review or adapt the non-secret chart settings in
-[`hack/lab/authentik/values.yaml`](https://github.com/alexandrust88/openbao-config-operator/blob/main/hack/lab/authentik/values.yaml).
-The runner passes that file to Helm; passwords and bootstrap credentials remain runtime-generated
-Kubernetes Secrets, referenced by the values file. Both the database and identities are disposable. This is a test deployment,
-not a production Authentik installation.
+## What it covers
 
-## Before you start
+- Official Authentik Helm chart plus PostgreSQL in Kubernetes namespace `obco-lab-authentik`
+- Nine identities (`admin`, `read`, `ops` × root/alpha/beta); tenants `saas-authentik-alpha` and `saas-authentik-beta`
+- Browser OIDC plus JWT discovery and JWKS mounts configured through the operator
+- Group-derived policies, allowed/denied KV and transit operations, tenant isolation and revocation
 
-Install the [local lab prerequisites](../tutorials/local-lab.md), including Docker, kind, Helm,
-kubectl and the browser runner dependencies. Run the commands from the repository root. Allow
-additional memory for Authentik's server, worker and PostgreSQL alongside OpenBao and the operator.
+## Prerequisites
 
-The identity provider uses HTTP only inside this disposable kind network. OpenBao connections
-continue to use the lab's TLS certificate and CA verification. The browser reaches Authentik through
-a loopback port-forward while preserving its cluster issuer URL.
+- A clone of this repository; run commands from the repository root
+- The [local lab](../tutorials/local-lab.md#prerequisites) prerequisites
+- Extra memory for Authentik server, worker and PostgreSQL beside OpenBao and the operator
 
-## Run the regression
+Authentik uses HTTP inside kind; OpenBao keeps HTTPS with the lab CA. The browser reaches Authentik through a loopback port-forward while preserving the cluster issuer URL.
 
-Create a dedicated cluster and bootstrap the operator's OpenBao connection:
+## Run
 
 ```bash
-export KIND_CLUSTER=obco-authentik
-export LAB_CONTEXT=kind-obco-authentik
+export KIND_CLUSTER=obco-authentik-lab
+export LAB_CONTEXT="kind-${KIND_CLUSTER}"
 hack/lab/up.sh raft
 make lab-authentik
 ```
 
-Provisioning generates independent passwords, a bootstrap token, an OIDC client secret and service
-account credentials. It stores them in Kubernetes Secrets in `obco-lab-authentik`; they are never
-printed or committed. The provisioning command refuses an existing Authentik namespace instead of
-silently replacing identities. To repeat the regression on an existing lab:
+`make lab-authentik` runs `npm ci --ignore-scripts --prefix hack/lab/browser` then `hack/lab/provider-test.sh authentik` (`up`, `apply`, `test`). Credentials stay in Kubernetes Secrets in `obco-lab-authentik` and are never printed.
+
+Repeat tests on an existing lab:
 
 ```bash
 source hack/lab/common.sh
 python3 hack/lab/authentik.py test
 ```
 
-The run covers nine identities, `admin`, `read` and `ops` in `root`, `alpha` and `beta`. The
-tenant namespaces are `saas-authentik-alpha` and `saas-authentik-beta`. What those identities are
-allowed to do is in the [OIDC permissions showcase](../tutorials/oidc-showcase.md).
+Provisioning refuses an existing Authentik namespace instead of replacing identities silently.
 
-## Troubleshoot a failure
-
-Inspect readiness without exposing Secret contents:
+## Inspect
 
 ```bash
 kubectl --context "$LAB_CONTEXT" -n obco-lab-authentik get pods
 kubectl --context "$LAB_CONTEXT" -n obco-lab get jwtauthroles,jwtauthconfigs
 ```
 
-If installation fails, check image pulls and available memory. If a CRD is not Ready, inspect its
-conditions and references. For login failures, use the test's safe phase/category diagnostics;
-do not publish raw provider logs, callback URLs, tokens or Kubernetes Secrets.
-
-An interrupted provisioning run may leave a partial disposable instance. Delete the dedicated
-cluster and start again rather than adopting or overwriting those resources.
+Permission journeys match [Run the OIDC permissions showcase lab](../tutorials/oidc-showcase.md). On failure use the test's phase/category diagnostics; do not publish Secrets, tokens or raw provider logs. Non-secret chart settings: `hack/lab/authentik/values.yaml`.
 
 ## Clean up
 
 ```bash
-kind delete cluster --name "$KIND_CLUSTER"
+bin/kind delete cluster --name "$KIND_CLUSTER"
 ```
 
-Deleting the lab removes the generated credentials and ephemeral PostgreSQL data. No external
-Authentik tenant is modified.
-
-## Next steps
-
-- [OIDC permissions showcase](../tutorials/oidc-showcase.md) explains the access journeys.
-- [JWT and OIDC authentication](../guides/jwt-oidc-auth.md) covers operator configuration.
-- Authentik documents [automated bootstrap](https://docs.goauthentik.io/install-config/automated-install/),
-  [OAuth2/OIDC providers](https://docs.goauthentik.io/add-secure-apps/providers/oauth2/), and
-  [native machine authentication](https://docs.goauthentik.io/add-secure-apps/providers/oauth2/machine_to_machine).
+Deleting the cluster removes generated credentials and ephemeral PostgreSQL data. No external Authentik tenant is modified.

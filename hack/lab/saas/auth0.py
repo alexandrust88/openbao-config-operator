@@ -21,7 +21,7 @@ import urllib.request
 NAMESPACES = ("root", "alpha", "beta")
 ROLES = ("admin", "read", "ops")
 CALLBACK = "http://127.0.0.1:8250/oidc/callback"
-GROUPS_CLAIM = "https://openbaoconfig.io/groups"
+GROUPS_CLAIM = "https://obco.dev/groups"
 SCOPES = (
     "read:clients", "create:clients", "read:client_keys",
     "read:connections", "create:connections", "read:users", "create:users",

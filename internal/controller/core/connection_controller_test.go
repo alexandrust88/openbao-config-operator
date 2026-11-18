@@ -40,7 +40,7 @@ const (
 	litRoot           = "root"
 	litFilesystem     = "filesystem"
 	litAuth           = "auth"
-	kindConnection    = "OpenBaoConnection"
+	kindConnection    = "BaoConnection"
 )
 
 type lookupSelfClient struct {
@@ -66,16 +66,16 @@ func (p *recordingPool) Client(context.Context, string, openbao.Config) (openbao
 
 func (p *recordingPool) Invalidate(key string) { p.invalidated = append(p.invalidated, key) }
 
-// testServer is a Ready OpenBaoServer that admits namespaces labelled as tenants and the openbao audience.
-func testServer() *corev1alpha1.OpenBaoServer {
-	return &corev1alpha1.OpenBaoServer{
+// testServer is a Ready BaoServer that admits namespaces labelled as tenants and the openbao audience.
+func testServer() *corev1alpha1.BaoServer {
+	return &corev1alpha1.BaoServer{
 		ObjectMeta: metav1.ObjectMeta{Name: openbaoName, Generation: 1},
-		Spec: corev1alpha1.OpenBaoServerSpec{
+		Spec: corev1alpha1.BaoServerSpec{
 			Address:           testAddress,
 			AllowedNamespaces: &metav1.LabelSelector{MatchLabels: map[string]string{tenantLabel: "true"}},
 			AllowedAudiences:  []string{openbaoName},
 		},
-		Status: corev1alpha1.OpenBaoServerStatus{
+		Status: corev1alpha1.BaoServerStatus{
 			Version: testVersion,
 			Conditions: []metav1.Condition{{
 				Type: commonv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: commonv1alpha1.ReasonAvailable,
@@ -93,13 +93,13 @@ func connectionFakeClient(objs ...client.Object) client.WithWatch {
 	return fake.NewClientBuilder().
 		WithScheme(connectionTestScheme).
 		WithObjects(objs...).
-		WithStatusSubresource(&corev1alpha1.OpenBaoConnection{}, &corev1alpha1.ClusterOpenBaoConnection{},
-			&corev1alpha1.OpenBaoServer{}).
-		WithIndex(&corev1alpha1.OpenBaoConnection{}, referenceIndex, connection.References).
-		WithIndex(&corev1alpha1.OpenBaoConnection{}, serverIndex, serverName).
-		WithIndex(&corev1alpha1.ClusterOpenBaoConnection{}, serverIndex, serverName).
-		WithIndex(&corev1alpha1.OpenBaoServer{}, referenceIndex, connection.References).
-		WithIndex(&corev1alpha1.OpenBaoEndpoint{}, connectionUseIndex, connectionInUse).
+		WithStatusSubresource(&corev1alpha1.BaoConnection{}, &corev1alpha1.ClusterBaoConnection{},
+			&corev1alpha1.BaoServer{}).
+		WithIndex(&corev1alpha1.BaoConnection{}, referenceIndex, connection.References).
+		WithIndex(&corev1alpha1.BaoConnection{}, serverIndex, serverName).
+		WithIndex(&corev1alpha1.ClusterBaoConnection{}, serverIndex, serverName).
+		WithIndex(&corev1alpha1.BaoServer{}, referenceIndex, connection.References).
+		WithIndex(&corev1alpha1.BaoEndpoint{}, connectionUseIndex, connectionInUse).
 		Build()
 }
 
@@ -111,16 +111,16 @@ func newConnectionReconciler(t *testing.T, pool connection.Pool, objs ...client.
 		resolver:  &connection.Resolver{Client: c, Pool: pool},
 		pool:      pool,
 		kind:      commonv1alpha1.ConnectionKindNamespaced,
-		newObject: func() connectionObject { return &corev1alpha1.OpenBaoConnection{} },
-		newList:   func() client.ObjectList { return &corev1alpha1.OpenBaoConnectionList{} },
-		managed:   []func() client.ObjectList{func() client.ObjectList { return &corev1alpha1.OpenBaoEndpointList{} }},
+		newObject: func() connectionObject { return &corev1alpha1.BaoConnection{} },
+		newList:   func() client.ObjectList { return &corev1alpha1.BaoConnectionList{} },
+		managed:   []func() client.ObjectList{func() client.ObjectList { return &corev1alpha1.BaoEndpointList{} }},
 	}
 }
 
-func tokenConnection() (*corev1alpha1.OpenBaoConnection, *corev1.Secret) {
-	conn := &corev1alpha1.OpenBaoConnection{
+func tokenConnection() (*corev1alpha1.BaoConnection, *corev1.Secret) {
+	conn := &corev1alpha1.BaoConnection{
 		ObjectMeta: metav1.ObjectMeta{Name: connName, Namespace: teamA, UID: "uid-1", Generation: 1},
-		Spec: corev1alpha1.OpenBaoConnectionSpec{
+		Spec: corev1alpha1.BaoConnectionSpec{
 			ConnectionSpec: corev1alpha1.ConnectionSpec{ServerRef: corev1alpha1.ServerReference{Name: openbaoName}},
 			Auth: corev1alpha1.ConnectionAuth{Token: &corev1alpha1.TokenAuth{
 				SecretRef: commonv1alpha1.SecretKeySelector{Name: "bao-token", Key: tokenKey},
@@ -138,14 +138,14 @@ func healthyProbe(context.Context, openbao.Config) (openbao.ServerInfo, error) {
 	return openbao.ServerInfo{Version: testVersion, Flavor: "OpenBao", Initialized: true}, nil
 }
 
-func reconcileAndGet(t *testing.T, r *connectionReconciler) (ctrl.Result, *corev1alpha1.OpenBaoConnection) {
+func reconcileAndGet(t *testing.T, r *connectionReconciler) (ctrl.Result, *corev1alpha1.BaoConnection) {
 	t.Helper()
 	key := types.NamespacedName{Namespace: teamA, Name: connName}
 	res, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: key})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	got := &corev1alpha1.OpenBaoConnection{}
+	got := &corev1alpha1.BaoConnection{}
 	if err := r.Get(context.Background(), key, got); err != nil {
 		t.Fatal(err)
 	}
@@ -184,17 +184,17 @@ func TestReconcileNotReady(t *testing.T) {
 	stale.Generation = 2
 	cases := []struct {
 		name        string
-		server      *corev1alpha1.OpenBaoServer
+		server      *corev1alpha1.BaoServer
 		namespace   *corev1.Namespace
 		client      openbao.Client
 		noSecret    bool
 		wantReason  string
 		wantMessage string
 	}{
-		{name: "server missing", wantReason: corev1alpha1.ReasonServerNotReady, wantMessage: "openbaoserver not found"},
+		{name: "server missing", wantReason: corev1alpha1.ReasonServerNotReady, wantMessage: "baoserver not found"},
 		{
 			name: "server sealed", server: sealed,
-			wantReason: corev1alpha1.ReasonServerNotReady, wantMessage: "OpenBaoServer openbao is not ready: Sealed",
+			wantReason: corev1alpha1.ReasonServerNotReady, wantMessage: "BaoServer openbao is not ready: Sealed",
 		},
 		{
 			name: "server not probed for its generation", server: stale,
@@ -273,7 +273,7 @@ func TestReconcileInvalidatesOnDelete(t *testing.T) {
 	r := newConnectionReconciler(t, pool, testServer(), tenantNamespace(teamA), conn, secret)
 	reconcileAndGet(t, r)
 
-	current := &corev1alpha1.OpenBaoConnection{}
+	current := &corev1alpha1.BaoConnection{}
 	if err := r.Get(context.Background(), client.ObjectKeyFromObject(conn), current); err != nil {
 		t.Fatal(err)
 	}

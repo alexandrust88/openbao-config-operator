@@ -1,0 +1,37 @@
+# ACLPolicy (sys.obco.dev/v1alpha1)
+# ACLPolicy manages an OpenBao ACL policy at sys/policies/acl/<name>, which grants capabilities on paths to the tokens
+# it is attached to.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: connectionRef, policy.
+#
+# Reference: https://docs.obco.dev/reference/api/sys/#aclpolicy
+# Curated example: examples/sys/aclpolicy.yaml
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  accessorRefs:
+    example:
+      authMountRef:
+        name: example
+  allowSlashesInIdentityTemplates: true
+  allowWildcardsInIdentityTemplates: true
+  casRequired: true
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  name: example
+  openbaoNamespace: example
+  policy: |
+    path "secret/data/example/*" {
+      capabilities = ["read"]
+    }

@@ -1,87 +1,87 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: oidc-ns
 spec:
   connectionRef:
     name: openbao
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCConfig
 metadata:
   name: oidc-config
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
     name: openbao
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   creationPolicy: CreateOrAdopt
   issuer: https://openbao.example.com:8200
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: oidc-key
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
     name: openbao
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCRole
 metadata:
   name: oidc-workload
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
     name: openbao
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   key: oidc-key
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCScope
 metadata:
   name: oidc-groups
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
     name: openbao
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCAssignment
 metadata:
   name: oidc-users
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
     name: openbao
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCClient
 metadata:
   name: oidc-portal
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
     name: openbao
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCProvider
 metadata:
   name: oidc-provider
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
     name: openbao
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns

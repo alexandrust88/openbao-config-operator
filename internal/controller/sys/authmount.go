@@ -11,10 +11,10 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=authmounts,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=authmounts/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=authmounts/finalizers,verbs=update
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=plugins,verbs=get;list;watch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=authmounts,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=authmounts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=authmounts/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=plugins,verbs=get;list;watch
 
 // SetupAuthMount registers the AuthMount controller with the manager.
 func SetupAuthMount(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

@@ -54,10 +54,10 @@ const fixtureCRD = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 spec:
   names:
-    kind: Policy
+    kind: ACLPolicy
 `
 
-const validClassification = `"/sys/policies/acl/{name}": {typed: Policy}
+const validClassification = `"/sys/policies/acl/{name}": {typed: ACLPolicy}
 "/sys/raw/{path}": {endpoint-only: break-glass only}
 "/sys/tools/random": {action: random bytes}
 "/sys/external-keys/configs/{config}": {endpoint-only: unreviewed}
@@ -67,9 +67,9 @@ func writeFixture(t *testing.T, classification string) (string, string) {
 	t.Helper()
 	data, crds := t.TempDir(), t.TempDir()
 	files := map[string]string{
-		filepath.Join(data, "openapi-2.7.json"):                   fixtureSnapshot,
-		filepath.Join(data, coverage.ClassificationFile):          classification,
-		filepath.Join(crds, "sys.openbaoconfig.io_policies.yaml"): fixtureCRD,
+		filepath.Join(data, "openapi-2.7.json"):              fixtureSnapshot,
+		filepath.Join(data, coverage.ClassificationFile):     classification,
+		filepath.Join(crds, "sys.obco.dev_aclpolicies.yaml"): fixtureCRD,
 	}
 	for name, content := range files {
 		if err := os.WriteFile(name, []byte(content), 0o600); err != nil {
@@ -117,7 +117,7 @@ func TestProblems(t *testing.T) {
 		},
 		{
 			name:           "unknown kind",
-			classification: strings.Replace(validClassification, "{typed: Policy}", "{typed: AclPolicy}", 1),
+			classification: strings.Replace(validClassification, "{typed: ACLPolicy}", "{typed: AclPolicy}", 1),
 			want:           "/sys/policies/acl/{name}: typed kind AclPolicy has no CRD",
 		},
 		{

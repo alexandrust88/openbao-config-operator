@@ -38,6 +38,12 @@ LABEL = {"app.kubernetes.io/part-of": "obco-lab-identity"}
 PLAYWRIGHT_IMAGE = "mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579"
 
 
+class KubectlError(RuntimeError):
+    def __init__(self, args, stderr):
+        super().__init__("kubectl failed: " + " ".join(args[:3]))
+        self.stderr = stderr
+
+
 def kube(*args, data=None):
     if not CONTEXT.startswith("kind-"):
         raise RuntimeError("identity lab requires an explicitly named kind context")
@@ -45,12 +51,17 @@ def kube(*args, data=None):
                             text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=360)
     if result.returncode:
         # kubectl errors can echo Secret patches; do not include its output here.
-        raise RuntimeError("kubectl failed: " + " ".join(args[:3]))
+        raise KubectlError(args, result.stderr)
     return result.stdout
 
 
 def apply(objects):
-    kube("apply", "-f", "-", data=json.dumps({"apiVersion": "v1", "kind": "List", "items": objects}))
+    try:
+        kube("apply", "-f", "-", data=json.dumps({"apiVersion": "v1", "kind": "List", "items": objects}))
+    except KubectlError as error:
+        if any(item.get("kind") == "Secret" for item in objects):
+            raise
+        raise RuntimeError(str(error) + ": " + error.stderr.strip()) from None
 
 
 def obj(kind, name, namespace=NAMESPACE, api="v1", **fields):
@@ -70,14 +81,14 @@ def read_secret(name, namespace):
 
 
 def cr(kind, name, spec, tenant="root"):
-    groups = {"OpenBaoNamespace": "sys", "Policy": "sys", "SecretsMount": "sys", "AuthMount": "sys",
+    groups = {"BaoNamespace": "sys", "ACLPolicy": "sys", "SecretsMount": "sys", "AuthMount": "sys",
               "JWTAuthConfig": "auth", "JWTAuthRole": "auth", "KubernetesAuthConfig": "auth",
-              "KubernetesAuthRole": "auth", "Group": "identity", "GroupAlias": "identity",
-              "GroupMembership": "identity", "KVSecret": "secrets"}
+              "KubernetesAuthRole": "auth", "IdentityGroup": "identity", "IdentityGroupAlias": "identity",
+              "IdentityGroupMembership": "identity", "KVSecret": "secrets"}
     common = {"connectionRef": {"name": CONNECTION}, "deletionPolicy": "Orphan"}
     if tenant != "root":
-        common["namespace"] = "lab-" + tenant
-    return obj(kind, name, api=groups[kind] + ".openbaoconfig.io/v1alpha1", spec={**common, **spec})
+        common["openbaoNamespace"] = "lab-" + tenant
+    return obj(kind, name, api=groups[kind] + ".obco.dev/v1alpha1", spec={**common, **spec})
 
 
 def wait_ready(objects, timeout=300):
@@ -145,12 +156,12 @@ def tenant_objects(tenant):
     for role in ROLES:
         caps = '["create", "read", "update"]' if role == "editor" else '["read"]'
         policy = f'path "{kv}/data/app/*" {{ capabilities = {caps} }}\n'
-        objects += [cr("Policy", tenant + "-" + role, {"name": "lab-" + role, "policy": policy}, tenant),
-                    cr("Group", tenant + "-" + role, {"name": "lab-" + role, "type": "external",
+        objects += [cr("ACLPolicy", tenant + "-" + role, {"name": "lab-" + role, "policy": policy}, tenant),
+                    cr("IdentityGroup", tenant + "-" + role, {"name": "lab-" + role, "type": "external",
                        "policies": ["lab-" + role]}, tenant),
-                    cr("GroupAlias", tenant + "-" + role, {"aliasName": f"{tenant}-{role}s", "mountPath": mount,
+                    cr("IdentityGroupAlias", tenant + "-" + role, {"aliasName": f"{tenant}-{role}s", "mountPath": mount,
                        "groupRef": {"name": tenant + "-" + role}}, tenant),
-                    cr("GroupMembership", tenant + "-" + role + "-readers", {
+                    cr("IdentityGroupMembership", tenant + "-" + role + "-readers", {
                        "groupRef": {"name": tenant + "-readers"}, "memberGroupRef": {"name": tenant + "-" + role}}, tenant)]
         for flow in ("oidc", "jwt"):
             name = role if flow == "oidc" else "jwt-" + role
@@ -161,10 +172,10 @@ def tenant_objects(tenant):
             if flow == "oidc":
                 role_spec.update(allowedRedirectURIs=[CALLBACK], oidcScopes=["profile", "email"], oidcDisableConfirmation=True)
             objects.append(cr("JWTAuthRole", tenant + "-" + name, role_spec, tenant))
-    objects += [cr("Policy", tenant + "-shared", {"name": "lab-shared",
+    objects += [cr("ACLPolicy", tenant + "-shared", {"name": "lab-shared",
                 "policy": f'path "{kv}/data/shared/*" {{ capabilities = ["read"] }}\n'
                           'path "auth/token/revoke-self" { capabilities = ["update"] }'}, tenant),
-                cr("Group", tenant + "-readers", {"name": "lab-readers", "type": "internal", "policies": ["lab-shared"]}, tenant)]
+                cr("IdentityGroup", tenant + "-readers", {"name": "lab-readers", "type": "internal", "policies": ["lab-shared"]}, tenant)]
     for path in ("app/config", "shared/config"):
         objects.append(cr("KVSecret", tenant + "-" + path.replace("/", "-"), {"mountPath": kv, "path": path,
                           "dataFrom": [{"secretRef": {"name": tenant + "-seed"}}]}, tenant))
@@ -189,9 +200,9 @@ def up():
     # keeps the pod stable; new users or callbacks trigger a fresh realm import.
     digest = hashlib.sha256(realm_json.encode()).hexdigest()
     kube("-n", IDENTITY_NS, "patch", "deployment", "keycloak", "--type=merge", "-p",
-         json.dumps({"spec": {"template": {"metadata": {"annotations": {"openbaoconfig.io/realm-sha256": digest}}}}}))
+         json.dumps({"spec": {"template": {"metadata": {"annotations": {"obco.dev/realm-sha256": digest}}}}}))
     kube("-n", IDENTITY_NS, "rollout", "status", "deployment/keycloak", "--timeout=300s")
-    namespaces = [cr("OpenBaoNamespace", "lab-" + t, {"name": "lab-" + t}) for t in ("alpha", "beta")]
+    namespaces = [cr("BaoNamespace", "lab-" + t, {"name": "lab-" + t}) for t in ("alpha", "beta")]
     apply(namespaces)
     wait_ready(namespaces)
     objects = []

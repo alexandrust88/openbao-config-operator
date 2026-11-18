@@ -4,9 +4,9 @@ description: "Understand what unit, integration, live-kit, conformance and user-
 
 # Verification guide
 
-This page says what each check proves and what it does not. Run the narrowest check that proves
-a change first, then widen. Report the commands you ran and their results; a skipped test is not
-a pass.
+This page is for contributors working in a clone. It says what each check proves and what it does
+not. Run the narrowest check that proves a change first, then widen. Report the commands you ran
+and their results; a skipped test is not a pass.
 
 ## Canonical checks
 
@@ -29,7 +29,7 @@ a pass.
 | `make api-coverage` | Every writable path of each OpenAPI snapshot in `api-coverage/` (2.6 and 2.7) has exactly one class with a reason, every typed kind named there has a CRD, and `docs/api-coverage.md` is regenerated; CI fails when the report changes | Path level only: a new request field on a typed path is not detected ([BL-014](backlog.md#bl-014-detect-openbao-api-changes-automatically)) |
 | `make test-samples` | Every generated sample in `examples-generated/` passes server-side validation, CEL included, against envtest with the real CRDs | No OpenBao; not run by a CI workflow, but `make test-docs` (CI job `docs-examples`) dry-runs the same samples |
 | `bin/helm unittest charts/openbao-config-operator` | The chart's unit tests in `charts/openbao-config-operator/tests` pass: CRDs, deployment, RBAC, plugin kinds and resources render as asserted | Rendering only; no install. CI installs the helm-unittest plugin before this step; locally install it yourself |
-| `make test-namespaces` | Every built-in kind through each connection mode (root, child through `spec.namespace`, connection based in a child, AppRole login inside a child) against one `bao server -dev` per mode and the manager built from `./cmd`; logins pointed outside their namespace are refused without a write, and the audit log shows where each object was written | Dev mode only; skips locally without `bao` (fails in CI) |
+| `make test-namespaces` | Every built-in kind through each connection mode (root, child through `spec.openbaoNamespace`, connection based in a child, AppRole login inside a child) against one `bao server -dev` per mode and the manager built from `./cmd`; logins pointed outside their namespace are refused without a write, and the audit log shows where each object was written | Dev mode only; skips locally without `bao` (fails in CI) |
 | `make test-conformance` | Every built-in kind passes the no-write test (examples applied, a further drift pass writes nothing) and the default test (minimal spec, then each optional field set and removed) against `bao server -dev` and the manager built from `./cmd` | A pull request measures only the kinds it touches (`hack/ci/conformance-kinds.sh`); push to `main`, the weekly run and a manual run measure every kind. Kinds in `test/conformance/exceptions.yaml` are `n/a` for the named test |
 | `make test-livekit` | The live kit in `examples/live` renders with kustomize, every built-in kind has a minimal and a full example that sets every spec field, every rendered object passes server-side validation, and the root and child overlays reach `Ready` against `bao server -dev` | Logins are rewritten to AppRole; CRL URLs point at a controlled local HTTP fixture, and plugin checksums match locally built test binaries. Does not exercise Kubernetes auth; runs in pull request CI. Explicit prerequisite exceptions are not live passes |
 | `make test-e2e` | In a disposable kind cluster, installs the Helm chart and a three-node self-initialising OpenBao Raft cluster with TLS and PVCs; exercises Kubernetes authentication, configuration writes, drift repair, source Secret rotation, steady state and deletion; checks TLS rejection, active-Service routing, OpenBao pod replacement with retained PVC/data, and manager leader failover | Needs Docker, kubectl and Helm on the `PATH`; the Makefile downloads kind. This command runs the focused Go suite, including the two-tenant isolation test; the CI workflow also runs `test/livekit/kind.sh` across connection modes and the quickstart, tutorial and uninstall scripts (`hack/docs/`). A compiled suite is not evidence of a successful cluster run |
@@ -67,7 +67,7 @@ The live-kit CI job retains its runtime coverage in `e2e.md.coverage.json`, alon
 per-object summary and logs. Missing reports fail the job.
 
 The kind workflow exercises the full-field overlays through Kubernetes authentication against the
-TLS active-node Service. Its result artifacts retain test logs, JUnit results and live-kit reports.
+TLS active-node Service. Its result artefacts retain test logs, JUnit results and live-kit reports.
 CI rejects an empty or skipped focused e2e suite. The conformance workflow retains its matrix and
 logs and rejects a skipped matrix suite. Live evidence still requires the corresponding jobs to
 finish successfully; inventory, compilation and workflow linting cannot substitute for that run.
@@ -89,7 +89,7 @@ the time required to observe successive reconciles.
 
 ## User and workload integration lab
 
-The [local lab tutorial](../tutorials/local-lab.md) runs real user OIDC, user and machine JWT,
+[Run the local lab](../tutorials/local-lab.md) runs real user OIDC, user and machine JWT,
 internal/external group membership, tenant-scoped ESO delivery, cert-manager PKI and an external
 LDAP plugin. `make lab-identity`, `make lab-authentik`, `make lab-zitadel`, `make lab-eso` and
 `make lab-pki` exercise their respective profiles after `make lab-up`. The ESO profile also
@@ -98,15 +98,15 @@ checks generated-credential rotation, projection ownership/recovery and retained
 workload identities in root and a child namespace, plus all 15 software-backed key algorithms,
 version floors, denied access and destructive-delete guards. It does not cover external-key
 providers or wait for scheduled automatic rotation. LDAP has
-`hack/lab/plugins/up.sh` and `test.sh`.
+`hack/lab/plugins/up.sh` and `test.sh`. Details: [Run the application labs](labs/application-labs.md).
 
 The `integration lab` workflow runs Keycloak, Authentik, ZITADEL, transit, ESO and the database profiles below on relevant pull
 requests and weekly; manual dispatch also runs PKI and LDAP. Each profile has its own kind cluster.
 Browser tests use the official, digest-pinned Playwright container and a localhost OIDC callback.
-They verify the provider login and OpenBao authorization result; they do not exercise the entire
+They verify the provider login and OpenBao authorisation result; they do not exercise the entire
 OpenBao web UI.
 
-The [Auth0 and Okta lab](../guides/saas-identity-lab.md) needs provider credentials and removes the
+[Run the SaaS identity lab](../guides/saas-identity-lab.md) needs provider credentials and removes the
 resources it records. Self-hosted profiles need no external provider account.
 All identity matrices cover root and two child namespaces with role-specific access checks;
 provider guides distinguish human ID tokens from service-account access tokens. Unit fixtures
@@ -117,7 +117,7 @@ Cloud plugins requiring accounts or credentials remain outside this lab's live c
 
 `make lab-database DATABASE_PROFILE=<provider>` runs the shared lifecycle against PostgreSQL,
 MySQL, MariaDB, Cassandra, InfluxDB or Valkey.
-The [tutorial](../tutorials/dynamic-database-credentials.md) links each engine's setup and limits.
+[Run the database lab](labs/database-lab.md) covers the runner, each engine profile and its limits.
 Each `db-*` workflow job starts its own kind cluster. These jobs are added coverage, not a claim
 that all profiles have already passed on the current commit; inspect the individual job result.
 
@@ -156,14 +156,14 @@ cluster testing.
 
 TLS and initial credentials are generated outside Git. No test pushes commits to the public
 repository, so this suite does not claim Git-update, Git-prune or promotion coverage. It also does
-not test dashboard SSO. See the [Argo CD app-of-apps guide](../how-to/argocd-lab.md) and
-[Flux guide](../how-to/flux-lab.md) for values, manifests and deployment commands.
+not test dashboard SSO. Run them with [Run the Argo CD lab](../how-to/argocd-lab.md) and
+[Run the Flux lab](../how-to/flux-lab.md).
 
 ## Scoped checks
 
 When several changes are in progress in one tree, check only your packages:
 
-```sh
+```bash
 gofmt -l api/<group> internal/controller/<group>
 go vet ./api/<group>/... ./internal/controller/<group>/...
 go test ./internal/controller/<group>/... -count=1
@@ -184,7 +184,7 @@ Generate with controller-gen scoped to your group, as described in [AGENTS.md](.
 - Changing API markers or CEL: regenerate, inspect the CRD and RBAC diff, and add an envtest case
   that a valid object is accepted and an invalid one is rejected with the expected message.
 - Steady state: an integration scenario lets an unchanged object pass several drift intervals and
-  asserts that no write happened, for example through `openbao_writes_total{kind}` or a value a
+  asserts that no write happened, for example through `obco_writes_total{kind}` or a value a
   rewrite would reset.
 - Delete behaviour: assert that `Delete` removes the object and that `Orphan` leaves it in OpenBao
   after the custom resource is gone.
@@ -199,9 +199,9 @@ Generate with controller-gen scoped to your group, as described in [AGENTS.md](.
 ### Run one integration-lab profile
 
 The `integration lab` workflow accepts a `profile` for manual runs. Select `db-mysql`, for
-example, to diagnose that fixture without scheduling the whole matrix. Pull requests still
-run the complete regression matrix.
+example, to diagnose that fixture without scheduling the whole matrix. Pull requests that touch
+the lab paths still run the default matrix (every profile except PKI and LDAP).
 
-```sh
+```bash
 gh workflow run lab.yml --ref "$(git branch --show-current)" -f profile=db-mysql
 ```

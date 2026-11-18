@@ -1,16 +1,16 @@
 ---
-title: OpenBao operator security model
+title: OpenBao Config Operator security model
 description: Understand tenant identities, Kubernetes RBAC, OpenBao ACL boundaries, credential handling and release verification.
 ---
 
-# Security
+# Security model
 
-This page describes what the operator protects, from whom, and how. It also explains how to
-verify a release. To report a vulnerability, see [SECURITY.md](../SECURITY.md).
+The OpenBao Config Operator's security model: what it protects, from whom and how. It also covers
+how to verify a release and how to [report a vulnerability](#report-a-vulnerability).
 
 The full threat model, with data flows, trust boundaries, STRIDE threats per boundary and the
-open gaps, is [security/threat-model.md](security/threat-model.md). The deployment checklist that
-follows from it is [security/hardening.md](security/hardening.md).
+open gaps, is [threat model](security/threat-model.md). The deployment checklist that follows
+from it is [hardening](security/hardening.md).
 
 ## Threat model
 
@@ -22,14 +22,14 @@ follows from it is [security/hardening.md](security/hardening.md).
 | connection credentials: tokens, AppRole secret IDs, ServiceAccount tokens | Kubernetes Secrets, the TokenRequest API, files in the operator pod |
 | secret inputs: passwords, JWTs, client secrets | Kubernetes Secrets referenced by `<field>SecretRef` |
 | one-time outputs: secret IDs, OIDC client secrets, exported private keys | Kubernetes Secrets written through `writeSecretRef` |
-| the hash key of `status.writeOnlyHash` | the hash-key Secret in the operator namespace |
+| the hash key of `status.writeOnlyHash` | the hash-key Secret in the operator's Kubernetes namespace |
 
 ### Actors
 
 | actor | can | cannot |
 |-------|-----|--------|
 | platform admin | create connections of both kinds, install the operator, write OpenBao policies | - |
-| tenant (namespace admin or editor) | create and edit resources in its namespace through the `<release>-tenant-editor` role, aggregated into `admin` and `edit` | create or edit connections, write resource status, act with any OpenBao identity but the one of its namespace's connection |
+| tenant (Kubernetes namespace admin or editor) | create and edit resources in its Kubernetes namespace through the `<release>-tenant-editor` role, aggregated into `admin` and `edit` | create or edit connections, write resource status, act with any OpenBao identity but the one of the connection in its Kubernetes namespace |
 | compromised tenant | everything the tenant's OpenBao policy allows, inside the tenant's OpenBao namespace | reach the root or a sibling OpenBao namespace, borrow the operator's identity, read Secrets of other Kubernetes namespaces through the operator |
 | compromised operator pod | everything its Kubernetes RBAC and every connection's OpenBao policy allow | - |
 
@@ -38,24 +38,24 @@ authority of its own on top of it.
 
 ## The tenant boundary
 
-- A namespaced `OpenBaoConnection` serves only resources in its own namespace.
-- Its Kubernetes and JWT auth must name a `serviceAccountRef` in its own namespace. The CRD
-  rejects a connection without one, and the resolver refuses it again
-  (`serviceAccountRef is required for a namespaced connection`) if the CRD validation was
-  bypassed. The operator requests a 10-minute token for that ServiceAccount through the
+- A namespaced `BaoConnection` serves only resources in its own Kubernetes namespace.
+- Its Kubernetes and JWT auth must name a `serviceAccountRef` in its own Kubernetes namespace. The
+  CRD rejects a connection without one, and the manager repeats every admission check before it
+  reads a credential, so a connection that bypassed validation fails with
+  `serviceAccountRef is required for a namespaced connection`. The operator requests a 10-minute token for that ServiceAccount through the
   TokenRequest API and uses it for one login. A namespaced connection can never log in as the
   operator.
 - `audiences` is required on those connections, so the token sent to OpenBao is never valid
   against the Kubernetes API server. Connections have no address: only the platform's
-  `OpenBaoServer` sets where the token goes, and it must be https unless `allowInsecureHTTP` is set.
-- Injected identity and token files exist only on `ClusterOpenBaoConnection`, which only platform
-  admins create. `spec.allowedNamespaces` limits which namespaces may use it; without it, no
-  namespace can, and `{}` admits every namespace.
-- The `<release>-tenant-editor` role grants every namespaced kind except `OpenBaoConnection`, and
+  `BaoServer` sets where the token goes, and it must be https unless `allowInsecureHTTP` is set.
+- Injected identity and token files exist only on `ClusterBaoConnection`, which only platform
+  admins create. `spec.allowedNamespaces` limits which Kubernetes namespaces may use it; without
+  it, none can, and `{}` admits every Kubernetes namespace.
+- The `<release>-tenant-editor` role grants every namespaced kind except `BaoConnection`, and
   only `get` on status subresources. Tenants therefore cannot choose an identity, and cannot forge
   `status.path` to steer a deletion.
-- Secret references in a resource resolve in the resource's own namespace. A tenant cannot make
-  the operator read another namespace's Secret.
+- Secret references in a resource resolve in the resource's own Kubernetes namespace. A tenant
+  cannot make the operator read a Secret in another Kubernetes namespace.
 - `writeSecretRef` never takes over an existing Secret that the resource does not own: the
   operator fails with "the Secret exists and is not controlled by this resource".
 
@@ -67,7 +67,7 @@ For a namespaced connection using Kubernetes authentication, the path is:
 
 ```mermaid
 flowchart LR
-  resource["Tenant custom resource"] --> connection["OpenBaoConnection in the same Kubernetes namespace"]
+  resource["Tenant custom resource"] --> connection["BaoConnection in the same Kubernetes namespace"]
   connection --> request["TokenRequest for the tenant ServiceAccount"]
   request --> login["OpenBao Kubernetes auth role"]
   login --> policy["Scoped OpenBao ACL policy"]
@@ -86,22 +86,22 @@ before sharing a deployment between teams.
 
 ## OpenBao namespace escape
 
-A resource's `spec.namespace` is relative to its connection's `namespace`. Four checks keep it
+A resource's `spec.openbaoNamespace` is relative to its connection's `openbaoNamespace`. Four checks keep it
 inside:
 
 1. The CRD pattern allows only segments that start with a letter, digit, `_` or `-`, separated by
    single slashes. A leading slash, an empty segment, `.` and `..` are rejected at admission. The
-   connection's `namespace` and `authNamespace` have the same pattern.
-2. The engine rejects a namespace with an empty, `.` or `..` segment, or a first segment `root`,
+   connection's `openbaoNamespace` and `openbaoAuthNamespace` have the same pattern.
+2. The engine rejects an OpenBao namespace with an empty, `.` or `..` segment, or a first segment `root`,
    with the reason `InvalidSpec`.
-3. The client joins the relative namespace to the base without resolving `.` or `..`. A `..`
+3. The client joins the relative OpenBao namespace to the base without resolving `.` or `..`. A `..`
    segment that reached it anyway becomes an invalid segment, which OpenBao refuses, so the
-   request fails instead of climbing out of the base namespace.
-4. On deletion, the namespace recorded in `status.namespace` must lie inside the connection's
-   current namespace. Otherwise the operator refuses to delete and asks for
+   request fails instead of climbing out of the base OpenBao namespace.
+4. On deletion, the OpenBao namespace recorded in `status.openbaoNamespace` must lie inside the
+   connection's current OpenBao namespace. Otherwise the operator refuses to delete and asks for
    `deletionPolicy: Orphan`.
 
-`spec.namespace` and `connectionRef` are immutable. If the connection's own `namespace` changes
+`spec.openbaoNamespace` and `connectionRef` are immutable. If the connection's own `openbaoNamespace` changes
 after a resource acquired its object, the resource stops with `NamespaceChanged` instead of
 writing a second object elsewhere.
 
@@ -114,7 +114,7 @@ The hash is an HMAC-SHA256 of the canonical JSON of the write-only values, keyed
 32-byte key in the hash-key Secret (`openbao-config-operator-hash-key` by default, set with
 `--hash-key-secret`). Anyone who can read the status therefore cannot test guesses of a
 low-entropy password offline. The manager creates the key when the Secret is absent, as an
-immutable Secret. Protect it like any other Secret in the operator namespace.
+immutable Secret. Protect it like any other Secret in the operator's Kubernetes namespace.
 
 ## Logs, events and status
 
@@ -133,7 +133,7 @@ immutable Secret. Protect it like any other Secret in the operator namespace.
   belongs to. A development cluster must not hold a connection to production OpenBao.
 - Use a separate OpenBao identity, and policy, per connection. Do not share a token between
   connections or environments.
-- Select only platform namespaces in a `ClusterOpenBaoConnection`'s `allowedNamespaces`; never use `{}`.
+- Select only platform Kubernetes namespaces in a `ClusterBaoConnection`'s `allowedNamespaces`; never use `{}`.
 - Secret values stay in OpenBao. Workloads read them with External Secrets Operator or an OpenBao
   agent, with their own identity, not through this operator.
 
@@ -141,16 +141,16 @@ immutable Secret. Protect it like any other Secret in the operator namespace.
 
 | scope | grants | when |
 |-------|--------|------|
-| ClusterRole `<fullname>-manager` | `OpenBaoServer` and `ClusterOpenBaoConnection` with their status and finalizers; `get`, `list`, `watch` on Namespaces; `GET /.well-known/openid-configuration` | always |
-| same ClusterRole | the namespaced kinds with their status and finalizers; Secrets (`get`, `list`, `watch`, `create`, `update`, `patch`), ConfigMaps (read), `serviceaccounts/token` (`create`), Events | `watchNamespaces` empty |
-| Role `<fullname>-manager` per listed namespace | the namespaced rules of the previous row | `watchNamespaces` set |
-| Role `<fullname>-manager` in the release namespace | `get` on the hash-key Secret, `create` on Secrets | `watchNamespaces` set without the release namespace |
-| Role `<fullname>-leader-election` | Leases and Events in the release namespace | `leaderElection.enabled` |
+| ClusterRole `<fullname>-manager` | `BaoServer` and `ClusterBaoConnection` with their status and finalizers; `get`, `list`, `watch` on Namespaces; `GET /.well-known/openid-configuration` | always |
+| same ClusterRole | the namespaced kinds with their status and finalizers; Secrets (`get`, `list`, `watch`, `create`, `update`), ConfigMaps (read), `serviceaccounts/token` (`create`), Events | `watchNamespaces` empty |
+| Role `<fullname>-manager` per listed Kubernetes namespace | the namespaced rules of the previous row | `watchNamespaces` set |
+| Role `<fullname>-manager` in the release Kubernetes namespace | `get` on the hash-key Secret, `create` on Secrets | `watchNamespaces` set without the release Kubernetes namespace |
+| Role `<fullname>-leader-election` | Leases and Events in the release Kubernetes namespace | `leaderElection.enabled` |
 | ClusterRoles `<fullname>-metrics-auth`, `<fullname>-metrics-reader` | TokenReviews and SubjectAccessReviews for the metrics endpoint; `GET /metrics` for scrapers | `metrics.enabled` |
 
 `create` on `serviceaccounts/token` lets the manager mint a token for any ServiceAccount in the
-namespaces it covers. Set `watchNamespaces` to the namespaces that hold connections and their
-references, so a compromised manager cannot impersonate ServiceAccounts elsewhere. The default install is
+Kubernetes namespaces it covers. Set `watchNamespaces` to the Kubernetes namespaces that hold
+connections and their references, so a compromised manager cannot impersonate ServiceAccounts elsewhere. The default install is
 cluster-wide, which the threat model lists as residual risk
 [RR-01](security/threat-model.md#residual-risks-and-recommendations).
 
@@ -162,30 +162,40 @@ the metrics server (`--enable-http2`).
 ## Supply chain
 
 - Images are built for amd64 and arm64 from base images pinned by digest; the runtime image is
-  distroless and runs as 65532. Builds are reproducible: `SOURCE_DATE_EPOCH` from the commit,
-  `-trimpath`, no VCS stamping, rewritten layer timestamps, OCI labels from the build arguments.
-- The release workflow runs only on a `v*` tag, after the full CI suite, and refuses to overwrite an
-  existing release, image tag or chart version. It pushes the image by digest, gates on high and
-  critical vulnerabilities (`hack/release/scan.sh`, dated and justified exceptions only), then
-  signs and attests before it tags.
-- The image index, each platform image and the chart are signed with keyless cosign, using the
-  workflow's GitHub OIDC identity, so no cosign key exists to leak.
-- From v0.3.0 the chart also carries a Helm provenance file (`.tgz.prov`) signed with a GPG key
-  that is stored as a secret of the `release` environment. Artifact Hub shows the chart as signed
-  because of it. The GPG signature proves who packaged the chart; the cosign signature also proves
-  which workflow run built it.
-- SPDX and CycloneDX SBOMs and build provenance (its two forms and their SLSA levels are in
-  [verify the release](security/hardening.md#verify-the-release)) are attached as signed attestations; the chart carries a
-  CycloneDX SBOM of itself and the image it pins. Release assets are covered by a signed
-  `sha256sums.txt`.
+  distroless and runs as non-root user 65532.
+- Each release publishes an image index, platform images and a Helm chart by digest, fails on high
+  and critical image vulnerabilities, then signs and attests them before tagging. Releases refuse to overwrite an existing release, image tag or
+  chart version.
+- The image index, each platform image and the chart are signed with keyless cosign (GitHub OIDC
+  identity), so no long-lived cosign key exists to leak.
+- The chart also carries a Helm provenance file (`.tgz.prov`) signed with a GPG key.
+  Artifact Hub shows the chart as signed because of it. The GPG signature proves who packaged the
+  chart; the cosign signature also proves which workflow run built it.
+- SPDX and CycloneDX SBOMs and build provenance (forms and SLSA levels in
+  [verify the release](security/hardening.md#verify-the-release)) are attached as signed
+  attestations; the chart carries a CycloneDX SBOM of itself and the image it pins. Release
+  assets are covered by a signed `sha256sums.txt`.
 - The released chart pins the image index by digest.
-- Workflow actions are pinned by commit SHA, workflow and Makefile container images by digest,
-  downloaded tools by version and checksum. Renovate updates all of them after a minimum release
-  age of three days.
-- `make release-dry-run` (and a manual run of the release workflow) performs every step locally
-  with a throwaway key and verifies the result, without publishing.
 
 ### Verifying releases
 
-The commands, and a script that runs all of them, are in
-[hardening.md](security/hardening.md#verify-the-release).
+The verification commands are in
+[hardening](security/hardening.md#verify-the-release).
+
+## Report a vulnerability
+
+Do not open a public issue, pull request or discussion for a security problem. Report it privately
+through GitHub's private vulnerability reporting: open the repository's **Security** tab and select
+**Report a vulnerability**
+(<https://github.com/alexandrust88/openbao-config-operator/security/advisories/new>). Include the
+affected version or commit, the steps to reproduce and the impact you see.
+
+The maintainers aim to acknowledge a report within 5 working days and to confirm or reject it, with
+a CVSS severity, within 10 working days. Vulnerabilities in OpenBao itself go to the OpenBao
+security team.
+
+## Related
+
+- [Threat model](security/threat-model.md)
+- [Hardening](security/hardening.md)
+- [Transit key policy](security/transit-key-policy.md)

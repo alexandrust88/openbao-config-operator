@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs the four tutorials of docs/tutorials/ in order, on the cluster that hack/docs/quickstart.sh left (operator and
-# in-cluster OpenBao), then the uninstall procedure of docs/get-started/install.md, which removes the operator. Each
+# in-cluster OpenBao), then the uninstall procedure of docs/operate/uninstall.md, which removes the operator. Each
 # step builds on the one before it. CI runs this right after the quickstart.
 #
 # Environment:

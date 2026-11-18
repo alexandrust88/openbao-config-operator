@@ -11,9 +11,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=githubauthteams,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=githubauthteams/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=githubauthteams/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=githubauthteams,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=githubauthteams/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=githubauthteams/finalizers,verbs=update
 
 // SetupGitHubAuthTeam registers the GitHubAuthTeam controller with the manager.
 func SetupGitHubAuthTeam(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

@@ -96,8 +96,8 @@ func TestImport(t *testing.T) {
 			t.Errorf("%s has common fields %s %+v", obj.GetName(), obj.GetNamespace(), spec)
 		}
 	}
-	want := []string{"KubernetesAuthConfig/kubernetes", "KubernetesAuthRole/kubernetes-app", "AuthMount/kubernetes",
-		"Policy/app"}
+	want := []string{"KubernetesAuthConfig/kubernetes", "KubernetesAuthRole/kubernetes-app", "ACLPolicy/app",
+		"AuthMount/kubernetes"}
 	if strings.Join(got, " ") != strings.Join(want, " ") {
 		t.Fatalf("objects = %v, want %v", got, want)
 	}
@@ -120,8 +120,8 @@ func TestImport(t *testing.T) {
 	if role.Spec.TokenNoDefaultPolicy != nil || role.Spec.TokenTTL == nil || role.Spec.Name != litApp {
 		t.Errorf("KubernetesAuthRole spec = %+v", role.Spec)
 	}
-	if policy := result.Objects[3].(*sysv1alpha1.Policy); policy.Spec.CASRequired {
-		t.Errorf("Policy spec = %+v", policy.Spec)
+	if policy := result.Objects[2].(*sysv1alpha1.ACLPolicy); policy.Spec.CASRequired {
+		t.Errorf("ACLPolicy spec = %+v", policy.Spec)
 	}
 }
 

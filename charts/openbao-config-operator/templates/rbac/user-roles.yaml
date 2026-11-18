@@ -1,4 +1,14 @@
 {{- if .Values.rbac.userRoles }}
+{{- $plurals := list }}
+{{- range (include "openbao-config-operator.crdResources" . | fromYamlArray) }}
+{{- $plurals = append $plurals .plural }}
+{{- end }}
+{{- /* a plural that matches no CRD would silently exclude nothing */}}
+{{- range .Values.rbac.tenantEditor.excludeKinds }}
+{{- if not (has . $plurals) }}
+{{- fail (printf "rbac.tenantEditor.excludeKinds: %q is not the plural of a kind of this chart" .) }}
+{{- end }}
+{{- end }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -13,7 +23,7 @@ metadata:
     {{- end }}
 {{- /* connections choose the OpenBao identity, so only the platform team manages them */}}
 rules:
-  {{- include "openbao-config-operator.userRules" (dict "root" . "verbs" (list "create" "delete" "deletecollection" "get" "list" "patch" "update" "watch") "excludePlurals" (concat (list "openbaoconnections" "clusteropenbaoconnections") .Values.rbac.tenantEditor.excludeKinds) "namespacedOnly" true) | indent 2 }}
+  {{- include "openbao-config-operator.userRules" (dict "root" . "verbs" (list "create" "delete" "deletecollection" "get" "list" "patch" "update" "watch") "excludePlurals" (concat (list "baoconnections" "clusterbaoconnections") .Values.rbac.tenantEditor.excludeKinds) "namespacedOnly" true) | indent 2 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -25,5 +35,5 @@ metadata:
     rbac.authorization.k8s.io/aggregate-to-view: "true"
     {{- end }}
 rules:
-  {{- include "openbao-config-operator.userRules" (dict "root" . "verbs" (list "get" "list" "watch") "excludePlurals" (list "openbaoservers" "clusteropenbaoconnections") "namespacedOnly" false) | indent 2 }}
+  {{- include "openbao-config-operator.userRules" (dict "root" . "verbs" (list "get" "list" "watch") "excludePlurals" (list "baoservers" "clusterbaoconnections") "namespacedOnly" false) | indent 2 }}
 {{- end }}

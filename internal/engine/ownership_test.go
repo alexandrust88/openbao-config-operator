@@ -513,7 +513,7 @@ func TestObserveLeavesOwnershipAlone(t *testing.T) {
 	}
 }
 
-// slashAdapter gives testName's object a trailing slash, as an OpenBaoEndpoint path may have, and the others none.
+// slashAdapter gives testName's object a trailing slash, as a BaoEndpoint path may have, and the others none.
 type slashAdapter struct{ testAdapter }
 
 func (slashAdapter) Path(obj *testResource) string {
@@ -575,7 +575,7 @@ func TestNothingWrittenIsNoWrite(t *testing.T) {
 	h.mustReconcile()
 	assertCondition(t, h.get(), commonv1alpha1.ConditionReady, "True", commonv1alpha1.ReasonAvailable)
 	if got := testutil.ToFloat64(writesTotal.WithLabelValues(h.r.kind)) - before; got != 0 {
-		t.Errorf("openbao_writes_total grew by %v for a write that sent nothing", got)
+		t.Errorf("obco_writes_total grew by %v for a write that sent nothing", got)
 	}
 	for _, e := range h.drainEvents() {
 		if strings.Contains(e, "Updated") {

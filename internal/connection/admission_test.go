@@ -23,7 +23,7 @@ import (
 
 const issuerAudience = "https://issuer.example"
 
-func serviceAccountConn(jwt bool, audiences ...string) *corev1alpha1.OpenBaoConnection {
+func serviceAccountConn(jwt bool, audiences ...string) *corev1alpha1.BaoConnection {
 	sa := &commonv1alpha1.LocalObjectReference{Name: litConfigurer}
 	if jwt {
 		return namespacedConn(corev1alpha1.ConnectionAuth{JWT: &corev1alpha1.JWTAuth{
@@ -37,8 +37,8 @@ func serviceAccountConn(jwt bool, audiences ...string) *corev1alpha1.OpenBaoConn
 
 type admissionCase struct {
 	name    string
-	conn    *corev1alpha1.OpenBaoConnection
-	server  func(*corev1alpha1.OpenBaoServer)
+	conn    *corev1alpha1.BaoConnection
+	server  func(*corev1alpha1.BaoServer)
 	ns      *corev1.Namespace
 	wantErr string
 }
@@ -50,7 +50,7 @@ func builtinAudienceCases() []admissionCase {
 		cases = append(cases, admissionCase{
 			name: "built-in api server audience " + audience + " listed",
 			conn: serviceAccountConn(false, audience),
-			server: func(s *corev1alpha1.OpenBaoServer) {
+			server: func(s *corev1alpha1.BaoServer) {
 				s.Spec.AllowedAudiences = append(s.Spec.AllowedAudiences, audience)
 			},
 			wantErr: "is accepted by the Kubernetes API server",
@@ -73,13 +73,13 @@ func TestTenantBoundary(t *testing.T) {
 		{
 			name:    "server allows no namespaces",
 			conn:    serviceAccountConn(false, testAudience),
-			server:  func(s *corev1alpha1.OpenBaoServer) { s.Spec.AllowedNamespaces = nil },
+			server:  func(s *corev1alpha1.BaoServer) { s.Spec.AllowedNamespaces = nil },
 			wantErr: "allows no namespaces",
 		},
 		{
 			name: "invalid selector",
 			conn: serviceAccountConn(false, testAudience),
-			server: func(s *corev1alpha1.OpenBaoServer) {
+			server: func(s *corev1alpha1.BaoServer) {
 				s.Spec.AllowedNamespaces = &metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{
 					{Key: tenantLabel, Operator: "Bogus"},
 				}}
@@ -89,7 +89,7 @@ func TestTenantBoundary(t *testing.T) {
 		{
 			name:    "audience not allowed",
 			conn:    serviceAccountConn(false, testAudience, "vault"),
-			wantErr: `audience "vault" is not in the allowedAudiences of OpenBaoServer openbao`,
+			wantErr: `audience "vault" is not in the allowedAudiences of BaoServer openbao`,
 		},
 		{
 			name:    "jwt audience not allowed",
@@ -99,7 +99,7 @@ func TestTenantBoundary(t *testing.T) {
 		{
 			name: "discovered issuer listed",
 			conn: serviceAccountConn(true, issuerAudience),
-			server: func(s *corev1alpha1.OpenBaoServer) {
+			server: func(s *corev1alpha1.BaoServer) {
 				s.Spec.AllowedAudiences = append(s.Spec.AllowedAudiences, issuerAudience)
 			},
 			wantErr: "is accepted by the Kubernetes API server",

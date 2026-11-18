@@ -1,13 +1,13 @@
 # Gives the payments ServiceAccounts write access to their own KV paths and read access to shared paths per
 # organization, through one generated ACL policy and one Kubernetes auth role per subject.
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessGrant
 metadata:
   name: payments-workloads
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Delete
@@ -37,14 +37,14 @@ spec:
         - globex
   tokenTTL: 15m
 ---
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessGrant
 metadata:
   name: payments-batch
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   authMountRef:
     name: kubernetes
@@ -57,14 +57,14 @@ spec:
       level: read
   tokenTTL: 10m
 ---
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessGrant
 metadata:
   name: payments-migrations
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   mountAccessor: auth_kubernetes_1a2b3c4d
   subjects:

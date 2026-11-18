@@ -1,4 +1,4 @@
-# OIDCClient (identity.openbaoconfig.io/v1alpha1)
+# OIDCClient (identity.obco.dev/v1alpha1)
 # OIDCClient manages an application that logs users in through the OpenBao OIDC provider, at
 # `identity/oidc/client/<name>`.
 #
@@ -6,9 +6,9 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/identity/#oidcclient
+# Reference: https://docs.obco.dev/reference/api/identity/#oidcclient
 # Curated example: examples/identity/oidcclient.yaml
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCClient
 metadata:
   name: example
@@ -21,7 +21,7 @@ spec:
   clientCredentials: true
   clientType: confidential
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -31,7 +31,7 @@ spec:
   key: default
   managementPolicy: Manage
   name: example
-  namespace: example
+  openbaoNamespace: example
   redirectURIs:
   - https://openbao.example.com:8200
   writeSecretRef:

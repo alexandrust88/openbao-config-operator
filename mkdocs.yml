@@ -3,7 +3,7 @@
 # Local build: pip install --require-hashes -r hack/docs/requirements.txt && mkdocs build (output in .tmp/site).
 site_name: OpenBao Config Operator
 site_description: Manage OpenBao policies, auth methods, secrets engines and identity as Kubernetes custom resources, with GitOps.
-site_url: !ENV [SITE_URL, "https://alexandrust88.github.io/openbao-config-operator/"]
+site_url: !ENV [SITE_URL, "https://docs.obco.dev/"]
 repo_url: !ENV [REPO_URL, "https://github.com/alexandrust88/openbao-config-operator"]
 repo_name: openbao-config-operator
 edit_uri: edit/main/docs/
@@ -13,10 +13,9 @@ docs_dir: docs
 site_dir: .tmp/site
 strict: true
 
-# overrides/ is the theme custom_dir; operations/runbooks.md is a GitHub-only stub for released alert links.
+# overrides/ is the theme custom_dir.
 exclude_docs: |
   overrides/
-  operations/runbooks.md
 
 hooks:
   - hack/docs/hooks.py
@@ -138,17 +137,23 @@ nav:
       - Manage several OpenBao servers: tutorials/multiple-instances.md
       - Onboard two tenants: tutorials/tenant-onboarding.md
       - Onboard teams as a tenant: tutorials/team-onboarding.md
-      - Generate credentials and deliver with ESO: tutorials/generated-credentials.md
-      - Encrypt application data: tutorials/application-encryption.md
-      - Issue dynamic database credentials: tutorials/dynamic-database-credentials.md
   - Guides:
       - guides/index.md
-      - Authentication:
+      - Log in:
           - Kubernetes auth: guides/kubernetes-auth.md
           - JWT and OIDC auth: guides/jwt-oidc-auth.md
           - AppRole: guides/approle.md
-      - Secrets engines:
+      - Control access:
+          - Manage ACL policies: guides/policies.md
+          - Templated policies: guides/templated-policies.md
+          - Access model: guides/access-model.md
+          - Identity: guides/identity.md
+          - Namespaces and tenants: guides/namespaces-and-tenants.md
+      - Store and issue secrets:
           - KV secrets: guides/kv-secrets.md
+          - PKI: guides/pki.md
+          - Transit: guides/transit.md
+          - Non-exportable transit keys: security/transit-key-policy.md
           - Database secrets: guides/database-secrets.md
           - Database recipes:
               - PostgreSQL: how-to/databases/postgresql.md
@@ -158,37 +163,30 @@ nav:
               - InfluxDB: how-to/databases/influxdb.md
               - Valkey: how-to/databases/valkey.md
               - Custom database plugins: how-to/databases/custom.md
-          - PKI: guides/pki.md
-          - Transit: guides/transit.md
-      - Identity and access:
-          - Manage ACL policies: guides/policies.md
-          - Identity: guides/identity.md
-          - Access model: guides/access-model.md
-          - Templated policies: guides/templated-policies.md
-          - Namespaces and tenants: guides/namespaces-and-tenants.md
-      - Adopt and deliver:
+      - Use OpenBao from an application:
+          - Generate credentials and deliver with ESO: tutorials/generated-credentials.md
+          - Encrypt application data: tutorials/application-encryption.md
+          - Issue dynamic database credentials: tutorials/dynamic-database-credentials.md
+      - Start with a new or an existing OpenBao:
+          - OpenBao self-init: guides/self-init.md
           - Import existing configuration: guides/import.md
           - Migrate to the operator: guides/migration.md
+      - Deliver from Git:
           - Argo CD: guides/argocd.md
           - Flux: guides/flux.md
-          - OpenBao self-init: guides/self-init.md
   - Operate:
       - operate/index.md
       - Upgrade: operate/upgrade.md
+      - Install options: operate/install-options.md
+      - Uninstall: operate/uninstall.md
       - Observability: operate/observability.md
       - Troubleshooting: operate/troubleshooting.md
       - Runbooks: operate/runbooks.md
       - OpenBao policy for the operator: operate/openbao-policy.md
       - Tenant quotas: operate/tenant-quotas.md
       - Backup and restore: operate/backup-restore.md
-      - Load testing: operate/load-testing.md
-      - Live testing: operate/live-testing.md
-  - Security:
-      - security.md
-      - Threat model: security/threat-model.md
       - Hardening: security/hardening.md
-      - Non-exportable transit keys: security/transit-key-policy.md
-      - CI security: security/ci-security.md
+      - Load testing: operate/load-testing.md
   - Reference:
       - reference/index.md
       - Kind catalogue: kinds.md
@@ -201,9 +199,12 @@ nav:
       - Compatibility: reference/compatibility.md
       - API coverage: api-coverage.md
       - Known limitations: reference/limitations.md
+      - Releases: https://github.com/alexandrust88/openbao-config-operator/releases
   - Concepts:
       - concepts/index.md
       - Why this operator: concepts/why.md
+      - Security model: security.md
+      - Threat model: security/threat-model.md
       - Architecture: architecture.md
       - Decisions:
           - adr/README.md
@@ -213,19 +214,25 @@ nav:
       - Backlog: project/backlog.md
       - Tech debt: project/tech-debt.md
       - Verification guide: project/verification.md
-      - GitOps lab:
-          - Argo CD app-of-apps: how-to/argocd-lab.md
-          - Flux delivery: how-to/flux-lab.md
-      - Identity lab:
-          - Local lab: tutorials/local-lab.md
-          - Permissions showcase: tutorials/oidc-showcase.md
-          - Okta and Auth0: guides/saas-identity-lab.md
-          - Auth0: how-to/auth0-lab.md
-          - Okta: how-to/okta-lab.md
-          - Authentik: how-to/authentik-lab.md
-          - ZITADEL: how-to/zitadel-lab.md
+      - Labs:
+          - Application labs: project/labs/application-labs.md
+          - Database lab: project/labs/database-lab.md
+          - Live kit: operate/live-testing.md
+          - Load lab: project/labs/load-lab.md
+          - GitOps:
+              - Argo CD app-of-apps: how-to/argocd-lab.md
+              - Flux delivery: how-to/flux-lab.md
+          - Identity:
+              - Local lab: tutorials/local-lab.md
+              - Permissions showcase: tutorials/oidc-showcase.md
+              - SaaS identity lab: guides/saas-identity-lab.md
+              - Auth0 provisioning: how-to/auth0-lab.md
+              - Okta provisioning: how-to/okta-lab.md
+              - Authentik: how-to/authentik-lab.md
+              - ZITADEL: how-to/zitadel-lab.md
       - Maintainers:
           - Release process: maintainers/release-process.md
           - GitHub settings: maintainers/github-settings.md
+          - CI security: security/ci-security.md
           - Search indexing: maintainers/search-indexing.md
       - Community: community/

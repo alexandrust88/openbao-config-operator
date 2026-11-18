@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=kubernetessecretsroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=kubernetessecretsroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=kubernetessecretsroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=kubernetessecretsroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=kubernetessecretsroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=kubernetessecretsroles/finalizers,verbs=update
 
 // SetupKubernetesSecretsRole registers the KubernetesSecretsRole controller with the manager.
 func SetupKubernetesSecretsRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

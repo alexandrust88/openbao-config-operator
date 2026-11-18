@@ -1,13 +1,13 @@
-# LDAPAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# LDAPAuthConfig (auth.obco.dev/v1alpha1)
 # LDAPAuthConfig manages the configuration of an OpenBao LDAP auth method at auth/<mountPath>/config.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef, url.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#ldapauthconfig
+# Reference: https://docs.obco.dev/reference/api/auth/#ldapauthconfig
 # Curated example: examples/auth/ldapauthconfig.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: LDAPAuthConfig
 metadata:
   name: example
@@ -31,7 +31,7 @@ spec:
     key: value
     name: ldapauthconfig-client-tls-key-secret-ref
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   connectionTimeout: 1h
   creationPolicy: Create
@@ -48,7 +48,7 @@ spec:
   managementPolicy: Manage
   maxPageSize: 1
   mountPath: ldap
-  namespace: example
+  openbaoNamespace: example
   policyRefs:
   - name: example
   requestTimeout: 1h

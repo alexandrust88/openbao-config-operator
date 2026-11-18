@@ -9,10 +9,10 @@
     - list
     - watch
 - apiGroups:
-    - core.openbaoconfig.io
+    - core.obco.dev
   resources:
-    - clusteropenbaoconnections
-    - openbaoservers
+    - baoservers
+    - clusterbaoconnections
   verbs:
     - get
     - list
@@ -20,17 +20,17 @@
     - update
     - watch
 - apiGroups:
-    - core.openbaoconfig.io
+    - core.obco.dev
   resources:
-    - clusteropenbaoconnections/finalizers
-    - openbaoservers/finalizers
+    - baoservers/finalizers
+    - clusterbaoconnections/finalizers
   verbs:
     - update
 - apiGroups:
-    - core.openbaoconfig.io
+    - core.obco.dev
   resources:
-    - clusteropenbaoconnections/status
-    - openbaoservers/status
+    - baoservers/status
+    - clusterbaoconnections/status
   verbs:
     - get
     - patch
@@ -74,7 +74,7 @@
   verbs:
     - create
 - apiGroups:
-    - access.openbaoconfig.io
+    - access.obco.dev
   resources:
     - accessgrants
     - accesslayouts
@@ -86,7 +86,7 @@
     - update
     - watch
 - apiGroups:
-    - access.openbaoconfig.io
+    - access.obco.dev
   resources:
     - accessgrants/finalizers
     - accesslayouts/finalizers
@@ -94,7 +94,7 @@
   verbs:
     - update
 - apiGroups:
-    - access.openbaoconfig.io
+    - access.obco.dev
   resources:
     - accessgrants/status
     - accesslayouts/status
@@ -104,7 +104,7 @@
     - patch
     - update
 - apiGroups:
-    - auth.openbaoconfig.io
+    - auth.obco.dev
   resources:
     - approles
     - approlesecretids
@@ -153,7 +153,7 @@
     - update
     - watch
 - apiGroups:
-    - auth.openbaoconfig.io
+    - auth.obco.dev
   resources:
     - approles/finalizers
     - approlesecretids/finalizers
@@ -198,7 +198,7 @@
   verbs:
     - update
 - apiGroups:
-    - auth.openbaoconfig.io
+    - auth.obco.dev
   resources:
     - approles/status
     - approlesecretids/status
@@ -245,10 +245,10 @@
     - patch
     - update
 - apiGroups:
-    - core.openbaoconfig.io
+    - core.obco.dev
   resources:
-    - openbaoconnections
-    - openbaoendpoints
+    - baoconnections
+    - baoendpoints
   verbs:
     - get
     - list
@@ -256,17 +256,17 @@
     - update
     - watch
 - apiGroups:
-    - core.openbaoconfig.io
+    - core.obco.dev
   resources:
-    - openbaoconnections/finalizers
-    - openbaoendpoints/finalizers
+    - baoconnections/finalizers
+    - baoendpoints/finalizers
   verbs:
     - update
 - apiGroups:
-    - core.openbaoconfig.io
+    - core.obco.dev
   resources:
-    - openbaoconnections/status
-    - openbaoendpoints/status
+    - baoconnections/status
+    - baoendpoints/status
   verbs:
     - get
     - patch
@@ -279,13 +279,13 @@
     - create
     - patch
 - apiGroups:
-    - identity.openbaoconfig.io
+    - identity.obco.dev
   resources:
-    - entities
-    - entityaliases
-    - groupaliases
-    - groupmemberships
-    - groups
+    - identityentities
+    - identityentityaliases
+    - identitygroupaliases
+    - identitygroupmemberships
+    - identitygroups
     - mfaloginenforcements
     - mfamethods
     - oidcassignments
@@ -302,13 +302,13 @@
     - update
     - watch
 - apiGroups:
-    - identity.openbaoconfig.io
+    - identity.obco.dev
   resources:
-    - entities/finalizers
-    - entityaliases/finalizers
-    - groupaliases/finalizers
-    - groupmemberships/finalizers
-    - groups/finalizers
+    - identityentities/finalizers
+    - identityentityaliases/finalizers
+    - identitygroupaliases/finalizers
+    - identitygroupmemberships/finalizers
+    - identitygroups/finalizers
     - mfaloginenforcements/finalizers
     - mfamethods/finalizers
     - oidcassignments/finalizers
@@ -321,13 +321,13 @@
   verbs:
     - update
 - apiGroups:
-    - identity.openbaoconfig.io
+    - identity.obco.dev
   resources:
-    - entities/status
-    - entityaliases/status
-    - groupaliases/status
-    - groupmemberships/status
-    - groups/status
+    - identityentities/status
+    - identityentityaliases/status
+    - identitygroupaliases/status
+    - identitygroupmemberships/status
+    - identitygroups/status
     - mfaloginenforcements/status
     - mfamethods/status
     - oidcassignments/status
@@ -342,7 +342,7 @@
     - patch
     - update
 - apiGroups:
-    - secrets.openbaoconfig.io
+    - secrets.obco.dev
   resources:
     - awssecretsconfigs
     - awssecretsroles
@@ -400,7 +400,7 @@
     - update
     - watch
 - apiGroups:
-    - secrets.openbaoconfig.io
+    - secrets.obco.dev
   resources:
     - awssecretsconfigs/finalizers
     - awssecretsroles/finalizers
@@ -454,7 +454,7 @@
   verbs:
     - update
 - apiGroups:
-    - secrets.openbaoconfig.io
+    - secrets.obco.dev
   resources:
     - awssecretsconfigs/status
     - awssecretsroles/status
@@ -510,24 +510,24 @@
     - patch
     - update
 - apiGroups:
-    - sys.openbaoconfig.io
+    - sys.obco.dev
   resources:
+    - aclpolicies
     - auditrequestheaders
     - audits
     - authmounts
+    - baonamespaces
+    - baoworkflows
     - corsconfigs
     - keyrotationconfigs
     - loggers
-    - openbaonamespaces
     - passwordpolicies
     - plugins
-    - policies
     - quotaconfigs
     - raftautopilots
     - ratelimitquotas
     - secretsmounts
     - uiheaders
-    - workflows
   verbs:
     - get
     - list
@@ -535,45 +535,45 @@
     - update
     - watch
 - apiGroups:
-    - sys.openbaoconfig.io
+    - sys.obco.dev
   resources:
+    - aclpolicies/finalizers
     - auditrequestheaders/finalizers
     - audits/finalizers
     - authmounts/finalizers
+    - baonamespaces/finalizers
+    - baoworkflows/finalizers
     - corsconfigs/finalizers
     - keyrotationconfigs/finalizers
     - loggers/finalizers
-    - openbaonamespaces/finalizers
     - passwordpolicies/finalizers
     - plugins/finalizers
-    - policies/finalizers
     - quotaconfigs/finalizers
     - raftautopilots/finalizers
     - ratelimitquotas/finalizers
     - secretsmounts/finalizers
     - uiheaders/finalizers
-    - workflows/finalizers
   verbs:
     - update
 - apiGroups:
-    - sys.openbaoconfig.io
+    - sys.obco.dev
   resources:
+    - aclpolicies/status
     - auditrequestheaders/status
     - audits/status
     - authmounts/status
+    - baonamespaces/status
+    - baoworkflows/status
     - corsconfigs/status
     - keyrotationconfigs/status
     - loggers/status
-    - openbaonamespaces/status
     - passwordpolicies/status
     - plugins/status
-    - policies/status
     - quotaconfigs/status
     - raftautopilots/status
     - ratelimitquotas/status
     - secretsmounts/status
     - uiheaders/status
-    - workflows/status
   verbs:
     - get
     - patch

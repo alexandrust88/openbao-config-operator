@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=ldapauthconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=ldapauthconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=ldapauthconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=ldapauthconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=ldapauthconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=ldapauthconfigs/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupLDAPAuthConfig registers the LDAPAuthConfig controller with the manager.

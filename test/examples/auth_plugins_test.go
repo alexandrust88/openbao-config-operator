@@ -36,7 +36,7 @@ func TestAuthPluginExamples(t *testing.T) {
 	}
 	crds := make([]string, 0, len(authPluginKinds))
 	for _, kind := range authPluginKinds {
-		crds = append(crds, "auth.openbaoconfig.io_"+kind+"s.yaml")
+		crds = append(crds, "auth.obco.dev_"+kind+"s.yaml")
 	}
 	k8s := secretsStartEnv(t, root, crds)
 	ctx := context.Background()
@@ -61,47 +61,47 @@ func TestAuthPluginExamples(t *testing.T) {
 			name, doc, wantErr string
 		}{
 			{name: "radius config with delete policy", wantErr: "the config endpoint cannot be deleted", doc: `
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: RADIUSAuthConfig
 metadata: {name: delete}
 spec: {connectionRef: {name: openbao}, host: radius, secretSecretRef: {name: s, key: k}, deletionPolicy: Delete}`},
 			{name: "client cert without key", wantErr: "set clientTLSCert and clientTLSKeySecretRef together", doc: `
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: LDAPAuthConfig
 metadata: {name: cert-only}
 spec: {connectionRef: {name: openbao}, url: ldaps://ldap, clientTLSCert: pem}`},
 			{name: "bind password without bind dn", wantErr: "bindPassSecretRef requires bindDN", doc: `
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KerberosAuthLDAPConfig
 metadata: {name: no-binddn}
 spec: {connectionRef: {name: openbao}, url: ldaps://ldap, bindPassSecretRef: {name: s, key: k}}`},
 			{name: "tls min above max", wantErr: "tlsMinVersion must not exceed tlsMaxVersion", doc: `
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: LDAPAuthConfig
 metadata: {name: tls}
 spec: {connectionRef: {name: openbao}, url: ldaps://ldap, tlsMinVersion: tls13, tlsMaxVersion: tls12}`},
 			{name: "token ttl above max", wantErr: "tokenTTL must not exceed tokenMaxTTL", doc: `
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: OktaAuthConfig
 metadata: {name: ttl}
 spec: {connectionRef: {name: openbao}, orgName: example, tokenTTL: 2h, tokenMaxTTL: 1h}`},
 			{name: "upper case policy", wantErr: "spec.policies", doc: `
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: LDAPAuthGroup
 metadata: {name: upper}
 spec: {connectionRef: {name: openbao}, policies: [Admin]}`},
 			{name: "comma in group", wantErr: "spec.groups", doc: `
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: OktaAuthUser
 metadata: {name: comma}
 spec: {connectionRef: {name: openbao}, groups: ["a,b"]}`},
 			{name: "slash in name", wantErr: "should match '^[^/]+$'", doc: `
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: GitHubAuthTeam
 metadata: {name: slash}
 spec: {connectionRef: {name: openbao}, name: org/team}`},
 			{name: "user delete policy", doc: `
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: RADIUSAuthUser
 metadata: {name: delete}
 spec: {connectionRef: {name: openbao}, deletionPolicy: Delete}`},
@@ -120,7 +120,7 @@ spec: {connectionRef: {name: openbao}, deletionPolicy: Delete}`},
 
 	t.Run("defaults and immutable", func(t *testing.T) {
 		obj := secretsDecodeString(t, `
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: LDAPAuthUser
 metadata: {name: immutable}
 spec: {connectionRef: {name: openbao}, name: jdoe}`)

@@ -495,7 +495,7 @@ func authCredSetup(ctx context.Context, t *testing.T) env {
 	names := []string{"approles", "approlesecretids", "tokenroles", "certauthconfigs", "certauthroles", "userpassusers"}
 	crds := make([]string, 0, len(names))
 	for _, name := range names {
-		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "auth.openbaoconfig.io_"+name+".yaml"))
+		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "auth.obco.dev_"+name+".yaml"))
 	}
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,

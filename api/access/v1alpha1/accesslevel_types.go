@@ -47,19 +47,19 @@ type AccessLevelSpec struct {
 type AccessLevelStatus struct {
 	commonv1alpha1.ResourceStatus `json:",inline"`
 
-	// AccessGrant and AccessLayout resources that cite this level, as <kind>/<name>. While the list is not empty, the openbaoconfig.io/in-use finalizer holds a deletion of the level. Example: AccessGrant/app-reader
+	// AccessGrant and AccessLayout resources that cite this level, as <kind>/<name>. While the list is not empty, the obco.dev/in-use finalizer holds a deletion of the level. Example: AccessGrant/app-reader
 	// +optional
 	CitedBy []string `json:"citedBy,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=openbao
+// +kubebuilder:resource:categories=obco;obco-access
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
-// AccessLevel is a named, reusable set of ACL capabilities on KV version 2 secret data and metadata, such as reader, writer or owner. It writes nothing to OpenBao by itself: AccessGrant rules and AccessLayout roles in the same Kubernetes namespace cite it by name and render it into their policies. The openbaoconfig.io/in-use finalizer keeps it while anything cites it.
+// AccessLevel is a named, reusable set of ACL capabilities on KV version 2 secret data and metadata, such as reader, writer or owner. It writes nothing to OpenBao by itself: AccessGrant rules and AccessLayout roles in the same Kubernetes namespace cite it by name and render it into their policies. The obco.dev/in-use finalizer keeps it while anything cites it.
 //
 // Example:
 //

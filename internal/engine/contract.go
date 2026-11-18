@@ -250,7 +250,7 @@ type ClusterIdentifier interface {
 
 // Server identifies the OpenBao server behind a connection.
 type Server struct {
-	// Key is the same for every connection to one server, for example the OpenBaoServer name.
+	// Key is the same for every connection to one server, for example the BaoServer name.
 	Key string
 	// Paused reports that the server carries commonv1alpha1.AnnotationPaused="true".
 	Paused bool
@@ -268,7 +268,7 @@ type ServerResolver interface {
 var ErrSecretNotOwned = errors.New("the Secret exists and is not controlled by this resource")
 
 // SharedPath is implemented by adapters of kinds that deliberately write to a path another resource owns, such as
-// GroupMembership on its Group or claim-only edge kinds. They are left out of the path ownership index and
+// IdentityGroupMembership on its IdentityGroup or claim-only edge kinds. They are left out of the path ownership index and
 // conflict check, and get no ownership marker.
 type SharedPath interface {
 	SharedPath() bool

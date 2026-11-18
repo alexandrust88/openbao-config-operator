@@ -9,8 +9,8 @@ metadata:
   name: obco-tenant
   namespace: e2e-tenant
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoServer
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoServer
 metadata:
   name: openbao-e2e
 spec:
@@ -26,8 +26,8 @@ spec:
   allowedAudiences:
     - openbao
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: openbao
   namespace: e2e-tenant

@@ -6,7 +6,7 @@ import (
 )
 
 var connectionReady = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-	Name: "openbao_connection_ready",
+	Name: "obco_connection_ready",
 	Help: "1 when the connection is Ready, 0 otherwise.",
 }, []string{"kind", "namespace", "name"})
 

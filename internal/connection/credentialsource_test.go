@@ -82,7 +82,7 @@ func TestConfigClusterInjectedIdentity(t *testing.T) {
 
 func TestConfigClusterInjectedIdentityMissingFile(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "absent")
-	for name, conn := range map[string]*corev1alpha1.ClusterOpenBaoConnection{
+	for name, conn := range map[string]*corev1alpha1.ClusterBaoConnection{
 		"explicit": clusterConn(corev1alpha1.ClusterConnectionAuth{Kubernetes: &corev1alpha1.ClusterKubernetesAuth{
 			Role: litOperator, InjectedIdentity: &corev1alpha1.InjectedIdentity{TokenPath: missing},
 		}}, nil),
@@ -148,12 +148,12 @@ func TestConfigClusterFilesystemToken(t *testing.T) {
 }
 
 // TestNamespacedSpecHasNoOperatorSources keeps the tenant boundary structural: a field that lets a namespaced
-// connection read the operator's token or files must never be added to OpenBaoConnectionSpec.
+// connection read the operator's token or files must never be added to BaoConnectionSpec.
 func TestNamespacedSpecHasNoOperatorSources(t *testing.T) {
-	if got := operatorSourceFields(reflect.TypeFor[corev1alpha1.OpenBaoConnectionSpec]()); len(got) != 0 {
-		t.Errorf("OpenBaoConnectionSpec has operator credential source fields %v", got)
+	if got := operatorSourceFields(reflect.TypeFor[corev1alpha1.BaoConnectionSpec]()); len(got) != 0 {
+		t.Errorf("BaoConnectionSpec has operator credential source fields %v", got)
 	}
-	got := operatorSourceFields(reflect.TypeFor[corev1alpha1.ClusterOpenBaoConnectionSpec]())
+	got := operatorSourceFields(reflect.TypeFor[corev1alpha1.ClusterBaoConnectionSpec]())
 	if !slices.Contains(got, ".auth.kubernetes.injectedIdentity") || !slices.Contains(got, ".auth.token.filesystem") {
 		t.Errorf("walker missed the cluster sources, found %v", got)
 	}

@@ -47,7 +47,7 @@ type PluginEnvVar struct {
 	SecretKeyRef commonv1alpha1.SecretKeySelector `json:"secretKeyRef"`
 }
 
-// +kubebuilder:validation:XValidation:rule="!has(self.__namespace__) || self.__namespace__ == ''",message="Plugin exists only in the root namespace: leave namespace empty"
+// +kubebuilder:validation:XValidation:rule="!has(self.openbaoNamespace) || self.openbaoNamespace == ''",message="Plugin exists only in the root namespace: leave openbaoNamespace empty"
 // +kubebuilder:validation:XValidation:rule="self.type == oldSelf.type",message="type is immutable"
 // +kubebuilder:validation:XValidation:rule="has(self.name) == has(oldSelf.name) && (!has(self.name) || self.name == oldSelf.name)",message="name is immutable"
 // +kubebuilder:validation:XValidation:rule="has(self.version) == has(oldSelf.version) && (!has(self.version) || self.version == oldSelf.version)",message="version is immutable: register a new version with a new resource"
@@ -113,7 +113,7 @@ type PluginStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=openbao
+// +kubebuilder:resource:categories=obco;obco-sys
 // +kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.type`
 // +kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.spec.version`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`

@@ -1,5 +1,5 @@
 # Reusable capability sets on KV data and metadata (read, write, owner) that AccessGrant and AccessLayout rules name.
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessLevel
 metadata:
   name: read
@@ -11,7 +11,7 @@ spec:
     - read
     - list
 ---
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessLevel
 metadata:
   name: write
@@ -26,7 +26,7 @@ spec:
     - read
     - list
 ---
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessLevel
 metadata:
   name: owner

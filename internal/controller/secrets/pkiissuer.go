@@ -16,10 +16,10 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiissuers,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiissuers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiissuers/finalizers,verbs=update
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkikeys,verbs=get;list;watch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiissuers,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiissuers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiissuers/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkikeys,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update
 
 // SetupPKIIssuer registers the PKIIssuer controller with the manager.

@@ -1,6 +1,6 @@
 # The example shows every reference form, including IDs and accessors that exist on no server; the fixture keeps the
 # forms a fresh server can resolve.
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: userpass
@@ -12,14 +12,14 @@ spec:
   path: userpass
   type: userpass
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: MFALoginEnforcement
 metadata:
   name: obco-admins-mfa
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   driftDetection: Enabled

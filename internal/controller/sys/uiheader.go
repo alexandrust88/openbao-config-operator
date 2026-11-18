@@ -11,9 +11,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=uiheaders,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=uiheaders/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=uiheaders/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=uiheaders,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=uiheaders/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=uiheaders/finalizers,verbs=update
 
 const uiHeaderValues = "values"
 

@@ -69,12 +69,12 @@ a month they move to emeritus.
 
 **Lazy consensus**: a proposal is accepted when no maintainer objects within the stated time. An objection must
 give a reason and, where possible, an alternative. When consensus fails, the maintainers vote; a simple majority
-decides, and the lead maintainer breaks a tie.
+decides, and the maintainer marked lead in [MAINTAINERS.md](MAINTAINERS.md) breaks a tie.
 
 ### What GitHub enforces
 
 The repository settings ([github-settings.md](docs/maintainers/github-settings.md)) enforce the rows below on
-`main` and `release-*` branches and on `v*` tags. The script that applies them has a solo mode for the
+`main` and `release-X.Y` branches and on `v*` tags. The script that applies them has a solo mode for the
 single-maintainer phase and a strict mode for two or more maintainers.
 
 | | single-maintainer phase (solo mode) | two or more maintainers (strict mode) |

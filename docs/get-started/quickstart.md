@@ -1,12 +1,14 @@
 ---
-description: Install OpenBao Config Operator on kind, connect to OpenBao and reconcile your first policy. Test workload access and automatic drift repair.
+title: OpenBao Config Operator quickstart on kind
+description: Run OpenBao and the operator on kind, manage a policy, a mount, a role and a password from Kubernetes, and watch drift being repaired.
 ---
 
 # Quickstart on kind
 
-In this tutorial you run OpenBao and the operator on a local kind cluster, then manage your first
-OpenBao objects from Kubernetes. At the end, a workload logs in to OpenBao and reads a password the
-operator generated, and you watch the operator undo a change made behind its back.
+In this tutorial you run OpenBao and OpenBao Config Operator on a local kind cluster, then
+manage your first OpenBao objects from Kubernetes. At the end, a workload logs in to OpenBao and
+reads a password the operator generated, and you watch the operator undo a change made behind its
+back.
 
 It takes about ten minutes.
 
@@ -27,8 +29,9 @@ You need:
 - [Helm](https://helm.sh/) 3.8 or later;
 - `git`.
 
-Clone the repository at the release you install. Every manifest this tutorial applies is in
-`examples/quickstart/`, and every command is in `hack/docs/quickstart.sh`:
+This tutorial runs from a clone of the repository at the release you install. Every manifest it
+applies is in `examples/quickstart/`, and every command on this page is a section of the script
+`hack/docs/quickstart.sh`:
 
 ```bash
 git clone --branch @TAG@ https://github.com/alexandrust88/openbao-config-operator.git
@@ -42,16 +45,16 @@ export VERSION=@VERSION@
 --8<-- "hack/docs/quickstart.sh:env"
 ```
 
-!!! tip "Run it in one go"
-    `hack/docs/quickstart.sh` runs every step below and fails at the first one that does not reach
-    its expected state. CI runs the same script on every change, so the steps on this page are
-    tested:
+To run steps 1 to 9 in one go instead of step by step, run the script. It stops at the first step
+that does not reach the state this page describes, and it leaves the cluster running:
 
-    ```bash
-    VERSION=@VERSION@ hack/docs/quickstart.sh
-    ```
+```bash
+hack/docs/quickstart.sh
+```
 
 ## 1. Create a kind cluster
+
+Create the cluster that holds OpenBao and the operator:
 
 ```bash
 --8<-- "hack/docs/quickstart.sh:cluster"
@@ -67,8 +70,8 @@ Confirm:
 ## 2. Start OpenBao
 
 Apply [`examples/quickstart/openbao-dev.yaml`](../../examples/quickstart/openbao-dev.yaml):
-one OpenBao 2.7.2 pod in dev mode, a Service in front of it, and a binding that lets OpenBao
-check ServiceAccount tokens with the Kubernetes TokenReview API.
+one OpenBao pod in dev mode in the Kubernetes namespace `openbao`, a Service in front of it, and a
+binding that lets OpenBao check ServiceAccount tokens with the Kubernetes TokenReview API.
 
 ```bash
 --8<-- "hack/docs/quickstart.sh:openbao"
@@ -87,17 +90,18 @@ Dev mode starts OpenBao initialised and unsealed, so it is ready as soon as the 
 
 ## 3. Let the operator log in to OpenBao
 
-The operator logs in as a Kubernetes ServiceAccount, and the OpenBao policy of that login decides
-what it may change. This policy lets the operator manage ACL policies and Kubernetes auth roles whose
-names start with `quickstart-`, and the KV mount `quickstart-kv`:
+The operator does not log in as itself for your resources. It logs in as a ServiceAccount of their
+Kubernetes namespace, and the OpenBao policy of that login decides what they may change. This
+policy allows ACL policies and Kubernetes auth roles whose names start with `quickstart-`, and the
+KV mount `quickstart-kv`:
 
 ```hcl title="examples/quickstart/operator-quickstart.hcl"
 --8<-- "examples/quickstart/operator-quickstart.hcl"
 ```
 
 Enable the Kubernetes auth method, upload the policy and create the role
-`operator-quickstart`. The role accepts only the ServiceAccount `openbao-config` of the namespace
-`quickstart`, with a token for the audience `openbao`:
+`operator-quickstart`. The role accepts only the ServiceAccount `openbao-config` of the Kubernetes
+namespace `quickstart`, with a token for the audience `openbao`:
 
 ```bash
 --8<-- "hack/docs/quickstart.sh:openbao-auth-enable"
@@ -130,26 +134,29 @@ Confirm:
 
 Three objects connect the operator to OpenBao:
 
-- the namespace `quickstart`, with the label `openbaoconfig.io/tenant: "true"` and the
-  ServiceAccounts `openbao-config` (the operator's identity) and `app` (a workload);
-- an `OpenBaoServer`, which says where OpenBao is and which namespaces may connect to it;
-- an `OpenBaoConnection`, which says how the operator logs in.
+- the Kubernetes namespace `quickstart`, with the label `obco.dev/tenant: "true"` and the
+  ServiceAccounts `openbao-config` (the identity the connection logs in as, not the operator's own
+  ServiceAccount) and `app` (a workload);
+- a `BaoServer`, which says where OpenBao is and which Kubernetes namespaces may connect to
+  it;
+- a `BaoConnection`, which names the ServiceAccount and the OpenBao role the operator logs in
+  with for the resources of the Kubernetes namespace `quickstart`.
 
 === "namespace.yaml"
 
-    ```yaml
+    ```yaml title="examples/quickstart/namespace.yaml"
     --8<-- "examples/quickstart/namespace.yaml"
     ```
 
 === "openbaoserver.yaml"
 
-    ```yaml
+    ```yaml title="examples/quickstart/openbaoserver.yaml"
     --8<-- "examples/quickstart/openbaoserver.yaml"
     ```
 
 === "openbaoconnection.yaml"
 
-    ```yaml
+    ```yaml title="examples/quickstart/openbaoconnection.yaml"
     --8<-- "examples/quickstart/openbaoconnection.yaml"
     ```
 
@@ -163,20 +170,20 @@ Apply them and wait until both report `Ready`:
 namespace/quickstart created
 serviceaccount/openbao-config created
 serviceaccount/app created
-openbaoserver.core.openbaoconfig.io/quickstart created
-openbaoconnection.core.openbaoconfig.io/openbao created
-openbaoserver.core.openbaoconfig.io/quickstart condition met
-openbaoconnection.core.openbaoconfig.io/openbao condition met
+baoserver.core.obco.dev/quickstart created
+baoconnection.core.obco.dev/openbao created
+baoserver.core.obco.dev/quickstart condition met
+baoconnection.core.obco.dev/openbao condition met
 ```
 
-The server is `Ready` when OpenBao answers its health check unsealed. The connection is `Ready`
-when the operator has logged in as `openbao-config`.
+The server is `Ready` when OpenBao answers and is unsealed. The connection is `Ready` when the
+operator has logged in to OpenBao with a short-lived token of the ServiceAccount `openbao-config`.
 
 ## 6. Create your first resources
 
 Four resources describe what you want in OpenBao:
 
-- a `Policy` that may read one secret;
+- an `ACLPolicy` that may read one secret;
 - a `SecretsMount`: a KV version 2 secrets engine at `quickstart-kv`;
 - a `KubernetesAuthRole` that lets the ServiceAccount `app` log in and get that policy;
 - a `RandomSecret` that generates a password into `quickstart-kv/app` and copies it to a
@@ -184,29 +191,29 @@ Four resources describe what you want in OpenBao:
 
 === "policy.yaml"
 
-    ```yaml
+    ```yaml title="examples/quickstart/policy.yaml"
     --8<-- "examples/quickstart/policy.yaml"
     ```
 
 === "secretsmount.yaml"
 
-    ```yaml
+    ```yaml title="examples/quickstart/secretsmount.yaml"
     --8<-- "examples/quickstart/secretsmount.yaml"
     ```
 
 === "kubernetesauthrole.yaml"
 
-    ```yaml
+    ```yaml title="examples/quickstart/kubernetesauthrole.yaml"
     --8<-- "examples/quickstart/kubernetesauthrole.yaml"
     ```
 
 === "randomsecret.yaml"
 
-    ```yaml
+    ```yaml title="examples/quickstart/randomsecret.yaml"
     --8<-- "examples/quickstart/randomsecret.yaml"
     ```
 
-Notice that the role does not repeat the policy name: `policyRefs` names the `Policy` resource,
+Notice that the role does not repeat the policy name: `policyRefs` names the `ACLPolicy` resource,
 and the role waits until that policy is in OpenBao.
 
 Apply them and wait until each one is `Ready`:
@@ -216,17 +223,17 @@ Apply them and wait until each one is `Ready`:
 ```
 
 ```text title="Expected output"
-policy.sys.openbaoconfig.io/quickstart-app-read created
-secretsmount.sys.openbaoconfig.io/quickstart-kv created
-kubernetesauthrole.auth.openbaoconfig.io/quickstart-app created
-randomsecret.secrets.openbaoconfig.io/quickstart-app-password created
-policy.sys.openbaoconfig.io/quickstart-app-read condition met
-secretsmount.sys.openbaoconfig.io/quickstart-kv condition met
-kubernetesauthrole.auth.openbaoconfig.io/quickstart-app condition met
-randomsecret.secrets.openbaoconfig.io/quickstart-app-password condition met
+aclpolicy.sys.obco.dev/quickstart-app-read created
+secretsmount.sys.obco.dev/quickstart-kv created
+kubernetesauthrole.auth.obco.dev/quickstart-app created
+randomsecret.secrets.obco.dev/quickstart-app-password created
+aclpolicy.sys.obco.dev/quickstart-app-read condition met
+secretsmount.sys.obco.dev/quickstart-kv condition met
+kubernetesauthrole.auth.obco.dev/quickstart-app condition met
+randomsecret.secrets.obco.dev/quickstart-app-password condition met
 ```
 
-Every kind of the operator belongs to the `openbao` category, so one command lists them all with
+Every kind of the operator belongs to the `obco` category, so one command lists them all with
 their `Ready` and `Synced` columns:
 
 ```bash
@@ -284,7 +291,7 @@ mount:
 Success! Uploaded policy: quickstart-app-read
 ```
 
-The `Policy` resource checks OpenBao every 30 seconds (`driftInterval: 30s`), with up to 20%
+The `ACLPolicy` resource checks OpenBao every 30 seconds (`driftInterval: 30s`), with up to 20%
 jitter. Wait about a minute, then read the policy again and list the events of the resource:
 
 ```bash
@@ -294,37 +301,38 @@ jitter. Wait about a minute, then read the policy again and list the events of t
 The policy grants only `quickstart-kv/data/app` again, and an `Updated` event records the
 rewrite.
 
-## 10. Clean up
-
-Delete the kind cluster. OpenBao, the operator and everything they hold go with it:
-
-```bash
---8<-- "hack/docs/quickstart.sh:cleanup"
-```
-
 ## What you built
 
 - An OpenBao server and the operator on one kind cluster.
-- An `OpenBaoServer` that admits only labelled namespaces, and an `OpenBaoConnection` that logs in
-  with a short-lived ServiceAccount token instead of a stored credential.
+- A `BaoServer` that admits only labelled Kubernetes namespaces, and a `BaoConnection`
+  that logs in with a short-lived ServiceAccount token instead of a stored credential.
 - A policy, a KV version 2 mount, a Kubernetes auth role and a generated password, all declared in
   Kubernetes and checked against OpenBao.
-- Proof that a workload can log in and read its secret, and that the operator restores what
-  someone changes in OpenBao by hand.
+- A workload that logs in and reads its secret, and a policy that the operator restored after
+  someone changed it in OpenBao by hand.
 
 ## Troubleshooting
 
 | symptom | check |
 |---------|-------|
-| `kind create cluster` fails because the cluster exists | reuse it (`kubectl config use-context kind-openbao-quickstart`) or delete it with step 10 |
+| `kind create cluster` fails because the cluster exists | reuse it (`kubectl config use-context kind-openbao-quickstart`) or delete it as in [Clean up](#10-clean-up) |
 | `helm upgrade --install` cannot find the chart | `VERSION` is a released chart version without the `v` prefix: `helm show chart oci://ghcr.io/alexandrust88/charts/openbao-config-operator --version "$VERSION"` |
-| `openbaoserver/quickstart` does not become `Ready` | `kubectl get openbaoserver quickstart -o yaml` shows the reason; `kubectl -n openbao get pods` shows whether OpenBao runs |
-| the connection reports `ConnectionDenied` | the namespace label: `kubectl get namespace quickstart --show-labels` must list `openbaoconfig.io/tenant=true` |
-| the connection reports `AuthenticationFailed` | `kubectl -n quickstart describe openbaoconnection openbao` shows the OpenBao error; repeat step 3, and check that the ClusterRoleBinding `openbao-quickstart-auth-delegator` exists |
-| a resource reports `PermissionDenied` | the operator's policy allows only names that start with `quickstart-` and the mount `quickstart-kv`: compare the resource with `examples/quickstart/operator-quickstart.hcl` |
-| everything was `Ready`, and now the connection fails | the OpenBao pod restarted and dev mode lost its data: repeat step 3; the operator then recreates every object at its next check, and the `RandomSecret` generates a new password |
+| `baoserver/quickstart` does not become `Ready` | `kubectl get baoserver quickstart -o yaml` shows the reason; `kubectl -n openbao get pods` shows whether OpenBao runs |
+| the connection reports `ConnectionDenied` | the label of the Kubernetes namespace: `kubectl get namespace quickstart --show-labels` must list `obco.dev/tenant=true` |
+| the connection reports `AuthenticationFailed` | `kubectl -n quickstart describe baoconnection openbao` shows the OpenBao error; repeat step 3, and check that the ClusterRoleBinding `openbao-quickstart-auth-delegator` exists |
+| a resource reports `PermissionDenied` | the connection's policy allows only names that start with `quickstart-` and the mount `quickstart-kv`: compare the resource with `examples/quickstart/operator-quickstart.hcl` |
+| everything was `Ready`, and now the connection fails | the OpenBao pod restarted and dev mode lost its data. The restarted pod is a new, empty OpenBao, which the resources refuse to write to (`ServerChanged`): delete the cluster as in [Clean up](#10-clean-up) and start again |
 
 [Troubleshooting](../operate/troubleshooting.md) lists every condition reason.
+
+## Clean up { #10-clean-up }
+
+To continue with the [tutorials](../tutorials/index.md), keep the cluster. Otherwise delete it.
+OpenBao, the operator and everything they hold go with it:
+
+```bash
+--8<-- "hack/docs/quickstart.sh:cleanup"
+```
 
 ## Next steps
 
@@ -334,7 +342,7 @@ Delete the kind cluster. OpenBao, the operator and everything they hold go with 
 
     ---
 
-    Verify the release, choose the scope and tenancy model, and install the chart.
+    Verify the release and install the chart from the OCI registry, the Helm repository or `install.yaml`.
 
 -   :material-connection: **[Connect to your OpenBao](connect.md)**
 

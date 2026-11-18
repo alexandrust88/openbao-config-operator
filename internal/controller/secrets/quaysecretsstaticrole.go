@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=quaysecretsstaticroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=quaysecretsstaticroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=quaysecretsstaticroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=quaysecretsstaticroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=quaysecretsstaticroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=quaysecretsstaticroles/finalizers,verbs=update
 
 // SetupQuaySecretsStaticRole registers the QuaySecretsStaticRole controller with the manager.
 func SetupQuaySecretsStaticRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

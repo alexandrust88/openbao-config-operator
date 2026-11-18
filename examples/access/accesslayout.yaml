@@ -1,15 +1,15 @@
 # Gives people access by identity provider group: per organization, developers can write and leads own the org
 # paths, while in the prod namespace developers only read and leads write.
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessLayout
 metadata:
   name: platform-teams
   namespace: openbao-config
   annotations:
-    openbaoconfig.io/allow-disruptive-update: "false"
+    obco.dev/allow-disruptive-update: "false"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Delete
@@ -29,13 +29,13 @@ spec:
   roles:
     - name: developer
       levels:
-        - namespace: ""
+        - openbaoNamespace: ""
           level: write
-        - namespace: prod
+        - openbaoNamespace: prod
           level: read
     - name: lead
       levels:
-        - namespace: ""
+        - openbaoNamespace: ""
           level: owner
-        - namespace: prod
+        - openbaoNamespace: prod
           level: write

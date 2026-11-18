@@ -20,7 +20,7 @@ import (
 	commonv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/common/v1alpha1"
 )
 
-// Selects OpenBao entities by exactly one of an ID, an OpenBao name, an Entity object or a label selector over Entity objects.
+// Selects OpenBao entities by exactly one of an ID, an OpenBao name, an IdentityEntity object or a label selector over IdentityEntity objects.
 // +kubebuilder:validation:XValidation:rule="[has(self.entityID), has(self.entityName), has(self.entityRef), has(self.entitySelector)].filter(x, x).size() == 1",message="set exactly one of entityID, entityName, entityRef and entitySelector"
 type EntityMatch struct {
 	// entityID is the OpenBao ID of an entity. Example: `0b1c6a2e-5d1f-4a7e-9b2e-3c4d5e6f7a8b`.
@@ -31,15 +31,15 @@ type EntityMatch struct {
 	// +kubebuilder:validation:MaxLength=128
 	// +optional
 	EntityName string `json:"entityName,omitempty"`
-	// entityRef names an Entity in the same namespace; it must be Ready. Example: `{name: alice}`.
+	// entityRef names an IdentityEntity in the same namespace; it must be Ready. Example: `{name: alice}`.
 	// +optional
 	EntityRef *commonv1alpha1.LocalObjectReference `json:"entityRef,omitempty"`
-	// entitySelector selects every Entity in the same namespace that carries these labels.
+	// entitySelector selects every IdentityEntity in the same namespace that carries these labels.
 	// +optional
 	EntitySelector *commonv1alpha1.LabelSelector `json:"entitySelector,omitempty"`
 }
 
-// Selects OpenBao identity groups by exactly one of an ID, an OpenBao name, a Group object or a label selector over Group objects.
+// Selects OpenBao identity groups by exactly one of an ID, an OpenBao name, an IdentityGroup object or a label selector over IdentityGroup objects.
 // +kubebuilder:validation:XValidation:rule="[has(self.groupID), has(self.groupName), has(self.groupRef), has(self.groupSelector)].filter(x, x).size() == 1",message="set exactly one of groupID, groupName, groupRef and groupSelector"
 type GroupMatch struct {
 	// groupID is the OpenBao ID of a group. Example: `5f1c2d3e-4a5b-6c7d-8e9f-0a1b2c3d4e5f`.
@@ -50,10 +50,10 @@ type GroupMatch struct {
 	// +kubebuilder:validation:MaxLength=128
 	// +optional
 	GroupName string `json:"groupName,omitempty"`
-	// groupRef names a Group in the same namespace; it must be Ready. Example: `{name: billing-admins}`.
+	// groupRef names an IdentityGroup in the same namespace; it must be Ready. Example: `{name: billing-admins}`.
 	// +optional
 	GroupRef *commonv1alpha1.LocalObjectReference `json:"groupRef,omitempty"`
-	// groupSelector selects every Group in the same namespace that carries these labels.
+	// groupSelector selects every IdentityGroup in the same namespace that carries these labels.
 	// +optional
 	GroupSelector *commonv1alpha1.LabelSelector `json:"groupSelector,omitempty"`
 }

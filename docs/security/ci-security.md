@@ -43,7 +43,7 @@ Rules every workflow follows:
 
 | Job (workflow) | Checks | Blocks the merge |
 |----------------|--------|------------------|
-| `actionlint` (`workflows.yml`) | workflow syntax, expressions and shellcheck on `run:`; shellcheck on `hack/release/*.sh`, `hack/github/*.sh` and `hack/docs/*.sh` | yes |
+| `actionlint` (`workflows.yml`) | workflow syntax, expressions and shellcheck on `run:`; shellcheck on `hack/release/*.sh`, `hack/github/*.sh`, `hack/docs/*.sh`, `hack/ci/*.sh`, `hack/e2e/postgres.sh` and `test/livekit/kind.sh` | yes |
 | `zizmor` (`workflows.yml`) | template injection, token permissions, dangerous triggers, cache poisoning, unpinned actions; uploads the full audit to code scanning | yes, on medium or higher |
 | `pinact` (`workflows.yml`) | every `uses:` is a full SHA, its version comment resolves to that SHA upstream (no impostor commits from forks), and the release is at least 7 days old | yes |
 | `poutine` (`workflows.yml`) | untrusted checkout plus execution, injection, known-vulnerable actions, self-hosted runners on pull requests | yes |

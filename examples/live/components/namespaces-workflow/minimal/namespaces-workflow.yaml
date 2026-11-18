@@ -1,28 +1,28 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: ns-team
 spec:
   connectionRef:
     name: openbao
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: ns-team-reader
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
     name: openbao
-  namespace: ns-team
+  openbaoNamespace: ns-team
   policy: |
     path "+/data/*" {
       capabilities = ["read"]
     }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Workflow
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoWorkflow
 metadata:
   name: ns-health
 spec:

@@ -79,6 +79,15 @@ test-docs: setup-envtest ## Dry-run every manifest in examples/, examples-genera
 docs-lint: ## Shellcheck the quickstart, tutorial and uninstall scripts that the docs include (shellcheck from PATH or SHELLCHECK).
 	"$${SHELLCHECK:-shellcheck}" hack/docs/quickstart.sh hack/docs/tutorials.sh hack/docs/tutorial-*.sh hack/docs/uninstall.sh
 
+DOCS_PYTHON ?= python3
+
+.PHONY: helm-values-docs
+helm-values-docs: ## Regenerate docs/reference/helm-values.md from chart values.yaml and values.schema.json (needs pyyaml from hack/docs/requirements.txt).
+	mkdir -p .tmp
+	"$(DOCS_PYTHON)" hack/docs/helmvalues.py > .tmp/helm-values.md
+	mv .tmp/helm-values.md docs/reference/helm-values.md
+
+
 .PHONY: api-coverage
 api-coverage: ## Check api-coverage/classification.yaml against the OpenAPI snapshots and regenerate docs/api-coverage.md.
 	go run ./hack/apicoverage

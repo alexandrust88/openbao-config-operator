@@ -35,10 +35,11 @@ func childKey(c accessv1alpha1.AccessChild) string {
 	if c.Namespace != "" {
 		name = c.Namespace + "/" + name
 	}
-	prefix := strings.ToLower(string(c.Kind))
-	if c.Kind == accessv1alpha1.AccessChildKubernetesAuthRole {
-		prefix = "role"
-	}
+	prefix := map[accessv1alpha1.AccessChildKind]string{
+		accessv1alpha1.AccessChildPolicy:             "policy",
+		accessv1alpha1.AccessChildKubernetesAuthRole: "role",
+		accessv1alpha1.AccessChildGroup:              "group",
+	}[c.Kind]
 	return prefix + ":" + name
 }
 

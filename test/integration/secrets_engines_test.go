@@ -436,7 +436,7 @@ func secretsEnginesSetup(ctx context.Context, t *testing.T) env {
 
 	crds := make([]string, 0, 4)
 	for _, name := range []string{"transitkeys", "sshcas", "sshroles", "totpkeys"} {
-		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "secrets.openbaoconfig.io_"+name+".yaml"))
+		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "secrets.obco.dev_"+name+".yaml"))
 	}
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,

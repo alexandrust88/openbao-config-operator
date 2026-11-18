@@ -14,9 +14,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=certauthcrls,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=certauthcrls/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=certauthcrls/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=certauthcrls,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=certauthcrls/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=certauthcrls/finalizers,verbs=update
 
 // SetupCertAuthCRL registers the CertAuthCRL controller with the manager.
 func SetupCertAuthCRL(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

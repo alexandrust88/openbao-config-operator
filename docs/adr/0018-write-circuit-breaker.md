@@ -4,7 +4,7 @@ description: "Design decision for OpenBao Config Operator: write circuit breaker
 
 # 0018. Write circuit breaker
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; implemented. Date: 2026-11-14.
 
 ## Context
 

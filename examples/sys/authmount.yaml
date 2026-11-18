@@ -1,13 +1,13 @@
 # Enables the auth methods that the auth kinds then configure: AppRole for CI pipelines at approle-ci, with user
 # lockout after five failed logins, plus LDAP and Kubernetes mounts.
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: obco-approle
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
@@ -41,14 +41,14 @@ spec:
     counterResetDuration: 10m
     disable: false
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: obco-ldap
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
@@ -61,14 +61,14 @@ spec:
     name: obco-ldap-auth-plugin
   description: LDAP logins through the external plugin registered by the Plugin obco-ldap-auth-plugin
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: obco-kubernetes
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan

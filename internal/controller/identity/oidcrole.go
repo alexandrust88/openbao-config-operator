@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcroles/finalizers,verbs=update
 
 // SetupOIDCRole registers the OIDCRole controller with the manager.
 func SetupOIDCRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

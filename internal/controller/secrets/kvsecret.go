@@ -1,4 +1,4 @@
-// Package secrets holds the adapters for the secrets.openbaoconfig.io kinds.
+// Package secrets holds the adapters for the secrets.obco.dev kinds.
 package secrets
 
 import (
@@ -20,9 +20,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=kvsecrets,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=kvsecrets/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=kvsecrets/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=kvsecrets,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=kvsecrets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=kvsecrets/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupKVSecret registers the KVSecret controller with the manager.

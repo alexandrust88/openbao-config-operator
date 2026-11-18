@@ -1,11 +1,11 @@
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: GCPAuthRole
 metadata:
   name: gcp-gce
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Delete
@@ -44,14 +44,14 @@ spec:
   tokenNoDefaultPolicy: false
   tokenStrictlyBindIP: false
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: GCPAuthRole
 metadata:
   name: gcp-iam
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Delete

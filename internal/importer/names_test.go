@@ -73,11 +73,11 @@ func TestUniqueSuffixKeepsLabelsValid(t *testing.T) {
 
 func TestPrepareCollision(t *testing.T) {
 	s := &scope{importer: &importer{used: map[string]map[string]bool{}}}
-	gvk := schema.GroupVersionKind{Group: "sys.openbaoconfig.io", Version: "v1alpha1", Kind: "Policy"}
+	gvk := schema.GroupVersionKind{Group: "sys.obco.dev", Version: "v1alpha1", Kind: "ACLPolicy"}
 	policies := []string{"team..read", "team.read", "Team.Read", strings.Repeat("a", 63), strings.Repeat("A", 63)}
 	names := make([]string, 0, len(policies))
 	for _, policy := range policies {
-		obj := &sysv1alpha1.Policy{}
+		obj := &sysv1alpha1.ACLPolicy{}
 		s.prepare(obj, gvk, policy)
 		names = append(names, obj.GetName())
 		assertValidName(t, obj.GetName())

@@ -5,7 +5,7 @@ type: application
 version: 0.1.0
 appVersion: "0.1.0"
 kubeVersion: ">=1.31.0-0"
-home: https://alexandrust88.github.io/openbao-config-operator/
+home: https://docs.obco.dev/
 icon: https://raw.githubusercontent.com/alexandrust88/openbao-config-operator/main/docs/assets/logo.svg
 sources:
   - https://github.com/alexandrust88/openbao-config-operator
@@ -31,9 +31,9 @@ annotations:
         - linux/arm64
   artifacthub.io/links: |
     - name: Documentation
-      url: https://alexandrust88.github.io/openbao-config-operator/
+      url: https://docs.obco.dev/
     - name: Verify the release
-      url: https://alexandrust88.github.io/openbao-config-operator/security/hardening/#verify-the-release
+      url: https://docs.obco.dev/security/hardening/#verify-the-release
   artifacthub.io/changes: |
     - kind: added
       description: Initial release

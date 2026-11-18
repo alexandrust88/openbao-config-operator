@@ -14,9 +14,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=sshcas,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=sshcas/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=sshcas/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=sshcas,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=sshcas/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=sshcas/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupSSHCA registers the SSHCA controller with the manager.

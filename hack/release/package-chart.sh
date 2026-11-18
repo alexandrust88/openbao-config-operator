@@ -66,7 +66,7 @@ builtin=$("$yq" -o json -I0 '[.resources[] | sub("^bases/"; "") | sub("\.yaml$";
 # none, which keeps Chart.yaml (copied into every index.yaml entry and OCI annotation) small.
 examples=$(yaml_stream "$repo_root/examples" -not \( -path "$repo_root/examples/live/*" \
   -not -path "$repo_root/examples/live/components/*/minimal/*" \) |
-  "$yq" ea -o json -I0 '[select(.apiVersion | test("\.openbaoconfig\.io/")) | del(.status, .metadata.annotations, .metadata.namespace)]')
+  "$yq" ea -o json -I0 '[select(.apiVersion | test("\.obco\.dev/")) | del(.status, .metadata.annotations, .metadata.namespace)]')
 crds_examples=$(jq -c --argjson crds "$crds" --argjson builtin "$builtin" '
   [$crds[] | select(.name as $name | $builtin | index($name)) | .kind] as $kinds
   | [.[] | select(.kind as $kind | $kinds | index($kind))] | group_by(.kind) | map(min_by(tojson | length))' <<<"$examples")

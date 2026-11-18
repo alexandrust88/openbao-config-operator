@@ -7,8 +7,8 @@ metadata:
   name: devteam
   namespace: tenant-a
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: devteam
   namespace: tenant-a
@@ -16,7 +16,7 @@ spec:
   connectionRef:
     name: openbao
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: devteam-secret
@@ -24,12 +24,12 @@ metadata:
 spec:
   connectionRef:
     name: openbao
-  namespace: devteam
+  openbaoNamespace: devteam
   path: secret
   type: kv-v2
   description: Secrets of the team devteam
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: RandomSecret
 metadata:
   name: devteam-app
@@ -37,15 +37,15 @@ metadata:
 spec:
   connectionRef:
     name: openbao
-  namespace: devteam
+  openbaoNamespace: devteam
   mountPath: secret
   path: app
   key: password
   generator:
     length: 32
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: team-devteam
   namespace: tenant-a
@@ -57,7 +57,7 @@ spec:
       capabilities = ["read"]
     }
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthRole
 metadata:
   name: team-devteam

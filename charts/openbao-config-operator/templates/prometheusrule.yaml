@@ -18,21 +18,21 @@
   "description" "Resources of this kind are not converging. Check their Synced condition and the manager logs.") }}
 {{- $alerts = append $alerts (dict
   "alert" "OpenBaoConfigOperatorSteadyStateWrites"
-  "expr" (printf "sum by (kind) (increase(openbao_writes_total{%s}[15m])) > 0" $sel)
+  "expr" (printf "sum by (kind) (increase(obco_writes_total{%s}[15m])) > 0" $sel)
   "for" $pr.steadyStateWritesFor
   "severity" "warning"
   "summary" "The operator keeps writing {{ $labels.kind }} objects to OpenBao."
   "description" "Writes that never stop usually mean another tool or a person changes the same OpenBao objects, or a field never compares equal.") }}
 {{- $alerts = append $alerts (dict
   "alert" "OpenBaoConfigOperatorOpenBaoServerErrors"
-  "expr" (printf "sum by (connection) (rate(openbao_requests_total{%s, code=~\"5..|error\"}[5m])) / sum by (connection) (rate(openbao_requests_total{%s}[5m])) > %v" $sel $sel $pr.openbaoErrorRatio)
+  "expr" (printf "sum by (connection) (rate(obco_requests_total{%s, code=~\"5..|error\"}[5m])) / sum by (connection) (rate(obco_requests_total{%s}[5m])) > %v" $sel $sel $pr.openbaoErrorRatio)
   "for" "10m"
   "severity" "warning"
   "summary" "OpenBao requests of connection {{ $labels.connection }} fail with 5xx or transport errors."
   "description" "The connection label is the connection UID. OpenBao is unreachable, sealed, standby without forwarding or overloaded.") }}
 {{- $alerts = append $alerts (dict
   "alert" "OpenBaoConfigOperatorOpenBaoDenied"
-  "expr" (printf "sum by (connection) (rate(openbao_requests_total{%s, code=\"403\"}[5m])) > 0" $sel)
+  "expr" (printf "sum by (connection) (rate(obco_requests_total{%s, code=\"403\"}[5m])) > 0" $sel)
   "for" "15m"
   "severity" "warning"
   "summary" "OpenBao keeps denying requests of connection {{ $labels.connection }}."

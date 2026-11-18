@@ -61,9 +61,9 @@ func newFlagSet(c *config, stderr io.Writer, getenv func(string) string) *flag.F
 	fs.BoolVar(&c.recursive, "recursive", false, "also import every child namespace")
 	fs.StringVar(&c.connection, "connection", "", "name of the connection the resources reference (required)")
 	fs.StringVar(&c.connectionKind, "connection-kind", string(commonv1alpha1.ConnectionKindNamespaced),
-		"OpenBaoConnection or ClusterOpenBaoConnection")
+		"BaoConnection or ClusterBaoConnection")
 	fs.StringVar(&c.server, "server", "",
-		"also emit an OpenBaoServer of this name for -address and the connection that references it")
+		"also emit a BaoServer of this name for -address and the connection that references it")
 	fs.StringVar(&c.k8sNamespace, "k8s-namespace", "", "Kubernetes namespace of the resources (required)")
 	fs.BoolVar(&c.includeKV, "include-kv-paths", false, "emit a KVSecret skeleton per KV path; values are never read")
 	fs.StringVar(&c.output, "o", "-", "a directory for one file per kind, or - for one stream on stdout")
@@ -155,8 +155,8 @@ func summarize(w io.Writer, r *importer.Result) error {
 	var b strings.Builder
 	fmt.Fprintf(&b, "imported %d resources\n", len(r.Objects))
 	for _, obj := range r.Objects {
-		if server, ok := obj.(*corev1alpha1.OpenBaoServer); ok && server.Spec.AllowInsecureHTTP {
-			fmt.Fprintf(&b, "warning: OpenBaoServer/%s sets allowInsecureHTTP: true for %s; tokens and secret inputs "+
+		if server, ok := obj.(*corev1alpha1.BaoServer); ok && server.Spec.AllowInsecureHTTP {
+			fmt.Fprintf(&b, "warning: BaoServer/%s sets allowInsecureHTTP: true for %s; tokens and secret inputs "+
 				"would cross the network in clear text. Set an https address before you apply or commit it\n",
 				server.Name, server.Spec.Address)
 		}

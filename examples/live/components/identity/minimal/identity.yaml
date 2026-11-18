@@ -1,4 +1,4 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: id-userpass
@@ -7,7 +7,7 @@ spec:
     name: openbao
   type: userpass
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: id-jwt
@@ -16,16 +16,16 @@ spec:
     name: openbao
   type: jwt
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Entity
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntity
 metadata:
   name: id-alice
 spec:
   connectionRef:
     name: openbao
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: EntityAlias
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntityAlias
 metadata:
   name: id-alice-userpass
 spec:
@@ -37,16 +37,16 @@ spec:
   mountRef:
     name: id-userpass
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Group
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroup
 metadata:
   name: id-devs
 spec:
   connectionRef:
     name: openbao
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Group
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroup
 metadata:
   name: id-ext-admins
 spec:
@@ -54,8 +54,8 @@ spec:
     name: openbao
   type: external
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: GroupAlias
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupAlias
 metadata:
   name: id-ext-admins-jwt
 spec:
@@ -67,8 +67,8 @@ spec:
   mountRef:
     name: id-jwt
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: GroupMembership
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupMembership
 metadata:
   name: id-devs-alice
 spec:
@@ -79,7 +79,7 @@ spec:
   entityRef:
     name: id-alice
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: MFAMethod
 metadata:
   name: id-totp
@@ -89,7 +89,7 @@ spec:
   totp:
     issuer: OpenBao live kit
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: MFALoginEnforcement
 metadata:
   name: id-userpass-mfa

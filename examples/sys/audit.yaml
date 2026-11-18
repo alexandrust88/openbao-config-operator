@@ -1,11 +1,11 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: Audit
 metadata:
   name: obco-stdout
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   deletionPolicy: Orphan
@@ -27,14 +27,14 @@ type: Opaque
 stringData:
   headers: '{"Authorization":["Bearer fake-siem-token"]}'
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: Audit
 metadata:
   name: obco-siem
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan

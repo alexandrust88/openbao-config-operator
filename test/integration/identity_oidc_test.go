@@ -345,7 +345,7 @@ func oidcExpectCredentials(ctx context.Context, e env, path, secretName string) 
 	return nil
 }
 
-// oidcExpectNoWrites checks that openbao_writes_total for kind stays flat over three drift intervals.
+// oidcExpectNoWrites checks that obco_writes_total for kind stays flat over three drift intervals.
 func oidcExpectNoWrites(t *testing.T, kind string) {
 	t.Helper()
 	before := oidcWrites(t, kind)
@@ -367,7 +367,7 @@ func oidcWrites(t *testing.T, kind string) float64 {
 		t.Fatal(err)
 	}
 	for _, family := range families {
-		if family.GetName() != "openbao_writes_total" {
+		if family.GetName() != "obco_writes_total" {
 			continue
 		}
 		for _, m := range family.GetMetric() {
@@ -402,10 +402,10 @@ func identityOIDCSetup(ctx context.Context, t *testing.T) env {
 
 	crds := make([]string, 0, 12)
 	for _, name := range []string{"oidcconfigs", "oidckeys", "oidcroles", "oidcscopes", "oidcassignments", "oidcclients",
-		"oidcproviders", "mfamethods", "mfaloginenforcements", "entities", "groups"} {
-		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "identity.openbaoconfig.io_"+name+".yaml"))
+		"oidcproviders", "mfamethods", "mfaloginenforcements", "identityentities", "identitygroups"} {
+		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "identity.obco.dev_"+name+".yaml"))
 	}
-	crds = append(crds, filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_authmounts.yaml"))
+	crds = append(crds, filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_authmounts.yaml"))
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,
 		CRDInstallOptions:     envtest.CRDInstallOptions{Paths: crds, ErrorIfPathMissing: true},

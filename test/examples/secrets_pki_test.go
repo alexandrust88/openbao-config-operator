@@ -21,12 +21,12 @@ func TestSecretsPKIExamples(t *testing.T) {
 		t.Fatal(err)
 	}
 	k8s := secretsStartEnv(t, root, []string{
-		"secrets.openbaoconfig.io_pkiissuers.yaml",
-		"secrets.openbaoconfig.io_pkikeys.yaml",
-		"secrets.openbaoconfig.io_pkiroles.yaml",
-		"secrets.openbaoconfig.io_pkiconfigs.yaml",
-		"secrets.openbaoconfig.io_pkiacmeconfigs.yaml",
-		"secrets.openbaoconfig.io_pkiautotidies.yaml",
+		"secrets.obco.dev_pkiissuers.yaml",
+		"secrets.obco.dev_pkikeys.yaml",
+		"secrets.obco.dev_pkiroles.yaml",
+		"secrets.obco.dev_pkiconfigs.yaml",
+		"secrets.obco.dev_pkiacmeconfigs.yaml",
+		"secrets.obco.dev_pkiautotidies.yaml",
 	})
 	ctx := context.Background()
 	if err := k8s.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openbao-config"}}); err != nil {
@@ -43,7 +43,7 @@ func TestSecretsPKIExamples(t *testing.T) {
 		})
 	}
 
-	const head = "apiVersion: secrets.openbaoconfig.io/v1alpha1\nmetadata: {name: x, namespace: openbao-config}\n"
+	const head = "apiVersion: secrets.obco.dev/v1alpha1\nmetadata: {name: x, namespace: openbao-config}\n"
 	const conn = "connectionRef: {name: openbao}"
 	const cert = "certificate: {commonName: ca}"
 	t.Run("validation", func(t *testing.T) {
@@ -152,7 +152,7 @@ func TestSecretsPKIExamples(t *testing.T) {
 			{kind: "PKIACMEConfig", spec: "{" + conn + "}", change: map[string]any{"mountPath": "other"}, wantErr: "mountPath is immutable"},
 			{kind: "PKIAutoTidy", spec: "{" + conn + "}", change: map[string]any{"mountPath": "other"}, wantErr: "mountPath is immutable"},
 		} {
-			obj := secretsDecodeString(t, "apiVersion: secrets.openbaoconfig.io/v1alpha1\nkind: "+tt.kind+
+			obj := secretsDecodeString(t, "apiVersion: secrets.obco.dev/v1alpha1\nkind: "+tt.kind+
 				"\nmetadata: {generateName: immutable-, namespace: openbao-config}\nspec: "+tt.spec)
 			if err := k8s.Create(ctx, obj); err != nil {
 				t.Fatalf("%s %s: %v", tt.kind, tt.spec, err)

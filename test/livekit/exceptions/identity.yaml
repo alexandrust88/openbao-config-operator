@@ -1,11 +1,11 @@
 fullFields:
-  EntityAlias:
+  IdentityEntityAlias:
     entityID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
     mountAccessor: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
-  GroupAlias:
+  IdentityGroupAlias:
     groupID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
     mountAccessor: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
-  GroupMembership:
+  IdentityGroupMembership:
     entityID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
     groupID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
     memberGroupID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
@@ -15,15 +15,15 @@ fullFields:
     groups[].groupID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
     mfaMethods[].methodID: server-generated id, not known before apply; the ref/name/selector alternatives cover the same field
 oneOfBranches:
-  EntityAlias:
+  IdentityEntityAlias:
     spec:
       entityID: server-generated id, not known before apply; the ref/name/selector branches are covered
       mountAccessor: server-generated id, not known before apply; the ref/path/selector branches are covered
-  GroupAlias:
+  IdentityGroupAlias:
     spec:
       groupID: server-generated id, not known before apply; the ref/name/selector branches are covered
       mountAccessor: server-generated id, not known before apply; the ref/path/selector branches are covered
-  GroupMembership:
+  IdentityGroupMembership:
     spec:
       entityID: server-generated id, not known before apply; the ref/name/selector branches are covered
       groupID: server-generated id, not known before apply; the ref/name/selector branches are covered

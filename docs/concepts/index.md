@@ -4,8 +4,8 @@ description: "Understand OpenBao configuration reconciliation, ownership, tenanc
 
 # Concepts
 
-This page explains the mental model behind the operator: what it manages, how a tenant reaches
-OpenBao, how one reconcile works and how the operator decides that an OpenBao object is its own.
+The mental model behind OpenBao Config Operator: what it manages, how a tenant reaches OpenBao, how one
+reconcile works and how the operator decides that an OpenBao object is its own.
 [Architecture](../architecture.md) is the source of truth for the design; read this page first,
 then the full design when you need the detail. The [decisions](../adr/README.md) list each choice
 in one sentence. Exact condition reasons, status fields and events
@@ -29,9 +29,9 @@ object it owns, and the OpenBao server itself is re-read on a schedule.
 
 | kind | scope | owner | holds |
 |------|-------|-------|-------|
-| `OpenBaoServer` | cluster | platform | address, CA bundle, allowed namespaces and token audiences, rate limit |
-| `OpenBaoConnection` | namespaced | tenant | `serverRef`, OpenBao namespace, how to log in |
-| `ClusterOpenBaoConnection` | cluster | platform | the same, plus `allowedNamespaces`; may use the operator's own identity |
+| `BaoServer` | cluster | platform | address, CA bundle, allowed namespaces and token audiences, rate limit |
+| `BaoConnection` | namespaced | platform, in the tenant's Kubernetes namespace | `serverRef`, OpenBao namespace, how to log in |
+| `ClusterBaoConnection` | cluster | platform | the same, plus `allowedNamespaces`; may use the operator's own identity |
 
 Every resource names a connection in `spec.connectionRef`. A tenant cannot choose the address,
 borrow the operator's identity or mint a token the Kubernetes API server accepts; the OpenBao
@@ -41,25 +41,27 @@ policy bound to the tenant's ServiceAccount is the limit of what it can configur
 authenticated client per connection and renews its token instead of logging in on every reconcile.
 
 The split follows who is trusted with what. The platform team decides where tokens may be sent
-(the address and CA on `OpenBaoServer`) and which tenants may use a server. The tenant decides
-which OpenBao role it logs in with, and OpenBao decides what that role may do. The operator's own
-identity is reachable only through a `ClusterOpenBaoConnection`, which only the platform creates.
+(the address and CA on `BaoServer`) and which tenants may use a server. It also creates each
+tenant's connection, which names the OpenBao role and an identity from the tenant's Kubernetes
+namespace; the chart's tenant role excludes both connection kinds. The tenant creates the resources
+that use the connection, and OpenBao decides what that role may do. The operator's own identity is
+reachable only through a `ClusterBaoConnection`.
 
 ```mermaid
 flowchart LR
     subgraph tenant["Kubernetes namespace team-a (tenant)"]
-        res["Policy, KVSecret, ...<br/>spec.connectionRef"]
-        conn["OpenBaoConnection<br/>serverRef, namespace, auth"]
+        res["ACLPolicy, KVSecret, ...<br/>spec.connectionRef"]
+        conn["BaoConnection<br/>serverRef, openbaoNamespace, auth"]
         sa["ServiceAccount"]
     end
     subgraph platform["Cluster scope (platform)"]
-        server["OpenBaoServer<br/>address, caBundle,<br/>allowedNamespaces, allowedAudiences"]
-        cconn["ClusterOpenBaoConnection<br/>allowedNamespaces"]
+        server["BaoServer<br/>address, caBundle,<br/>allowedNamespaces, allowedAudiences"]
+        cconn["ClusterBaoConnection<br/>allowedNamespaces"]
     end
     bao[("OpenBao")]
 
-    res -- "kind: OpenBaoConnection<br/>same namespace only" --> conn
-    res -.->|"kind: ClusterOpenBaoConnection<br/>if allowedNamespaces selects team-a"| cconn
+    res -- "kind: BaoConnection<br/>same namespace only" --> conn
+    res -.->|"kind: ClusterBaoConnection<br/>if allowedNamespaces selects team-a"| cconn
     conn -- serverRef --> server
     cconn -- serverRef --> server
     server -- "admits team-a and every audience?<br/>no: ConnectionDenied" --> conn
@@ -68,15 +70,15 @@ flowchart LR
     cconn -- "login as a named ServiceAccount,<br/>a Secret, or the operator itself" --> bao
 ```
 
-The checks in the diagram run in `internal/connection` before any credential is read: a
-namespaced connection whose server does not select its namespace, or does not list one of its
-audiences, is refused with `ConnectionDenied`, and a token audience that the Kubernetes API server
-accepts is refused even when the server lists it. Field-level rules are in the
+The checks in the diagram run before any credential is read: a namespaced connection whose
+server does not select its Kubernetes namespace, or does not list one of its audiences, is refused
+with `ConnectionDenied`, and a token audience that the Kubernetes API server accepts is refused
+even when the server lists it. Field-level rules are in the
 [connections reference](../reference/connections.md).
 
 ## Common spec and status
 
-Every kind embeds the same spec fields: the immutable `connectionRef` and OpenBao `namespace`, and the policies
+Every kind embeds the same spec fields: the immutable `connectionRef` and `openbaoNamespace`, and the policies
 that decide how much the operator may do: `creationPolicy` (`Create` by default, or adopt an existing object,
 [ADR 0015](../adr/0015-create-and-orphan-by-default.md)), `deletionPolicy` (`Orphan` by default), drift
 detection and its interval, and `managementPolicy` (`Manage`, or `Observe` to read and report only,
@@ -97,8 +99,8 @@ The engine enforces the design rules:
 2. One path has one owner; a second resource on the same path gets `Conflict`
    ([ADR 0012](../adr/0012-ownership-path-index-and-marker.md)).
 3. Create by default, adopt on request; retain by default, delete on request. Mounts, namespaces,
-   KV data, audit devices, key material, MFA methods, entities and `OpenBaoEndpoint` also need the annotation
-   `openbaoconfig.io/allow-destructive-delete: "true"`
+   KV data, audit devices, key material, MFA methods, entities and `BaoEndpoint` also need the annotation
+   `obco.dev/allow-destructive-delete: "true"`
    ([ADR 0013](../adr/0013-destructive-delete-guard.md)).
 4. Secrets only by reference: secret inputs come from Kubernetes Secrets and never appear in a
    spec, status, event or log.
@@ -117,7 +119,7 @@ because it never performs those steps itself.
 
 ```mermaid
 flowchart TD
-    start(["Reconcile"]) --> paused{"paused annotation on the resource,<br/>its Namespace or its OpenBaoServer?"}
+    start(["Reconcile"]) --> paused{"paused annotation on the resource,<br/>its Namespace or its BaoServer?"}
     paused -- yes --> p["Synced=False Paused<br/>no read, write or delete"]
     paused -- no --> del{"being deleted?"}
     del -- yes --> d["delete path<br/>(deletionPolicy, destructive guard,<br/>owner and server checks)"]
@@ -142,6 +144,12 @@ flowchart TD
     obs --> requeue
 ```
 
+A *write-only input* is a value OpenBao accepts but never returns, such as a password; the
+operator keeps an HMAC of a resource's write-only inputs in its status, the *write-only hash*, and
+writes again when those inputs change. A *rotation nonce* is a spec field you change to send again a root
+credential that OpenBao rotates after the first write
+([ADR 0017](../adr/0017-write-once-fields-for-rotated-root-credentials.md)).
+
 A *settled* resource is one whose `Ready` and `Synced` conditions are both `True` for its current
 generation, whose write-only hash and rotation nonce are unchanged and whose server is the one it
 was acquired on. For a settled resource, a pass is a drift check: a read and a comparison, with no
@@ -149,10 +157,11 @@ write unless something outside the operator changed the object.
 
 Drift checks run in two tiers ([ADR 0014](../adr/0014-drift-tiers-and-request-budget.md)). Kinds
 that grant access (policies, auth mounts, every kind of the `auth` group, audit devices, groups,
-group memberships and the access kinds) are re-read every 15 minutes; everything else every hour.
+group memberships and the access kinds `AccessLevel`, `AccessGrant` and `AccessLayout`) are re-read
+every 15 minutes; everything else every hour.
 Both intervals are operator flags and get ±20% jitter so that thousands of objects do not hit the
 server in the same second. All requests to one server share the token bucket of its
-`OpenBaoServer.spec.rateLimit`, and drift reads go without priority, so a spec change is not
+`BaoServer.spec.rateLimit`, and drift reads go without priority, so a spec change is not
 queued behind a drift sweep.
 
 Two safety valves sit on the write side. The write circuit breaker
@@ -160,7 +169,7 @@ Two safety valves sit on the write side. The write circuit breaker
 owns, with an unchanged spec and unchanged input Secrets, at 60 per minute per server by default:
 creates, adoptions and spec changes are user-intended and never wait, but an operator upgrade
 that changes a declared default cannot rewrite every object at once. The annotation
-`openbaoconfig.io/paused: "true"` ([ADR 0019](../adr/0019-pause-annotation.md)) stops all reads,
+`obco.dev/paused: "true"` ([ADR 0019](../adr/0019-pause-annotation.md)) stops all reads,
 writes and deletes, so an incident change made by hand is not reverted.
 
 ### Ownership and adoption
@@ -183,6 +192,11 @@ flowchart TD
     adopted --> owned
 ```
 
+The *ownership marker* is metadata the operator writes on the object in OpenBao itself (managed-by,
+cluster id and resource UID), for the kinds whose objects carry metadata: entities, groups and
+OpenBao namespaces. A *singleton* is configuration that always exists with defaults, such as
+`KVConfig` or `PKIConfig`; the operator adopts it whatever the `creationPolicy`.
+
 Before this decision the engine checks the path index: if an older resource already owns the same
 absolute path on the same server, the newer one gets `Conflict` and never writes. Creates of one
 path on one server are serialised inside the operator and re-read first, so of two `Create`
@@ -200,9 +214,9 @@ written or deleted there.
 ## Kinds
 
 Typed kinds cover the objects compiled into OpenBao, in the groups `core`, `sys`, `auth`,
-`secrets`, `identity` and `access`, all `v1alpha1` under the domain `openbaoconfig.io`, which is final
-([ADR 0008](../adr/0008-provisional-api-group-domain.md)). Kinds for external plugins are in the
-code, experimental and disabled behind `--enable-plugin-kinds`. `OpenBaoEndpoint` writes any payload to any
+`secrets`, `identity` and `access`, all `v1alpha1` under the domain `obco.dev`, which the project owns.
+Kinds for external plugins are in the
+code, experimental and disabled behind `--enable-plugin-kinds`. `BaoEndpoint` writes any payload to any
 path for everything without a typed kind ([ADR 0006](../adr/0006-endpoint-escape-hatch.md)).
 Validation lives in the CRD schema (OpenAPI and CEL), with no admission webhooks
 ([ADR 0005](../adr/0005-cel-validation-without-webhooks.md)).

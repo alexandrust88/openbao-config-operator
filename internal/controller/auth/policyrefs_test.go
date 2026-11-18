@@ -16,8 +16,8 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// policyRefsResolver serves Policy resources by name.
-type policyRefsResolver map[string]*sysv1alpha1.Policy
+// policyRefsResolver serves ACLPolicy resources by name.
+type policyRefsResolver map[string]*sysv1alpha1.ACLPolicy
 
 func (policyRefsResolver) SecretValue(context.Context, string, commonv1alpha1.SecretKeySelector) ([]byte, error) {
 	return nil, engine.ErrReferenceNotReady
@@ -28,16 +28,16 @@ func (r policyRefsResolver) Object(_ context.Context, key client.ObjectKey, obj 
 	if !ok {
 		return fmt.Errorf("%w: policy %s not found", engine.ErrReferenceNotReady, key.Name)
 	}
-	p.DeepCopyInto(obj.(*sysv1alpha1.Policy))
+	p.DeepCopyInto(obj.(*sysv1alpha1.ACLPolicy))
 	return nil
 }
 
-func policyRefsPolicy(name, openbaoName string, ready bool) *sysv1alpha1.Policy {
+func policyRefsPolicy(name, openbaoName string, ready bool) *sysv1alpha1.ACLPolicy {
 	status := metav1.ConditionFalse
 	if ready {
 		status = metav1.ConditionTrue
 	}
-	p := &sysv1alpha1.Policy{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: pluginTestNamespace}}
+	p := &sysv1alpha1.ACLPolicy{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: pluginTestNamespace}}
 	p.Spec.ConnectionRef = commonv1alpha1.ConnectionReference{Name: cloudLitOpenbao}
 	p.Spec.Name = openbaoName
 	p.Status.Conditions = []metav1.Condition{{Type: commonv1alpha1.ConditionReady, Status: status}}
@@ -149,7 +149,7 @@ func TestPolicyRefsEveryTokenFieldsKind(t *testing.T) {
 	}
 	for kind, run := range desired {
 		if err := run(); !errors.Is(err, engine.ErrReferenceNotReady) {
-			t.Errorf("%s: err = %v, want ErrReferenceNotReady for a missing Policy", kind, err)
+			t.Errorf("%s: err = %v, want ErrReferenceNotReady for a missing ACLPolicy", kind, err)
 		}
 	}
 }

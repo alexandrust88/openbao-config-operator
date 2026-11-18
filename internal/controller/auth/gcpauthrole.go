@@ -12,9 +12,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=gcpauthroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=gcpauthroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=gcpauthroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=gcpauthroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=gcpauthroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=gcpauthroles/finalizers,verbs=update
 
 // SetupGCPAuthRole registers the GCPAuthRole controller with the manager.
 func SetupGCPAuthRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

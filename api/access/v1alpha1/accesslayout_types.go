@@ -24,12 +24,12 @@ import (
 
 // The level a role gets in one OpenBao namespace.
 type AccessRoleLevel struct {
-	// OpenBao namespace, relative to spec.namespace; empty (default) means spec.namespace itself. Each namespace may appear once per role, and must have every auth method in spec.authMounts. Example: team-a
+	// OpenBao namespace, relative to spec.openbaoNamespace; empty (default) means spec.openbaoNamespace itself. Each namespace may appear once per role, and must have every auth method in spec.authMounts. Example: team-a
 	// +kubebuilder:default=""
 	// +kubebuilder:validation:MaxLength=255
 	// +kubebuilder:validation:Pattern=`^([A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*)?$`
 	// +optional
-	Namespace string `json:"namespace"`
+	Namespace string `json:"openbaoNamespace"`
 
 	// Name of the AccessLevel, in the same Kubernetes namespace, granted on spec.paths in this OpenBao namespace. Example: writer
 	// +kubebuilder:validation:MinLength=1
@@ -47,10 +47,10 @@ type AccessRole struct {
 	// +required
 	Name string `json:"name"`
 
-	// Level of the role in each OpenBao namespace, at most 32 entries keyed by namespace. A namespace that is not listed gets nothing for this role.
+	// Level of the role in each OpenBao namespace, at most 32 entries keyed by openbaoNamespace. A namespace that is not listed gets nothing for this role.
 	// +kubebuilder:validation:MaxItems=32
 	// +listType=map
-	// +listMapKey=namespace
+	// +listMapKey=openbaoNamespace
 	// +optional
 	Levels []AccessRoleLevel `json:"levels,omitempty"`
 }
@@ -60,7 +60,7 @@ type AccessRole struct {
 // +kubebuilder:validation:XValidation:rule="self.paths.all(p, !p.path.contains('{sa.') && (!has(p.metadataPath) || !p.metadataPath.contains('{sa.')))",message="{sa.namespace} and {sa.name} are only valid in AccessGrant rules"
 // +kubebuilder:validation:XValidation:rule="!self.paths.exists(p, p.path.contains('{org}') || (has(p.metadataPath) && p.metadataPath.contains('{org}'))) || (has(self.organizations) && size(self.organizations) > 0)",message="paths that use {org} require organizations"
 
-// AccessLayoutSpec gives people, by identity provider group, access to KV version 2 secrets. For each role, OpenBao namespace and organization it writes one ACL policy, layout_<namespace>_<name>_<role>[_<org>], and for each auth method one external group of the same name plus _<authMount>, with that policy and a group alias that matches the identity provider group. An update that deletes a policy or group the layout created before (a role, namespace, organization or auth mount removed from the spec) requires the annotation openbaoconfig.io/allow-disruptive-update: "true"; narrowing a level or a path rewrites the policies without it.
+// AccessLayoutSpec gives people, by identity provider group, access to KV version 2 secrets. For each role, OpenBao namespace and organization it writes one ACL policy, layout_<namespace>_<name>_<role>[_<org>], and for each auth method one external group of the same name plus _<authMount>, with that policy and a group alias that matches the identity provider group. An update that deletes a policy or group the layout created before (a role, namespace, organization or auth mount removed from the spec) requires the annotation obco.dev/allow-disruptive-update: "true"; narrowing a level or a path rewrites the policies without it.
 type AccessLayoutSpec struct {
 	commonv1alpha1.ResourceSpec `json:",inline"`
 
@@ -114,12 +114,12 @@ type AccessLayoutStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=openbao
+// +kubebuilder:resource:categories=obco;obco-access
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
-// AccessLayout gives people, by identity provider group, access to KV version 2 secrets (the human access model). For each role, OpenBao namespace and organization it writes an ACL policy, sys/policies/acl/layout_<namespace>_<name>_<role>[_<org>], and per auth mount an external group identity/group/name/<policy>_<mount> with that policy and a group alias matching the identity provider group. An update that deletes a policy or group the layout created before needs the annotation openbaoconfig.io/allow-disruptive-update: "true". Default deletionPolicy Orphan keeps the objects.
+// AccessLayout gives people, by identity provider group, access to KV version 2 secrets (the human access model). For each role, OpenBao namespace and organization it writes an ACL policy, sys/policies/acl/layout_<namespace>_<name>_<role>[_<org>], and per auth mount an external group identity/group/name/<policy>_<mount> with that policy and a group alias matching the identity provider group. An update that deletes a policy or group the layout created before needs the annotation obco.dev/allow-disruptive-update: "true". Default deletionPolicy Orphan keeps the objects.
 //
 // Example:
 //

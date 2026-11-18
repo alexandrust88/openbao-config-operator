@@ -62,7 +62,7 @@ initialize "openbao-config-operator" {
   }
 
   # The operator logs in with the projected token the chart mounts for the audience "openbao-config-operator"
-  # (chart value injectedIdentity.projectedToken) and a ClusterOpenBaoConnection with injectedIdentity.
+  # (chart value injectedIdentity.projectedToken) and a ClusterBaoConnection with injectedIdentity.
   request "operator-role" {
     operation = "update"
     path      = "auth/kubernetes/role/openbao-config-operator"

@@ -1,7 +1,7 @@
 # A tenant-a attempt to write a policy through tenant-b's connection. The resource must live in the Kubernetes
 # namespace tenant-b, where the tenant-a admin has no rights, so the API server refuses it.
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: reach-tenant-b
   namespace: tenant-b

@@ -1,4 +1,4 @@
 notReady:
-  - kind: Policy
+  - kind: ACLPolicy
     name: lc-paused
     reason: intentional paused state; the live test asserts current Synced=False/Paused, no Ready condition and no policy in OpenBao after other resources settle

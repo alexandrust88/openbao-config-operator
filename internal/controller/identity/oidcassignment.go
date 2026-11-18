@@ -11,10 +11,10 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/refs"
 )
 
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcassignments,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcassignments/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcassignments/finalizers,verbs=update
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=entities;groups,verbs=get;list;watch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcassignments,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcassignments/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcassignments/finalizers,verbs=update
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=identityentities;identitygroups,verbs=get;list;watch
 
 // SetupOIDCAssignment registers the OIDCAssignment controller with the manager.
 func SetupOIDCAssignment(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

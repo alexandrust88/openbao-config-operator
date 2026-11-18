@@ -37,7 +37,7 @@ func TestAuthCloudExamples(t *testing.T) {
 	}
 	crds := make([]string, 0, len(authCloudKinds))
 	for _, kind := range authCloudKinds {
-		crds = append(crds, "auth.openbaoconfig.io_"+kind+"s.yaml")
+		crds = append(crds, "auth.obco.dev_"+kind+"s.yaml")
 	}
 	k8s := secretsStartEnv(t, root, crds)
 	ctx := context.Background()
@@ -187,6 +187,6 @@ func authCloudDoc(meta, kind, spec string) string {
 	if spec != "" {
 		spec = ", " + spec
 	}
-	return "apiVersion: auth.openbaoconfig.io/v1alpha1\nmetadata: {" + meta + ", namespace: " + authCloudNamespace +
+	return "apiVersion: auth.obco.dev/v1alpha1\nmetadata: {" + meta + ", namespace: " + authCloudNamespace +
 		"}\nkind: " + kind + "\nspec: {connectionRef: {name: openbao}" + spec + "}\n"
 }

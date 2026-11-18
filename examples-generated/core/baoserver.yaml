@@ -1,0 +1,44 @@
+# BaoServer (core.obco.dev/v1alpha1)
+# BaoServer is a cluster-scoped OpenBao server that the platform team makes available to connections.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: address.
+#
+# Reference: https://docs.obco.dev/reference/api/core/#baoserver
+# Curated example: examples/core/baoserver.yaml
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoServer
+metadata:
+  name: example
+spec:
+  address: https://openbao.example.com:8200
+  allowInsecureHTTP: true
+  allowedAudiences:
+  - example
+  allowedNamespaces:
+    matchExpressions:
+    - key: example
+      operator: In
+      values:
+      - example
+    matchLabels:
+      example: example
+  caBundle:
+    secretRef:
+      key: ca.crt
+      name: baoserver-secret-ref
+      namespace: openbao-config
+  rateLimit:
+    burst: 1
+    qps: 1
+  requestTimeout: 1h
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: baoserver-secret-ref
+  namespace: openbao-config
+stringData:
+  ca.crt: fake-value-not-a-secret
+type: Opaque

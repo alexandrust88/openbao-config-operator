@@ -18,7 +18,7 @@ import (
 
 // policyTarget stands in for any managed referent kind.
 var policyTarget = Target{
-	GVK: sysv1alpha1.GroupVersion.WithKind("Policy"),
+	GVK: sysv1alpha1.GroupVersion.WithKind("ACLPolicy"),
 	Lookup: func(_ context.Context, _ openbao.Client, name string) (string, error) {
 		return "looked-up-" + name, nil
 	},
@@ -43,8 +43,8 @@ func (c readClient) Read(_ context.Context, path string) (map[string]any, error)
 	return nil, openbao.ErrNotFound
 }
 
-func referent(name, id string, ready bool, labels map[string]string) *sysv1alpha1.Policy {
-	p := &sysv1alpha1.Policy{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: litTeam, Labels: labels}}
+func referent(name, id string, ready bool, labels map[string]string) *sysv1alpha1.ACLPolicy {
+	p := &sysv1alpha1.ACLPolicy{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: litTeam, Labels: labels}}
 	p.Status.ID = id
 	status := metav1.ConditionFalse
 	if ready {
@@ -56,7 +56,7 @@ func referent(name, id string, ready bool, labels map[string]string) *sysv1alpha
 	return p
 }
 
-func newResolver(t *testing.T, objs ...*sysv1alpha1.Policy) Resolver {
+func newResolver(t *testing.T, objs ...*sysv1alpha1.ACLPolicy) Resolver {
 	t.Helper()
 	scheme := runtime.NewScheme()
 	if err := sysv1alpha1.AddToScheme(scheme); err != nil {
@@ -243,7 +243,7 @@ func mountReferent(name, namespace, path string) *sysv1alpha1.AuthMount {
 	return m
 }
 
-func TestReferentMustShareOpenBaoNamespace(t *testing.T) {
+func TestReferentMustShareBaoNamespace(t *testing.T) {
 	scheme := runtime.NewScheme()
 	if err := sysv1alpha1.AddToScheme(scheme); err != nil {
 		t.Fatal(err)

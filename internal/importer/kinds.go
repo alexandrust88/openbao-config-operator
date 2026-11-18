@@ -49,19 +49,19 @@ var mountIdentity = []string{fieldMountPath, fieldName}
 func kinds(base openbao.Client) []runner {
 	conns := staticConns{c: base}
 	return []runner{
-		kind[*sysv1alpha1.OpenBaoNamespace]{
-			adapter: syscontroller.OpenBaoNamespaceAdapter{}, newObj: newObj[sysv1alpha1.OpenBaoNamespace],
+		kind[*sysv1alpha1.BaoNamespace]{
+			adapter: syscontroller.BaoNamespaceAdapter{}, newObj: newObj[sysv1alpha1.BaoNamespace],
 			identity: []string{fieldName},
-			list: names("sys/namespaces", nil, func(n string) *sysv1alpha1.OpenBaoNamespace {
-				o := &sysv1alpha1.OpenBaoNamespace{}
+			list: names("sys/namespaces", nil, func(n string) *sysv1alpha1.BaoNamespace {
+				o := &sysv1alpha1.BaoNamespace{}
 				o.Spec.Name = n
 				return o
 			}),
 		},
-		kind[*sysv1alpha1.Policy]{
-			adapter: syscontroller.PolicyAdapter{}, newObj: newObj[sysv1alpha1.Policy], identity: []string{fieldName},
-			list: names("sys/policies/acl", []string{"root"}, func(n string) *sysv1alpha1.Policy {
-				o := &sysv1alpha1.Policy{}
+		kind[*sysv1alpha1.ACLPolicy]{
+			adapter: syscontroller.ACLPolicyAdapter{}, newObj: newObj[sysv1alpha1.ACLPolicy], identity: []string{fieldName},
+			list: names("sys/policies/acl", []string{"root"}, func(n string) *sysv1alpha1.ACLPolicy {
+				o := &sysv1alpha1.ACLPolicy{}
 				o.Spec.Name = n
 				return o
 			}),
@@ -208,31 +208,31 @@ func kinds(base openbao.Client) []runner {
 				return o
 			}),
 		},
-		kind[*identityv1alpha1.Entity]{
-			adapter: identitycontroller.EntityAdapter{}, newObj: newObj[identityv1alpha1.Entity],
+		kind[*identityv1alpha1.IdentityEntity]{
+			adapter: identitycontroller.IdentityEntityAdapter{}, newObj: newObj[identityv1alpha1.IdentityEntity],
 			identity: []string{fieldName},
-			list: names("identity/entity/name", nil, func(n string) *identityv1alpha1.Entity {
-				o := &identityv1alpha1.Entity{}
+			list: names("identity/entity/name", nil, func(n string) *identityv1alpha1.IdentityEntity {
+				o := &identityv1alpha1.IdentityEntity{}
 				o.Spec.Name = n
 				return o
 			}),
 		},
-		kind[*identityv1alpha1.EntityAlias]{
-			adapter: identitycontroller.EntityAliasAdapter{Conns: conns}, newObj: newObj[identityv1alpha1.EntityAlias],
+		kind[*identityv1alpha1.IdentityEntityAlias]{
+			adapter: identitycontroller.IdentityEntityAliasAdapter{Conns: conns}, newObj: newObj[identityv1alpha1.IdentityEntityAlias],
 			identity: []string{"aliasName", "mountAccessor", "mountPath", "entityID", "entityName"},
 			list:     entityAliases,
 		},
-		kind[*identityv1alpha1.Group]{
-			adapter: identitycontroller.GroupAdapter{}, newObj: newObj[identityv1alpha1.Group],
+		kind[*identityv1alpha1.IdentityGroup]{
+			adapter: identitycontroller.IdentityGroupAdapter{}, newObj: newObj[identityv1alpha1.IdentityGroup],
 			identity: []string{fieldName},
-			list: names("identity/group/name", nil, func(n string) *identityv1alpha1.Group {
-				o := &identityv1alpha1.Group{}
+			list: names("identity/group/name", nil, func(n string) *identityv1alpha1.IdentityGroup {
+				o := &identityv1alpha1.IdentityGroup{}
 				o.Spec.Name = n
 				return o
 			}),
 		},
-		kind[*identityv1alpha1.GroupAlias]{
-			adapter: identitycontroller.GroupAliasAdapter{Conns: conns}, newObj: newObj[identityv1alpha1.GroupAlias],
+		kind[*identityv1alpha1.IdentityGroupAlias]{
+			adapter: identitycontroller.IdentityGroupAliasAdapter{Conns: conns}, newObj: newObj[identityv1alpha1.IdentityGroupAlias],
 			identity: []string{"aliasName", "mountAccessor", "mountPath", "groupID", "groupName"},
 			list:     groupAliases,
 		},
@@ -485,12 +485,12 @@ func (s *scope) authPath(accessor string) string {
 	return ""
 }
 
-func entityAliases(ctx context.Context, s *scope) ([]listed[*identityv1alpha1.EntityAlias], error) {
+func entityAliases(ctx context.Context, s *scope) ([]listed[*identityv1alpha1.IdentityEntityAlias], error) {
 	entities, err := s.keys(ctx, "identity/entity/name")
 	if err != nil {
 		return nil, err
 	}
-	var out []listed[*identityv1alpha1.EntityAlias]
+	var out []listed[*identityv1alpha1.IdentityEntityAlias]
 	for _, entity := range entities {
 		data, err := s.c.Read(ctx, "identity/entity/name/"+entity)
 		if err != nil {
@@ -503,23 +503,23 @@ func entityAliases(ctx context.Context, s *scope) ([]listed[*identityv1alpha1.En
 			accessor, _ := alias["mount_accessor"].(string)
 			mountPath := s.authPath(accessor)
 			if name == "" || mountPath == "" {
-				s.note("EntityAlias %q of entity %s not imported: auth mount %s not found", name, entity, accessor)
+				s.note("IdentityEntityAlias %q of entity %s not imported: auth mount %s not found", name, entity, accessor)
 				continue
 			}
-			o := &identityv1alpha1.EntityAlias{}
+			o := &identityv1alpha1.IdentityEntityAlias{}
 			o.Spec.AliasName, o.Spec.MountPath, o.Spec.EntityName = name, mountPath, entity
-			out = append(out, listed[*identityv1alpha1.EntityAlias]{obj: o, parts: []string{entity, mountPath, name}})
+			out = append(out, listed[*identityv1alpha1.IdentityEntityAlias]{obj: o, parts: []string{entity, mountPath, name}})
 		}
 	}
 	return out, nil
 }
 
-func groupAliases(ctx context.Context, s *scope) ([]listed[*identityv1alpha1.GroupAlias], error) {
+func groupAliases(ctx context.Context, s *scope) ([]listed[*identityv1alpha1.IdentityGroupAlias], error) {
 	groups, err := s.keys(ctx, "identity/group/name")
 	if err != nil {
 		return nil, err
 	}
-	var out []listed[*identityv1alpha1.GroupAlias]
+	var out []listed[*identityv1alpha1.IdentityGroupAlias]
 	for _, group := range groups {
 		data, err := s.c.Read(ctx, "identity/group/name/"+group)
 		if err != nil {
@@ -533,12 +533,12 @@ func groupAliases(ctx context.Context, s *scope) ([]listed[*identityv1alpha1.Gro
 		accessor, _ := alias["mount_accessor"].(string)
 		mountPath := s.authPath(accessor)
 		if mountPath == "" {
-			s.note("GroupAlias %q of group %s not imported: auth mount %s not found", name, group, accessor)
+			s.note("IdentityGroupAlias %q of group %s not imported: auth mount %s not found", name, group, accessor)
 			continue
 		}
-		o := &identityv1alpha1.GroupAlias{}
+		o := &identityv1alpha1.IdentityGroupAlias{}
 		o.Spec.AliasName, o.Spec.MountPath, o.Spec.GroupName = name, mountPath, group
-		out = append(out, listed[*identityv1alpha1.GroupAlias]{obj: o, parts: []string{group, mountPath, name}})
+		out = append(out, listed[*identityv1alpha1.IdentityGroupAlias]{obj: o, parts: []string{group, mountPath, name}})
 	}
 	return out, nil
 }

@@ -24,11 +24,11 @@ func TestBuiltinAuthExamples(t *testing.T) {
 		t.Fatal(err)
 	}
 	k8s := secretsStartEnv(t, root, []string{
-		"auth.openbaoconfig.io_kubernetesauthconfigs.yaml",
-		"auth.openbaoconfig.io_kubernetesauthroles.yaml",
-		"auth.openbaoconfig.io_jwtauthconfigs.yaml",
-		"auth.openbaoconfig.io_jwtauthroles.yaml",
-		"auth.openbaoconfig.io_jwtcelroles.yaml",
+		"auth.obco.dev_kubernetesauthconfigs.yaml",
+		"auth.obco.dev_kubernetesauthroles.yaml",
+		"auth.obco.dev_jwtauthconfigs.yaml",
+		"auth.obco.dev_jwtauthroles.yaml",
+		"auth.obco.dev_jwtcelroles.yaml",
 	})
 	ctx := context.Background()
 
@@ -49,7 +49,7 @@ func TestBuiltinAuthExamples(t *testing.T) {
 	}
 
 	t.Run("validation", func(t *testing.T) {
-		const head = "apiVersion: auth.openbaoconfig.io/v1alpha1\nmetadata: {name: x, namespace: default}\n"
+		const head = "apiVersion: auth.obco.dev/v1alpha1\nmetadata: {name: x, namespace: default}\n"
 		for _, tt := range []struct {
 			name, doc, wantErr string
 		}{
@@ -145,7 +145,7 @@ spec: {connectionRef: {name: openbao}, celProgram: {expression: ""}}`},
 	})
 
 	t.Run("selector expressions", func(t *testing.T) {
-		const doc = "apiVersion: auth.openbaoconfig.io/v1alpha1\nkind: KubernetesAuthRole\n" +
+		const doc = "apiVersion: auth.obco.dev/v1alpha1\nkind: KubernetesAuthRole\n" +
 			"metadata: {name: x, namespace: default}\nspec: {connectionRef: {name: openbao}, boundServiceAccountNames: [app],\n" +
 			"  boundServiceAccountNamespaceSelector: {matchLabels: {team: a}, matchExpressions: [{key: env, operator: In, values: [dev]}]}}"
 		for _, validation := range []string{"Ignore", "Strict"} {
@@ -165,7 +165,7 @@ spec: {connectionRef: {name: openbao}, celProgram: {expression: ""}}`},
 			"JWTAuthRole":   "{connectionRef: {name: openbao}, name: r, userClaim: sub, boundSubject: s}",
 			"JWTCELRole":    "{connectionRef: {name: openbao}, name: r, celProgram: {expression: 'true'}}",
 		} {
-			obj := secretsDecodeString(t, "apiVersion: auth.openbaoconfig.io/v1alpha1\nkind: "+kind+
+			obj := secretsDecodeString(t, "apiVersion: auth.obco.dev/v1alpha1\nkind: "+kind+
 				"\nmetadata: {name: immutable, namespace: default}\nspec: "+spec)
 			if err := k8s.Create(ctx, obj); err != nil {
 				t.Fatalf("%s: %v", kind, err)

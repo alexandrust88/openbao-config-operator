@@ -1,0 +1,37 @@
+# An ACL policy for team a that reads KV secrets by identity: paths are templated with entity metadata and with the
+# alias of a login on a named auth mount, whose accessor the operator resolves from the AuthMount resources.
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
+metadata:
+  name: obco-team-a-reader
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Delete
+  driftDetection: Enabled
+  driftInterval: 15m
+  managementPolicy: Manage
+  name: team-a-reader
+  policy: |
+    path "team-a/kv/data/{{identity.entity.metadata.app}}/*" {
+      capabilities = ["read", "list"]
+    }
+    path "team-a/kv/data/sa/{{identity.entity.aliases.${accessor:k8s}.metadata.service_account_namespace}}/*" {
+      capabilities = ["read"]
+    }
+    path "team-a/kv/data/ci/{{identity.entity.aliases.${accessor:ci}.name}}/*" {
+      capabilities = ["read"]
+    }
+  accessorRefs:
+    k8s:
+      authMountRef:
+        name: obco-kubernetes
+    ci:
+      authMountRef:
+        name: obco-approle
+  casRequired: false
+  allowWildcardsInIdentityTemplates: false
+  allowSlashesInIdentityTemplates: true

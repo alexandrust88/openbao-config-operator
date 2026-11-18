@@ -1,0 +1,34 @@
+# BaoConnection (core.obco.dev/v1alpha1)
+# BaoConnection is a tenant's login to a BaoServer, usable only by resources in its own Kubernetes namespace through
+# spec.connectionRef.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: auth, serverRef.
+#
+# Reference: https://docs.obco.dev/reference/api/core/#baoconnection
+# Curated example: examples/core/baoconnection.yaml
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  auth:
+    token:
+      secretRef:
+        key: value
+        name: baoconnection-secret-ref
+  openbaoAuthNamespace: example
+  openbaoNamespace: example
+  serverRef:
+    name: example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: baoconnection-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

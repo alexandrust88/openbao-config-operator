@@ -6,6 +6,8 @@ description: "Design decision for OpenBao Config Operator: creation and deletion
 
 Status: superseded in part by [ADR 0015](0015-create-and-orphan-by-default.md) (both defaults). Date: 2026-11-13.
 
+Update 2026-11-18: the finalizer rule still applies: a finalizer is added only for `Delete`, and a cleanup that cannot run reports `CleanupBlocked` (`internal/engine/reconciler.go`).
+
 ## Context
 
 An operator that overwrites an existing object without asking, and always deletes it when the

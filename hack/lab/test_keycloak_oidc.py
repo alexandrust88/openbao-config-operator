@@ -34,7 +34,7 @@ class KeycloakOIDCTests(unittest.TestCase):
             rollout_index = next(i for i, args in enumerate(calls) if "rollout" in args)
             self.assertLess(patch_index, rollout_index)
             body = json.loads(calls[patch_index][-1])
-            return body["spec"]["template"]["metadata"]["annotations"]["openbaoconfig.io/realm-sha256"]
+            return body["spec"]["template"]["metadata"]["annotations"]["obco.dev/realm-sha256"]
         values = credentials()
         first = rollout_digest(values)
         self.assertEqual(len(first), 64)
@@ -59,7 +59,7 @@ class KeycloakOIDCTests(unittest.TestCase):
     def test_keycloak_render_is_separate_from_legacy_namespaces(self):
         state = keycloak_oidc.state_from_credentials(credentials())
         objects = keycloak_oidc.lab.render(state)
-        namespaces = {obj["spec"]["namespace"] for obj in objects if obj.get("spec", {}).get("namespace")}
+        namespaces = {obj["spec"]["openbaoNamespace"] for obj in objects if obj.get("spec", {}).get("openbaoNamespace")}
         self.assertEqual(namespaces, {"saas-keycloak-alpha", "saas-keycloak-beta"})
         configs = [obj["spec"] for obj in objects if obj["kind"] == "JWTAuthConfig"]
         self.assertTrue(all(config["oidcClientSecretSecretRef"]["name"] == "saas-keycloak-oidc" for config in configs))

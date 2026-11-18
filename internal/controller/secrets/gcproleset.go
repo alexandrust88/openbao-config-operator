@@ -13,9 +13,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=gcprolesets,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=gcprolesets/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=gcprolesets/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=gcprolesets,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=gcprolesets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=gcprolesets/finalizers,verbs=update
 
 // SetupGCPRoleset registers the GCPRoleset controller with the manager.
 func SetupGCPRoleset(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

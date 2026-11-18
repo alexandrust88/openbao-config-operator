@@ -16,9 +16,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=randomsecrets,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=randomsecrets/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=randomsecrets/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=randomsecrets,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=randomsecrets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=randomsecrets/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update
 
 // SetupRandomSecret registers the RandomSecret controller with the manager.

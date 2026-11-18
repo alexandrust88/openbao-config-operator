@@ -134,18 +134,18 @@ func TestSysAdapterTraits(t *testing.T) {
 			t.Errorf("%T must be a singleton", s)
 		}
 	}
-	for _, d := range []engine.Destructive{AuthMountAdapter{}, SecretsMountAdapter{}, OpenBaoNamespaceAdapter{}} {
+	for _, d := range []engine.Destructive{AuthMountAdapter{}, SecretsMountAdapter{}, BaoNamespaceAdapter{}} {
 		if !d.Destructive() {
 			t.Errorf("%T must be destructive", d)
 		}
 	}
-	for _, a := range []any{PolicyAdapter{}, PasswordPolicyAdapter{}, RateLimitQuotaAdapter{}, UIHeaderAdapter{},
-		AuditRequestHeaderAdapter{}, WorkflowAdapter{}, PluginAdapter{}} {
+	for _, a := range []any{ACLPolicyAdapter{}, PasswordPolicyAdapter{}, RateLimitQuotaAdapter{}, UIHeaderAdapter{},
+		AuditRequestHeaderAdapter{}, BaoWorkflowAdapter{}, PluginAdapter{}} {
 		if _, ok := a.(engine.Singleton); ok {
 			t.Errorf("%T is created by the operator and must not be a singleton", a)
 		}
 	}
-	for _, a := range []engine.DriftTier{PolicyAdapter{}, AuthMountAdapter{}, AuditAdapter{}} {
+	for _, a := range []engine.DriftTier{ACLPolicyAdapter{}, AuthMountAdapter{}, AuditAdapter{}} {
 		if a.DriftTier() != engine.TierAccessCritical {
 			t.Errorf("%T must be access-critical", a)
 		}

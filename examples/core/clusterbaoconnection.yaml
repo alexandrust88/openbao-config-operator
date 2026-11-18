@@ -1,0 +1,23 @@
+# The platform team's connection logs in to the Kubernetes auth mount as a dedicated ServiceAccount of the operator
+# namespace, with a short-lived TokenRequest token for the openbao audience, which the OpenBao role must expect.
+# Resources in namespaces labelled obco.dev/platform=true use it with connectionRef kind
+# ClusterBaoConnection. The -injectedidentity and -filesystem variants log in as the operator itself.
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
+metadata:
+  name: platform-sa
+spec:
+  serverRef:
+    name: openbao
+  auth:
+    kubernetes:
+      mountPath: kubernetes
+      role: platform-configurer
+      serviceAccountRef:
+        namespace: openbao-config-operator
+        name: platform-configurer
+      audiences:
+        - openbao
+  allowedNamespaces:
+    matchLabels:
+      obco.dev/platform: "true"

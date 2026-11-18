@@ -26,11 +26,11 @@ import (
 
 type probeFunc func(ctx context.Context, cfg openbao.Config) (openbao.ServerInfo, error)
 
-// +kubebuilder:rbac:groups=core.openbaoconfig.io,resources=openbaoservers,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=core.openbaoconfig.io,resources=openbaoservers/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core.openbaoconfig.io,resources=openbaoservers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core.obco.dev,resources=baoservers,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=core.obco.dev,resources=baoservers/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core.obco.dev,resources=baoservers/status,verbs=get;update;patch
 
-// serverReconciler probes an OpenBaoServer without a token and records whether it is reachable and unsealed.
+// serverReconciler probes a BaoServer without a token and records whether it is reachable and unsealed.
 type serverReconciler struct {
 	client.Client
 	resolver *connection.Resolver
@@ -38,15 +38,15 @@ type serverReconciler struct {
 }
 
 func setupServerController(mgr ctrl.Manager, resolver *connection.Resolver, probe probeFunc) error {
-	err := mgr.GetFieldIndexer().IndexField(context.Background(), &corev1alpha1.OpenBaoServer{}, referenceIndex,
+	err := mgr.GetFieldIndexer().IndexField(context.Background(), &corev1alpha1.BaoServer{}, referenceIndex,
 		connection.References)
 	if err != nil {
 		return err
 	}
 	r := &serverReconciler{Client: mgr.GetClient(), resolver: resolver, probe: probe}
 	return ctrl.NewControllerManagedBy(mgr).
-		Named("openbaoserver").
-		For(&corev1alpha1.OpenBaoServer{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Named("baoserver").
+		For(&corev1alpha1.BaoServer{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(r.referencing("Secret")), builder.OnlyMetadata).
 		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(r.referencing("ConfigMap")), builder.OnlyMetadata).
 		Complete(r)
@@ -54,7 +54,7 @@ func setupServerController(mgr ctrl.Manager, resolver *connection.Resolver, prob
 
 // Reconcile probes the server and records the result. It always requeues to re-probe.
 func (r *serverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	server := &corev1alpha1.OpenBaoServer{}
+	server := &corev1alpha1.BaoServer{}
 	if err := r.Get(ctx, req.NamespacedName, server); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -84,7 +84,7 @@ func (r *serverReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 }
 
 // finalize keeps a server that is being deleted while a connection still references it, then releases it.
-func (r *serverReconciler) finalize(ctx context.Context, server *corev1alpha1.OpenBaoServer) (ctrl.Result, error) {
+func (r *serverReconciler) finalize(ctx context.Context, server *corev1alpha1.BaoServer) (ctrl.Result, error) {
 	if !controllerutil.ContainsFinalizer(server, serverFinalizer) {
 		return ctrl.Result{}, nil
 	}
@@ -96,8 +96,8 @@ func (r *serverReconciler) finalize(ctx context.Context, server *corev1alpha1.Op
 		return r.resolver.ServerAdmits(ctx, server, conn.GetNamespace())
 	}
 	inUse, err := anyListed(ctx, r.Client, []func() client.ObjectList{
-		func() client.ObjectList { return &corev1alpha1.OpenBaoConnectionList{} },
-		func() client.ObjectList { return &corev1alpha1.ClusterOpenBaoConnectionList{} },
+		func() client.ObjectList { return &corev1alpha1.BaoConnectionList{} },
+		func() client.ObjectList { return &corev1alpha1.ClusterBaoConnectionList{} },
 	}, counts, client.MatchingFields{serverIndex: server.Name})
 	if err != nil {
 		return ctrl.Result{}, err
@@ -108,7 +108,7 @@ func (r *serverReconciler) finalize(ctx context.Context, server *corev1alpha1.Op
 	return ctrl.Result{}, releaseFinalizer(ctx, r.Client, server, serverFinalizer)
 }
 
-func (r *serverReconciler) observe(ctx context.Context, server *corev1alpha1.OpenBaoServer) {
+func (r *serverReconciler) observe(ctx context.Context, server *corev1alpha1.BaoServer) {
 	status := &server.Status
 	fail := func(reason, message string) {
 		setReady(&status.Conditions, server.Generation, metav1.ConditionFalse, reason, message)
@@ -145,10 +145,10 @@ func (r *serverReconciler) observe(ctx context.Context, server *corev1alpha1.Ope
 
 func (r *serverReconciler) referencing(kind string) handler.MapFunc {
 	return func(ctx context.Context, obj client.Object) []reconcile.Request {
-		list := &corev1alpha1.OpenBaoServerList{}
+		list := &corev1alpha1.BaoServerList{}
 		value := connection.ReferenceIndexValue(kind, obj.GetNamespace(), obj.GetName())
 		if err := r.List(ctx, list, client.MatchingFields{referenceIndex: value}); err != nil {
-			logf.FromContext(ctx).Error(err, "Failed to list OpenBaoServers referencing object", "kind", kind,
+			logf.FromContext(ctx).Error(err, "Failed to list BaoServers referencing object", "kind", kind,
 				"namespace", obj.GetNamespace(), "name", obj.GetName())
 			return nil
 		}

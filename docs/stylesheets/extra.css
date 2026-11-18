@@ -19,6 +19,14 @@
   max-width: 1440px;
 }
 
+.md-typeset h1 {
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset :is(.admonition, details) {
+  font-size: 0.8rem;
+}
+
 /* Keep tables inside the content column. Material sizes the wrapper to the
    unwrapped text, which is what forces the sideways scroll. */
 .md-typeset .md-typeset__scrollwrap {
@@ -36,11 +44,18 @@
 .md-typeset .md-typeset__table table:not([class]) {
   display: table;
   width: 100%;
-  table-layout: fixed;
+  table-layout: auto;
   font-size: 0.8rem;
 }
 
+/* Fixed layout only where the column widths below are set. */
+.md-typeset :is(.helm-values, .api-fields, .threat-model) table:not([class]),
+.md-typeset .kind-catalogue table:not([class]):has(> thead > tr > :nth-child(7):last-child) {
+  table-layout: fixed;
+}
+
 .md-typeset table:not([class]) :is(th, td) {
+  min-width: 0;
   padding: 0.45em 0.5em;
   overflow-wrap: break-word;
   word-break: normal;
@@ -54,6 +69,17 @@
 .kind-catalogue table:not([class]):has(> thead > tr > :nth-child(7):last-child) :is(th, td):nth-child(5) { width: 14%; }
 .kind-catalogue table:not([class]):has(> thead > tr > :nth-child(7):last-child) :is(th, td):nth-child(6) { width: 14%; }
 .kind-catalogue table:not([class]):has(> thead > tr > :nth-child(7):last-child) :is(th, td):nth-child(7) { width: 17%; }
+
+/* Phones: the seven-column catalogue scrolls sideways at a readable width instead of breaking every word. */
+@media screen and (max-width: 44.9375em) {
+  .md-typeset .kind-catalogue .md-typeset__scrollwrap {
+    overflow-x: auto;
+  }
+
+  .md-typeset .kind-catalogue table:not([class]):has(> thead > tr > :nth-child(7):last-child) {
+    min-width: 40rem;
+  }
+}
 
 .threat-model table:not([class]):has(> thead > tr > :nth-child(8):last-child) :is(th, td):nth-child(1) { width: 8%; }
 .threat-model table:not([class]):has(> thead > tr > :nth-child(8):last-child) :is(th, td):nth-child(2) { width: 10%; }
@@ -104,4 +130,57 @@
 
 .md-typeset .obco-hero .md-button {
   margin: 0.4rem 0.6rem 0 0;
+}
+
+/* Helm values: Key | Type | Default | Constraints | Description, readable widths, not threat-model 8-col. */
+.helm-values table:not([class]) :is(th, td):nth-child(1) { width: 22%; }
+.helm-values table:not([class]) :is(th, td):nth-child(2) { width: 8%; }
+.helm-values table:not([class]) :is(th, td):nth-child(3) { width: 14%; }
+.helm-values table:not([class]) :is(th, td):nth-child(4) { width: 18%; }
+.helm-values table:not([class]) :is(th, td):nth-child(5) { width: 38%; }
+
+/* API reference: Field | Type | Description; facts and CEL rules sit inside the description cell. */
+.md-typeset div.api-fields table:not([class]) :is(th, td):nth-child(1) { width: 30%; }
+.md-typeset div.api-fields table:not([class]) :is(th, td):nth-child(2) { width: 16%; }
+.md-typeset div.api-fields table:not([class]) :is(th, td):nth-child(3) { width: 54%; }
+
+.md-typeset div.api-fields .api-meta {
+  margin-top: 0.4em;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .api-rules ul,
+.md-typeset ul.api-rules {
+  margin: 0.4em 0 0 1.2em;
+}
+
+.md-typeset .api-rules li {
+  margin-bottom: 0.2em;
+}
+
+/* Phones: one block per field, path and type on one line, description below. */
+@media screen and (max-width: 44.9375em) {
+  .md-typeset div.api-fields table:not([class]),
+  .md-typeset div.api-fields :is(tbody, tr) {
+    display: block;
+  }
+
+  .md-typeset div.api-fields thead {
+    display: none;
+  }
+
+  .md-typeset div.api-fields tr {
+    border-top: 0.05rem solid var(--md-typeset-table-color);
+  }
+
+  .md-typeset div.api-fields table:not([class]) td:nth-child(n) {
+    display: inline-block;
+    width: auto;
+    border-top: 0;
+  }
+
+  .md-typeset div.api-fields table:not([class]) td:nth-child(3) {
+    display: block;
+    padding-top: 0;
+  }
 }

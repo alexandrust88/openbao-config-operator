@@ -12,9 +12,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=radiusauthconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=radiusauthconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=radiusauthconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=radiusauthconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=radiusauthconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=radiusauthconfigs/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupRADIUSAuthConfig registers the RADIUSAuthConfig controller with the manager.

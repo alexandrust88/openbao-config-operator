@@ -1,20 +1,20 @@
-# LDAPAuthGroup (auth.openbaoconfig.io/v1alpha1)
+# LDAPAuthGroup (auth.obco.dev/v1alpha1)
 # LDAPAuthGroup manages an LDAP group mapping of an OpenBao LDAP auth method at auth/<mountPath>/groups/<name>.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#ldapauthgroup
+# Reference: https://docs.obco.dev/reference/api/auth/#ldapauthgroup
 # Curated example: examples/auth/ldapauthgroup.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: LDAPAuthGroup
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -23,6 +23,6 @@ spec:
   managementPolicy: Manage
   mountPath: ldap
   name: example
-  namespace: example
+  openbaoNamespace: example
   policies:
   - default

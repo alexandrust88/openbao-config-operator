@@ -24,11 +24,11 @@ const accessorPlaceholder = "<kubernetes-auth-accessor>"
 // defaultGrantTokenTTL matches the CRD default of spec.tokenTTL.
 const defaultGrantTokenTTL = 15 * time.Minute
 
-// +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accessgrants,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accessgrants/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accessgrants/finalizers,verbs=update
-// +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accesslevels,verbs=get;list;watch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=authmounts,verbs=get;list;watch
+// +kubebuilder:rbac:groups=access.obco.dev,resources=accessgrants,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=access.obco.dev,resources=accessgrants/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=access.obco.dev,resources=accessgrants/finalizers,verbs=update
+// +kubebuilder:rbac:groups=access.obco.dev,resources=accesslevels,verbs=get;list;watch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=authmounts,verbs=get;list;watch
 
 // SetupAccessGrant registers the AccessGrant controller with the manager.
 func SetupAccessGrant(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

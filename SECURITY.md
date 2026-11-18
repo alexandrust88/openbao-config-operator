@@ -27,12 +27,14 @@ advisory. Fixes ship as a patch release with the advisory.
 
 | Version | Supported |
 |---------|-----------|
-| latest minor release (`v0.Y.x`) | yes |
-| previous minor release | critical security fixes only, for 30 days after the next minor is released, at the maintainers' discretion |
+| latest minor release (`v1.Y.x`) | yes |
+| previous minor release | security fixes only, until three months after the next minor is released |
 | older minor releases | no, upgrade to the latest |
 
-The project is pre-1.0: the API is `v1alpha1`. The full support window, including the rules from
-1.0.0, is in the [release process](docs/maintainers/release-process.md#support-window).
+The first release is 1.0.0; the earlier pre-releases (0.1.x to 0.5.0) were withdrawn and are not supported. The
+API is `v1alpha1`: fields can still change in a minor release under the
+[deprecation policy](docs/reference/compatibility.md#deprecation-policy). The full support window is in the
+[release process](docs/maintainers/release-process.md#support-window).
 
 ## Scope
 
@@ -52,19 +54,19 @@ Out of scope:
 
 The release workflow signs the image index, each platform image and the Helm chart with keyless
 cosign, attests SPDX and CycloneDX SBOMs and build provenance on all of them, and signs the
-checksums of the release assets. From v0.3.0 the chart also carries a Helm provenance file
+checksums of the release assets. The chart also carries a Helm provenance file
 (`.tgz.prov`) signed with the project's GPG chart signing key, fingerprint
 `FECBF5840F506776191497D4561068F2CF22E472`; the public key is
-<https://alexandrust88.github.io/openbao-config-operator/charts/pgp-public-key.asc>.
+<https://docs.obco.dev/charts/pgp-public-key.asc>.
 
 Verify a release before you install it. From a checkout of the repository, with cosign v3, crane,
 jq, yq, curl and Helm v4 on `PATH`, replace `vX.Y.Z` with the release tag:
 
-```sh
+```bash
 hack/release/verify-release.sh vX.Y.Z
 ```
 
-The script, the equivalent `cosign` and `gh attestation` commands, and the SLSA level of each
-provenance form are in [docs/security/hardening.md](docs/security/hardening.md#verify-the-release).
+Without a checkout, run the equivalent `cosign` and `gh attestation` commands. They, and the SLSA level of each
+provenance form, are in [docs/security/hardening.md](docs/security/hardening.md#verify-the-release).
 To check the chart signature during `helm install --verify`, see
 [verify the chart signature](docs/get-started/install.md#verify-the-chart-signature).

@@ -142,7 +142,7 @@ func TestNotReadyEnv(t *testing.T) {
 	}
 }
 
-// overlayDirs maps each overlay label (live.openbaoconfig.io/overlay) to its overlay, <mode>/<variant>.
+// overlayDirs maps each overlay label (live.obco.dev/overlay) to its overlay, <mode>/<variant>.
 func overlayDirs(t testing.TB, kit string) map[string]string {
 	t.Helper()
 	out := map[string]string{}
@@ -520,7 +520,7 @@ func TestFullFields(t *testing.T) {
 			}
 		}
 		for p := range exc.FullFields[k.Kind] {
-			if _, known := set[p]; !known && p != "namespace" {
+			if _, known := set[p]; !known && p != "openbaoNamespace" {
 				t.Errorf("%s: an exceptions file names spec.%s, which the CRD does not have", k.Kind, p)
 			}
 		}
@@ -555,7 +555,7 @@ func kitDocs(t testing.TB, kit, variant string) map[string][]*unstructured.Unstr
 func fieldsSet(k *kindInfo, docs []*unstructured.Unstructured) map[string]bool {
 	out := map[string]bool{}
 	for _, p := range leafPaths(k.Spec, "") {
-		if p == "namespace" {
+		if p == "openbaoNamespace" {
 			continue
 		}
 		out[p] = slices.ContainsFunc(docs, func(d *unstructured.Unstructured) bool {

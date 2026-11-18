@@ -21,13 +21,13 @@ func TestSecretsCredentialExamples(t *testing.T) {
 		t.Fatal(err)
 	}
 	k8s := secretsStartEnv(t, root, []string{
-		"secrets.openbaoconfig.io_databaseconnections.yaml",
-		"secrets.openbaoconfig.io_databaseroles.yaml",
-		"secrets.openbaoconfig.io_databasestaticroles.yaml",
-		"secrets.openbaoconfig.io_rabbitmqconfigs.yaml",
-		"secrets.openbaoconfig.io_rabbitmqroles.yaml",
-		"secrets.openbaoconfig.io_kubernetessecretsconfigs.yaml",
-		"secrets.openbaoconfig.io_kubernetessecretsroles.yaml",
+		"secrets.obco.dev_databaseconnections.yaml",
+		"secrets.obco.dev_databaseroles.yaml",
+		"secrets.obco.dev_databasestaticroles.yaml",
+		"secrets.obco.dev_rabbitmqconfigs.yaml",
+		"secrets.obco.dev_rabbitmqroles.yaml",
+		"secrets.obco.dev_kubernetessecretsconfigs.yaml",
+		"secrets.obco.dev_kubernetessecretsroles.yaml",
 	})
 	ctx := context.Background()
 	if err := k8s.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openbao-config"}}); err != nil {
@@ -45,7 +45,7 @@ func TestSecretsCredentialExamples(t *testing.T) {
 		})
 	}
 
-	const head = "apiVersion: secrets.openbaoconfig.io/v1alpha1\nmetadata: {name: x, namespace: openbao-config}\n"
+	const head = "apiVersion: secrets.obco.dev/v1alpha1\nmetadata: {name: x, namespace: openbao-config}\n"
 	const pg = "connectionRef: {name: openbao}, mountPath: db, pluginName: postgresql-database-plugin"
 	t.Run("validation", func(t *testing.T) {
 		for _, tt := range []struct {

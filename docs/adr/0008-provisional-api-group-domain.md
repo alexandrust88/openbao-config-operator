@@ -4,7 +4,9 @@ description: "Design decision for OpenBao Config Operator: keep the API group do
 
 # 0008. Keep the API group domain openbaoconfig.io
 
-Status: accepted (final, released in v0.1.0). Date: 2026-11-15. Proposed on 2026-11-13 as a provisional domain.
+Status: superseded by [ADR 0025](0025-move-the-api-to-obco-dev.md). Date: 2026-11-15. Proposed on 2026-11-13 as a provisional domain.
+
+Update 2026-11-18: the first release, 1.0.0, puts every API group and the annotation prefix under the owned domain `obco.dev` ([ADR 0025](0025-move-the-api-to-obco-dev.md)); this record stays as the history of the earlier decision.
 
 ## Context
 

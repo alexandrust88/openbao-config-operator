@@ -82,14 +82,14 @@ func (m *memBao) policy(path string) (string, int) {
 	return text, m.writes[path]
 }
 
-// memConns hands out bao for an OpenBaoConnection whose Ready condition is True, as the real resolver does.
+// memConns hands out bao for a BaoConnection whose Ready condition is True, as the real resolver does.
 type memConns struct {
 	bao    *memBao
 	reader client.Reader
 }
 
 func (c memConns) For(ctx context.Context, ns string, ref commonv1alpha1.ConnectionReference) (openbao.Client, error) {
-	conn := &corev1alpha1.OpenBaoConnection{}
+	conn := &corev1alpha1.BaoConnection{}
 	if err := c.reader.Get(ctx, client.ObjectKey{Namespace: ns, Name: ref.Name}, conn); err != nil {
 		return nil, fmt.Errorf("%w: %w", engine.ErrConnectionNotReady, err)
 	}
@@ -99,7 +99,7 @@ func (c memConns) For(ctx context.Context, ns string, ref commonv1alpha1.Connect
 	return c.bao, nil
 }
 
-// TestEnvtestEngine runs the Policy and OpenBaoEndpoint controllers against a real API server, so CRD defaults, the
+// TestEnvtestEngine runs the ACLPolicy and BaoEndpoint controllers against a real API server, so CRD defaults, the
 // cross-kind path index and the annotation predicate are exercised as in a cluster. One manager serves every
 // case because controller names are unique per process.
 func TestEnvtestEngine(t *testing.T) {
@@ -115,11 +115,11 @@ func TestEnvtestEngine(t *testing.T) {
 		BinaryAssetsDirectory: assets,
 		ErrorIfCRDPathMissing: true,
 		CRDDirectoryPaths: []string{
-			filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_policies.yaml"),
-			filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_authmounts.yaml"),
-			filepath.Join(root, "config", "crd", "bases", "core.openbaoconfig.io_openbaoendpoints.yaml"),
-			filepath.Join(root, "config", "crd", "bases", "core.openbaoconfig.io_openbaoconnections.yaml"),
-			filepath.Join(root, "config", "crd", "bases", "core.openbaoconfig.io_clusteropenbaoconnections.yaml"),
+			filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_aclpolicies.yaml"),
+			filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_authmounts.yaml"),
+			filepath.Join(root, "config", "crd", "bases", "core.obco.dev_baoendpoints.yaml"),
+			filepath.Join(root, "config", "crd", "bases", "core.obco.dev_baoconnections.yaml"),
+			filepath.Join(root, "config", "crd", "bases", "core.obco.dev_clusterbaoconnections.yaml"),
 		},
 	}
 	cfg, err := env.Start()
@@ -141,10 +141,10 @@ func TestEnvtestEngine(t *testing.T) {
 	bao := &memBao{data: map[string]map[string]any{}, writes: map[string]int{}}
 	opts := engine.Options{DriftIntervalCritical: time.Second, DriftIntervalStandard: time.Second}
 	conns := memConns{bao: bao, reader: mgr.GetAPIReader()}
-	if err := syscontroller.SetupPolicy(mgr, conns, opts); err != nil {
+	if err := syscontroller.SetupACLPolicy(mgr, conns, opts); err != nil {
 		t.Fatal(err)
 	}
-	if err := corecontroller.SetupOpenBaoEndpoint(mgr, conns, opts); err != nil {
+	if err := corecontroller.SetupBaoEndpoint(mgr, conns, opts); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -165,9 +165,9 @@ func TestEnvtestEngine(t *testing.T) {
 	}
 	envConnection(t, c, "bao", true)
 
-	policy := &sysv1alpha1.Policy{
+	policy := &sysv1alpha1.ACLPolicy{
 		ObjectMeta: metav1.ObjectMeta{Name: envPolicy, Namespace: envNamespace},
-		Spec: sysv1alpha1.PolicySpec{
+		Spec: sysv1alpha1.ACLPolicySpec{
 			ResourceSpec: commonv1alpha1.ResourceSpec{ConnectionRef: commonv1alpha1.ConnectionReference{Name: "bao"}},
 			Policy:       envText,
 		},
@@ -190,12 +190,12 @@ func TestEnvtestEngine(t *testing.T) {
 		}
 	})
 
-	t.Run("connectionRef and namespace are immutable", func(t *testing.T) {
-		for msg, mutate := range map[string]func(*sysv1alpha1.Policy){
-			"connectionRef is immutable": func(p *sysv1alpha1.Policy) { p.Spec.ConnectionRef.Name = "other" },
-			"namespace is immutable":     func(p *sysv1alpha1.Policy) { p.Spec.Namespace = "team-a" },
+	t.Run("connectionRef and openbaoNamespace are immutable", func(t *testing.T) {
+		for msg, mutate := range map[string]func(*sysv1alpha1.ACLPolicy){
+			"connectionRef is immutable":    func(p *sysv1alpha1.ACLPolicy) { p.Spec.ConnectionRef.Name = "other" },
+			"openbaoNamespace is immutable": func(p *sysv1alpha1.ACLPolicy) { p.Spec.Namespace = "team-a" },
 		} {
-			changed := &sysv1alpha1.Policy{}
+			changed := &sysv1alpha1.ACLPolicy{}
 			if err := c.Get(ctx, client.ObjectKeyFromObject(policy), changed); err != nil {
 				t.Fatal(err)
 			}
@@ -208,9 +208,9 @@ func TestEnvtestEngine(t *testing.T) {
 
 	t.Run("a newer resource of another kind on the same path gets Conflict", func(t *testing.T) {
 		data, _ := json.Marshal(map[string]any{"policy": "path \"*\" { capabilities = [\"sudo\"] }"})
-		endpoint := &corev1alpha1.OpenBaoEndpoint{
+		endpoint := &corev1alpha1.BaoEndpoint{
 			ObjectMeta: metav1.ObjectMeta{Name: "takeover", Namespace: envNamespace},
-			Spec: corev1alpha1.OpenBaoEndpointSpec{
+			Spec: corev1alpha1.BaoEndpointSpec{
 				ResourceSpec: commonv1alpha1.ResourceSpec{
 					ConnectionRef:  commonv1alpha1.ConnectionReference{Name: "bao"},
 					CreationPolicy: commonv1alpha1.CreationPolicyAdopt,
@@ -224,7 +224,7 @@ func TestEnvtestEngine(t *testing.T) {
 		}
 		envWaitReason(t, c, endpoint, commonv1alpha1.ReasonConflict)
 		if text, _ := bao.policy(policyPath); text != envText {
-			t.Fatalf("the OpenBaoEndpoint overwrote the Policy's object: %q", text)
+			t.Fatalf("the BaoEndpoint overwrote the ACLPolicy's object: %q", text)
 		}
 	})
 
@@ -232,33 +232,33 @@ func TestEnvtestEngine(t *testing.T) {
 		envRefusesUncleanPath(ctx, t, c, bao)
 	})
 
-	t.Run("deleting an OpenBaoEndpoint needs the destructive-delete annotation", func(t *testing.T) {
+	t.Run("deleting a BaoEndpoint needs the destructive-delete annotation", func(t *testing.T) {
 		envGuardsEndpointDelete(ctx, t, c, bao)
 	})
 
 	t.Run("the pause annotation stops and resumes reconciling", func(t *testing.T) {
-		envPatch(t, c, policy, func(p *sysv1alpha1.Policy) {
+		envPatch(t, c, policy, func(p *sysv1alpha1.ACLPolicy) {
 			p.Annotations = map[string]string{commonv1alpha1.AnnotationPaused: "true"}
 		})
 		envWaitReason(t, c, policy, commonv1alpha1.ReasonPaused)
 		_, writes := bao.policy(policyPath)
-		envPatch(t, c, policy, func(p *sysv1alpha1.Policy) { p.Spec.Policy = envText + "\n# paused" })
+		envPatch(t, c, policy, func(p *sysv1alpha1.ACLPolicy) { p.Spec.Policy = envText + "\n# paused" })
 		time.Sleep(2 * time.Second)
 		if text, now := bao.policy(policyPath); now != writes || text != envText {
-			t.Fatalf("paused Policy wrote: %d -> %d", writes, now)
+			t.Fatalf("paused ACLPolicy wrote: %d -> %d", writes, now)
 		}
-		envPatch(t, c, policy, func(p *sysv1alpha1.Policy) { delete(p.Annotations, commonv1alpha1.AnnotationPaused) })
+		envPatch(t, c, policy, func(p *sysv1alpha1.ACLPolicy) { delete(p.Annotations, commonv1alpha1.AnnotationPaused) })
 		envWaitReason(t, c, policy, commonv1alpha1.ReasonReconcileSuccess)
 		if text, _ := bao.policy(policyPath); text != envText+"\n# paused" {
-			t.Fatalf("resumed Policy did not write the spec: %q", text)
+			t.Fatalf("resumed ACLPolicy did not write the spec: %q", text)
 		}
 	})
 
 	t.Run("a resource is Ready within 2s of its connection", func(t *testing.T) {
 		envConnection(t, c, "late", false)
-		late := &sysv1alpha1.Policy{
+		late := &sysv1alpha1.ACLPolicy{
 			ObjectMeta: metav1.ObjectMeta{Name: "late", Namespace: envNamespace},
-			Spec: sysv1alpha1.PolicySpec{
+			Spec: sysv1alpha1.ACLPolicySpec{
 				ResourceSpec: commonv1alpha1.ResourceSpec{ConnectionRef: commonv1alpha1.ConnectionReference{Name: "late"}},
 				Policy:       envText,
 			},
@@ -276,16 +276,16 @@ func TestEnvtestEngine(t *testing.T) {
 	})
 }
 
-// envConnection creates the OpenBaoConnection name, or updates it, with the given Ready status.
+// envConnection creates the BaoConnection name, or updates it, with the given Ready status.
 func envConnection(t *testing.T, c client.Client, name string, ready bool) {
 	t.Helper()
 	ctx := context.Background()
-	conn := &corev1alpha1.OpenBaoConnection{}
+	conn := &corev1alpha1.BaoConnection{}
 	key := client.ObjectKey{Namespace: envNamespace, Name: name}
 	if err := c.Get(ctx, key, conn); err != nil {
-		conn = &corev1alpha1.OpenBaoConnection{
+		conn = &corev1alpha1.BaoConnection{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: envNamespace},
-			Spec: corev1alpha1.OpenBaoConnectionSpec{
+			Spec: corev1alpha1.BaoConnectionSpec{
 				ConnectionSpec: corev1alpha1.ConnectionSpec{ServerRef: corev1alpha1.ServerReference{Name: "server"}},
 				Auth: corev1alpha1.ConnectionAuth{Token: &corev1alpha1.TokenAuth{
 					SecretRef: commonv1alpha1.SecretKeySelector{Name: "token", Key: "token"},
@@ -308,7 +308,7 @@ func envConnection(t *testing.T, c client.Client, name string, ready bool) {
 	}
 }
 
-func envPatch(t *testing.T, c client.Client, p *sysv1alpha1.Policy, mutate func(*sysv1alpha1.Policy)) {
+func envPatch(t *testing.T, c client.Client, p *sysv1alpha1.ACLPolicy, mutate func(*sysv1alpha1.ACLPolicy)) {
 	t.Helper()
 	if err := c.Get(context.Background(), client.ObjectKeyFromObject(p), p); err != nil {
 		t.Fatal(err)
@@ -341,9 +341,9 @@ func envWaitReason(t *testing.T, c client.Client, obj engine.Object, reason stri
 func envRefusesUncleanPath(ctx context.Context, t *testing.T, c client.Client, bao *memBao) {
 	t.Helper()
 	const escape = "secret/../sys/policies/acl/escape"
-	endpoint := &corev1alpha1.OpenBaoEndpoint{
+	endpoint := &corev1alpha1.BaoEndpoint{
 		ObjectMeta: metav1.ObjectMeta{Name: "escape", Namespace: envNamespace},
-		Spec: corev1alpha1.OpenBaoEndpointSpec{
+		Spec: corev1alpha1.BaoEndpointSpec{
 			ResourceSpec: commonv1alpha1.ResourceSpec{ConnectionRef: commonv1alpha1.ConnectionReference{Name: "bao"}},
 			Path:         escape,
 			Data:         &runtime.RawExtension{Raw: []byte(`{"policy":"path \"*\" { capabilities = [\"sudo\"] }"}`)},
@@ -360,13 +360,13 @@ func envRefusesUncleanPath(ctx context.Context, t *testing.T, c client.Client, b
 	}
 }
 
-// envGuardsEndpointDelete proves an OpenBaoEndpoint delete waits for the destructive-delete annotation.
+// envGuardsEndpointDelete proves a BaoEndpoint delete waits for the destructive-delete annotation.
 func envGuardsEndpointDelete(ctx context.Context, t *testing.T, c client.Client, bao *memBao) {
 	t.Helper()
 	const mount = "sys/mounts/guarded"
-	endpoint := &corev1alpha1.OpenBaoEndpoint{
+	endpoint := &corev1alpha1.BaoEndpoint{
 		ObjectMeta: metav1.ObjectMeta{Name: "guarded", Namespace: envNamespace},
-		Spec: corev1alpha1.OpenBaoEndpointSpec{
+		Spec: corev1alpha1.BaoEndpointSpec{
 			ResourceSpec: commonv1alpha1.ResourceSpec{
 				ConnectionRef:  commonv1alpha1.ConnectionReference{Name: "bao"},
 				DeletionPolicy: commonv1alpha1.DeletionPolicyDelete,

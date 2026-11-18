@@ -15,7 +15,7 @@ const (
 	litType          = "type"
 	litUserpass      = "userpass"
 
-	kindConnection = "OpenBaoConnection"
+	kindConnection = "BaoConnection"
 	kindKVSecret   = "KVSecret"
-	kindPolicy     = "Policy"
+	kindPolicy     = "ACLPolicy"
 )

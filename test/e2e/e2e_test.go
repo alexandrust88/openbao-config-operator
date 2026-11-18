@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	serverResource     = "openbaoservers.core.openbaoconfig.io"
-	connectionResource = "openbaoconnections.core.openbaoconfig.io"
-	policyResource     = "policies.sys.openbaoconfig.io"
-	kvSecretResource   = "kvsecrets.secrets.openbaoconfig.io"
-	endpointResource   = "openbaoendpoints.core.openbaoconfig.io"
+	serverResource     = "baoservers.core.obco.dev"
+	connectionResource = "baoconnections.core.obco.dev"
+	policyResource     = "aclpolicies.sys.obco.dev"
+	kvSecretResource   = "kvsecrets.secrets.obco.dev"
+	endpointResource   = "baoendpoints.core.obco.dev"
 )
 
 var _ = Describe("openbao-config-operator", Ordered, func() {
@@ -47,7 +47,7 @@ var _ = Describe("openbao-config-operator", Ordered, func() {
 			"-o", "jsonpath={.status.authenticated}")).To(Equal("true"))
 	})
 
-	It("writes a Policy, a KVSecret and an OpenBaoEndpoint to OpenBao", func() {
+	It("writes an ACLPolicy, a KVSecret and a BaoEndpoint to OpenBao", func() {
 		mustRun("kubectl", "apply", "-f", "test/e2e/testdata/resources.yaml")
 		for _, obj := range [][2]string{
 			{policyResource, "e2e-policy"},

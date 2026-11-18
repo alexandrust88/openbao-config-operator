@@ -1,21 +1,21 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: ep-space
 spec:
   connectionRef:
     name: openbao
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoEndpoint
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoEndpoint
 metadata:
   name: ep-password-policy
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
     name: openbao
-  namespace: ep-space
+  openbaoNamespace: ep-space
   path: sys/policies/password/live-kit
   data:
     policy: |

@@ -102,7 +102,7 @@ func TestImportIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantNotes := []string{"Audit/siem: Observe will report drift on options", "OpenBaoConnection/openbao logs in with Kubernetes auth role openbao as ServiceAccount " +
+	wantNotes := []string{"Audit/siem: Observe will report drift on options", "BaoConnection/openbao logs in with Kubernetes auth role openbao as ServiceAccount " +
 		"obco/openbao (audience openbao): create both, or edit spec.auth"}
 	if !reflect.DeepEqual(result.Notes, wantNotes) {
 		t.Errorf("notes:\n%s", strings.Join(result.Notes, "\n"))
@@ -363,14 +363,14 @@ func (g *importWriteGuard) WithNamespace(ns string) openbao.Client {
 
 // importSetups registers the controller of every importable kind.
 var importSetups = []func(ctrl.Manager, engine.Connections, engine.Options) error{
-	syscontroller.SetupOpenBaoNamespace, syscontroller.SetupPolicy, syscontroller.SetupPasswordPolicy,
+	syscontroller.SetupBaoNamespace, syscontroller.SetupACLPolicy, syscontroller.SetupPasswordPolicy,
 	syscontroller.SetupAuthMount, syscontroller.SetupSecretsMount, syscontroller.SetupAudit,
 	syscontroller.SetupRateLimitQuota,
 	authcontroller.SetupKubernetesAuthConfig, authcontroller.SetupKubernetesAuthRole, authcontroller.SetupJWTAuthConfig,
 	authcontroller.SetupJWTAuthRole, authcontroller.SetupAppRole, authcontroller.SetupUserpassUser,
 	authcontroller.SetupCertAuthConfig, authcontroller.SetupCertAuthRole, authcontroller.SetupTokenRole,
-	identitycontroller.SetupEntity, identitycontroller.SetupEntityAlias, identitycontroller.SetupGroup,
-	identitycontroller.SetupGroupAlias, identitycontroller.SetupOIDCKey, identitycontroller.SetupOIDCScope,
+	identitycontroller.SetupIdentityEntity, identitycontroller.SetupIdentityEntityAlias, identitycontroller.SetupIdentityGroup,
+	identitycontroller.SetupIdentityGroupAlias, identitycontroller.SetupOIDCKey, identitycontroller.SetupOIDCScope,
 	identitycontroller.SetupOIDCClient, identitycontroller.SetupOIDCAssignment, identitycontroller.SetupOIDCProvider,
 	secretscontroller.SetupPKIIssuer, secretscontroller.SetupPKIConfig, secretscontroller.SetupPKIRole,
 	secretscontroller.SetupTransitKey, secretscontroller.SetupSSHRole, secretscontroller.SetupDatabaseConnection,

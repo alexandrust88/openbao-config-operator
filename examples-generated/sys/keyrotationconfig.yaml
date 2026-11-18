@@ -1,4 +1,4 @@
-# KeyRotationConfig (sys.openbaoconfig.io/v1alpha1)
+# KeyRotationConfig (sys.obco.dev/v1alpha1)
 # KeyRotationConfig sets the automatic rotation of the barrier encryption key (the key that encrypts OpenBao storage,
 # not a secret) at sys/rotate/config, a singleton of the root namespace or a sealable namespace.
 #
@@ -6,16 +6,16 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/sys/#keyrotationconfig
+# Reference: https://docs.obco.dev/reference/api/sys/#keyrotationconfig
 # Curated example: examples/sys/keyrotationconfig.yaml
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: KeyRotationConfig
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -25,4 +25,4 @@ spec:
   interval: "0"
   managementPolicy: Manage
   maxOperations: 1000000
-  namespace: example
+  openbaoNamespace: example

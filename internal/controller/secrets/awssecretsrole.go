@@ -13,9 +13,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=awssecretsroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=awssecretsroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=awssecretsroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=awssecretsroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=awssecretsroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=awssecretsroles/finalizers,verbs=update
 
 // SetupAWSSecretsRole registers the AWSSecretsRole controller with the manager.
 func SetupAWSSecretsRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

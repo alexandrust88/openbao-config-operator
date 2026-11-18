@@ -1,5 +1,5 @@
 ---
-description: "Learn OpenBao Config Operator through platform, tenant, identity and workload integration tutorials."
+description: "Build a small multi-tenant OpenBao platform in four lessons: platform setup, a second server, tenant onboarding and team onboarding."
 ---
 
 # Tutorials
@@ -13,7 +13,7 @@ before it left, so follow them in order.
 | 1 | [Set up the platform](platform-owner.md) | the platform owner, admin of OpenBao and of the cluster | the operator logs in to OpenBao as itself, and configures the root namespace and the platform's own OpenBao namespace |
 | 2 | [Manage several OpenBao servers](multiple-instances.md) | the platform owner | a second OpenBao runs next to the first, and each one holds its own configuration plus one shared policy |
 | 3 | [Onboard two tenants](tenant-onboarding.md) | the platform admin | `tenant-a` and `tenant-b` each have a Kubernetes namespace they administer, an OpenBao namespace and a connection limited to it |
-| 4 | [Onboard teams as a tenant](team-onboarding.md) | the `tenant-a` admin, with rights in its own namespace only | the teams `devteam` and `payments` each have a child OpenBao namespace that only their workloads can read, and `tenant-a` cannot reach `tenant-b` or the root |
+| 4 | [Onboard teams as a tenant](team-onboarding.md) | the `tenant-a` admin, with rights in its own Kubernetes namespace only | the teams `devteam` and `payments` each have a child OpenBao namespace that only their workloads can read, and `tenant-a` cannot reach `tenant-b` or the root |
 
 [Why this operator exists](../concepts/why.md) explains what the tenant boundary these lessons
 build gives you that other tools do not.
@@ -30,34 +30,19 @@ build gives you that other tools do not.
 - Finish the [quickstart](../get-started/quickstart.md) up to step 9, and keep the cluster: do not
   run its clean-up step.
 - Work in the same shell, at the root of the repository clone. Every manifest the tutorials apply
-  is in `examples/tutorials/`, and every command is in `hack/docs/tutorial-*.sh`.
+  is in `examples/tutorials/`, and every command on these pages is a section of a script in
+  `hack/docs/`, one script per lesson.
 
-!!! tip "Run them in one go"
-    `hack/docs/tutorials.sh` runs the four tutorials in order on the quickstart cluster and fails
-    at the first step that does not reach its expected state. It then runs the
-    [uninstall steps](../get-started/install.md#uninstall), which remove the operator. CI runs it
-    after the quickstart on every change, so the commands on these pages are tested:
+To run the four lessons in one go instead of step by step, run `hack/docs/tutorials.sh`. It stops
+at the first step that does not reach the state the page describes, and it ends with the
+[uninstall steps](../operate/uninstall.md), which remove the operator:
 
-    ```bash
-    hack/docs/tutorials.sh
-    ```
+```bash
+hack/docs/tutorials.sh
+```
 
 ## Clean up
 
-When you are done, delete the kind cluster as in
-[step 10 of the quickstart](../get-started/quickstart.md#10-clean-up). Both OpenBao servers and
+When you are done, delete the kind cluster as in the quickstart's
+[Clean up](../get-started/quickstart.md#10-clean-up). Both OpenBao servers and
 everything they hold go with it.
-
-## Application integrations
-
-Use these tutorials to connect workloads to operator-managed OpenBao configuration:
-
-- [Generate credentials and deliver them with ESO](generated-credentials.md): rotate a password,
-  project selected keys and recover a workload Secret.
-- [Encrypt application data](application-encryption.md): encrypt, decrypt, rewrap and migrate
-  ciphertext between transit keys using a workload identity.
-- [Issue and revoke dynamic database users](dynamic-database-credentials.md): verify real logins
-  and tenant-specific permissions with PostgreSQL, MySQL, MariaDB, Cassandra, InfluxDB or Valkey.
-
-These tutorials use the separate [local integration lab](local-lab.md), rather than the cluster
-from the four lessons above.

@@ -4,7 +4,9 @@ description: "Design decision for OpenBao Config Operator: one writer cluster pe
 
 # 0021. One writer cluster per OpenBao namespace
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; implemented. Date: 2026-11-14.
+
+Update 2026-11-18: the `KVSecretMetadata` kind also carries the cluster id in its ownership marker (`internal/controller/secrets/kvsecretmetadata.go`).
 
 ## Context
 

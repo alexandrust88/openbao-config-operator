@@ -5,10 +5,10 @@ The operator reconciles policies, authentication methods, secrets engines and ot
 with the desired state in Kubernetes. This chart installs the operator; provision, initialise and
 unseal your OpenBao server separately.
 
-[Documentation](https://alexandrust88.github.io/openbao-config-operator/) ·
-[Quickstart](https://alexandrust88.github.io/openbao-config-operator/get-started/quickstart/) ·
-[Supported resources](https://alexandrust88.github.io/openbao-config-operator/kinds/) ·
-[Security model](https://alexandrust88.github.io/openbao-config-operator/security/)
+[Documentation](https://docs.obco.dev/) ·
+[Quickstart](https://docs.obco.dev/get-started/quickstart/) ·
+[Supported resources](https://docs.obco.dev/kinds/) ·
+[Security model](https://docs.obco.dev/security/)
 
 ## Install
 
@@ -17,29 +17,29 @@ roles. The operator pods must be able to reach your OpenBao server.
 
 Set `CHART_VERSION` to the chart version you want to install. See the
 [releases](https://github.com/alexandrust88/openbao-config-operator/releases) for available versions
-and upgrade notes. Follow the [release verification instructions](https://alexandrust88.github.io/openbao-config-operator/get-started/install/#1-verify-the-release)
+and upgrade notes. Follow the [release verification instructions](https://docs.obco.dev/get-started/install/#1-verify-the-release)
 before installing.
 
-```sh
+```bash
 helm install openbao-config-operator oci://ghcr.io/alexandrust88/charts/openbao-config-operator \
   --version "${CHART_VERSION:?Set CHART_VERSION to the chart version to install}" \
   --namespace openbao-config-operator --create-namespace
 kubectl -n openbao-config-operator rollout status deployment/openbao-config-operator
 ```
 
-Then [connect the operator to OpenBao](https://alexandrust88.github.io/openbao-config-operator/get-started/connect/).
-For a local evaluation, follow the [kind quickstart](https://alexandrust88.github.io/openbao-config-operator/get-started/quickstart/).
+Then [connect the operator to OpenBao](https://docs.obco.dev/get-started/connect/).
+For a local evaluation, follow the [kind quickstart](https://docs.obco.dev/get-started/quickstart/).
 
 ## What it installs
 
 - CRDs as templates, so `helm upgrade` upgrades them. They carry `helm.sh/resource-policy: keep` by default, so
   `helm uninstall` leaves every custom resource in place.
 - The manager Deployment (2 replicas with leader election, restricted pod security), its ServiceAccount, a
-  PodDisruptionBudget and an HTTPS metrics Service protected by Kubernetes authentication and authorization.
+  PodDisruptionBudget and an HTTPS metrics Service protected by Kubernetes authentication and authorisation.
 - RBAC for the manager, and two user-facing ClusterRoles:
-  - `<release>-tenant-editor`: every namespaced kind except `OpenBaoConnection`. A connection decides which
+  - `<release>-tenant-editor`: every namespaced kind except `BaoConnection`. A connection decides which
     OpenBao identity is used, so only the platform team manages it. Aggregated into `admin` and `edit`.
-  - `<release>-viewer`: read-only access to every kind except `OpenBaoServer` and `ClusterOpenBaoConnection`.
+  - `<release>-viewer`: read-only access to every kind except `BaoServer` and `ClusterBaoConnection`.
     Aggregated into `view`.
 - A NetworkPolicy that limits the manager's ingress to the metrics port and its egress to DNS, the API server and
   OpenBao. Set `networkPolicy.apiServer.cidrs` and `networkPolicy.openbao.to` (with `flavor: cilium`,
@@ -58,7 +58,7 @@ another release), install the chart with `crds.install=false` and apply the new 
 
 If another tool already manages the CRDs, keep that ownership explicit with `crds.install=false`.
 To transfer ownership to Helm, follow the
-[CRD ownership procedure](https://alexandrust88.github.io/openbao-config-operator/get-started/install/#crds)
+[CRD ownership procedure](https://docs.obco.dev/operate/install-options/#crds)
 and stop the previous owner managing those CRDs before installing the chart.
 
 ## Watching a subset of namespaces
@@ -66,7 +66,7 @@ and stop the previous owner managing those CRDs before installing the chart.
 With `watchNamespaces` set, the manager gets `--watch-namespaces=<list>`, and access to Secrets, ConfigMaps,
 ServiceAccount tokens, Events and every namespaced managed kind is granted by a Role in each listed namespace instead
 of cluster-wide. List every
-namespace that holds credentials or CA bundles referenced by a `ClusterOpenBaoConnection`.
+namespace that holds credentials or CA bundles referenced by a `ClusterBaoConnection`.
 
 ## Metrics
 
@@ -76,7 +76,7 @@ self-signed certificate, so the ServiceMonitor skips verification by default.
 
 ## Injected identity
 
-A `ClusterOpenBaoConnection` with `auth.kubernetes.injectedIdentity` or `auth.jwt.injectedIdentity` logs in as the
+A `ClusterBaoConnection` with `auth.kubernetes.injectedIdentity` or `auth.jwt.injectedIdentity` logs in as the
 manager's own ServiceAccount. The chart mounts a projected token for `injectedIdentity.projectedToken.audience`
 (default `openbao-config-operator`) at `/var/run/secrets/openbao/token`, the CRD's default `tokenPath`.
 Choose a dedicated audience that your Kubernetes API server does not accept. The operator refuses
@@ -85,7 +85,7 @@ change `injectedIdentity.projectedToken.path`, set the connection's `tokenPath` 
 
 ## Values
 
-The most used values are listed here. The [Helm values reference](https://alexandrust88.github.io/openbao-config-operator/reference/helm-values/)
+The most used values are listed here. The [Helm values reference](https://docs.obco.dev/reference/helm-values/)
 lists every value with its type and constraints.
 
 | key | default | description |
@@ -109,7 +109,7 @@ lists every value with its type and constraints.
 | `injectedIdentity.projectedToken.audience` / `.expirationSeconds` / `.path` | `openbao-config-operator` / `3600` / `/var/run/secrets/openbao/token` | token audience, lifetime (minimum 600) and file |
 | `rbac.create` | `true` | manager ClusterRole, Roles and bindings |
 | `rbac.userRoles` | `true` | tenant-editor and viewer ClusterRoles |
-| `rbac.tenantEditor.excludeKinds` | `[]` | plurals to leave out of the tenant-editor role, for example `openbaoendpoints` |
+| `rbac.tenantEditor.excludeKinds` | `[]` | plurals to leave out of the tenant-editor role, for example `baoendpoints` |
 | `rbac.aggregate.admin` / `.edit` / `.view` | `true` | aggregation labels on the user roles |
 | `metrics.enabled` | `true` | HTTPS metrics endpoint and Service |
 | `metrics.port` | `8443` | HTTPS metrics port |
@@ -119,7 +119,7 @@ lists every value with its type and constraints.
 | `serviceMonitor.labels` / `.interval` / `.scrapeTimeout` | `{}` / `30s` / `10s` | monitor labels, scrape interval and timeout |
 | `serviceMonitor.tlsConfig` | `{insecureSkipVerify: true}` | with `metrics.certSecret`, `ca` (or `caFile`) and `serverName` are required and `insecureSkipVerify` is refused |
 | `serviceMonitor.relabelings` / `.metricRelabelings` | `[]` | Prometheus target and metric relabeling rules |
-| `prometheusRule.enabled` | `false` | PrometheusRule with the alerts in [alert runbooks](https://alexandrust88.github.io/openbao-config-operator/operate/runbooks/) |
+| `prometheusRule.enabled` | `false` | PrometheusRule with the alerts in [alert runbooks](https://docs.obco.dev/operate/runbooks/) |
 | `prometheusRule.selector` | `""` | series selector; empty means `job="<fullname>-metrics"` in the release namespace |
 | `prometheusRule.runbookBaseURL` | published alert runbooks | base URL used for alert runbook links |
 | `prometheusRule.labels` / `.alertLabels` / `.disabledAlerts` | `{}` / `{}` / `[]` | rule object labels, labels on every alert, alerts to leave out |
@@ -149,17 +149,17 @@ lists every value with its type and constraints.
 
 ## Upgrade and uninstall
 
-Read the [upgrade guide](https://alexandrust88.github.io/openbao-config-operator/operate/upgrade/)
+Read the [upgrade guide](https://docs.obco.dev/operate/upgrade/)
 before changing chart versions. Helm upgrades the CRDs when `crds.install=true`.
 
 By default, uninstalling the chart retains its CRDs and custom resources. Resources with
 finalizers still need a running operator to complete deletion. Follow the
-[uninstall procedure](https://alexandrust88.github.io/openbao-config-operator/get-started/install/#uninstall)
+[uninstall procedure](https://docs.obco.dev/operate/uninstall/)
 before removing the release or its CRDs.
 
 ## Support and contributions
 
-Use the [troubleshooting guide](https://alexandrust88.github.io/openbao-config-operator/operate/troubleshooting/)
+Use the [troubleshooting guide](https://docs.obco.dev/operate/troubleshooting/)
 to diagnose connection and reconciliation errors. Report bugs through
 [GitHub issues](https://github.com/alexandrust88/openbao-config-operator/issues), without credentials or secret values.
 See the [contributor guide](https://github.com/alexandrust88/openbao-config-operator/blob/main/CONTRIBUTING.md)

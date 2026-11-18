@@ -23,7 +23,7 @@ const (
 
 // confNoWrite applies the examples of every selected built-in kind in one namespace (root OpenBao namespace),
 // waits for Ready, lets every object pass through further drift reconciles and asserts that
-// openbao_writes_total did not move for the kind. The objects are deleted afterwards (deletionPolicy Delete).
+// obco_writes_total did not move for the kind. The objects are deleted afterwards (deletionPolicy Delete).
 func confNoWrite(ctx context.Context, t *testing.T, e *confEnv, c *confCatalog, results []*confResult) {
 	k8s := e.cluster.k8s
 	mgr := confStartManager(t, e, confExamplesNS, filepath.Join(e.logDir, "manager-nowrite.log"))

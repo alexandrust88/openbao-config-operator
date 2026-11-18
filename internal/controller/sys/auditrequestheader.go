@@ -11,9 +11,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=auditrequestheaders,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=auditrequestheaders/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=auditrequestheaders/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=auditrequestheaders,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=auditrequestheaders/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=auditrequestheaders/finalizers,verbs=update
 
 // auditHeaderMissing is the 400 message of a read of a header that is not audited.
 const auditHeaderMissing = "Could not find header in config"

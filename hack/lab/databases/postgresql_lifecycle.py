@@ -42,9 +42,9 @@ def names(tenant):
 def resource(tenant, kind, name, spec):
     base = {'connectionRef': {'name': common.lab.CONNECTION}}
     if tenant != 'root':
-        base['namespace'] = 'lab-' + tenant
+        base['openbaoNamespace'] = 'lab-' + tenant
     return common.lab.obj(kind, name, common.lab.NAMESPACE,
-                          api='secrets.openbaoconfig.io/v1alpha1', spec={**base, **spec})
+                          api='secrets.obco.dev/v1alpha1', spec={**base, **spec})
 
 
 def resources(tenant, name, administrator, static_user):

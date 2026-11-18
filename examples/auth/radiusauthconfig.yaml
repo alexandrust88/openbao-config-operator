@@ -6,13 +6,13 @@ type: Opaque
 stringData:
   secret: fake-radius-shared-secret
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: RADIUSAuthConfig
 metadata:
   name: radius
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan

@@ -1,12 +1,12 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: oidc-ns
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -17,40 +17,40 @@ spec:
   customMetadata:
     purpose: oidc-provider
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCConfig
 metadata:
   name: oidc-config
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   issuer: https://openbao.example.com:8200
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: oidc-key
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-key
   algorithm: ES256
   rotationPeriod: 168h
@@ -58,192 +58,192 @@ spec:
   allowedClientIDs:
     - "*"
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: oidc-key-rs256
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-key-rs256
   algorithm: RS256
   rotationPeriod: 24h
   verificationTTL: 48h
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: oidc-key-rs384
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-key-rs384
   algorithm: RS384
   rotationPeriod: 24h
   verificationTTL: 48h
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: oidc-key-rs512
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-key-rs512
   algorithm: RS512
   rotationPeriod: 24h
   verificationTTL: 48h
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: oidc-key-es384
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-key-es384
   algorithm: ES384
   rotationPeriod: 24h
   verificationTTL: 48h
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: oidc-key-es512
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-key-es512
   algorithm: ES512
   rotationPeriod: 24h
   verificationTTL: 48h
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: oidc-key-eddsa
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-key-eddsa
   algorithm: EdDSA
   rotationPeriod: 24h
   verificationTTL: 48h
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCRole
 metadata:
   name: oidc-workload
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-workload
   key: oidc-key
   clientID: oidc-workload-audience
   ttl: 1h
   template: '{"team": {{identity.entity.metadata.team}}, "groups": {{identity.entity.groups.names}}}'
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCScope
 metadata:
   name: oidc-groups
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-groups
   description: Group names of the authenticated entity
   template: '{"groups": {{identity.entity.groups.names}}}'
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Entity
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntity
 metadata:
   name: oidc-alice
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-alice
   policies:
     - default
@@ -251,24 +251,24 @@ spec:
     team: platform
   disabled: false
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Entity
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntity
 metadata:
   name: oidc-bob
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-bob
   policies:
     - default
@@ -276,25 +276,25 @@ spec:
     team: platform
   disabled: false
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Entity
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntity
 metadata:
   name: oidc-carol
   labels:
     oidc-assignment-entity: oidc-carol
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-carol
   policies:
     - default
@@ -302,22 +302,22 @@ spec:
     team: platform
   disabled: false
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Group
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroup
 metadata:
   name: oidc-devs
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-devs
   type: internal
   policies:
@@ -325,22 +325,22 @@ spec:
   metadata:
     owner: platform
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Group
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroup
 metadata:
   name: oidc-ops
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-ops
   type: internal
   policies:
@@ -348,23 +348,23 @@ spec:
   metadata:
     owner: platform
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Group
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroup
 metadata:
   name: oidc-sre
   labels:
     oidc-assignment-group: oidc-sre
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-sre
   type: internal
   policies:
@@ -372,22 +372,22 @@ spec:
   metadata:
     owner: platform
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCAssignment
 metadata:
   name: oidc-users
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-users
   entities:
     - entityRef:
@@ -404,22 +404,22 @@ spec:
         matchLabels:
           oidc-assignment-group: oidc-sre
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCClient
 metadata:
   name: oidc-portal
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-portal
   key: oidc-key
   clientType: confidential
@@ -435,22 +435,22 @@ spec:
   writeSecretRef:
     name: oidc-portal
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCClient
 metadata:
   name: oidc-cli
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-cli
   key: oidc-key
   clientType: public
@@ -465,23 +465,23 @@ spec:
   writeSecretRef:
     name: oidc-cli
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCClient
 metadata:
   name: oidc-batch
   labels:
     oidc-provider-client: oidc-batch
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-batch
   key: oidc-key
   clientType: confidential
@@ -496,22 +496,22 @@ spec:
   writeSecretRef:
     name: oidc-batch
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCProvider
 metadata:
   name: oidc-provider
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-provider
   issuer: https://openbao.example.com:8200
   allowedClients:
@@ -524,22 +524,22 @@ spec:
   scopesSupported:
     - oidc-groups
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCProvider
 metadata:
   name: oidc-open
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: oidc-ns
+  openbaoNamespace: oidc-ns
   name: oidc-open
   issuer: https://openbao.example.com:8200
   allowedClients:

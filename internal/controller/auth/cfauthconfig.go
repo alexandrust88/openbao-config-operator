@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=cfauthconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=cfauthconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=cfauthconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=cfauthconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=cfauthconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=cfauthconfigs/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupCFAuthConfig registers the CFAuthConfig controller with the manager.

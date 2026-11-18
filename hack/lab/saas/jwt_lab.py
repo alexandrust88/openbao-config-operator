@@ -31,9 +31,9 @@ def render(state, kube_namespace="obco-lab", connection="lab-openbao"):
     for mode in MODES:
         suffix = mode_suffix(state, mode)
         for item in base:
-            if item["kind"] not in ("AuthMount", "JWTAuthConfig", "JWTAuthRole", "GroupAlias", "Group", "GroupMembership"):
+            if item["kind"] not in ("AuthMount", "JWTAuthConfig", "JWTAuthRole", "IdentityGroupAlias", "IdentityGroup", "IdentityGroupMembership"):
                 continue
-            if item["kind"] == "Group" and item["spec"]["type"] != "external":
+            if item["kind"] == "IdentityGroup" and item["spec"]["type"] != "external":
                 continue
             current = copy.deepcopy(item)
             current["metadata"]["name"] += suffix
@@ -51,9 +51,9 @@ def render(state, kube_namespace="obco-lab", connection="lab-openbao"):
                 for key in ("allowedRedirectURIs", "oidcScopes", "callbackMode"):
                     spec.pop(key, None)
                 spec.update(mountPath=mount, roleType="jwt")
-            elif item["kind"] == "Group":
+            elif item["kind"] == "IdentityGroup":
                 spec["name"] += suffix
-            elif item["kind"] == "GroupAlias":
+            elif item["kind"] == "IdentityGroupAlias":
                 spec["mountPath"] = mount
                 spec["groupRef"]["name"] += suffix
             else:

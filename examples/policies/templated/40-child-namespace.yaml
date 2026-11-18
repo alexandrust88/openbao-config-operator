@@ -1,9 +1,9 @@
 # Templated policies in the child OpenBao namespace "team". Objects reach the child namespace in two ways:
-# through a connection based in it (openbao-team), or through the root connection with spec.namespace.
+# through a connection based in it (openbao-team), or through the root connection with spec.openbaoNamespace.
 # The accessor is the one of the Kubernetes auth mount inside "team", not the root one:
 #   kubectl get authmount team-kubernetes -n openbao-config -o jsonpath='{.status.id}'
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: team
   namespace: openbao-config
@@ -11,16 +11,16 @@ spec:
   connectionRef:
     name: openbao
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: openbao-team
   namespace: openbao-config
 spec:
   serverRef:
     name: openbao
-  namespace: team
-  authNamespace: ""
+  openbaoNamespace: team
+  openbaoAuthNamespace: ""
   auth:
     kubernetes:
       role: openbao-config-operator
@@ -29,7 +29,7 @@ spec:
       audiences:
         - openbao
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: team-kubernetes
@@ -40,7 +40,7 @@ spec:
   path: kubernetes
   type: kubernetes
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: team-apps
@@ -51,7 +51,7 @@ spec:
   path: apps
   type: kv-v2
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthConfig
 metadata:
   name: team-kubernetes
@@ -70,8 +70,8 @@ spec:
     key: token
   disableLocalCAJWT: true
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: team-sa-own-folder
   namespace: openbao-config
@@ -84,22 +84,22 @@ spec:
       capabilities = ["create", "read", "update"]
     }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: team-entity-id-folder
   namespace: openbao-config
 spec:
   connectionRef:
     name: openbao
-  namespace: team
+  openbaoNamespace: team
   name: entity-id-folder
   policy: |
     path "apps/data/entity-id/{{identity.entity.id}}/*" {
       capabilities = ["create", "read", "update"]
     }
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthRole
 metadata:
   name: team-apps

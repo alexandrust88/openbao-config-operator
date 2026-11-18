@@ -4,7 +4,7 @@ description: "Design decision for OpenBao Config Operator: connection kinds and 
 
 # 0003. Connection kinds and the tenant boundary
 
-Status: accepted; amended by [ADR 0010](0010-openbaoserver-owns-address-and-audiences.md) (address and audiences move to OpenBaoServer). Date: 2026-11-13.
+Status: accepted; implemented; amended by [ADR 0010](0010-openbaoserver-owns-address-and-audiences.md) (address and audiences move to OpenBaoServer). Date: 2026-11-13.
 
 ## Context
 

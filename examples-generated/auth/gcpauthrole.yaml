@@ -1,13 +1,13 @@
-# GCPAuthRole (auth.openbaoconfig.io/v1alpha1)
+# GCPAuthRole (auth.obco.dev/v1alpha1)
 # GCPAuthRole manages a role of an OpenBao GCP auth method at auth/<mountPath>/role/<name>.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef, type.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#gcpauthrole
+# Reference: https://docs.obco.dev/reference/api/auth/#gcpauthrole
 # Curated example: examples/auth/gcpauthrole.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: GCPAuthRole
 metadata:
   name: example
@@ -20,7 +20,7 @@ spec:
   boundServiceAccounts:
   - example
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -30,7 +30,7 @@ spec:
   maxJWTExp: 1h
   mountPath: gcp
   name: example
-  namespace: example
+  openbaoNamespace: example
   policyRefs:
   - name: example
   tokenBoundCIDRs:

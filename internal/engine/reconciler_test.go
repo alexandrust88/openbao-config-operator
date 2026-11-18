@@ -30,7 +30,7 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-var testGV = schema.GroupVersion{Group: "test.openbaoconfig.io", Version: "v1alpha1"}
+var testGV = schema.GroupVersion{Group: "test.obco.dev", Version: "v1alpha1"}
 
 type testSpec struct {
 	commonv1alpha1.ResourceSpec `json:",inline"`
@@ -706,7 +706,7 @@ func TestReconcileStallsWhenConnectionNamespaceChanges(t *testing.T) {
 		t.Fatalf("writes = %d, want no write in the new namespace", writes)
 	}
 	if got.Status.Namespace != litAdmin {
-		t.Fatalf("status.namespace = %q, want the recorded admin", got.Status.Namespace)
+		t.Fatalf("status.openbaoNamespace = %q, want the recorded admin", got.Status.Namespace)
 	}
 
 	if err := h.k8s.Delete(context.Background(), got); err != nil {

@@ -1,13 +1,13 @@
-# AuthMount (sys.openbaoconfig.io/v1alpha1)
+# AuthMount (sys.obco.dev/v1alpha1)
 # AuthMount enables and tunes an OpenBao auth method at sys/auth/<path> (logins then go to auth/<path>/login).
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef, type.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/sys/#authmount
+# Reference: https://docs.obco.dev/reference/api/sys/#authmount
 # Curated example: examples/sys/authmount.yaml
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: example
@@ -20,7 +20,7 @@ spec:
   auditNonHMACResponseKeys:
   - example
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   defaultLeaseTTL: 1h
@@ -34,7 +34,7 @@ spec:
   local: true
   managementPolicy: Manage
   maxLeaseTTL: 1h
-  namespace: example
+  openbaoNamespace: example
   options:
     example: example
   passthroughRequestHeaders:

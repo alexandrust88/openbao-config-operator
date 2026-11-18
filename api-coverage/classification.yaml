@@ -1,7 +1,7 @@
 # Classification of every writable (POST, PUT, PATCH, DELETE) path template in the OpenAPI snapshots
 # api-coverage/openapi-<minor>.json. Each path has exactly one class:
 #   typed: <Kind>             a CRD kind in config/crd/bases configures the object behind the path
-#   endpoint-only: <reason>   configuration without a typed kind; use the OpenBaoEndpoint kind
+#   endpoint-only: <reason>   configuration without a typed kind; use the BaoEndpoint kind
 #                             ("unreviewed" marks a path nobody has classified yet)
 #   action: <reason>          a one-off operation, not configuration (login, issue, sign, rotate, ...)
 # go test ./test/apicoverage/... fails on an unclassified, doubly classified or stale path and on an
@@ -82,20 +82,20 @@
 "/auth/{userpass_mount_path}/users/{username}/password": {typed: "UserpassUser"}
 "/auth/{userpass_mount_path}/users/{username}/policies": {typed: "UserpassUser"}
 "/cubbyhole/{path}": {endpoint-only: "token-scoped storage: data written there is visible only to the operator's own token"}
-"/identity/alias": {typed: "EntityAlias"}
-"/identity/alias/id/{id}": {typed: "EntityAlias"}
-"/identity/entity": {typed: "Entity"}
-"/identity/entity-alias": {typed: "EntityAlias"}
-"/identity/entity-alias/id/{id}": {typed: "EntityAlias"}
+"/identity/alias": {typed: "IdentityEntityAlias"}
+"/identity/alias/id/{id}": {typed: "IdentityEntityAlias"}
+"/identity/entity": {typed: "IdentityEntity"}
+"/identity/entity-alias": {typed: "IdentityEntityAlias"}
+"/identity/entity-alias/id/{id}": {typed: "IdentityEntityAlias"}
 "/identity/entity/batch-delete": {action: "deletes entities in bulk"}
-"/identity/entity/id/{id}": {typed: "Entity"}
+"/identity/entity/id/{id}": {typed: "IdentityEntity"}
 "/identity/entity/merge": {action: "merges entities"}
-"/identity/entity/name/{name}": {typed: "Entity"}
-"/identity/group": {typed: "Group"}
-"/identity/group-alias": {typed: "GroupAlias"}
-"/identity/group-alias/id/{id}": {typed: "GroupAlias"}
-"/identity/group/id/{id}": {typed: "GroupMembership"}
-"/identity/group/name/{name}": {typed: "Group"}
+"/identity/entity/name/{name}": {typed: "IdentityEntity"}
+"/identity/group": {typed: "IdentityGroup"}
+"/identity/group-alias": {typed: "IdentityGroupAlias"}
+"/identity/group-alias/id/{id}": {typed: "IdentityGroupAlias"}
+"/identity/group/id/{id}": {typed: "IdentityGroupMembership"}
+"/identity/group/name/{name}": {typed: "IdentityGroup"}
 "/identity/lookup/entity": {action: "looks up an identity object"}
 "/identity/lookup/group": {action: "looks up an identity object"}
 "/identity/mfa/login-enforcement/{name}": {typed: "MFALoginEnforcement"}
@@ -118,8 +118,8 @@
 "/identity/oidc/provider/{name}/userinfo": {action: "OIDC provider protocol endpoint"}
 "/identity/oidc/role/{name}": {typed: "OIDCRole"}
 "/identity/oidc/scope/{name}": {typed: "OIDCScope"}
-"/identity/persona": {typed: "EntityAlias"}
-"/identity/persona/id/{id}": {typed: "EntityAlias"}
+"/identity/persona": {typed: "IdentityEntityAlias"}
+"/identity/persona/id/{id}": {typed: "IdentityEntityAlias"}
 "/sys/audit-hash/{path}": {action: "hashes a value with an audit device's salt"}
 "/sys/audit/{path}": {typed: "Audit"}
 "/sys/auth/{path}": {typed: "AuthMount"}
@@ -162,16 +162,16 @@
 "/sys/namespaces/api-lock/lock/{path}": {action: "locks or unlocks a namespace API"}
 "/sys/namespaces/api-lock/unlock": {action: "locks or unlocks a namespace API"}
 "/sys/namespaces/api-lock/unlock/{path}": {action: "locks or unlocks a namespace API"}
-"/sys/namespaces/{path}": {typed: "OpenBaoNamespace"}
+"/sys/namespaces/{path}": {typed: "BaoNamespace"}
 "/sys/namespaces/{path}/delete-sealed": {action: "seals, unseals or deletes a sealed namespace"}
 "/sys/namespaces/{path}/seal": {action: "seals, unseals or deletes a sealed namespace"}
 "/sys/namespaces/{path}/unseal": {action: "seals, unseals or deletes a sealed namespace"}
 "/sys/plugins/catalog/{name}": {typed: "Plugin"}
 "/sys/plugins/catalog/{type}/{name}": {typed: "Plugin"}
 "/sys/plugins/reload/backend": {action: "reloads a plugin"}
-"/sys/policies/acl/{name}": {typed: "Policy"}
+"/sys/policies/acl/{name}": {typed: "ACLPolicy"}
 "/sys/policies/password/{name}": {typed: "PasswordPolicy"}
-"/sys/policy/{name}": {typed: "Policy"}
+"/sys/policy/{name}": {typed: "ACLPolicy"}
 "/sys/quotas/config": {typed: "QuotaConfig"}
 "/sys/quotas/rate-limit/{name}": {typed: "RateLimitQuota"}
 "/sys/raw": {endpoint-only: "raw storage access, break-glass only; deliberately untyped"}
@@ -205,7 +205,7 @@
 "/sys/tools/random/{urlbytes}": {action: "hash or random bytes"}
 "/sys/unseal": {action: "seal, unseal or step-down"}
 "/sys/workflows/execute/{path}": {action: "runs or traces a workflow"}
-"/sys/workflows/manage/{path}": {typed: "Workflow"}
+"/sys/workflows/manage/{path}": {typed: "BaoWorkflow"}
 "/sys/workflows/trace/{path}": {action: "runs or traces a workflow"}
 "/sys/wrapping/lookup": {action: "response wrapping"}
 "/sys/wrapping/rewrap": {action: "response wrapping"}
@@ -344,7 +344,7 @@
 "/{secret_mount_path}/undelete/{path}": {action: "deletes, destroys or restores secret versions"}
 "/{ssh_mount_path}/config/ca": {typed: "SSHCA"}
 "/{ssh_mount_path}/config/issuers": {typed: "SSHCA"}
-"/{ssh_mount_path}/config/zeroaddress": {endpoint-only: "allowlist of roles that may use any source address; set it with OpenBaoEndpoint"}
+"/{ssh_mount_path}/config/zeroaddress": {endpoint-only: "allowlist of roles that may use any source address; set it with BaoEndpoint"}
 "/{ssh_mount_path}/creds/{role}": {action: "issues or signs credentials"}
 "/{ssh_mount_path}/issue/{role}": {action: "issues or signs credentials"}
 "/{ssh_mount_path}/issuer/{issuer_ref}": {endpoint-only: "renames or deletes an issuer; SSHCA owns the default CA through config/ca"}

@@ -44,7 +44,7 @@
   description: CRD types, markers and CEL rules in api/
 - name: area/connections
   color: "bfdadc"
-  description: OpenBaoServer, connections, login, client cache, tenant boundary
+  description: BaoServer, connections, login, client cache, tenant boundary
 - name: area/sys
   color: "bfdadc"
   description: Kinds of the sys group

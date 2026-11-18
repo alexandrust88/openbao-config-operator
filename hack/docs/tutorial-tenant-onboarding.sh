@@ -26,9 +26,9 @@ bao_out() {
 # and checks the answers.
 rbac_denied() {
   # --8<-- [start:rbac-denied]
-  kubectl auth can-i create openbaoconnections.core.openbaoconfig.io -n tenant-a --as tenant-a-admin
-  kubectl auth can-i create policies.sys.openbaoconfig.io -n tenant-b --as tenant-a-admin
-  kubectl auth can-i create clusteropenbaoconnections.core.openbaoconfig.io --as tenant-a-admin
+  kubectl auth can-i create baoconnections.core.obco.dev -n tenant-a --as tenant-a-admin
+  kubectl auth can-i create aclpolicies.sys.obco.dev -n tenant-b --as tenant-a-admin
+  kubectl auth can-i create clusterbaoconnections.core.obco.dev --as tenant-a-admin
   kubectl auth can-i create namespaces --as tenant-a-admin
   # --8<-- [end:rbac-denied]
 }
@@ -40,8 +40,8 @@ kubectl apply -f examples/tutorials/tenant-onboarding/namespaces.yaml
 # --8<-- [end:kubernetes]
 
 # --8<-- [start:rbac-allowed]
-kubectl auth can-i create openbaonamespaces.sys.openbaoconfig.io -n tenant-a --as tenant-a-admin
-kubectl auth can-i create kubernetesauthroles.auth.openbaoconfig.io -n tenant-a --as tenant-a-admin
+kubectl auth can-i create baonamespaces.sys.obco.dev -n tenant-a --as tenant-a-admin
+kubectl auth can-i create kubernetesauthroles.auth.obco.dev -n tenant-a --as tenant-a-admin
 # --8<-- [end:rbac-allowed]
 
 answers=$(rbac_denied 2>&1) || true
@@ -51,26 +51,26 @@ answers=$(rbac_denied 2>&1) || true
 kubectl apply -f examples/tutorials/tenant-onboarding/openbao-tenant-a.yaml \
   -f examples/tutorials/tenant-onboarding/openbao-tenant-b.yaml
 kubectl -n platform wait --for=condition=Ready --timeout=3m \
-  openbaonamespace.sys.openbaoconfig.io/tenant-a \
-  openbaonamespace.sys.openbaoconfig.io/tenant-b \
-  authmount.sys.openbaoconfig.io/tenant-a-kubernetes \
-  authmount.sys.openbaoconfig.io/tenant-b-kubernetes \
-  kubernetesauthconfig.auth.openbaoconfig.io/tenant-a-kubernetes \
-  kubernetesauthconfig.auth.openbaoconfig.io/tenant-b-kubernetes \
-  policy.sys.openbaoconfig.io/tenant-a-admin \
-  policy.sys.openbaoconfig.io/tenant-b-admin \
-  kubernetesauthrole.auth.openbaoconfig.io/tenant-a-operator \
-  kubernetesauthrole.auth.openbaoconfig.io/tenant-b-operator
+  baonamespace.sys.obco.dev/tenant-a \
+  baonamespace.sys.obco.dev/tenant-b \
+  authmount.sys.obco.dev/tenant-a-kubernetes \
+  authmount.sys.obco.dev/tenant-b-kubernetes \
+  kubernetesauthconfig.auth.obco.dev/tenant-a-kubernetes \
+  kubernetesauthconfig.auth.obco.dev/tenant-b-kubernetes \
+  aclpolicy.sys.obco.dev/tenant-a-admin \
+  aclpolicy.sys.obco.dev/tenant-b-admin \
+  kubernetesauthrole.auth.obco.dev/tenant-a-operator \
+  kubernetesauthrole.auth.obco.dev/tenant-b-operator
 # --8<-- [end:openbao]
 
 # --8<-- [start:connections]
 kubectl apply -f examples/tutorials/tenant-onboarding/connections.yaml
-kubectl -n tenant-a wait openbaoconnection/openbao --for=condition=Ready --timeout=2m
-kubectl -n tenant-b wait openbaoconnection/openbao --for=condition=Ready --timeout=2m
+kubectl -n tenant-a wait baoconnection/openbao --for=condition=Ready --timeout=2m
+kubectl -n tenant-b wait baoconnection/openbao --for=condition=Ready --timeout=2m
 # --8<-- [end:connections]
 
 for tenant in tenant-a tenant-b; do
-  [ "$(kubectl -n "$tenant" get openbaoconnection openbao -o jsonpath='{.status.authenticated}')" = true ] ||
+  [ "$(kubectl -n "$tenant" get baoconnection openbao -o jsonpath='{.status.authenticated}')" = true ] ||
     fail "the connection of $tenant is not authenticated"
 done
 

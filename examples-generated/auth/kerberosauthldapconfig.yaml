@@ -1,4 +1,4 @@
-# KerberosAuthLDAPConfig (auth.openbaoconfig.io/v1alpha1)
+# KerberosAuthLDAPConfig (auth.obco.dev/v1alpha1)
 # KerberosAuthLDAPConfig manages the LDAP configuration of an OpenBao Kerberos auth method at
 # auth/<mountPath>/config/ldap.
 #
@@ -6,9 +6,9 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef, url.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#kerberosauthldapconfig
+# Reference: https://docs.obco.dev/reference/api/auth/#kerberosauthldapconfig
 # Curated example: examples/auth/kerberosauthldapconfig.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KerberosAuthLDAPConfig
 metadata:
   name: example
@@ -32,7 +32,7 @@ spec:
     key: value
     name: kerberosauthldapconfig-client-tls-key-secret-ref
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   connectionTimeout: 1h
   creationPolicy: Create
@@ -49,7 +49,7 @@ spec:
   managementPolicy: Manage
   maxPageSize: 1
   mountPath: kerberos
-  namespace: example
+  openbaoNamespace: example
   policyRefs:
   - name: example
   requestTimeout: 1h

@@ -11,10 +11,10 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=secretsmounts,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=secretsmounts/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=secretsmounts/finalizers,verbs=update
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=plugins,verbs=get;list;watch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=secretsmounts,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=secretsmounts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=secretsmounts/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=plugins,verbs=get;list;watch
 
 // SetupSecretsMount registers the SecretsMount controller with the manager.
 func SetupSecretsMount(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

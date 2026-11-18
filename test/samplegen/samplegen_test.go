@@ -62,7 +62,7 @@ func TestSamplesPassServerSideValidation(t *testing.T) {
 
 // installCRDs installs each CRD on its own so one CRD the API server rejects only fails its own sample.
 func installCRDs(t *testing.T, env *envtest.Environment) {
-	files, err := filepath.Glob(filepath.Join(crdDir, "*.openbaoconfig.io_*.yaml"))
+	files, err := filepath.Glob(filepath.Join(crdDir, "*.obco.dev_*.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -49,7 +49,7 @@ class FixtureTests(unittest.TestCase):
         objects = common.fixtures()
         self.assertEqual(len(objects), 13)
         for obj in objects:
-            self.assertEqual(obj['spec'].get('namespace'), 'gitops-team' if obj['metadata']['name'].startswith('child-') else None)
+            self.assertEqual(obj['spec'].get('openbaoNamespace'), 'gitops-team' if obj['metadata']['name'].startswith('child-') else None)
             self.assertNotEqual(obj['kind'], 'Secret')
             self.assertEqual(obj['spec']['deletionPolicy'], 'Orphan')
         self.assertIn('gitops-kv/metadata/app/*', common.policy())

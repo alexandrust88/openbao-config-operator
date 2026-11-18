@@ -14,8 +14,8 @@ CRDs. One custom resource is one object at one API path. OpenBao is the only tar
   ([ADR 0002](docs/adr/0002-generic-engine-with-adapters.md)). The engine owns connections,
   finalizers, creation and deletion policy, conditions, events, metrics and requeues. Adapters own
   only the path, the payload and the comparison rules.
-- `OpenBaoEndpoint` writes any payload to any path ([ADR 0006](docs/adr/0006-endpoint-escape-hatch.md)).
-  One-off actions and rarely used paths get no typed kind; `OpenBaoEndpoint` covers them. Paths
+- `BaoEndpoint` writes any payload to any path ([ADR 0006](docs/adr/0006-endpoint-escape-hatch.md)).
+  One-off actions and rarely used paths get no typed kind; `BaoEndpoint` covers them. Paths
   that OpenBao does not have are not supported.
 - Out of scope: server lifecycle (deploy, init, unseal, raft, upgrade) and syncing secret values
   into Kubernetes ([ADR 0007](docs/adr/0007-no-secret-sync.md)). The only Secrets the operator
@@ -66,7 +66,7 @@ docs/                          architecture, kind catalogue, ADRs, backlog, tech
    `bao server -dev`. List write-only, create-only, renamed-on-read, unordered and duration fields
    before writing types.
 3. Types in `api/<group>/v1alpha1/<kind>_types.go`, written from
-   `api/sys/v1alpha1/policy_types.go`:
+   `api/sys/v1alpha1/aclpolicy_types.go`:
    - embed `commonv1alpha1.ResourceSpec` and `ResourceStatus` with `json:",inline"`, implement
      `GetResourceSpec` and `GetResourceStatus`;
    - camelCase fields named after the API keys; secret input only as `<field>SecretRef`
@@ -78,7 +78,7 @@ docs/                          architecture, kind catalogue, ADRs, backlog, tech
    - markers (`MinLength`, `MaxItems`, `Enum`, `Pattern`, `listType=set`), CEL immutability
      (`self == oldSelf`) for the name, mount paths and type, and a bound (`maxItems`,
      `maxLength`) on every list or string a CEL rule touches;
-   - `+kubebuilder:resource:categories=openbao`, status subresource, `Ready`, `Synced` and `Age`
+   - `+kubebuilder:resource:categories=obco;obco-<group>`, status subresource, `Ready`, `Synced` and `Age`
      print columns;
    - doc comments become CRD descriptions: write them for the user ("the OpenBao role").
 4. Adapter in `internal/controller/<group>/<kind>.go`: RBAC markers, `Setup<Kind>`, `Path`,
@@ -150,7 +150,7 @@ make test-e2e
   input. Samples and fixtures use obviously fake values in separate Secret documents.
 - Write-only inputs are hashed, never compared and never read back to check them.
 - Steady state writes nothing: an unchanged object must give an empty diff against the real read.
-  `openbao_writes_total{kind}` stays flat at rest. A kind that rewrites on every drift check is a bug.
+  `obco_writes_total{kind}` stays flat at rest. A kind that rewrites on every drift check is a bug.
 - A 404 is absent; every other status is an error. Never treat 400 as not found globally; a kind
   that needs it handles it in its own `Observer`.
 - Validation is OpenAPI markers and CEL in the CRD. No admission webhooks

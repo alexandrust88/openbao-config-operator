@@ -13,9 +13,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=quaysecretsroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=quaysecretsroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=quaysecretsroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=quaysecretsroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=quaysecretsroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=quaysecretsroles/finalizers,verbs=update
 
 // SetupQuaySecretsRole registers the QuaySecretsRole controller with the manager.
 func SetupQuaySecretsRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

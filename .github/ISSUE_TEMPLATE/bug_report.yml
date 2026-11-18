@@ -18,7 +18,7 @@ body:
     id: reproduce
     attributes:
       label: How to reproduce
-      description: The smallest custom resource (and OpenBaoServer and connection, if relevant) that shows the problem.
+      description: The smallest custom resource (and BaoServer and connection, if relevant) that shows the problem.
       render: yaml
     validations:
       required: true
@@ -26,7 +26,7 @@ body:
     id: kind
     attributes:
       label: Kind
-      description: The kind or kinds involved, e.g. Policy, KubernetesAuthRole, OpenBaoEndpoint.
+      description: The kind or kinds involved, e.g. ACLPolicy, KubernetesAuthRole, BaoEndpoint.
     validations:
       required: true
   - type: textarea
@@ -54,7 +54,7 @@ body:
     id: server-version
     attributes:
       label: OpenBao version
-      description: "From `bao status` or the OpenBaoServer status, e.g. 2.7.2."
+      description: "From `bao status` or the BaoServer status, e.g. 2.7.2."
     validations:
       required: true
   - type: input

@@ -190,10 +190,10 @@ def apply():
     state = state_from_credentials(credentials())
     kube = lab.Kube(identity.CONTEXT)
     objects = lab.render(state, identity.NAMESPACE, identity.CONNECTION)
-    namespaces = [item for item in objects if item['kind'] == 'OpenBaoNamespace']
+    namespaces = [item for item in objects if item['kind'] == 'BaoNamespace']
     kube.apply(namespaces)
     kube.wait(namespaces)
-    kube.apply([item for item in objects if item['kind'] != 'OpenBaoNamespace'])
+    kube.apply([item for item in objects if item['kind'] != 'BaoNamespace'])
     kube.wait(objects)
     print('Authentik operator OIDC CRDs Ready')
 

@@ -1,4 +1,4 @@
-# Merge "*.openbaoconfig.io/*" into the existing resource.customizations value.
+# Merge "*.obco.dev/*" into the existing resource.customizations value.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,7 +6,7 @@ metadata:
   namespace: argocd
 data:
   resource.customizations: |
-    "*.openbaoconfig.io/*":
+    "*.obco.dev/*":
       health.lua: |
         local hs = {status = "Progressing", message = "Waiting for the operator to reconcile"}
         if obj.status == nil or obj.status.conditions == nil then

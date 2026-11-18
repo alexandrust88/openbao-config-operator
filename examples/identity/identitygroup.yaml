@@ -1,0 +1,51 @@
+# Internal identity groups that grant policies to their members (added with IdentityGroupMembership), plus an external
+# group for an identity provider group.
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroup
+metadata:
+  name: obco-developers
+  namespace: openbao-config
+  labels:
+    obco.example.com/role: developers
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 30m
+  managementPolicy: Manage
+  name: obco-developers
+  type: internal
+  policies:
+    - obco-reader
+    - obco-writer
+  metadata:
+    owner: platform
+---
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroup
+metadata:
+  name: obco-operators
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  type: internal
+  policies:
+    - obco-reader
+---
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroup
+metadata:
+  name: obco-keycloak-admins
+  namespace: openbao-config
+  labels:
+    obco.example.com/idp: keycloak
+spec:
+  connectionRef:
+    name: openbao
+  type: external
+  policies:
+    - obco-admin

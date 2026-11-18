@@ -11,9 +11,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=corsconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=corsconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=corsconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=corsconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=corsconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=corsconfigs/finalizers,verbs=update
 
 const corsConfigPath = "sys/config/cors"
 

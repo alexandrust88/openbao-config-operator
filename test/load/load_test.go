@@ -332,7 +332,7 @@ func setupRun(ctx context.Context, t *testing.T, cfg config, kinds []kind) *load
 	createConnection(ctx, t, c, bao.addr, roleID, secretID)
 
 	mgr := startManager(t, cfg, c.kubeconfig, mgrLog)
-	connKey := "OpenBaoConnection/" + connectionName
+	connKey := "BaoConnection/" + connectionName
 	if err := poll(2*time.Minute, func() error {
 		if !tr.get(connKey).healthy {
 			return fmt.Errorf("connection %s not ready", connectionName)
@@ -383,7 +383,7 @@ func (r *loadRun) mark(phase string, at time.Time) {
 	r.res.Phases[phase] = seconds(at.Sub(r.start))
 }
 
-// markIdentity records the identity counts after phase. Design rule 2: only the managed Entity and EntityAlias
+// markIdentity records the identity counts after phase. Design rule 2: only the managed IdentityEntity and IdentityEntityAlias
 // objects may change them; token accessors grow by one per generated connection, because the operator logs in
 // once per connection, and shrink back when the connections are deleted.
 func (r *loadRun) markIdentity(phase string) {
@@ -401,9 +401,9 @@ func (r *loadRun) markIdentity(phase string) {
 	if phase != "delete" {
 		for _, o := range r.objects {
 			switch o.kind.gvk.Kind {
-			case "Entity":
+			case "IdentityEntity":
 				entities++
-			case "EntityAlias":
+			case "IdentityEntityAlias":
 				aliases++
 			case kindConnection:
 				connections++
@@ -534,7 +534,7 @@ func (r *loadRun) steady() {
 	res := &steadyResult{
 		Window:                 w,
 		ExpectedReconcilesPerS: round(float64(r.cfg.n) / interval),
-		RequestRate10s:         summarize(rates(samples, "openbao_requests_total", rateBucket)),
+		RequestRate10s:         summarize(rates(samples, "obco_requests_total", rateBucket)),
 		ReconcileRate10s:       summarize(rates(samples, "controller_runtime_reconcile_total", rateBucket)),
 	}
 	if w.Seconds > 0 {
@@ -556,7 +556,7 @@ func (r *loadRun) steady() {
 		res.ObservedReconcilesPerS, res.ExpectedReconcilesPerS, w.OpenBaoPerSecond, w.Writes)
 }
 
-// drift tampers with a tenth of the Policy and KVSecret objects (at most treeDriftSample in the tree set) and times
+// drift tampers with a tenth of the ACLPolicy and KVSecret objects (at most treeDriftSample in the tree set) and times
 // their repair. A few other KVSecrets get an unmanaged key; their KV version counts the operator's writes to them
 // exactly.
 func (r *loadRun) drift() {
@@ -659,7 +659,7 @@ func (r *loadRun) drift() {
 }
 
 func (r *loadRun) outage() {
-	connKey := "OpenBaoConnection/" + connectionName
+	connKey := "BaoConnection/" + connectionName
 	start := time.Now()
 	r.mark("outageStart", start)
 	r.bao.stop()
@@ -714,8 +714,8 @@ func (r *loadRun) outage() {
 	res.RecoveryMs = summarize(recoveries)
 	during := r.s.window(start, active)
 	recovery := r.s.window(active, allHealthy)
-	res.RequestRate2sDuring = summarize(rates(during, "openbao_requests_total", samplePeriod))
-	res.RequestRate2sRecovery = summarize(rates(recovery, "openbao_requests_total", samplePeriod))
+	res.RequestRate2sDuring = summarize(rates(during, "obco_requests_total", samplePeriod))
+	res.RequestRate2sRecovery = summarize(rates(recovery, "obco_requests_total", samplePeriod))
 	res.ReconcileRate2sRecov = summarize(rates(recovery, "controller_runtime_reconcile_total", samplePeriod))
 	r.res.Outage = res
 	if res.NotRecovered > 0 || !conn.healthy {
@@ -767,7 +767,7 @@ func (r *loadRun) deleteAll() {
 		Window:         r.window(start, last),
 	}
 	if notGone > 0 || len(left) > 0 {
-		r.fail("delete: %d resources not finalized, Policy/KVSecret objects left in OpenBao: %v", notGone, left)
+		r.fail("delete: %d resources not finalized, ACLPolicy/KVSecret objects left in OpenBao: %v", notGone, left)
 	}
 	r.markIdentity("delete")
 	if r.res.Tree != nil {

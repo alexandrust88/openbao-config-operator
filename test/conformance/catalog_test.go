@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	confKindConnection = "OpenBaoConnection"
+	confKindConnection = "BaoConnection"
 	confKindSecret     = "Secret"
 	confKeyName        = "name"
 	confKeyKind        = "kind"
@@ -34,12 +34,12 @@ const (
 
 // confConnectionKinds are configured by the harness itself, not reconciled through the engine.
 var confConnectionKinds = map[string]bool{
-	confKindConnection: true, "ClusterOpenBaoConnection": true, "OpenBaoServer": true,
+	confKindConnection: true, "ClusterBaoConnection": true, "BaoServer": true,
 }
 
 // confCommonFields are the ResourceSpec fields shared by every kind; the default test does not vary them.
 var confCommonFields = map[string]bool{
-	confConnectionRef: true, "namespace": true, "creationPolicy": true, "deletionPolicy": true,
+	confConnectionRef: true, "openbaoNamespace": true, "creationPolicy": true, "deletionPolicy": true,
 	"driftDetection": true, "driftInterval": true, "managementPolicy": true,
 }
 
@@ -66,7 +66,7 @@ var confMountTypes = func() map[string]confMount {
 	for m, kinds := range map[confMount][]string{
 		{auth: true, typ: "kubernetes"}: {"KubernetesAuthConfig", "KubernetesAuthRole", "AccessGrant"},
 		{auth: true, typ: "jwt"}:        {"JWTAuthConfig", "JWTAuthRole", "JWTCELRole"},
-		{auth: true, typ: "approle"}:    {"AppRole", "AppRoleSecretID", "EntityAlias", "GroupAlias"},
+		{auth: true, typ: "approle"}:    {"AppRole", "AppRoleSecretID", "IdentityEntityAlias", "IdentityGroupAlias"},
 		{auth: true, typ: "cert"}:       {"CertAuthConfig", "CertAuthRole", "CertAuthCRL"},
 		{auth: true, typ: "userpass"}:   {"UserpassUser"},
 		{typ: "kv", version: "2"}:       {"KVSecret", "KVConfig", "KVSecretMetadata", "RandomSecret"},
@@ -422,8 +422,8 @@ type confRef struct {
 var confNameReferents = map[string]map[string]string{
 	"AccessGrant":         {"rules.level": "AccessLevel"},
 	"AccessLayout":        {"roles.levels.level": "AccessLevel"},
-	"MFALoginEnforcement": {"entities.entityName": "Entity", "groups.groupName": "Group"},
-	"OIDCAssignment":      {"entities.entityName": "Entity", "groups.groupName": "Group"},
+	"MFALoginEnforcement": {"entities.entityName": "IdentityEntity", "groups.groupName": "IdentityGroup"},
+	"OIDCAssignment":      {"entities.entityName": "IdentityEntity", "groups.groupName": "IdentityGroup"},
 	"OIDCClient":          {"key": "OIDCKey", "assignments": "OIDCAssignment"},
 	"OIDCProvider":        {"allowedClients.clientName": "OIDCClient", "scopesSupported": "OIDCScope"},
 	"OIDCRole":            {"key": "OIDCKey"},
@@ -481,7 +481,7 @@ func confRefNames(v any, field string) []confRef {
 	return out
 }
 
-// confRewrite points an example document at the test namespace and connection. spec.namespace is dropped (the
+// confRewrite points an example document at the test namespace and connection. spec.openbaoNamespace is dropped (the
 // connection selects the OpenBao namespace) and so is spec.driftInterval (the manager flag sets the pace).
 func confRewrite(d *unstructured.Unstructured, ns string, deletePolicy bool) *unstructured.Unstructured {
 	c := d.DeepCopy()
@@ -503,7 +503,7 @@ func confRewrite(d *unstructured.Unstructured, ns string, deletePolicy bool) *un
 		if annotations == nil {
 			annotations = map[string]string{}
 		}
-		annotations["openbaoconfig.io/allow-destructive-delete"] = "true"
+		annotations["obco.dev/allow-destructive-delete"] = "true"
 		c.SetAnnotations(annotations)
 	}
 	return c

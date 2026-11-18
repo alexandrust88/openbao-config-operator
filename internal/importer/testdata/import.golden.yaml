@@ -1,4 +1,4 @@
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AppRole
 metadata:
   name: approle-svc
@@ -6,7 +6,7 @@ metadata:
 spec:
   bindSecretID: true
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -18,14 +18,14 @@ spec:
   - app
   tokenType: default
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthConfig
 metadata:
   name: cert
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   disableBinding: true
@@ -33,7 +33,7 @@ spec:
   mountPath: cert
   ocspCacheSize: 100
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthRole
 metadata:
   name: cert-web
@@ -46,7 +46,7 @@ spec:
     generated-at-test-time
     -----END CERTIFICATE-----
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   displayName: web
@@ -57,7 +57,7 @@ spec:
   - app
   tokenType: default
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: JWTAuthConfig
 metadata:
   name: jwt
@@ -65,7 +65,7 @@ metadata:
 spec:
   boundIssuer: https://issuer.example
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   jwtValidationPubkeys:
@@ -77,7 +77,7 @@ spec:
   mountPath: jwt
   namespaceInState: true
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: JWTAuthRole
 metadata:
   name: jwt-ci
@@ -88,7 +88,7 @@ spec:
   boundClaimsType: string
   callbackMode: client
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -100,14 +100,14 @@ spec:
   tokenType: default
   userClaim: sub
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthConfig
 metadata:
   name: kubernetes
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   disableLocalCAJWT: true
@@ -122,7 +122,7 @@ spec:
     key: token_reviewer_jwt
     name: kubernetes
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthRole
 metadata:
   name: kubernetes-app
@@ -134,7 +134,7 @@ spec:
   boundServiceAccountNamespaces:
   - apps
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -145,7 +145,7 @@ spec:
   tokenTTL: 1h0m0s
   tokenType: default
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: TokenRole
 metadata:
   name: ops
@@ -154,7 +154,7 @@ spec:
   allowedPolicies:
   - app
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -162,14 +162,14 @@ spec:
   orphan: true
   renewable: true
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: UserpassUser
 metadata:
   name: userpass-alice
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -182,8 +182,8 @@ spec:
   - app
   tokenType: default
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: openbao
   namespace: obco
@@ -198,8 +198,8 @@ spec:
   serverRef:
     name: openbao
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoServer
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoServer
 metadata:
   name: openbao
 spec:
@@ -211,14 +211,14 @@ spec:
     matchLabels:
       kubernetes.io/metadata.name: obco
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Entity
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntity
 metadata:
   name: alice
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -228,29 +228,29 @@ spec:
   policies:
   - app
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: EntityAlias
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntityAlias
 metadata:
   name: alice-userpass-alice
   namespace: obco
 spec:
   aliasName: alice
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   entityName: alice
   managementPolicy: Observe
   mountPath: userpass
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Group
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroup
 metadata:
   name: devs
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -259,29 +259,29 @@ spec:
   - app
   type: external
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: GroupAlias
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupAlias
 metadata:
   name: devs-jwt-devs-ext
   namespace: obco
 spec:
   aliasName: devs-ext
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   groupName: devs
   managementPolicy: Observe
   mountPath: jwt
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCAssignment
 metadata:
   name: a1
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   entities:
@@ -289,7 +289,7 @@ spec:
   managementPolicy: Observe
   name: a1
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCClient
 metadata:
   name: c1
@@ -301,7 +301,7 @@ spec:
   authorizationCode: true
   clientType: confidential
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   idTokenTTL: 24h0m0s
@@ -311,7 +311,7 @@ spec:
   redirectURIs:
   - https://app.example/cb
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: default
@@ -321,7 +321,7 @@ spec:
   allowedClientIDs:
   - '*'
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -329,7 +329,7 @@ spec:
   rotationPeriod: 24h0m0s
   verificationTTL: 24h0m0s
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: k1
@@ -339,7 +339,7 @@ spec:
   allowedClientIDs:
   - '*'
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -347,7 +347,7 @@ spec:
   rotationPeriod: 24h0m0s
   verificationTTL: 24h0m0s
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: team-a-default
@@ -357,16 +357,16 @@ spec:
   allowedClientIDs:
   - '*'
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
   name: default
-  namespace: team-a
+  openbaoNamespace: team-a
   rotationPeriod: 24h0m0s
   verificationTTL: 24h0m0s
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: team-a-sub-default
@@ -376,16 +376,16 @@ spec:
   allowedClientIDs:
   - '*'
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
   name: default
-  namespace: team-a/sub
+  openbaoNamespace: team-a/sub
   rotationPeriod: 24h0m0s
   verificationTTL: 24h0m0s
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCProvider
 metadata:
   name: default
@@ -394,13 +394,13 @@ spec:
   allowedClients:
   - clientID: '*'
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
   name: default
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCProvider
 metadata:
   name: p1
@@ -409,7 +409,7 @@ spec:
   allowedClients:
   - clientName: c1
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -417,7 +417,7 @@ spec:
   scopesSupported:
   - s1
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCProvider
 metadata:
   name: team-a-default
@@ -426,14 +426,14 @@ spec:
   allowedClients:
   - clientID: '*'
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
   name: default
-  namespace: team-a
+  openbaoNamespace: team-a
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCProvider
 metadata:
   name: team-a-sub-default
@@ -442,21 +442,21 @@ spec:
   allowedClients:
   - clientID: '*'
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
   name: default
-  namespace: team-a/sub
+  openbaoNamespace: team-a/sub
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCScope
 metadata:
   name: s1
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   description: groups
@@ -464,7 +464,7 @@ spec:
   name: s1
   template: '{"groups": {{identity.entity.groups.names}} }'
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: DatabaseConnection
 metadata:
   name: database-pg
@@ -473,7 +473,7 @@ spec:
   allowedRoles:
   - ro
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -487,14 +487,14 @@ spec:
     connectionURL: postgresql://{{username}}:{{password}}@db:5432/app
     username: admin
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: DatabaseRole
 metadata:
   name: database-ro
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   creationStatements:
@@ -507,14 +507,14 @@ spec:
   mountPath: database
   name: ro
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVSecret
 metadata:
   name: secret-app-config
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   dataFrom:
@@ -525,14 +525,14 @@ spec:
   mountPath: secret
   path: app/config
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVSecret
 metadata:
   name: secret-top
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   dataFrom:
@@ -543,14 +543,14 @@ spec:
   mountPath: secret
   path: top
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIConfig
 metadata:
   name: pki
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   crl:
@@ -567,7 +567,7 @@ spec:
     issuingCertificates:
     - http://pki.example/ca
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-root-ca
@@ -576,7 +576,7 @@ spec:
   certificate:
     commonName: root.example
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   leafNotAfterBehavior: err
@@ -591,7 +591,7 @@ spec:
   - ocsp-signing
   - read-only
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-web
@@ -608,7 +608,7 @@ spec:
   - email
   - hostname
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   enforceHostnames: true
@@ -630,7 +630,7 @@ spec:
   useCSRCommonName: true
   useCSRSANs: true
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: SSHRole
 metadata:
   name: ssh-r1
@@ -641,7 +641,7 @@ spec:
   allowedUsers:
   - ubuntu
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   defaultUser: ubuntu
@@ -653,14 +653,14 @@ spec:
   notBeforeDuration: 30s
   ttl: 1h0m0s
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: TransitKey
 metadata:
   name: transit-k1
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -669,14 +669,339 @@ spec:
   name: k1
   type: aes256-gcm96
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
+metadata:
+  name: app
+  namespace: obco
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: Adopt
+  managementPolicy: Observe
+  name: app
+  policy: path "secret/data/app/*" { capabilities = ["read"] }
+---
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
+metadata:
+  name: default
+  namespace: obco
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: Adopt
+  managementPolicy: Observe
+  name: default
+  policy: |2
+
+    # Allow tokens to look up their own properties
+    path "auth/token/lookup-self" {
+        capabilities = ["read"]
+    }
+
+    # Allow tokens to renew themselves
+    path "auth/token/renew-self" {
+        capabilities = ["update"]
+    }
+
+    # Allow tokens to revoke themselves
+    path "auth/token/revoke-self" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to look up its own capabilities on a path
+    path "sys/capabilities-self" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to look up its own entity by id or name
+    path "identity/entity/id/{{identity.entity.id}}" {
+      capabilities = ["read"]
+    }
+    path "identity/entity/name/{{identity.entity.name}}" {
+      capabilities = ["read"]
+    }
+
+
+    # Allow a token to look up its resultant ACL from all policies. This is useful
+    # for UIs. It is an internal path because the format may change at any time
+    # based on how the internal ACL features and capabilities change.
+    path "sys/internal/ui/resultant-acl" {
+        capabilities = ["read"]
+    }
+
+    # Allow a token to renew a lease via lease_id in the request body; old path for
+    # old clients, new path for newer
+    path "sys/leases/renew" {
+        capabilities = ["update"]
+    }
+
+    # Allow looking up lease properties. This requires knowing the lease ID ahead
+    # of time and does not divulge any sensitive information.
+    path "sys/leases/lookup" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to manage its own cubbyhole
+    path "cubbyhole/*" {
+        capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Allow a token to wrap arbitrary values in a response-wrapping token
+    path "sys/wrapping/wrap" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to look up the creation time and TTL of a given
+    # response-wrapping token
+    path "sys/wrapping/lookup" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to unwrap a response-wrapping token. This is a convenience to
+    # avoid client token swapping since this is also part of the response wrapping
+    # policy.
+    path "sys/wrapping/unwrap" {
+        capabilities = ["update"]
+    }
+
+    # Allow general purpose tools
+    path "sys/tools/hash" {
+        capabilities = ["update"]
+    }
+    path "sys/tools/hash/*" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to make requests to the Authorization Endpoint for OIDC providers.
+    path "identity/oidc/provider/+/authorize" {
+        capabilities = ["read", "update"]
+    }
+---
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
+metadata:
+  name: team-a-default
+  namespace: obco
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: Adopt
+  managementPolicy: Observe
+  name: default
+  openbaoNamespace: team-a
+  policy: |2
+
+    # Allow tokens to look up their own properties
+    path "auth/token/lookup-self" {
+        capabilities = ["read"]
+    }
+
+    # Allow tokens to renew themselves
+    path "auth/token/renew-self" {
+        capabilities = ["update"]
+    }
+
+    # Allow tokens to revoke themselves
+    path "auth/token/revoke-self" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to look up its own capabilities on a path
+    path "sys/capabilities-self" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to look up its own entity by id or name
+    path "identity/entity/id/{{identity.entity.id}}" {
+      capabilities = ["read"]
+    }
+    path "identity/entity/name/{{identity.entity.name}}" {
+      capabilities = ["read"]
+    }
+
+
+    # Allow a token to look up its resultant ACL from all policies. This is useful
+    # for UIs. It is an internal path because the format may change at any time
+    # based on how the internal ACL features and capabilities change.
+    path "sys/internal/ui/resultant-acl" {
+        capabilities = ["read"]
+    }
+
+    # Allow a token to renew a lease via lease_id in the request body; old path for
+    # old clients, new path for newer
+    path "sys/leases/renew" {
+        capabilities = ["update"]
+    }
+
+    # Allow looking up lease properties. This requires knowing the lease ID ahead
+    # of time and does not divulge any sensitive information.
+    path "sys/leases/lookup" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to manage its own cubbyhole
+    path "cubbyhole/*" {
+        capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Allow a token to wrap arbitrary values in a response-wrapping token
+    path "sys/wrapping/wrap" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to look up the creation time and TTL of a given
+    # response-wrapping token
+    path "sys/wrapping/lookup" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to unwrap a response-wrapping token. This is a convenience to
+    # avoid client token swapping since this is also part of the response wrapping
+    # policy.
+    path "sys/wrapping/unwrap" {
+        capabilities = ["update"]
+    }
+
+    # Allow general purpose tools
+    path "sys/tools/hash" {
+        capabilities = ["update"]
+    }
+    path "sys/tools/hash/*" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to make requests to the Authorization Endpoint for OIDC providers.
+    path "identity/oidc/provider/+/authorize" {
+        capabilities = ["read", "update"]
+    }
+---
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
+metadata:
+  name: team-a-nsp
+  namespace: obco
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: Adopt
+  managementPolicy: Observe
+  name: nsp
+  openbaoNamespace: team-a
+  policy: path "x" { capabilities = ["read"] }
+---
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
+metadata:
+  name: team-a-sub-default
+  namespace: obco
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: Adopt
+  managementPolicy: Observe
+  name: default
+  openbaoNamespace: team-a/sub
+  policy: |2
+
+    # Allow tokens to look up their own properties
+    path "auth/token/lookup-self" {
+        capabilities = ["read"]
+    }
+
+    # Allow tokens to renew themselves
+    path "auth/token/renew-self" {
+        capabilities = ["update"]
+    }
+
+    # Allow tokens to revoke themselves
+    path "auth/token/revoke-self" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to look up its own capabilities on a path
+    path "sys/capabilities-self" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to look up its own entity by id or name
+    path "identity/entity/id/{{identity.entity.id}}" {
+      capabilities = ["read"]
+    }
+    path "identity/entity/name/{{identity.entity.name}}" {
+      capabilities = ["read"]
+    }
+
+
+    # Allow a token to look up its resultant ACL from all policies. This is useful
+    # for UIs. It is an internal path because the format may change at any time
+    # based on how the internal ACL features and capabilities change.
+    path "sys/internal/ui/resultant-acl" {
+        capabilities = ["read"]
+    }
+
+    # Allow a token to renew a lease via lease_id in the request body; old path for
+    # old clients, new path for newer
+    path "sys/leases/renew" {
+        capabilities = ["update"]
+    }
+
+    # Allow looking up lease properties. This requires knowing the lease ID ahead
+    # of time and does not divulge any sensitive information.
+    path "sys/leases/lookup" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to manage its own cubbyhole
+    path "cubbyhole/*" {
+        capabilities = ["create", "read", "update", "delete", "list"]
+    }
+
+    # Allow a token to wrap arbitrary values in a response-wrapping token
+    path "sys/wrapping/wrap" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to look up the creation time and TTL of a given
+    # response-wrapping token
+    path "sys/wrapping/lookup" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to unwrap a response-wrapping token. This is a convenience to
+    # avoid client token swapping since this is also part of the response wrapping
+    # policy.
+    path "sys/wrapping/unwrap" {
+        capabilities = ["update"]
+    }
+
+    # Allow general purpose tools
+    path "sys/tools/hash" {
+        capabilities = ["update"]
+    }
+    path "sys/tools/hash/*" {
+        capabilities = ["update"]
+    }
+
+    # Allow a token to make requests to the Authorization Endpoint for OIDC providers.
+    path "identity/oidc/provider/+/authorize" {
+        capabilities = ["read", "update"]
+    }
+---
+apiVersion: sys.obco.dev/v1alpha1
 kind: Audit
 metadata:
   name: declared
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   description: declared in config
@@ -686,14 +1011,14 @@ spec:
   path: declared
   type: file
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: Audit
 metadata:
   name: siem
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -704,14 +1029,14 @@ spec:
   path: siem
   type: http
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: approle
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -719,14 +1044,14 @@ spec:
   tokenType: default-service
   type: approle
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: cert
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -734,14 +1059,14 @@ spec:
   tokenType: default-service
   type: cert
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: jwt
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -749,14 +1074,14 @@ spec:
   tokenType: default-service
   type: jwt
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: kubernetes
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -764,14 +1089,14 @@ spec:
   tokenType: default-service
   type: kubernetes
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: userpass
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -779,41 +1104,41 @@ spec:
   tokenType: default-service
   type: userpass
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: team-a
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
   name: team-a
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: team-a-sub
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
   name: sub
-  namespace: team-a
+  openbaoNamespace: team-a
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: PasswordPolicy
 metadata:
   name: pp
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
@@ -822,339 +1147,14 @@ spec:
     length=20
     rule "charset" { charset = "abcdefghijklmnopqrstuvwxyz" }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
-metadata:
-  name: app
-  namespace: obco
-spec:
-  connectionRef:
-    kind: OpenBaoConnection
-    name: openbao
-  creationPolicy: Adopt
-  managementPolicy: Observe
-  name: app
-  policy: path "secret/data/app/*" { capabilities = ["read"] }
----
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
-metadata:
-  name: default
-  namespace: obco
-spec:
-  connectionRef:
-    kind: OpenBaoConnection
-    name: openbao
-  creationPolicy: Adopt
-  managementPolicy: Observe
-  name: default
-  policy: |2
-
-    # Allow tokens to look up their own properties
-    path "auth/token/lookup-self" {
-        capabilities = ["read"]
-    }
-
-    # Allow tokens to renew themselves
-    path "auth/token/renew-self" {
-        capabilities = ["update"]
-    }
-
-    # Allow tokens to revoke themselves
-    path "auth/token/revoke-self" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to look up its own capabilities on a path
-    path "sys/capabilities-self" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to look up its own entity by id or name
-    path "identity/entity/id/{{identity.entity.id}}" {
-      capabilities = ["read"]
-    }
-    path "identity/entity/name/{{identity.entity.name}}" {
-      capabilities = ["read"]
-    }
-
-
-    # Allow a token to look up its resultant ACL from all policies. This is useful
-    # for UIs. It is an internal path because the format may change at any time
-    # based on how the internal ACL features and capabilities change.
-    path "sys/internal/ui/resultant-acl" {
-        capabilities = ["read"]
-    }
-
-    # Allow a token to renew a lease via lease_id in the request body; old path for
-    # old clients, new path for newer
-    path "sys/leases/renew" {
-        capabilities = ["update"]
-    }
-
-    # Allow looking up lease properties. This requires knowing the lease ID ahead
-    # of time and does not divulge any sensitive information.
-    path "sys/leases/lookup" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to manage its own cubbyhole
-    path "cubbyhole/*" {
-        capabilities = ["create", "read", "update", "delete", "list"]
-    }
-
-    # Allow a token to wrap arbitrary values in a response-wrapping token
-    path "sys/wrapping/wrap" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to look up the creation time and TTL of a given
-    # response-wrapping token
-    path "sys/wrapping/lookup" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to unwrap a response-wrapping token. This is a convenience to
-    # avoid client token swapping since this is also part of the response wrapping
-    # policy.
-    path "sys/wrapping/unwrap" {
-        capabilities = ["update"]
-    }
-
-    # Allow general purpose tools
-    path "sys/tools/hash" {
-        capabilities = ["update"]
-    }
-    path "sys/tools/hash/*" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to make requests to the Authorization Endpoint for OIDC providers.
-    path "identity/oidc/provider/+/authorize" {
-        capabilities = ["read", "update"]
-    }
----
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
-metadata:
-  name: team-a-default
-  namespace: obco
-spec:
-  connectionRef:
-    kind: OpenBaoConnection
-    name: openbao
-  creationPolicy: Adopt
-  managementPolicy: Observe
-  name: default
-  namespace: team-a
-  policy: |2
-
-    # Allow tokens to look up their own properties
-    path "auth/token/lookup-self" {
-        capabilities = ["read"]
-    }
-
-    # Allow tokens to renew themselves
-    path "auth/token/renew-self" {
-        capabilities = ["update"]
-    }
-
-    # Allow tokens to revoke themselves
-    path "auth/token/revoke-self" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to look up its own capabilities on a path
-    path "sys/capabilities-self" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to look up its own entity by id or name
-    path "identity/entity/id/{{identity.entity.id}}" {
-      capabilities = ["read"]
-    }
-    path "identity/entity/name/{{identity.entity.name}}" {
-      capabilities = ["read"]
-    }
-
-
-    # Allow a token to look up its resultant ACL from all policies. This is useful
-    # for UIs. It is an internal path because the format may change at any time
-    # based on how the internal ACL features and capabilities change.
-    path "sys/internal/ui/resultant-acl" {
-        capabilities = ["read"]
-    }
-
-    # Allow a token to renew a lease via lease_id in the request body; old path for
-    # old clients, new path for newer
-    path "sys/leases/renew" {
-        capabilities = ["update"]
-    }
-
-    # Allow looking up lease properties. This requires knowing the lease ID ahead
-    # of time and does not divulge any sensitive information.
-    path "sys/leases/lookup" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to manage its own cubbyhole
-    path "cubbyhole/*" {
-        capabilities = ["create", "read", "update", "delete", "list"]
-    }
-
-    # Allow a token to wrap arbitrary values in a response-wrapping token
-    path "sys/wrapping/wrap" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to look up the creation time and TTL of a given
-    # response-wrapping token
-    path "sys/wrapping/lookup" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to unwrap a response-wrapping token. This is a convenience to
-    # avoid client token swapping since this is also part of the response wrapping
-    # policy.
-    path "sys/wrapping/unwrap" {
-        capabilities = ["update"]
-    }
-
-    # Allow general purpose tools
-    path "sys/tools/hash" {
-        capabilities = ["update"]
-    }
-    path "sys/tools/hash/*" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to make requests to the Authorization Endpoint for OIDC providers.
-    path "identity/oidc/provider/+/authorize" {
-        capabilities = ["read", "update"]
-    }
----
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
-metadata:
-  name: team-a-nsp
-  namespace: obco
-spec:
-  connectionRef:
-    kind: OpenBaoConnection
-    name: openbao
-  creationPolicy: Adopt
-  managementPolicy: Observe
-  name: nsp
-  namespace: team-a
-  policy: path "x" { capabilities = ["read"] }
----
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
-metadata:
-  name: team-a-sub-default
-  namespace: obco
-spec:
-  connectionRef:
-    kind: OpenBaoConnection
-    name: openbao
-  creationPolicy: Adopt
-  managementPolicy: Observe
-  name: default
-  namespace: team-a/sub
-  policy: |2
-
-    # Allow tokens to look up their own properties
-    path "auth/token/lookup-self" {
-        capabilities = ["read"]
-    }
-
-    # Allow tokens to renew themselves
-    path "auth/token/renew-self" {
-        capabilities = ["update"]
-    }
-
-    # Allow tokens to revoke themselves
-    path "auth/token/revoke-self" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to look up its own capabilities on a path
-    path "sys/capabilities-self" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to look up its own entity by id or name
-    path "identity/entity/id/{{identity.entity.id}}" {
-      capabilities = ["read"]
-    }
-    path "identity/entity/name/{{identity.entity.name}}" {
-      capabilities = ["read"]
-    }
-
-
-    # Allow a token to look up its resultant ACL from all policies. This is useful
-    # for UIs. It is an internal path because the format may change at any time
-    # based on how the internal ACL features and capabilities change.
-    path "sys/internal/ui/resultant-acl" {
-        capabilities = ["read"]
-    }
-
-    # Allow a token to renew a lease via lease_id in the request body; old path for
-    # old clients, new path for newer
-    path "sys/leases/renew" {
-        capabilities = ["update"]
-    }
-
-    # Allow looking up lease properties. This requires knowing the lease ID ahead
-    # of time and does not divulge any sensitive information.
-    path "sys/leases/lookup" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to manage its own cubbyhole
-    path "cubbyhole/*" {
-        capabilities = ["create", "read", "update", "delete", "list"]
-    }
-
-    # Allow a token to wrap arbitrary values in a response-wrapping token
-    path "sys/wrapping/wrap" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to look up the creation time and TTL of a given
-    # response-wrapping token
-    path "sys/wrapping/lookup" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to unwrap a response-wrapping token. This is a convenience to
-    # avoid client token swapping since this is also part of the response wrapping
-    # policy.
-    path "sys/wrapping/unwrap" {
-        capabilities = ["update"]
-    }
-
-    # Allow general purpose tools
-    path "sys/tools/hash" {
-        capabilities = ["update"]
-    }
-    path "sys/tools/hash/*" {
-        capabilities = ["update"]
-    }
-
-    # Allow a token to make requests to the Authorization Endpoint for OIDC providers.
-    path "identity/oidc/provider/+/authorize" {
-        capabilities = ["read", "update"]
-    }
----
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: RateLimitQuota
 metadata:
   name: global
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   inheritable: true
@@ -1163,42 +1163,42 @@ spec:
   name: global
   rate: "100"
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: database
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
   path: database
   type: database
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: pki
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
   path: pki
   type: pki
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: secret
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   description: key/value secret storage
@@ -1208,28 +1208,28 @@ spec:
   path: secret
   type: kv
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: ssh
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe
   path: ssh
   type: ssh
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: transit
   namespace: obco
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   managementPolicy: Observe

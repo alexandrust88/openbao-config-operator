@@ -30,10 +30,10 @@ items:
       namespace: obco-gitops
     rules:
       - apiGroups:
-          - core.openbaoconfig.io
-          - sys.openbaoconfig.io
-          - auth.openbaoconfig.io
-          - secrets.openbaoconfig.io
+          - core.obco.dev
+          - sys.obco.dev
+          - auth.obco.dev
+          - secrets.obco.dev
         resources:
           - '*'
         verbs:
@@ -75,9 +75,9 @@ items:
       name: gitops-server
     rules:
       - apiGroups:
-          - core.openbaoconfig.io
+          - core.obco.dev
         resources:
-          - openbaoservers
+          - baoservers
         verbs:
           - get
           - list

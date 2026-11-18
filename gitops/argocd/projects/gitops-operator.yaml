@@ -6,7 +6,7 @@ metadata:
 spec:
   sourceRepos:
     - https://github.com/alexandrust88/openbao-config-operator.git
-    - https://alexandrust88.github.io/openbao-config-operator/charts
+    - https://docs.obco.dev/charts
   destinations:
     - server: https://kubernetes.default.svc
       namespace: openbao-config-operator-system

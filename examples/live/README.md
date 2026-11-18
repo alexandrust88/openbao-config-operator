@@ -9,8 +9,8 @@ realistic values). [coverage.md](coverage.md) lists the components that hold eac
 | path | what it is |
 |------|------------|
 | `params/` | the only environment-specific values, as `live-params` literals: address, CA ConfigMap, Kubernetes namespace, token audience, login mounts, roles and ServiceAccounts |
-| `base/` | the `OpenBaoServer` and `nameref.yaml`, which makes a `namePrefix` reach every reference and OpenBao name |
-| `modes/<mode>/` | the `OpenBaoConnection` and `ClusterOpenBaoConnection` of one connection mode |
+| `base/` | the `BaoServer` and `nameref.yaml`, which makes a `namePrefix` reach every reference and OpenBao name |
+| `modes/<mode>/` | the `BaoConnection` and `ClusterBaoConnection` of one connection mode |
 | `components/<scenario>/{minimal,full}/` | one dependency chain each, for example mount, config, role, policy |
 | `sets/` | the scenario components grouped into namespaced, root-only and optional sets |
 | `finalize/` | copies the params into the server and connections, and adds Argo CD sync waves by layer |
@@ -22,8 +22,8 @@ realistic values). [coverage.md](coverage.md) lists the components that hold eac
 | overlay | login | objects land in | sets |
 |---------|-------|-----------------|------|
 | `root` | root namespace | root namespace | namespaced, root-only |
-| `root-to-child` | root namespace | `spec.namespace: <tenantNamespace>` | namespaced |
-| `child-connection-root-login` | root namespace, `authNamespace: ""` | connection namespace `<tenantNamespace>` | namespaced |
+| `root-to-child` | root namespace | `spec.openbaoNamespace: <tenantNamespace>` | namespaced |
+| `child-connection-root-login` | root namespace, `openbaoAuthNamespace: ""` | connection namespace `<tenantNamespace>` | namespaced |
 | `child` | inside `<tenantNamespace>` | `<tenantNamespace>` and below | namespaced |
 | `optional` | root namespace | root namespace | database, RabbitMQ and alternative connection logins |
 | `observe` | as `root` | as `root` | the objects of `root`, switched to `managementPolicy: Observe` |
@@ -31,7 +31,7 @@ realistic values). [coverage.md](coverage.md) lists the components that hold eac
 
 Every overlay prefixes its Kubernetes names and OpenBao names (`root-min-`, `r2c-full-`, ...), so overlays coexist
 in one Kubernetes namespace and one OpenBao server. Objects that some scenarios keep in a namespace of their own
-carry the label `live.openbaoconfig.io/nested: "true"`. Exceptions, which are shared by every root overlay:
+carry the label `live.obco.dev/nested: "true"`. Exceptions, which are shared by every root overlay:
 
 - Server-wide settings: `CORSConfig`, `QuotaConfig`, `RaftAutopilot`, `KeyRotationConfig`, the loggers, the UI
   header and the audit request header. Apply one root overlay at a time.
@@ -83,7 +83,7 @@ It skips Secrets that already exist, never prints a value, and needs `kubectl` a
 make kustomize
 examples/live/create-secrets.sh --namespace openbao-live
 bin/kustomize build examples/live/overlays/root/full | kubectl apply -f -
-kubectl get openbao -n openbao-live -l live.openbaoconfig.io/overlay=root-full
+kubectl get obco -n openbao-live -l live.obco.dev/overlay=root-full
 ```
 
 One apply is enough: objects wait with the reason `ReferenceNotReady` until what they reference exists. Argo CD

@@ -1,4 +1,4 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: transit
@@ -7,7 +7,7 @@ spec:
     name: openbao
   type: transit
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: TransitKey
 metadata:
   name: transit-app
@@ -16,7 +16,7 @@ spec:
     name: openbao
   mountPath: transit
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: totp
@@ -25,7 +25,7 @@ spec:
     name: openbao
   type: totp
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: TOTPKey
 metadata:
   name: totp-alice
@@ -39,7 +39,7 @@ spec:
     writeSecretRef:
       name: totp-alice
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: ssh
@@ -48,7 +48,7 @@ spec:
     name: openbao
   type: ssh
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: SSHCA
 metadata:
   name: ssh-ca
@@ -57,7 +57,7 @@ spec:
     name: openbao
   mountPath: ssh
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: SSHRole
 metadata:
   name: ssh-users
@@ -68,7 +68,7 @@ spec:
   keyType: ca
   allowUserCertificates: true
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: TransitCacheConfig
 metadata:
   name: transit-cache
@@ -78,7 +78,7 @@ spec:
   creationPolicy: CreateOrAdopt
   mountPath: transit
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: TransitKeyConfig
 metadata:
   name: transit-key-config

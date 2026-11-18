@@ -1,5 +1,5 @@
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoServer
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoServer
 metadata:
   name: conn-server-dev
 spec:
@@ -18,8 +18,8 @@ spec:
     burst: 40
   requestTimeout: 30s
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoServer
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoServer
 metadata:
   name: conn-server-secret-ca
 spec:
@@ -35,15 +35,15 @@ spec:
   allowedAudiences:
     - openbao-config-operator
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: conn-approle
 spec:
   serverRef:
     name: openbao-server
-  namespace: team-a
-  authNamespace: ""
+  openbaoNamespace: team-a
+  openbaoAuthNamespace: ""
   auth:
     appRole:
       mountPath: approle
@@ -54,8 +54,8 @@ spec:
         name: live-connection-auth-approle
         key: secret-id
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: conn-jwt
 spec:
@@ -70,8 +70,8 @@ spec:
       audiences:
         - openbao-config-operator
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: conn-token
 spec:
@@ -83,15 +83,15 @@ spec:
         name: live-connection-auth-token
         key: token
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: ClusterOpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
 metadata:
   name: conn-cluster-approle
 spec:
   serverRef:
     name: openbao-server
-  namespace: team-a
-  authNamespace: ""
+  openbaoNamespace: team-a
+  openbaoAuthNamespace: ""
   allowedNamespaces:
     matchExpressions:
       - key: kubernetes.io/metadata.name
@@ -110,8 +110,8 @@ spec:
         namespace: openbao-live
         key: secret-id
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: ClusterOpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
 metadata:
   name: conn-cluster-jwt-sa
 spec:
@@ -130,8 +130,8 @@ spec:
       audiences:
         - openbao-config-operator
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: ClusterOpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
 metadata:
   name: conn-cluster-jwt-injected
 spec:
@@ -147,8 +147,8 @@ spec:
       injectedIdentity:
         tokenPath: /var/run/secrets/openbao/token
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: ClusterOpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
 metadata:
   name: conn-cluster-k8s-injected
 spec:
@@ -164,8 +164,8 @@ spec:
       injectedIdentity:
         tokenPath: /var/run/secrets/openbao/token
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: ClusterOpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
 metadata:
   name: conn-cluster-token-file
 spec:
@@ -179,8 +179,8 @@ spec:
       filesystem:
         path: /var/run/openbao/token
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: ClusterOpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
 metadata:
   name: conn-cluster-token-secret
 spec:
@@ -196,13 +196,13 @@ spec:
         namespace: openbao-live
         key: token
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: conn-approle-reader
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: conn-approle
   creationPolicy: Create
   deletionPolicy: Delete
@@ -215,13 +215,13 @@ spec:
       capabilities = ["read"]
     }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: conn-cluster-reader
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: conn-cluster-approle
   creationPolicy: Create
   deletionPolicy: Delete

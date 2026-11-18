@@ -179,7 +179,7 @@ type MFAMethodStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=openbao
+// +kubebuilder:resource:categories=obco;obco-identity
 // +kubebuilder:printcolumn:name="Method ID",type=string,JSONPath=`.status.id`,priority=1
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`

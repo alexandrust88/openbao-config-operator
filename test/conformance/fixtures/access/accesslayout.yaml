@@ -2,7 +2,7 @@
 # levels stay in the layout's own namespace and the fixture enables the oidc auth method. One organization and one
 # role keep a change of groupAliasTemplate (not the default, which the CRD pattern gives no alternative to) to a
 # single alias write.
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: oidc
@@ -14,14 +14,14 @@ spec:
   path: oidc
   type: oidc
 ---
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessLayout
 metadata:
   name: platform-teams
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Delete
@@ -39,5 +39,5 @@ spec:
   roles:
     - name: developer
       levels:
-        - namespace: ""
+        - openbaoNamespace: ""
           level: write

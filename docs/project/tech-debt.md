@@ -16,14 +16,15 @@ Status: open
 Integration tests run each kind against `bao server -dev`: in-memory storage, a root token, one
 node, no TLS. The e2e test (`test/e2e`) runs the manager in kind, where a namespaced connection logs
 in with Kubernetes auth through TokenRequest as the tenant ServiceAccount, under a non-root tenant
-policy, and reconciles a `Policy`, a `KVSecret` and an `OpenBaoEndpoint` through create, drift
+policy, and reconciles an `ACLPolicy`, a `KVSecret` and a `BaoEndpoint` through create, drift
 repair, steady state and delete; a two-tenant e2e test (`test/e2e/isolation_test.go`) proves that a second tenant's writes outside its OpenBao namespace and policy, its references to another tenant's objects and its use of a server that excludes it are refused, and that none of the objects it tried to create exists in OpenBao.
 
-In the e2e workflow, `test/livekit/kind.sh` also applies the live kit (64 built-in kinds, the database kinds
+In the e2e workflow, `test/livekit/kind.sh` also applies the live kit (the overlay kinds, plus the database kinds
 against PostgreSQL) to a three-node Raft OpenBao with TLS and persistent volumes (`hack/e2e/openbao.yaml`), logged
-in with non-root tokens (Kubernetes auth, AppRole and an orphan token under an `admin` policy). The four kinds with dedicated integration fixtures run only
-against `bao server -dev`, and the external-plugin kinds only in golden payload tests
-([verification guide](verification.md#live-crd-coverage)).
+in with non-root tokens (Kubernetes auth, AppRole and an orphan token under an `admin` policy). The kinds with
+dedicated integration fixtures (`test/livekit/coverage-exclusions.yaml`) run only in those integration tests, and
+the external-plugin kinds only in golden payload tests. [Live CRD coverage](verification.md#live-crd-coverage)
+has the counts.
 
 Exit criteria: the per-kind tests run against a server with persistent storage, TLS and a
 non-root token. The second-tenant scenario is done (`test/e2e/isolation_test.go`). Storage, HA,
@@ -87,8 +88,8 @@ keep `mkdocs build --strict` equivalent link checking in CI, and drop the Materi
 Status: open
 
 `Desired` gets no OpenBao client, so seven adapters resolve their connection themselves inside `Desired`
-through `refs.For` and an adapter-held `engine.Connections` (GroupMembership, EntityAlias, GroupAlias,
-OIDCAssignment, OIDCProvider, MFALoginEnforcement, Policy with `accessorRefs`), and AuthMount and SecretsMount
+through `refs.For` and an adapter-held `engine.Connections` (IdentityGroupMembership, IdentityEntityAlias, IdentityGroupAlias,
+OIDCAssignment, OIDCProvider, MFALoginEnforcement, ACLPolicy with `accessorRefs`), and AuthMount and SecretsMount
 read Plugins through an adapter-held `client.Reader` instead of `Resolver.Object`. These reads bypass the
 client of the pass (request attribution, priority, the namespace and server checks done in `connect`) and the
 read-only resolver of `managementPolicy: Observe`, and a zero-value adapter fails with "needs a reader".

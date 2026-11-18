@@ -1,4 +1,4 @@
-# AWSAuthTidyConfig (auth.openbaoconfig.io/v1alpha1)
+# AWSAuthTidyConfig (auth.obco.dev/v1alpha1)
 # AWSAuthTidyConfig manages the periodic tidy settings of an OpenBao AWS auth method, at
 # auth/<mountPath>/config/tidy/identity-accesslist and auth/<mountPath>/config/tidy/roletag-denylist.
 #
@@ -6,16 +6,16 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#awsauthtidyconfig
+# Reference: https://docs.obco.dev/reference/api/auth/#awsauthtidyconfig
 # Curated example: examples/auth/awsauthtidyconfig.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AWSAuthTidyConfig
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -26,7 +26,7 @@ spec:
     safetyBuffer: 1h
   managementPolicy: Manage
   mountPath: aws
-  namespace: example
+  openbaoNamespace: example
   roleTagDenyList:
     disablePeriodicTidy: true
     safetyBuffer: 1h

@@ -24,7 +24,7 @@ scopes_json=$(sed -n 's/^- {/{/p' "$crd_index" | "$jq" -sc 'map({key: "\(.group)
 # shellcheck disable=SC2016 # jq variables, not shell
 unknown=$("$jq" -r --argjson scopes "$scopes_json" '
   [ .[] | select(has("nonResourceURLs") | not) | .apiGroups[] as $g | .resources[] as $r
-    | select($g | endswith("openbaoconfig.io")) | "\($g)/\($r | split("/")[0])"
+    | select($g | endswith("obco.dev")) | "\($g)/\($r | split("/")[0])"
     | select($scopes[.] == null) ] | unique | join(" ")' <<<"$rules_json")
 [ -z "$unknown" ] || { echo "sync-rbac: no scope in $crd_index for: $unknown (run sync-crds.sh first)" >&2; exit 1; }
 

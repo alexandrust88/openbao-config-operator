@@ -11,9 +11,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=keyrotationconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=keyrotationconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=keyrotationconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=keyrotationconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=keyrotationconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=keyrotationconfigs/finalizers,verbs=update
 
 const (
 	keyRotationConfigPath = "sys/rotate/config"

@@ -1,12 +1,12 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: pki-root
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -19,15 +19,15 @@ spec:
   defaultLeaseTTL: 8760h
   maxLeaseTTL: 87600h
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: pki-int
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -47,15 +47,15 @@ spec:
   passthroughRequestHeaders:
     - If-Modified-Since
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-root-ca
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -120,15 +120,15 @@ spec:
     - https://openbao.example.com:8200/v1/pki-root/ocsp
   enableAIAURLTemplating: false
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-int-ca
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -170,15 +170,15 @@ spec:
   ocspServers:
     - "{{cluster_path}}/ocsp"
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-int-ca-reuse
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -200,15 +200,15 @@ spec:
     mountPath: pki-root
     issuerName: pki-root-ca
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-int-ca-imported
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -230,15 +230,15 @@ spec:
       name: pki-root-ca
   revocationSignatureAlgorithm: SHA256WithRSA
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-int-key
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -251,15 +251,15 @@ spec:
   keyType: ec
   keyBits: 256
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-int-key-exported
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -274,15 +274,15 @@ spec:
   writeSecretRef:
     name: pki-int-key-exported
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-int-key-imported
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -296,13 +296,13 @@ spec:
     name: live-pki-import
     key: key.pem
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-web
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -386,13 +386,13 @@ spec:
   notAfter: "2030-01-01T00:00:00Z"
   notAfterBound: ttl-limited
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-acme
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -409,13 +409,13 @@ spec:
   ttl: 72h
   maxTTL: 2160h
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIConfig
 metadata:
   name: pki-root-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
@@ -430,13 +430,13 @@ spec:
       issuerName: pki-root-ca
     defaultFollowsLatestIssuer: false
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIConfig
 metadata:
   name: pki-int-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
@@ -473,13 +473,13 @@ spec:
         name: pki-int-ca
     defaultFollowsLatestIssuer: false
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIACMEConfig
 metadata:
   name: pki-int-acme
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
@@ -497,13 +497,13 @@ spec:
   dnsResolver: ""
   eabPolicy: not-required
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIAutoTidy
 metadata:
   name: pki-int-tidy
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
@@ -529,15 +529,15 @@ spec:
   maintainStoredCertificateCounts: true
   publishStoredCertificateCountMetrics: true
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: pki-alg
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -549,15 +549,15 @@ spec:
   description: One root issuer, key and role per key algorithm
   maxLeaseTTL: 87600h
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-alg-rsa2048
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -584,15 +584,15 @@ spec:
     - read-only
   revocationSignatureAlgorithm: SHA512WithRSAPSS
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-alg-rsa3072
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -611,15 +611,15 @@ spec:
     signatureBits: 512
   revocationSignatureAlgorithm: SHA512WithRSA
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-alg-rsa4096
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -638,15 +638,15 @@ spec:
     usePSS: true
   revocationSignatureAlgorithm: SHA256WithRSAPSS
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-alg-rsa8192
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -664,15 +664,15 @@ spec:
     ttl: 87600h
   revocationSignatureAlgorithm: SHA384WithRSAPSS
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-alg-ec224
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -691,15 +691,15 @@ spec:
     signatureBits: 256
   revocationSignatureAlgorithm: ECDSAWithSHA256
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-alg-ec521
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -718,15 +718,15 @@ spec:
     signatureBits: 512
   revocationSignatureAlgorithm: ECDSAWithSHA512
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-alg-ed25519
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -743,15 +743,15 @@ spec:
     ttl: 87600h
   revocationSignatureAlgorithm: Ed25519
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-alg-mldsa44
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -769,15 +769,15 @@ spec:
     ttl: 87600h
   revocationSignatureAlgorithm: MLDSA44
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-alg-mldsa65
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -795,15 +795,15 @@ spec:
     ttl: 87600h
   revocationSignatureAlgorithm: MLDSA65
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-alg-mldsa87
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -821,15 +821,15 @@ spec:
     ttl: 87600h
   revocationSignatureAlgorithm: MLDSA87
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-alg-existing
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -849,15 +849,15 @@ spec:
     ttl: 87600h
   revocationSignatureAlgorithm: SHA384WithRSA
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-alg-key-ec224
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -870,15 +870,15 @@ spec:
   keyType: ec
   keyBits: 224
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-alg-key-ec384
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -891,15 +891,15 @@ spec:
   keyType: ec
   keyBits: 384
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-alg-key-ec521
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -912,15 +912,15 @@ spec:
   keyType: ec
   keyBits: 521
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-alg-key-rsa3072
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -933,15 +933,15 @@ spec:
   keyType: rsa
   keyBits: 3072
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-alg-key-rsa4096
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -954,15 +954,15 @@ spec:
   keyType: rsa
   keyBits: 4096
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-alg-key-rsa8192
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -975,15 +975,15 @@ spec:
   keyType: rsa
   keyBits: 8192
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-alg-key-ed25519
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -995,15 +995,15 @@ spec:
   type: internal
   keyType: ed25519
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-alg-key-mldsa44
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1016,15 +1016,15 @@ spec:
   keyType: mldsa
   keyBits: 44
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-alg-key-mldsa65
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1037,15 +1037,15 @@ spec:
   keyType: mldsa
   keyBits: 65
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-alg-key-mldsa87
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1058,13 +1058,13 @@ spec:
   keyType: mldsa
   keyBits: 87
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-alg-role-rsa2048
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1093,13 +1093,13 @@ spec:
     - TimeStamping
     - OCSPSigning
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-alg-role-rsa3072
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1126,13 +1126,13 @@ spec:
     - MicrosoftKernelCodeSigning
     - Any
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-alg-role-rsa4096
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1144,13 +1144,13 @@ spec:
   keyType: rsa
   keyBits: 4096
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-alg-role-rsa8192
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1162,13 +1162,13 @@ spec:
   keyType: rsa
   keyBits: 8192
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-alg-role-ec224
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1180,13 +1180,13 @@ spec:
   keyType: ec
   keyBits: 224
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-alg-role-ec384
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1198,13 +1198,13 @@ spec:
   keyType: ec
   keyBits: 384
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-alg-role-ec521
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1216,13 +1216,13 @@ spec:
   keyType: ec
   keyBits: 521
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-alg-role-mldsa44
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1234,13 +1234,13 @@ spec:
   keyType: mldsa
   keyBits: 44
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-alg-role-mldsa65
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1252,13 +1252,13 @@ spec:
   keyType: mldsa
   keyBits: 65
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-alg-role-mldsa87
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1270,13 +1270,13 @@ spec:
   keyType: mldsa
   keyBits: 87
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-alg-role-ed25519
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1287,13 +1287,13 @@ spec:
   name: pki-alg-role-ed25519
   keyType: ed25519
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-alg-role-any
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -1307,13 +1307,13 @@ spec:
     - disabled
   notBeforeBound: forbid
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIConfig
 metadata:
   name: pki-alg-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
@@ -1329,13 +1329,13 @@ spec:
         name: pki-alg-ec521
     defaultFollowsLatestIssuer: false
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIACMEConfig
 metadata:
   name: pki-alg-acme
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
@@ -1346,13 +1346,13 @@ spec:
   enabled: true
   eabPolicy: new-account-required
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIACMEConfig
 metadata:
   name: pki-root-acme
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
@@ -1363,13 +1363,13 @@ spec:
   enabled: true
   eabPolicy: always-required
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKICELRole
 metadata:
   name: pki-cel
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Delete
@@ -1392,26 +1392,26 @@ spec:
       - name: err
         expression: "'Request should have atleast 1 IP SAN.'"
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-root-key
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
   mountPath: pki-root
   name: pki-root-key
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKeyConfig
 metadata:
   name: pki-default-key
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan

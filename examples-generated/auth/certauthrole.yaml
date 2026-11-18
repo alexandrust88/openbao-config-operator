@@ -1,4 +1,4 @@
-# CertAuthRole (auth.openbaoconfig.io/v1alpha1)
+# CertAuthRole (auth.obco.dev/v1alpha1)
 # CertAuthRole manages a trusted certificate role of an OpenBao TLS certificate auth method at
 # auth/<mountPath>/certs/<name>.
 #
@@ -6,9 +6,9 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: certificate, connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#certauthrole
+# Reference: https://docs.obco.dev/reference/api/auth/#certauthrole
 # Curated example: examples/auth/certauthrole.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthRole
 metadata:
   name: example
@@ -31,7 +31,7 @@ spec:
     ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
     -----END CERTIFICATE-----
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -41,7 +41,6 @@ spec:
   managementPolicy: Manage
   mountPath: cert
   name: example
-  namespace: example
   ocspCACertificates: |
     -----BEGIN CERTIFICATE-----
     ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
@@ -51,6 +50,7 @@ spec:
   ocspQueryAllServers: true
   ocspServersOverride:
   - example
+  openbaoNamespace: example
   policyRefs:
   - name: example
   requiredExtensions:

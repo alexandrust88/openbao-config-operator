@@ -56,7 +56,7 @@ type appRoleLogin struct {
 }
 
 // settings is the kind-independent view of a connection with every reference namespaced. tenant is the
-// namespace of an OpenBaoConnection and empty for a ClusterOpenBaoConnection.
+// namespace of a BaoConnection and empty for a ClusterBaoConnection.
 type settings struct {
 	spec      corev1alpha1.ConnectionSpec
 	tenant    string
@@ -83,11 +83,11 @@ func PoolKey(obj client.Object) string {
 	return string(obj.GetUID())
 }
 
-// References returns "Kind/namespace/name" for every Secret and ConfigMap a connection or an OpenBaoServer
+// References returns "Kind/namespace/name" for every Secret and ConfigMap a connection or a BaoServer
 // reads. It backs the field index that re-queues the object when one of them changes.
 func References(obj client.Object) []string {
 	var refs []keyRef
-	if server, ok := obj.(*corev1alpha1.OpenBaoServer); ok {
+	if server, ok := obj.(*corev1alpha1.BaoServer); ok {
 		if ca := serverCARef(server); ca != nil {
 			refs = append(refs, *ca)
 		}
@@ -113,9 +113,9 @@ func ReferenceIndexValue(kind, namespace, name string) string {
 
 func connectionSpec(obj client.Object) (corev1alpha1.ConnectionSpec, error) {
 	switch c := obj.(type) {
-	case *corev1alpha1.OpenBaoConnection:
+	case *corev1alpha1.BaoConnection:
 		return c.Spec.ConnectionSpec, nil
-	case *corev1alpha1.ClusterOpenBaoConnection:
+	case *corev1alpha1.ClusterBaoConnection:
 		return c.Spec.ConnectionSpec, nil
 	default:
 		return corev1alpha1.ConnectionSpec{}, fmt.Errorf("unsupported connection type %T", obj)
@@ -124,16 +124,16 @@ func connectionSpec(obj client.Object) (corev1alpha1.ConnectionSpec, error) {
 
 func settingsOf(obj client.Object) (settings, error) {
 	switch c := obj.(type) {
-	case *corev1alpha1.OpenBaoConnection:
+	case *corev1alpha1.BaoConnection:
 		return namespacedSettings(c)
-	case *corev1alpha1.ClusterOpenBaoConnection:
+	case *corev1alpha1.ClusterBaoConnection:
 		return clusterSettings(c), nil
 	default:
 		return settings{}, fmt.Errorf("unsupported connection type %T", obj)
 	}
 }
 
-func namespacedSettings(c *corev1alpha1.OpenBaoConnection) (settings, error) {
+func namespacedSettings(c *corev1alpha1.BaoConnection) (settings, error) {
 	ns := c.Namespace
 	secret := func(sel commonv1alpha1.SecretKeySelector) keyRef {
 		return keyRef{kind: kindSecret, namespace: ns, name: sel.Name, key: sel.Key}
@@ -181,7 +181,7 @@ func namespacedSettings(c *corev1alpha1.OpenBaoConnection) (settings, error) {
 	return s, nil
 }
 
-func clusterSettings(c *corev1alpha1.ClusterOpenBaoConnection) settings {
+func clusterSettings(c *corev1alpha1.ClusterBaoConnection) settings {
 	secret := func(sel corev1alpha1.NamespacedSecretKeySelector) keyRef {
 		return keyRef{kind: kindSecret, namespace: sel.Namespace, name: sel.Name, key: sel.Key}
 	}
@@ -232,7 +232,7 @@ func clusterSettings(c *corev1alpha1.ClusterOpenBaoConnection) settings {
 	return s
 }
 
-func serverCARef(server *corev1alpha1.OpenBaoServer) *keyRef {
+func serverCARef(server *corev1alpha1.BaoServer) *keyRef {
 	ca := server.Spec.CABundle
 	switch {
 	case ca == nil:

@@ -13,7 +13,7 @@ pages available to crawlers; it does not guarantee indexing or a position in sea
 The documentation base URL is:
 
 ```text
-https://alexandrust88.github.io/openbao-config-operator/
+https://docs.obco.dev/
 ```
 
 `mkdocs.yml` sets this as the local build default. The Pages workflow supplies the deployed base
@@ -26,27 +26,24 @@ After deployment, open the homepage, quickstart and API reference. Inspect the p
 - One canonical link pointing to that page under the published base URL.
 - No `noindex` instruction on a normal documentation page. Old redirect aliases deliberately
   retain `noindex` and point to their replacement pages.
-- A successful response for [sitemap.xml](https://alexandrust88.github.io/openbao-config-operator/sitemap.xml),
+- A successful response for [sitemap.xml](https://docs.obco.dev/sitemap.xml),
   containing the published documentation URLs.
 
-There is no need to add `robots.txt` under the project path: Google reads it at the **host root**,
-`https://alexandrust88.github.io/robots.txt`. A missing file returning 404 is not a crawl restriction.
-If the account's root site later supplies a robots file, check that it does not disallow this
-project. See [Google's robots.txt rules](https://developers.google.com/crawling/docs/robots-txt/robots-txt-spec).
+Google reads `robots.txt` at the host root, which is now the site itself:
+`https://docs.obco.dev/robots.txt`. A missing file returning 404 is not a crawl restriction, so the site
+does not need one. See [Google's robots.txt rules](https://developers.google.com/crawling/docs/robots-txt/robots-txt-spec).
 
 ## Verify ownership in Search Console
 
 1. Open [Google Search Console](https://search.google.com/search-console) with the account that
    should own this documentation property.
-2. Add a **URL-prefix property** with exactly
-   `https://alexandrust88.github.io/openbao-config-operator/`. This verifies the project website;
-   it does not require control of the `github.io` domain or the GitHub repository's HTML.
-3. Choose **HTML file upload** if Search Console offers it. Download the actual verification
-   file from Google and put it, unchanged, in `docs/`, preserving its exact filename. MkDocs copies
-   static HTML files to the site root, so the file is served beneath the project base URL.
-4. Build and deploy through the Pages workflow. Open the exact verification URL Google specifies
-   and confirm it returns the file, then select **Verify** in Search Console.
-5. Keep the verification file deployed. Removing it can cause ownership verification to expire.
+2. Add a **Domain property** for `obco.dev`. Search Console shows a `TXT` record; add it in Cloudflare
+   (DNS, type `TXT`, name `@`) and select **Verify**. A domain property covers `docs.obco.dev` and any
+   later subdomain, and needs no file in the repository. Keep the `TXT` record: removing it can cause
+   ownership verification to expire.
+3. If you cannot change DNS, add a **URL-prefix property** for exactly `https://docs.obco.dev/` instead,
+   choose **HTML file upload**, put Google's verification file unchanged in `docs/` (MkDocs copies it to
+   the site root), deploy through the Pages workflow and select **Verify**. Keep that file deployed.
 
 Use the verification method offered for your property; do not invent a token or reuse somebody
 else's. Google also supports HTML tag verification if file upload is unsuitable. Follow its
@@ -57,7 +54,7 @@ else's. Google also supports HTML tag verification if file upload is unsuitable.
 In the verified property's **Sitemaps** report, submit:
 
 ```text
-https://alexandrust88.github.io/openbao-config-operator/sitemap.xml
+https://docs.obco.dev/sitemap.xml
 ```
 
 Use **URL Inspection** for the homepage and quickstart. Run the live test, resolve any fetch or
@@ -77,8 +74,8 @@ can answer better. Improve the relevant existing page and link to it from the ap
 or overview. Keep tutorials runnable, reference generated from the CRDs and compatibility claims
 consistent with the implementation.
 
-Write specific titles and descriptions for important pages. The theme appends the project name,
-so repeating it in every frontmatter title makes titles redundant. Google may use page text
+Write specific titles and descriptions for important pages. The theme appends the site name,
+so a title names the task and OpenBao, not the full project name. Google may use page text
 instead of the supplied description when constructing a result snippet. Avoid keyword lists,
 duplicate articles, invented reviews and changing established URLs merely to add a search term.
 See [title guidance](https://developers.google.com/search/docs/appearance/title-link),

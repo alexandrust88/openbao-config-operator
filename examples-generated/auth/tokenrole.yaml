@@ -1,13 +1,13 @@
-# TokenRole (auth.openbaoconfig.io/v1alpha1)
+# TokenRole (auth.obco.dev/v1alpha1)
 # TokenRole manages a role of the OpenBao token store at auth/token/roles/<name>.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#tokenrole
+# Reference: https://docs.obco.dev/reference/api/auth/#tokenrole
 # Curated example: examples/auth/tokenrole.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: TokenRole
 metadata:
   name: example
@@ -20,7 +20,7 @@ spec:
   allowedPoliciesGlob:
   - default
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -32,7 +32,7 @@ spec:
   driftInterval: 1h
   managementPolicy: Manage
   name: example
-  namespace: example
+  openbaoNamespace: example
   orphan: true
   pathSuffix: example
   renewable: true

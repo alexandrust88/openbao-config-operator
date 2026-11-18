@@ -1,12 +1,12 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: approle
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -40,13 +40,13 @@ spec:
     counterResetDuration: 10m
     disable: false
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: approle-ci-read
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -62,13 +62,13 @@ spec:
   allowWildcardsInIdentityTemplates: false
   allowSlashesInIdentityTemplates: false
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AppRole
 metadata:
   name: approle-ci
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -100,13 +100,13 @@ spec:
     - 127.0.0.1/32
   tokenType: service
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AppRoleSecretID
 metadata:
   name: approle-ci-secret
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -130,13 +130,13 @@ spec:
     enabled: true
     renewBefore: 12h
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AppRoleSecretID
 metadata:
   name: approle-ci-by-name
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -151,13 +151,13 @@ spec:
   rotation:
     enabled: false
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: TokenRole
 metadata:
   name: approle-token
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -186,13 +186,13 @@ spec:
     - 10.0.0.0/8
   tokenType: service
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AppRole
 metadata:
   name: approle-deploy-job
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -208,13 +208,13 @@ spec:
   tokenMaxTTL: 30m
   tokenType: batch
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AppRole
 metadata:
   name: approle-nightly
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -228,13 +228,13 @@ spec:
   tokenTTL: 1h
   tokenType: default
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: TokenRole
 metadata:
   name: approle-token-batch
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -248,13 +248,13 @@ spec:
   renewable: false
   tokenType: batch
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: TokenRole
 metadata:
   name: approle-token-default
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete

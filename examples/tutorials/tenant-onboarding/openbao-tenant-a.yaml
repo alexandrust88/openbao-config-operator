@@ -1,52 +1,52 @@
 # The OpenBao side of tenant-a, created by the platform: the OpenBao namespace tenant-a, a Kubernetes auth method inside it, and
 # the role operator that lets the ServiceAccount openbao-config of the Kubernetes namespace tenant-a log in with the
 # policy tenant-admin. The policy keeps the tenant inside its OpenBao namespace: child namespaces and their secrets engines, team-* policies, and team-* roles that bind only ServiceAccounts of its own Kubernetes namespace.
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: tenant-a
   namespace: platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: platform
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: tenant-a-kubernetes
   namespace: platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: platform
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   path: kubernetes
   type: kubernetes
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthConfig
 metadata:
   name: tenant-a-kubernetes
   namespace: platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: platform
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   mountPath: kubernetes
   kubernetesHost: https://kubernetes.default.svc
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: tenant-a-admin
   namespace: platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: platform
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   name: tenant-admin
   policy: |
     path "sys/namespaces/*" {
@@ -76,16 +76,16 @@ spec:
       }
     }
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthRole
 metadata:
   name: tenant-a-operator
   namespace: platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: platform
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   mountPath: kubernetes
   name: operator
   boundServiceAccountNames:

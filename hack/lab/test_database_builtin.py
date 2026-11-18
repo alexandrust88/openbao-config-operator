@@ -174,7 +174,7 @@ class BuiltinProviderTests(unittest.TestCase):
 
     def test_influx_workaround_extends_trust_without_disabling_tls(self):
         from databases import common
-        fixture = {'metadata': {'labels': {'lab.openbaoconfig.io/cluster': common.lab.CONTEXT.removeprefix('kind-')}},
+        fixture = {'metadata': {'labels': {'lab.obco.dev/cluster': common.lab.CONTEXT.removeprefix('kind-')}},
                    'spec': {'template': {'spec': {'containers': [{'name': 'openbao', 'env': [
                        {'name': 'SSL_CERT_DIR', 'value': '/etc/ssl/certs:/existing-public-ca'}]}]}}}}
         with patch.object(common.lab, 'kube', return_value=json.dumps(fixture)), \

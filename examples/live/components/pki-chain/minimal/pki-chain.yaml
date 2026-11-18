@@ -1,4 +1,4 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: pki-root
@@ -7,7 +7,7 @@ spec:
     name: openbao
   type: pki
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: pki-int
@@ -16,7 +16,7 @@ spec:
     name: openbao
   type: pki
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-root-ca
@@ -28,7 +28,7 @@ spec:
   certificate:
     commonName: Live Kit Root CA
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIIssuer
 metadata:
   name: pki-int-ca
@@ -43,7 +43,7 @@ spec:
     issuerRef:
       name: pki-root-ca
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-int-key
@@ -52,7 +52,7 @@ spec:
     name: openbao
   mountPath: pki-int
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIRole
 metadata:
   name: pki-web
@@ -61,7 +61,7 @@ spec:
     name: openbao
   mountPath: pki-int
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIConfig
 metadata:
   name: pki-int-config
@@ -75,7 +75,7 @@ spec:
       issuerRef:
         name: pki-int-ca
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIACMEConfig
 metadata:
   name: pki-int-acme
@@ -85,7 +85,7 @@ spec:
   creationPolicy: CreateOrAdopt
   mountPath: pki-int
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIAutoTidy
 metadata:
   name: pki-int-tidy
@@ -95,7 +95,7 @@ spec:
   creationPolicy: CreateOrAdopt
   mountPath: pki-int
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKICELRole
 metadata:
   name: pki-cel
@@ -117,7 +117,7 @@ spec:
       - name: err
         expression: "'Request should have atleast 1 IP SAN.'"
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKey
 metadata:
   name: pki-root-key
@@ -127,7 +127,7 @@ spec:
   mountPath: pki-root
   name: pki-root-key
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: PKIKeyConfig
 metadata:
   name: pki-default-key

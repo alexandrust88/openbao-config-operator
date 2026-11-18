@@ -1,0 +1,15 @@
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
+metadata:
+  labels:
+    app.kubernetes.io/name: openbao-config-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: baoconnection-sample
+spec:
+  serverRef:
+    name: openbao
+  auth:
+    token:
+      secretRef:
+        name: openbao-token
+        key: token

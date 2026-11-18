@@ -512,8 +512,8 @@ func (l *pathLocks) lock(ctx context.Context, key string) (unlock func(), err er
 	}
 }
 
-// ConnectionKey names the connection a resource in fromNamespace references: "OpenBaoConnection/<namespace>/<name>"
-// or "ClusterOpenBaoConnection/<name>". It keys ConnectionIndex and labels the metrics.
+// ConnectionKey names the connection a resource in fromNamespace references: "BaoConnection/<namespace>/<name>"
+// or "ClusterBaoConnection/<name>". It keys ConnectionIndex and labels the metrics.
 func ConnectionKey(fromNamespace string, ref commonv1alpha1.ConnectionReference) string {
 	if ref.Kind == commonv1alpha1.ConnectionKindCluster {
 		return string(ref.Kind) + "/" + ref.Name

@@ -22,10 +22,10 @@ def generated_resources(tenant):
         raise ValueError("Unknown ESO lab tenant")
     objects = json.loads(result.stdout)
     for item in objects:
-        if item["apiVersion"].endswith("openbaoconfig.io/v1alpha1"):
+        if item["apiVersion"].endswith("obco.dev/v1alpha1"):
             item["metadata"]["name"] = tenant + item["metadata"]["name"][len("alpha"):]
             item["metadata"]["namespace"] = lab.NAMESPACE
-            item["spec"]["namespace"] = "lab-" + tenant
+            item["spec"]["openbaoNamespace"] = "lab-" + tenant
             item["spec"]["connectionRef"]["name"] = lab.CONNECTION
         else:
             item["metadata"]["namespace"] = "obco-lab-" + tenant
@@ -129,7 +129,7 @@ def up():
     for tenant in TENANTS:
         namespace = "obco-lab-" + tenant
         lab.apply([lab.obj("ServiceAccount", "eso-reader", namespace), lab.obj("ConfigMap", "openbao-ca", namespace, data=ca)])
-        objects += [lab.cr("Policy", tenant + "-eso-reader", {"name": "lab-eso-reader", "policy":
+        objects += [lab.cr("ACLPolicy", tenant + "-eso-reader", {"name": "lab-eso-reader", "policy":
                            'path "kv/data/app/*" { capabilities = ["read"] }\n'
                            'path "auth/token/lookup-self" { capabilities = ["read"] }\n'
                            'path "auth/token/revoke-self" { capabilities = ["update"] }'}, tenant),

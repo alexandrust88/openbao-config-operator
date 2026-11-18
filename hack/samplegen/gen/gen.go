@@ -1,4 +1,4 @@
-// Package gen builds one sample custom resource per openbaoconfig.io CRD with every spec field set.
+// Package gen builds one sample custom resource per obco.dev CRD with every spec field set.
 package gen
 
 import (
@@ -23,7 +23,7 @@ const (
 	// SampleName is the metadata.name of every sample.
 	SampleName     = "example"
 	connectionName = "openbao"
-	groupSuffix    = ".openbaoconfig.io"
+	groupSuffix    = ".obco.dev"
 	fakeSecret     = "fake-value-not-a-secret"
 	headerWidth    = 118
 )
@@ -55,7 +55,7 @@ func (s Sample) File() string {
 	return filepath.Join(strings.TrimSuffix(s.Group, groupSuffix), strings.ToLower(s.Kind)+".yaml")
 }
 
-// Generate builds a sample for every *.openbaoconfig.io_*.yaml CRD in crdDir, sorted by file name.
+// Generate builds a sample for every *.obco.dev_*.yaml CRD in crdDir, sorted by file name.
 func Generate(crdDir string) ([]Sample, error) {
 	files, err := filepath.Glob(filepath.Join(crdDir, "*"+groupSuffix+"_*.yaml"))
 	if err != nil {

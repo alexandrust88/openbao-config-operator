@@ -5,21 +5,20 @@ description: Find OpenBao Config Operator custom resources, API fields, Helm val
 # Reference
 
 Exact facts about the operator's API, behaviour and packaging, for looking up while you work.
-Each page states where its facts come from in the code. For the mental model, read the
-[concepts](../concepts/index.md); for tasks, use the guides.
+For the mental model, read the [concepts](../concepts/index.md); for tasks, use the guides.
 
 | page | look here for |
 |------|---------------|
 | [API reference](api/index.md) | every kind and field, generated from the CRD schemas, with an example per kind |
-| [Examples](examples/index.md) | the curated and generated example manifests, tested against the CRDs in CI |
-| [Kind catalogue](../kinds.md) | every kind with its OpenBao path, availability class, roadmap phase and test evidence |
-| [Constants and timings](constants.md) | drift intervals, backoffs, retry counts, rate shares, write budget, login and renewal points, with their source lines |
+| [Examples](examples/index.md) | the curated and generated example manifests, validated against the CRDs |
+| [Kind catalogue](../kinds.md) | every kind with its OpenBao path, availability class, roadmap phase and status |
+| [Constants and timings](constants.md) | drift intervals, backoffs, retry counts, rate shares, write budget, login and renewal points |
 | [API coverage](../api-coverage.md) | how many OpenBao API paths have a typed kind, per OpenBao release |
-| [Connections](connections.md) | `OpenBaoServer`, `OpenBaoConnection` and `ClusterOpenBaoConnection` fields, authentication methods, tenant boundary rules, TLS |
+| [Connections](connections.md) | `BaoServer`, `BaoConnection` and `ClusterBaoConnection` fields, authentication methods, tenant boundary rules, TLS |
 | [Status and events](status-and-events.md) | conditions, every reason and what to do about it, status fields, events, print columns |
 | [Helm values](helm-values.md) | every chart value with its type, default and constraints |
-| [Compatibility](compatibility.md) | supported and tested OpenBao, Kubernetes and Helm versions, image platforms, kind availability classes |
-| [Known limitations](limitations.md) | what the current release does not do or does not verify, with workarounds |
+| [Compatibility](compatibility.md) | supported OpenBao, Kubernetes and Helm versions, the versions they are verified with, image platforms, kind availability classes |
+| [Known limitations](limitations.md) | what the current release does not do or does not cover, with workarounds |
 
 Related pages outside this section:
 

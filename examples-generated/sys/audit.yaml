@@ -1,20 +1,20 @@
-# Audit (sys.openbaoconfig.io/v1alpha1)
+# Audit (sys.obco.dev/v1alpha1)
 # Audit enables an OpenBao audit device at sys/audit/<path>, in the root namespace only; every field is immutable.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef, type.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/sys/#audit
+# Reference: https://docs.obco.dev/reference/api/sys/#audit
 # Curated example: examples/sys/audit.yaml
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: Audit
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan

@@ -163,7 +163,7 @@ func dumpDiagnosticsOnFailure() {
 		{"-n", openbaoNamespace, "get", "pods,pvc,services,endpointslices", "-o", "wide"},
 		{"-n", openbaoNamespace, "logs", "-l", "app.kubernetes.io/name=openbao",
 			"--all-containers", "--prefix", "--tail=200"},
-		{"get", "openbao", "-A", "-o", "yaml"},
+		{"get", "obco", "-A", "-o", "yaml"},
 		{"get", "events", "-A", "--sort-by=.lastTimestamp"},
 	} {
 		out, _ := run("kubectl", args...)

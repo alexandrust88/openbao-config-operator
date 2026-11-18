@@ -1,6 +1,6 @@
 {{- if ne .Values.tenant "root" }}
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: lab-{{ .Values.tenant }}
   namespace: {{ .Values.configNamespace }}

@@ -25,7 +25,7 @@ body:
     id: alternatives
     attributes:
       label: Alternatives
-      description: What you use today (OpenBaoEndpoint, a script, another tool) and why it is not enough.
+      description: What you use today (BaoEndpoint, a script, another tool) and why it is not enough.
   - type: dropdown
     id: area
     attributes:

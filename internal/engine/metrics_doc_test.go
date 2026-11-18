@@ -15,11 +15,11 @@ import (
 // openbaoClientMetrics are documented in the architecture table and registered by internal/openbao, whose own test
 // checks their labels.
 var openbaoClientMetrics = []string{
-	"openbao_logins_total", "openbao_request_duration_seconds", "openbao_requests_total", "openbao_token_renewals_total",
+	"obco_logins_total", "obco_request_duration_seconds", "obco_requests_total", "obco_token_renewals_total",
 }
 
 // connectionMetrics are documented in the architecture table and registered by internal/controller/core.
-var connectionMetrics = []string{"openbao_connection_ready"}
+var connectionMetrics = []string{"obco_connection_ready"}
 
 // documentedMetrics parses the metric table of the Observability section in docs/architecture.md into metric name ->
 // label names.
@@ -34,7 +34,7 @@ func documentedMetrics(t *testing.T) map[string][]string {
 		t.Fatal("docs/architecture.md has no Observability section")
 	}
 	section, _, _ = strings.Cut(section, "\n## ")
-	name := regexp.MustCompile("`(openbao_[a-z_]+)`")
+	name := regexp.MustCompile("`(obco_[a-z_]+)`")
 	out := map[string][]string{}
 	for line := range strings.SplitSeq(section, "\n") {
 		cells := strings.Split(line, "|")

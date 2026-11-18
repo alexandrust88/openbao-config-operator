@@ -32,7 +32,7 @@ func TestSecretsPluginExamples(t *testing.T) {
 	}
 	crds := make([]string, 0, len(secretsPluginKinds))
 	for _, kind := range secretsPluginKinds {
-		crds = append(crds, "secrets.openbaoconfig.io_"+kind+"s.yaml")
+		crds = append(crds, "secrets.obco.dev_"+kind+"s.yaml")
 	}
 	k8s := secretsStartEnv(t, root, crds)
 	ctx := context.Background()
@@ -59,7 +59,7 @@ func TestSecretsPluginExamples(t *testing.T) {
 		})
 	}
 
-	const head = "apiVersion: secrets.openbaoconfig.io/v1alpha1\nmetadata: {name: x}\n"
+	const head = "apiVersion: secrets.obco.dev/v1alpha1\nmetadata: {name: x}\n"
 	t.Run("validation", func(t *testing.T) {
 		for _, tt := range []struct {
 			name, doc, wantErr string

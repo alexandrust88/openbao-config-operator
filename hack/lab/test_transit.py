@@ -22,8 +22,8 @@ class TransitTests(unittest.TestCase):
             for key in keys:
                 self.assertFalse(key['spec'].get('exportable', False))
                 self.assertFalse(key['spec'].get('allowPlaintextBackup', False))
-                self.assertEqual(key['spec'].get('namespace'), None if tenant == 'root' else 'lab-alpha')
-            policy = next(value['spec']['policy'] for value in values if value['kind'] == 'Policy')
+                self.assertEqual(key['spec'].get('openbaoNamespace'), None if tenant == 'root' else 'lab-alpha')
+            policy = next(value['spec']['policy'] for value in values if value['kind'] == 'ACLPolicy')
             self.assertNotIn('*', policy)
             self.assertNotIn('/other', policy)
             self.assertNotIn('/export/', policy)
@@ -54,8 +54,8 @@ class TransitTests(unittest.TestCase):
         ca = json.dumps({'data': {'ca.crt': 'synthetic-ca'}})
         with patch.object(transit.lab, 'kube', return_value=ca), patch.object(transit.lab, 'apply') as apply, patch.object(transit.lab, 'wait_ready'):
             transit.up()
-        owners = [item for call in apply.call_args_list for item in call.args[0] if item['kind'] == 'OpenBaoNamespace']
-        self.assertEqual(owners, [transit.lab.cr('OpenBaoNamespace', 'lab-alpha', {'name': 'lab-alpha'})])
+        owners = [item for call in apply.call_args_list for item in call.args[0] if item['kind'] == 'BaoNamespace']
+        self.assertEqual(owners, [transit.lab.cr('BaoNamespace', 'lab-alpha', {'name': 'lab-alpha'})])
 
     def test_algorithm_matrix_covers_the_crd_enum_except_external_keys(self):
         source = (Path(__file__).resolve().parents[2] / 'api/secrets/v1alpha1/transitkey_types.go').read_text()

@@ -94,7 +94,7 @@ func TestIntegrationPKIConfigWrites(t *testing.T) {
 		t.Errorf("writes from create to settled = %v, want %v", got, want)
 	}
 	if got := writesFor(t, "PKIConfig") - before; got != 1 {
-		t.Errorf("openbao_writes_total{kind=PKIConfig} grew by %v, want 1", got)
+		t.Errorf("obco_writes_total{kind=PKIConfig} grew by %v, want 1", got)
 	}
 }
 
@@ -157,7 +157,7 @@ func pkiConfigWritesSetup(ctx context.Context, t *testing.T) (client.Client, ope
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,
 		CRDInstallOptions: envtest.CRDInstallOptions{ErrorIfPathMissing: true, Paths: []string{
-			filepath.Join(root, "config", "crd", "bases", "secrets.openbaoconfig.io_pkiconfigs.yaml"),
+			filepath.Join(root, "config", "crd", "bases", "secrets.obco.dev_pkiconfigs.yaml"),
 		}},
 	}
 	cfg, err := testEnv.Start()

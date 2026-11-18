@@ -15,9 +15,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=kvsecretmetadata,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=kvsecretmetadata/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=kvsecretmetadata/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=kvsecretmetadata,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=kvsecretmetadata/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=kvsecretmetadata/finalizers,verbs=update
 
 // SetupKVSecretMetadata registers the KVSecretMetadata controller with the manager.
 func SetupKVSecretMetadata(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

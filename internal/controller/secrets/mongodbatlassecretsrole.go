@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=mongodbatlassecretsroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=mongodbatlassecretsroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=mongodbatlassecretsroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=mongodbatlassecretsroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=mongodbatlassecretsroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=mongodbatlassecretsroles/finalizers,verbs=update
 
 // SetupMongoDBAtlasSecretsRole registers the MongoDBAtlasSecretsRole controller with the manager.
 func SetupMongoDBAtlasSecretsRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

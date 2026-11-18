@@ -11,9 +11,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcclients,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcclients/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcclients/finalizers,verbs=update
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcclients,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcclients/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcclients/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update
 
 // Keys of the Secret named by an OIDCClient's writeSecretRef.

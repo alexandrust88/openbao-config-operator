@@ -1,4 +1,4 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: userpass
@@ -7,7 +7,7 @@ spec:
     name: openbao
   type: userpass
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: UserpassUser
 metadata:
   name: userpass-alice
@@ -19,7 +19,7 @@ spec:
     name: live-auth-userpass
     key: password
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: cert
@@ -28,7 +28,7 @@ spec:
     name: openbao
   type: cert
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthConfig
 metadata:
   name: cert-config
@@ -38,7 +38,7 @@ spec:
   creationPolicy: CreateOrAdopt
   mountPath: cert
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthRole
 metadata:
   name: cert-device
@@ -67,7 +67,7 @@ spec:
     ModOYnbADY29hA+8H6UPgzDtxzn6kHeNZbE=
     -----END CERTIFICATE-----
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthCRL
 metadata:
   name: cert-crl

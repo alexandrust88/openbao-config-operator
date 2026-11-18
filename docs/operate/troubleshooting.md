@@ -1,34 +1,35 @@
 ---
+title: Troubleshoot OpenBao Config Operator
 description: "Diagnose OpenBao Config Operator authentication, TLS, readiness, ownership and reconciliation failures."
 ---
 
 # Troubleshooting
 
 Start with the resource's conditions and events, then the connection, then the manager logs. The
-alerts and their runbooks are in [runbooks.md](runbooks.md).
+alerts and their runbooks are in [Runbooks](runbooks.md).
 
 ## First look
 
 List every managed resource with its `Ready` and `Synced` columns, then the connections:
 
-```sh
-kubectl get openbao -A
-kubectl get openbaoconnections -A
-kubectl get clusteropenbaoconnections
+```bash
+kubectl get obco -A
+kubectl get baoconnections -A
+kubectl get clusterbaoconnections
 ```
 
-For one resource (here the `Policy` `team-a-app` in `team-a`), read its conditions, `status.path`
+For one resource (here the `ACLPolicy` `team-a-app` in Kubernetes namespace `team-a`), read its conditions, `status.path`
 and events, then the manager logs:
 
-```sh
-kubectl describe policy team-a-app -n team-a
+```bash
+kubectl describe aclpolicies.sys.obco.dev team-a-app -n team-a
 kubectl get events -n team-a --field-selector involvedObject.name=team-a-app
 kubectl logs -n openbao-config-operator deploy/openbao-config-operator
 ```
 
 Only the leader reconciles. If one pod's logs are quiet, read the other's, or find the leader:
 
-```sh
+```bash
 kubectl get lease -n openbao-config-operator openbao-config-operator.openbaoconfig.io \
   -o jsonpath='{.spec.holderIdentity}'
 ```
@@ -44,35 +45,35 @@ refuses a change; [observedGeneration](../reference/status-and-events.md#observe
 
 ## Debug logging
 
-Raise the log level with `--zap-log-level=debug` in the chart's `extraArgs`; [observability](observability.md#logs)
+Raise the log level with `--zap-log-level=debug` in the chart's `extraArgs`; [Observability](observability.md#logs)
 lists every log flag and what the logs never contain. Turn debug off again afterwards; it is verbose at scale.
 
 ## Metrics
 
 The metrics and their labels, how to map the `connection` label to a connection, and example queries, including
-the one that finds the kind behind steady-state writes, are in [observability](observability.md#operator-metrics).
+the one that finds the kind behind steady-state writes, are in [Observability](observability.md#operator-metrics).
 Then look for `Updated` events on that kind; each one names the keys that differed.
 
 ## Common OpenBao errors
 
 | message | where | cause and fix |
 |---------|-------|---------------|
-| `openbao: status 403: permission denied` | resource `PermissionDenied` | the connection identity's policy lacks a path or capability; `sudo` for `sys/auth/*`, `sys/config/cors` and the other paths in [openbao-policy.md](openbao-policy.md#sudo) |
-| `invalid role name "<role>"` (status 400) | connection `AuthenticationFailed` | the Kubernetes auth role does not exist in the auth mount, or the login runs in the wrong namespace: check `mountPath` and `authNamespace` |
+| `openbao: status 403: permission denied` | resource `PermissionDenied` | the connection identity's policy lacks a path or capability; `sudo` for `sys/auth/*`, `sys/config/cors` and the other paths in [OpenBao policy for the operator](openbao-policy.md#sudo) |
+| `invalid role name "<role>"` (status 400) | connection `AuthenticationFailed` | the Kubernetes auth role does not exist in the auth mount, or the login runs in the wrong OpenBao namespace: check `mountPath` and `openbaoAuthNamespace` |
 | `role "<role>" could not be found` (status 400) | connection `AuthenticationFailed` | the same for a JWT auth role |
 | `service account name not authorized`, `namespace not authorized` | connection `AuthenticationFailed` | the role's `bound_service_account_names` or `bound_service_account_namespaces` do not include the connection's ServiceAccount |
 | an audience error | connection `AuthenticationFailed` | the connection's `audiences` (or the projected token's audience) do not match the role's `audience` or `bound_audiences` |
-| `namespace not found` (status 404) | connection and resource `ReferenceNotReady` | the OpenBao namespace does not exist yet; create it, or wait for its `OpenBaoNamespace` to be `Ready` |
-| `no handler for route` (status 404) on a write | resource `ReferenceNotReady` | the mount the path is under does not exist yet, or a new namespace's mounts are still being created; create the mount, or wait for its `AuthMount` or `SecretsMount` to be `Ready` |
+| `namespace not found` (status 404) | connection and resource `ReferenceNotReady` | the OpenBao namespace does not exist yet; create it, or wait for its `BaoNamespace` to be `Ready` |
+| `no handler for route` (status 404) on a write | resource `ReferenceNotReady` | the mount the path is under does not exist yet, or a new OpenBao namespace's mounts are still being created; create the mount, or wait for its `AuthMount` or `SecretsMount` to be `Ready` |
 | `failed to update audit table` (status 400) on an `Audit` | `Audit` `ReconcileError` | the request reached a standby that serves requests itself (OpenBao 2.7 default); OpenBao does not forward a failed audit enable to the active node. Point the server address at the active node only, or set `disable_standby_reads = true` in the OpenBao server configuration |
 | `x509: certificate signed by unknown authority` | server `Unreachable` | set the server's `caBundle` to the CA that signed the OpenBao listener certificate |
 | `ca bundle contains no valid PEM certificate` | server `Unreachable` | the referenced key does not hold PEM certificates |
 | `OpenBao answered with a redirect, which the operator never follows` | resource `ReconcileError`; connection `AuthenticationFailed` | a proxy or a standby node without request forwarding answered with 3xx; point the server's `address` at the active node or a service that forwards |
 
-Reproduce a policy problem with the connection's identity:
+Reproduce a policy problem with the connection's identity. Replace `<openbao-namespace>` with the connection's OpenBao namespace and `<path>` with the path that failed:
 
-```sh
-bao token capabilities -namespace=<connection namespace> <path>
+```bash
+bao token capabilities -namespace=<openbao-namespace> <path>
 ```
 
 ## Audit attribution
@@ -80,13 +81,13 @@ bao token capabilities -namespace=<connection namespace> <path>
 Every request the operator sends carries the header
 `X-Openbao-Config-Resource: <group>/<kind>/<k8s-namespace>/<name>`
 ([ADR 0022](../adr/0022-audit-attribution-header.md)). OpenBao logs a request header only when it
-is configured as an audited header, in the root namespace. Apply
+is configured as an audited header, in the root OpenBao namespace. Apply
 [auditrequestheader-attribution.yaml](../../examples/sys/auditrequestheader-attribution.yaml)
 through a connection whose OpenBao namespace is root; `hmac: false` keeps the value readable. The
 audit log then shows `request.headers.x-openbao-config-resource` on each entry, so a write traces
 to its custom resource and Git object:
 
-```sh
+```bash
 jq -r 'select(.request.headers["x-openbao-config-resource"]) |
   [.time, .request.operation, .request.path, .request.headers["x-openbao-config-resource"][0]] | @tsv' audit.log
 ```
@@ -95,28 +96,34 @@ jq -r 'select(.request.headers["x-openbao-config-resource"]) |
 
 An `AccessLayout` whose new spec would delete policies or groups it created earlier fails with
 `InvalidSpec` and a message naming the paths it would delete. This guards against removing
-people's access by mistake. Confirm the change with the annotation:
+people's access by mistake. Confirm the change with the annotation. Replace `<name>` with the `AccessLayout` name and `<kubernetes-namespace>` with its Kubernetes namespace:
 
-```sh
-kubectl annotate accesslayout <name> -n <ns> openbaoconfig.io/allow-disruptive-update=true
+```bash
+kubectl annotate accesslayout <name> -n <kubernetes-namespace> obco.dev/allow-disruptive-update=true
 ```
 
 Remove the annotation after the change is applied, so the next accidental removal is caught again.
 
 ## NamespaceChanged
 
-The connection's `namespace` changed after the resource acquired its object. Writing now would
-create a second object in the new namespace and leave the first one unmanaged, so the operator
-stops. Either set the connection's `namespace` back, or move the resource deliberately: set
+The connection's `openbaoNamespace` changed after the resource acquired its object. Writing now would
+create a second object in the new OpenBao namespace and leave the first one unmanaged, so the operator
+stops. Either set the connection's `openbaoNamespace` back, or move the resource deliberately: set
 `deletionPolicy: Orphan`, delete the resource, and create it again so it acquires the object in
-the new namespace.
+the new OpenBao namespace.
 
 ## Stuck finalizers
 
-A resource with `deletionPolicy: Delete` has the finalizer `openbaoconfig.io/finalizer`. Deletion
+A resource with `deletionPolicy: Delete` has the finalizer `obco.dev/finalizer`. Deletion
 waits until the operator has deleted the OpenBao object. If it cannot, `Synced` reports
 `CleanupBlocked`; the usual causes are a deleted connection, a missing credential, a sealed server
 or a 403 on delete.
+
+If `Synced` reports `DeleteGuarded`, the object holds data (a mount, an OpenBao namespace or KV
+data): add the annotation `obco.dev/allow-destructive-delete: "true"` to delete it, or
+switch to `Orphan` as below. A resource keeps its finalizer while it, its Kubernetes namespace or
+its `BaoServer` carries the annotation `obco.dev/paused: "true"`; `Synced` then
+reports `Paused` until you remove the annotation.
 
 Fix the cause first: restore the connection or credential, or grant `delete`. The finalizer then
 goes on its own.
@@ -124,36 +131,50 @@ goes on its own.
 If the OpenBao object should stay, switch to `Orphan`; the operator removes the finalizer at its
 next reconcile, without touching OpenBao:
 
-```sh
-kubectl patch policy team-a-app -n team-a --type=merge -p '{"spec":{"deletionPolicy":"Orphan"}}'
+```bash
+kubectl patch aclpolicies.sys.obco.dev team-a-app -n team-a --type=merge -p '{"spec":{"deletionPolicy":"Orphan"}}'
 ```
 
 Remove the finalizer by hand only when no manager runs and you accept that the OpenBao object
-stays behind:
+stays behind.
 
-The following requires `jq`. It removes only `openbaoconfig.io/finalizer`; JSON Patch tests
-reject the change if the object or its finalizers changed after the read. Other controllers'
-finalizers are preserved. If it fails, inspect the resource again before retrying.
+First record where the object lives in OpenBao: once the finalizer is gone, Kubernetes deletes the
+resource and its status with it. `status.path` is the full OpenBao path, including the OpenBao
+namespace; `status.openbaoNamespace` is the OpenBao namespace, and empty means root:
 
-```sh
-if patch=$(kubectl get policy team-a-app -n team-a -o json | jq -ce '
-  (.metadata.finalizers // [] | index("openbaoconfig.io/finalizer")) as $index
+```bash
+kubectl get aclpolicies.sys.obco.dev team-a-app -n team-a \
+  -o jsonpath='{.status.openbaoNamespace}{"\t"}{.status.path}{"\n"}'
+```
+
+Then remove the finalizer. The following requires `jq`. It removes only `obco.dev/finalizer`;
+JSON Patch tests reject the change if the object or its finalizers changed after the read. Other
+controllers' finalizers are preserved. If it fails, inspect the resource again before retrying.
+
+```bash
+if patch=$(kubectl get aclpolicies.sys.obco.dev team-a-app -n team-a -o json | jq -ce '
+  (.metadata.finalizers // [] | index("obco.dev/finalizer")) as $index
   | if $index == null then error("operator finalizer is absent") else
       [
         {op: "test", path: "/metadata/uid", value: .metadata.uid},
         {op: "test", path: "/metadata/resourceVersion", value: .metadata.resourceVersion},
         {op: "test", path: ("/metadata/finalizers/" + ($index | tostring)),
-         value: "openbaoconfig.io/finalizer"},
+         value: "obco.dev/finalizer"},
         {op: "remove", path: ("/metadata/finalizers/" + ($index | tostring))}
       ]
     end'); then
-  kubectl patch policy team-a-app -n team-a --type=json --patch "$patch"
+  kubectl patch aclpolicies.sys.obco.dev team-a-app -n team-a --type=json --patch "$patch"
 fi
 ```
 
-Then delete the object in OpenBao yourself if it should go. Record both `status.path` and
-`status.namespace` before removing the finalizer: the path does not include the namespace,
-and an empty namespace means root.
+If the OpenBao object should go, delete it yourself at the path you recorded.
 
-An `AccessLevel` held by `openbaoconfig.io/in-use` is not stuck: delete the grants and layouts
+An `AccessLevel` held by `obco.dev/in-use` is not stuck: delete the grants and layouts
 that cite it.
+
+## Related
+
+- [Runbooks](runbooks.md)
+- [Status and events](../reference/status-and-events.md)
+- [OpenBao policy for the operator](openbao-policy.md)
+- [Observability](observability.md)

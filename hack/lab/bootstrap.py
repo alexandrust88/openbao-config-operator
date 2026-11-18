@@ -28,16 +28,16 @@ def main():
     apply({"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": namespace}})
     for kind, name, data in [("Secret", "lab-bootstrap", {"token": token}), ("ConfigMap", "openbao-ca", {"ca.crt": ca})]:
         apply({"apiVersion": "v1", "kind": kind, "metadata": {"name": name, "namespace": namespace}, "data": data})
-    apply({"apiVersion": "core.openbaoconfig.io/v1alpha1", "kind": "OpenBaoServer", "metadata": {"name": connection}, "spec": {
+    apply({"apiVersion": "core.obco.dev/v1alpha1", "kind": "BaoServer", "metadata": {"name": connection}, "spec": {
         "address": "https://openbao-active.openbao.svc:8200",
         "caBundle": {"configMapRef": {"name": "openbao-ca", "namespace": namespace, "key": "ca.crt"}},
         "allowedNamespaces": {"matchLabels": {"kubernetes.io/metadata.name": namespace}},
         "allowedAudiences": ["openbao"], "requestTimeout": "3m",
     }})
-    apply({"apiVersion": "core.openbaoconfig.io/v1alpha1", "kind": "OpenBaoConnection", "metadata": {"name": connection, "namespace": namespace}, "spec": {
+    apply({"apiVersion": "core.obco.dev/v1alpha1", "kind": "BaoConnection", "metadata": {"name": connection, "namespace": namespace}, "spec": {
         "serverRef": {"name": connection}, "auth": {"token": {"secretRef": {"name": "lab-bootstrap", "key": "token"}}},
     }})
-    kubectl("-n", namespace, "wait", "--for=condition=Ready", "openbaoconnection/" + connection, "--timeout=180s")
+    kubectl("-n", namespace, "wait", "--for=condition=Ready", "baoconnection/" + connection, "--timeout=180s")
     print("Lab bootstrap connection Ready")
 
 

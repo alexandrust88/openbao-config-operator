@@ -1,5 +1,5 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: root-namespace
   namespace: obco-gitops
@@ -12,8 +12,8 @@ spec:
   driftInterval: 30s
   name: gitops-team
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: root-reader
   namespace: obco-gitops
@@ -29,7 +29,7 @@ spec:
     path "gitops-kv/data/app/*" { capabilities = ["read"] }
     path "gitops-kv/metadata/app/*" { capabilities = ["list"] }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: root-kv
@@ -46,7 +46,7 @@ spec:
   options:
     version: "2"
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: root-transit
@@ -61,7 +61,7 @@ spec:
   path: gitops-transit
   type: transit
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: TransitKey
 metadata:
   name: root-key
@@ -77,7 +77,7 @@ spec:
   name: app
   type: aes256-gcm96
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: root-auth
@@ -92,7 +92,7 @@ spec:
   path: gitops-approle
   type: approle
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AppRole
 metadata:
   name: root-role

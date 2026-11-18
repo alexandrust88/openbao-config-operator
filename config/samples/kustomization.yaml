@@ -1,6 +1,6 @@
 ## Append samples of your project ##
 resources:
-- core_v1alpha1_openbaoconnection.yaml
-- core_v1alpha1_clusteropenbaoconnection.yaml
-- sys_v1alpha1_policy.yaml
+- core_v1alpha1_baoconnection.yaml
+- core_v1alpha1_clusterbaoconnection.yaml
+- sys_v1alpha1_aclpolicy.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

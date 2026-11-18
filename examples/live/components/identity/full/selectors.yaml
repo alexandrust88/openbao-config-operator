@@ -6,31 +6,31 @@ nameReference:
       - path: metadata/labels/livekit-select
         kind: AuthMount
       - path: spec/mountSelector/matchLabels/livekit-select
-        kind: EntityAlias
+        kind: IdentityEntityAlias
       - path: spec/mountSelector/matchLabels/livekit-select
-        kind: GroupAlias
+        kind: IdentityGroupAlias
       - path: spec/authMounts/mountSelector/matchLabels/livekit-select
         kind: MFALoginEnforcement
-  - kind: Entity
+  - kind: IdentityEntity
     fieldSpecs:
       - path: metadata/labels/livekit-select
-        kind: Entity
+        kind: IdentityEntity
       - path: spec/entitySelector/matchLabels/livekit-select
-        kind: EntityAlias
+        kind: IdentityEntityAlias
       - path: spec/entitySelector/matchLabels/livekit-select
-        kind: GroupMembership
+        kind: IdentityGroupMembership
       - path: spec/entities/entitySelector/matchLabels/livekit-select
         kind: MFALoginEnforcement
-  - kind: Group
+  - kind: IdentityGroup
     fieldSpecs:
       - path: metadata/labels/livekit-select
-        kind: Group
+        kind: IdentityGroup
       - path: spec/groupSelector/matchLabels/livekit-select
-        kind: GroupAlias
+        kind: IdentityGroupAlias
       - path: spec/groupSelector/matchLabels/livekit-select
-        kind: GroupMembership
+        kind: IdentityGroupMembership
       - path: spec/memberGroupSelector/matchLabels/livekit-select
-        kind: GroupMembership
+        kind: IdentityGroupMembership
       - path: spec/groups/groupSelector/matchLabels/livekit-select
         kind: MFALoginEnforcement
   - kind: MFAMethod

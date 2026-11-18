@@ -1,101 +1,68 @@
 ---
-description: "Test identity-provider browser login, tenant roles, group policies, access denial and operator-driven permission changes."
+title: Run the OIDC permissions showcase OpenBao lab
+description: "Run browser OIDC journeys that prove group policies, denials and operator-driven permission changes against OpenBao."
 ---
 
-# OIDC permissions showcase
+# Run the OIDC permissions showcase lab
 
-Follow a user from an identity-provider login to an OpenBao permission, then change that permission
-through an operator-managed identity group. The showcase tests the result with real API requests.
+For contributors working in a clone, this page runs the hosted-provider permission showcase: real browser logins, ACL checks and an operator-driven group policy change against a disposable kind lab.
 
-## Before you start
+## What it covers
 
-Choose the [Auth0 or Okta setup](../guides/saas-identity-lab.md), or run the self-hosted
-[Authentik](../how-to/authentik-lab.md) or [ZITADEL](../how-to/zitadel-lab.md) profile. Those profiles
-execute the permission journeys below automatically. The commands on this page use a hosted
-provider state file in a disposable kind lab. Install the browser package first:
+- Seventeen isolated browser logins across root, alpha and beta for `admin`, `read` and `ops`
+- Wrong-group and wrong-tenant claim-binding denials
+- KV versioning, transit encrypt/decrypt boundaries and revoke-self
+- Removal and restoration of an alpha reader `IdentityGroup.spec.policies` entry through server-side apply
+
+Self-hosted Authentik and ZITADEL profiles run equivalent journeys inside their own labs ([Authentik](../how-to/authentik-lab.md), [ZITADEL](../how-to/zitadel-lab.md)). Keycloak uses [Run the local lab](local-lab.md#test-keycloak-users-and-machines).
+
+## Prerequisites
+
+- A clone of this repository; run commands from the repository root
+- The lab cluster, browser package and SaaS identity resources from `apply` in [Run the SaaS identity lab](../guides/saas-identity-lab.md#run), with the provider state from [Auth0](../how-to/auth0-lab.md) or [Okta](../how-to/okta-lab.md) provisioning
 
 ```bash
-npm ci --ignore-scripts --prefix hack/lab/browser
-```
-
-For hosted providers, select the private workspace from the provider guide:
-
-```sh
 export LAB_DIR="${LAB_DIR:-$PWD/.local/saas-lab}"
-export PROVIDER=auth0  # or okta
+export PROVIDER=auth0
 export STATE="$LAB_DIR/$PROVIDER/state.json"
 ```
 
-The default workspace is ignored by Git. Keep generated state private until cleanup succeeds.
-Keycloak has its own [identity profile](local-lab.md#test-keycloak-users-and-machines).
+Use `PROVIDER=okta` when that is the prepared state. Keep `$STATE` private until cleanup succeeds.
 
-## Apply the identity configuration
-
-```bash
-hack/lab/saas/run.sh apply --state "$STATE"
-```
-
-Wait for `SaaS identity CRDs Ready`. The operator has configured an OIDC mount at root and in
-`saas-<provider>-alpha` and `saas-<provider>-beta`: for example, `saas-auth0-alpha`
-for Auth0 or `saas-okta-alpha` for Okta. Each namespace has three external identity groups,
-an internal session group, a KV v2 mount and a Transit key. The groups receive policies through
-`Group`, `GroupAlias` and `GroupMembership` resources; the OIDC roles have no direct token policies.
-
-The `admin` role manages application data. It does not administer OpenBao or its cryptographic keys.
-
-## Run the user journeys
+## Run
 
 ```bash
 hack/lab/saas/run.sh showcase --state "$STATE"
 ```
 
-The command runs 17 isolated browser logins. Nine exercise the three roles in the three namespaces.
-Six try a wrong group or tenant and must fail at claim binding. The final two exercise a policy
-change and its restoration. Each browser login starts a fresh context. Test tokens are revoked.
-For sessions with data access, a subsequent read with the revoked token must return HTTP 403.
+After `apply`, the operator has created OIDC mounts at root and in the OpenBao namespaces `saas-<provider>-alpha` and `saas-<provider>-beta`, where `<provider>` is `auth0` or `okta`. `showcase` runs the full matrix including the policy change; `browser` runs only the first fifteen logins. Test tokens are revoked; a later read with a revoked token must return HTTP 403.
 
-The same command is used by the credentialed SaaS regression workflow. `browser` runs only the
-first 15 logins; `showcase` also changes and restores the alpha reader's group policy.
-
-## Observe the permissions
+## Inspect
 
 | Journey | Operator resources | Positive result | Required rejection |
 |---|---|---|---|
-| Hosted login at root, alpha and beta | `AuthMount`, `JWTAuthConfig`, `JWTAuthRole`, `OpenBaoNamespace` | OIDC authorization code becomes an OpenBao token with an entity | Wrong group and wrong-tenant login fail specifically at claim binding |
-| External and internal group inheritance | `Group`, `GroupAlias`, `GroupMembership`, `Policy` | Token has exactly its role policy and inherited session policy as identity policies | Direct token policies or unexpected grants fail the test |
-| Application data administration | KV v2 `SecretsMount`, `KVSecret`, `Policy` | Admin writes versions 1 and 2, reads both, lists keys and reads metadata | Admin cannot destroy versions or access another application prefix |
-| Recover a previous value | Same KV resources | Deleting the latest version makes it unavailable while version 1 remains readable | A missing or changed historical value fails the test |
-| Reader and operator boundaries | `Policy`, identity groups | Read and ops users read the seeded application value | Writes, deletion, metadata inspection, key listing and version destruction return 403 |
-| Encryption without key administration | Transit `SecretsMount`, `TransitKey`, `Policy` | Admin and ops encrypt and decrypt a probe value | Read users cannot encrypt; every role is denied key export and rotation |
-| Tenant isolation | Namespace-local mounts, roles, policies and aliases | Each identity uses its own namespace's resources | The same token cannot read either of the other namespaces |
-| Session disposal | Inherited session `Policy` | Revoke-self succeeds | The revoked token cannot read the previously accessible value |
-| Change a grant through Kubernetes | Alpha reader `Group`, existing membership and policy | Removing the external group's data policy leaves login available but denies data; restoring it restores access on a fresh login | A remaining read grant after removal fails the test |
-
-The tests assert HTTP outcomes and returned data. A successful login alone is insufficient.
-The versioning probe uses a new key for each run, so previous runs cannot satisfy its assertions.
-
-## Watch a permission change reconcile
-
-During the final journey, the runner removes the alpha reader's `Group.spec.policies` entry using
-the same server-side apply field manager as the setup command. It waits for `Ready` and `Synced`
-on the current generation before logging in again.
-
-The resulting identity must retain only the inherited session policy. A read of the seeded
-application value must return 403. In a `finally` block, the runner restores the original group
-spec and waits for reconciliation. It refuses to overwrite an unexpected concurrent edit or a
-replacement Group. If the removal test succeeds, a fresh login and read then verify restored access.
+| Hosted login at root, alpha and beta | `AuthMount`, `JWTAuthConfig`, `JWTAuthRole`, `BaoNamespace` | OIDC code becomes a token with an entity | Wrong group / wrong tenant fail at claim binding |
+| External and internal group inheritance | `IdentityGroup`, `IdentityGroupAlias`, `IdentityGroupMembership`, `ACLPolicy` | Role policy plus inherited session policy only | Direct token policies or unexpected grants fail |
+| Application data administration | KV v2 `SecretsMount`, `KVSecret`, `ACLPolicy` | Admin writes versions 1–2, reads, lists, metadata | No version destroy; no other application prefix |
+| Recover a previous value | Same KV resources | Deleting the latest version leaves version 1 readable | A missing or changed historical value fails the test |
+| Reader and operator boundaries | `ACLPolicy`, identity groups | Read and ops read the seeded value | Writes, deletion, metadata, listing, destroy return 403 |
+| Encryption without key administration | Transit `SecretsMount`, `TransitKey`, `ACLPolicy` | Admin and ops encrypt/decrypt | Readers cannot encrypt; no role may export or rotate keys |
+| Tenant isolation | Namespace-local mounts, roles, policies | Each identity uses its own namespace | Same token cannot read the other namespaces |
+| Session disposal | Inherited session `ACLPolicy` | Revoke-self succeeds | The revoked token cannot read the previously accessible value |
+| Change a grant through Kubernetes | Alpha reader `IdentityGroup` | Removing the data policy denies data; restore returns access | A remaining read grant after removal fails the test |
 
 A normal success ends with:
 
 ```text
-alpha/read: operator Group policy removal denied data; restoration reconciled and fresh OIDC regained read
+alpha/read: operator IdentityGroup policy removal denied data; restoration reconciled and fresh OIDC regained read
 ```
 
-If the process is forcibly terminated, such as a runner being killed, its `finally` block cannot
-run. Reapply the lab resources before retrying:
+If the process is killed before its `finally` block runs, reapply before retrying:
 
 ```bash
 hack/lab/saas/run.sh apply --state "$STATE"
 ```
 
-What this run does and does not prove is in the [setup and account requirements](../guides/saas-identity-lab.md).
+## Clean up
+
+Run the provider guide's `--cleanup` with the original prefix, credentials and state, then remove the kind cluster as in [Run the SaaS identity lab](../guides/saas-identity-lab.md).

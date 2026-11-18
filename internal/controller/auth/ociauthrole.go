@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=ociauthroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=ociauthroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=ociauthroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=ociauthroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=ociauthroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=ociauthroles/finalizers,verbs=update
 
 // SetupOCIAuthRole registers the OCIAuthRole controller with the manager.
 func SetupOCIAuthRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

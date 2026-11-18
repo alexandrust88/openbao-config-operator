@@ -70,8 +70,8 @@ func aggregate(series map[string]float64) snapshot {
 
 // perConnectionCounters lose their series when a connection is deleted, and the token revoke that follows can
 // start them again from zero; carry keeps their highest value so the sums stay monotonic.
-var perConnectionCounters = []string{"openbao_requests_total{", "openbao_request_duration_seconds_bucket{",
-	"openbao_logins_total{"}
+var perConnectionCounters = []string{"obco_requests_total{", "obco_request_duration_seconds_bucket{",
+	"obco_logins_total{"}
 
 // carry adds to series the per-connection counters seen before and missing or lower now, and remembers them.
 func carry(seen, series map[string]float64) {
@@ -101,20 +101,20 @@ func parseSeries(series string) (string, map[string]string) {
 // isOperatorController skips the two connection controllers so reconcile counts cover managed kinds only.
 func isOperatorController(labels map[string]string) bool {
 	c := labels["controller"]
-	return c != "openbaoconnection" && c != "clusteropenbaoconnection"
+	return c != "baoconnection" && c != "clusterbaoconnection"
 }
 
 func (s snapshot) add(name string, labels map[string]string, v float64) {
 	switch name {
-	case "openbao_requests_total":
+	case "obco_requests_total":
 		s[name] += v
 		s[name+":method="+labels["method"]] += v
 		s[name+":code="+labels["code"]] += v
-	case "openbao_request_duration_seconds_bucket":
+	case "obco_request_duration_seconds_bucket":
 		s[name+":le="+labels["le"]] += v
-	case "openbao_logins_total":
+	case "obco_logins_total":
 		s[name] += v
-	case "openbao_writes_total":
+	case "obco_writes_total":
 		s[name] += v
 		s[name+":kind="+labels["kind"]] += v
 	case "controller_runtime_reconcile_total":

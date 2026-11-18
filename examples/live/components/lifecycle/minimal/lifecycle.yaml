@@ -1,4 +1,4 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: lc-kv
@@ -7,7 +7,7 @@ spec:
     name: openbao
   type: kv-v2
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVConfig
 metadata:
   name: lc-kv-config
@@ -17,7 +17,7 @@ spec:
   creationPolicy: CreateOrAdopt
   mountPath: lc-kv
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVConfig
 metadata:
   name: lc-kv-config-observed

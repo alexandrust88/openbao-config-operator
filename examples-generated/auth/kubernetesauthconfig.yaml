@@ -1,4 +1,4 @@
-# KubernetesAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# KubernetesAuthConfig (auth.obco.dev/v1alpha1)
 # KubernetesAuthConfig manages the configuration of an OpenBao Kubernetes auth method at auth/<mountPath>/config.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
@@ -6,16 +6,16 @@
 # The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef,
 # kubernetesHost.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#kubernetesauthconfig
+# Reference: https://docs.obco.dev/reference/api/auth/#kubernetesauthconfig
 # Curated example: examples/auth/kubernetesauthconfig.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthConfig
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -29,7 +29,7 @@ spec:
   kubernetesHost: https://openbao.example.com:8200
   managementPolicy: Manage
   mountPath: kubernetes
-  namespace: example
+  openbaoNamespace: example
   pemKeys:
   - |
     -----BEGIN CERTIFICATE-----

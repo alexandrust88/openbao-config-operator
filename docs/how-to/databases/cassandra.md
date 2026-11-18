@@ -1,63 +1,192 @@
 ---
-description: "Configure and test OpenBao dynamic Cassandra credentials with tenant-scoped permissions, verified TLS and lease revocation."
+title: Issue dynamic OpenBao Cassandra credentials
+description: "Connect Cassandra to OpenBao over verified TLS and create a dynamic role that grants SELECT on a keyspace."
 ---
 
-# Test dynamic Cassandra credentials
+# Issue dynamic Cassandra credentials
 
-Use this recipe after [starting the disposable database lab](../../tutorials/dynamic-database-credentials.md#1-start-a-separate-lab).
-It selects the pinned Cassandra 5 fixture; exact image tags and digests live in the
-[provider source](../../../hack/lab/databases/cassandra.py).
+Configure a `DatabaseConnection` and a `DatabaseRole` with OpenBao Config Operator so OpenBao
+issues short-lived Cassandra roles. The Cassandra plugin is built into OpenBao.
 
-## Run
+## Before you begin
 
-```sh
-make lab-database DATABASE_PROFILE=cassandra
+- The operator is installed and the `BaoConnection` named `openbao` in the Kubernetes namespace
+  `openbao-config` is `Ready` ([Install](../../get-started/install.md),
+  [Connect to OpenBao](../../get-started/connect.md)).
+- The connection's OpenBao policy allows these paths
+  ([OpenBao policy for the operator](../../operate/openbao-policy.md)):
+
+    ```hcl
+    path "database/config/*" { capabilities = ["create", "read", "update", "delete"] }
+    path "database/roles/*"  { capabilities = ["create", "read", "update", "delete"] }
+    ```
+
+    Append these lines to `openbao-configurer.hcl`, the connection's policy from Connect to OpenBao,
+    and write it again with `bao policy write openbao-configurer openbao-configurer.hcl`.
+
+- A `SecretsMount` with `type: database` at path `database` is `Ready`
+  ([Configure OpenBao database secrets](../../guides/database-secrets.md#1-enable-the-engine)).
+- A Cassandra cluster OpenBao can reach over TLS, with the keyspace the application reads and an
+  administrator that can `CREATE ROLE` and `GRANT`.
+- The `bao` CLI, with `BAO_ADDR` and a token that can read the paths in the last step and revoke
+  leases (`sys/leases/revoke`, `update`).
+
+## 1. Store the administrator password
+
+OpenBao never returns the administrator password, so it comes from a Secret in the same
+Kubernetes namespace as the `DatabaseConnection`. Save this as `cassandra-root.yaml`; the password value
+is fake, replace it before you apply:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cassandra-root
+  namespace: openbao-config
+type: Opaque
+stringData:
+  password: fake-root-password-not-real
 ```
 
-The runner configures root and `lab-alpha`, then performs real authentication, privilege,
-renewal and revocation checks. See the [shared assertions and boundaries](../../tutorials/dynamic-database-credentials.md#4-understand-the-assertions).
+```bash
+kubectl apply -f cassandra-root.yaml
+```
 
-## Connection settings
+## 2. Connect the database
 
-| Setting | Lab value |
-|---------|-----------|
-| `DatabaseConnection.spec.pluginName` | `cassandra-database-plugin` |
-| Typed plugin settings | `spec.cassandra` |
-| Database service | `cassandra.obco-db-cassandra.svc` |
-| Administrator password | `passwordSecretRef` to `database-cassandra-admin`, key `password`, in `obco-lab` |
-| Database mount | `lab-db-cassandra` in each OpenBao namespace |
-| Role | `reader`, the only entry in `allowedRoles` |
+Each `DatabaseConnection` holds one plugin and `pluginName` cannot change: use one connection per database
+engine. The connection reads the CA that verifies the server from a second Secret. Save this as
+`database-connection.yaml`:
 
-This plugin is built into the pinned OpenBao server. No `Plugin` registration or `pluginRef`
-is required. The administrator Secret is generated outside Git; do not put its value in Helm values.
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cassandra-ca
+  namespace: openbao-config
+type: Opaque
+stringData:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    <ca-certificate-pem>
+    -----END CERTIFICATE-----
+---
+apiVersion: secrets.obco.dev/v1alpha1
+kind: DatabaseConnection
+metadata:
+  name: cassandra
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: database
+  name: cassandra
+  pluginName: cassandra-database-plugin
+  allowedRoles:
+    - cassandra-reader
+  passwordSecretRef:
+    name: cassandra-root
+    key: password
+  cassandra:
+    hosts:
+      - <cassandra-host>
+    port: 9042
+    protocolVersion: 4
+    username: openbao
+    tls: true
+    insecureTLS: false
+    tlsServerName: <cassandra-host>
+    tlsMinVersion: tls12
+    connectTimeout: 15s
+    pemBundleSecretRef:
+      name: cassandra-ca
+      key: ca.crt
+```
 
-## Permissions and lease lifecycle
+Replace `<cassandra-host>` with a hostname OpenBao can resolve and `<ca-certificate-pem>` with the
+PEM body of the CA that signed the server certificate. `pemBundleSecretRef` carries the CA that
+verifies the server; add a client certificate and key to the same bundle only if the server
+requires client authentication.
 
-The fixture enables `PasswordAuthenticator` and `CassandraAuthorizer`, creates a random
-`obco` administrator and disables login for Cassandra's initial bootstrap account. Separate
-`lab_root` and `lab_alpha` keyspaces hold the fixture tables. Generated roles have `LOGIN`
-and `SELECT` on their keyspace; `DROP ROLE` revokes them. Probes require Cassandra's
-`Unauthorized` response for writes and access to the other keyspace.
+```bash
+kubectl apply -f database-connection.yaml
+kubectl -n openbao-config wait databaseconnection/cassandra --for=condition=Ready --timeout=2m
+```
 
-The workload's OpenBao token can issue only this role. The test administrator performs renewal
-and revocation; the suite does not grant those capabilities to the workload. Static-role
-rotation, root-password rotation and termination of existing sessions are not tested here.
+## 3. Create a dynamic role
 
-## TLS and engine-specific limits
+Save this as `database-role.yaml`:
 
-Client encryption is mandatory. The server uses a generated PKCS#12 keystore; the
-connection sets `tls: true`, the service `tlsServerName`, and `pemBundleSecretRef` for the
-CA. The CQL probe uses certificate validation. Role, permission and credential caches are
-set to zero for this fixture so revocation checks do not wait for cached authentication;
-that is a test choice, not a production tuning recommendation.
+```yaml
+apiVersion: secrets.obco.dev/v1alpha1
+kind: DatabaseRole
+metadata:
+  name: cassandra-reader
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: database
+  name: cassandra-reader
+  dbName: cassandra
+  defaultTTL: 1h
+  maxTTL: 24h
+  creationStatements:
+    - CREATE ROLE '{{username}}' WITH PASSWORD = '{{password}}' AND LOGIN = true;
+    - GRANT SELECT ON KEYSPACE <keyspace> TO '{{username}}';
+  revocationStatements:
+    - DROP ROLE '{{username}}';
+```
 
-## Adapt or clean up
+Replace `<keyspace>` with the keyspace the application reads. The Cassandra plugin fills
+`{{username}}` and `{{password}}` in the statements.
 
-Keep the database administrator capable of the configured creation and revocation statements,
-but scope generated users to their actual application data. A successful connection check is
-not proof that those statements work: rerun the lifecycle after changing them.
-The [database configuration chart](../../../gitops/databases/chart/Chart.yaml) supplies the shared
-mount, connection, role and workload-auth resources; provider-specific settings and statements
-come from the fixture source linked above.
+```bash
+kubectl apply -f database-role.yaml
+kubectl -n openbao-config wait databaserole/cassandra-reader --for=condition=Ready --timeout=2m
+```
 
-Follow the [shared cleanup](../../tutorials/dynamic-database-credentials.md#remove-the-lab) when finished.
+Keep the administrator able to run the creation and revocation statements, and scope generated
+users to the data the application needs. A `Ready` connection does not prove that the statements
+work; the next step logs in to check them.
+
+## 4. Check that it worked
+
+The resources are `Ready`:
+
+```bash
+kubectl -n openbao-config wait databaseconnection/cassandra databaserole/cassandra-reader \
+  --for=condition=Ready --timeout=2m
+```
+
+OpenBao issues credentials:
+
+```bash
+bao read database/creds/cassandra-reader
+```
+
+OpenBao returns a `username`, a `password` and a `lease_id`. Log in to Cassandra with them and
+confirm that the grants match the creation statements. Then revoke the lease:
+
+```bash
+bao lease revoke <lease_id>
+```
+
+`<lease_id>` is the `lease_id` from the previous output. A new login with the same password is
+refused once the server's credentials, roles and permissions caches expire
+(`credentials_validity`, `roles_validity`, `permissions_validity` in `cassandra.yaml`).
+
+## Troubleshooting
+
+| symptom | check |
+|---------|-------|
+| `DatabaseConnection` is not `Ready` | the administrator Secret, a hostname OpenBao can resolve, the CA in `cassandra-ca` and `tlsServerName`, and the administrator's privileges |
+| `bao read database/creds/cassandra-reader` fails with `is not an allowed role` | `allowedRoles` includes `cassandra-reader` |
+| login works but grants are wrong | the creation statements and the keyspace name |
+
+## Related
+
+- API reference: [DatabaseConnection](../../reference/api/secrets.md#databaseconnection),
+  [DatabaseRole](../../reference/api/secrets.md#databaserole)
+- [Configure OpenBao database secrets](../../guides/database-secrets.md)
+- [Issue dynamic database credentials](../../tutorials/dynamic-database-credentials.md)

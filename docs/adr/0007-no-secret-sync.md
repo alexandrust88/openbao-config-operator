@@ -4,7 +4,7 @@ description: "Design decision for OpenBao Config Operator: no OpenBao-to-Kuberne
 
 # 0007. No OpenBao-to-Kubernetes secret sync
 
-Status: accepted, still accurate for v2 (2026-11-14). Date: 2026-11-13.
+Status: accepted; implemented. Date: 2026-11-13.
 
 ## Context
 

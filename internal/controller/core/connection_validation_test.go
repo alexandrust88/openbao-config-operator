@@ -70,10 +70,10 @@ func runWithEnvtest(m *testing.M) int {
 		BinaryAssetsDirectory: assets,
 		ErrorIfCRDPathMissing: true,
 		CRDDirectoryPaths: []string{
-			filepath.Join(crds, "core.openbaoconfig.io_openbaoconnections.yaml"),
-			filepath.Join(crds, "core.openbaoconfig.io_clusteropenbaoconnections.yaml"),
-			filepath.Join(crds, "core.openbaoconfig.io_openbaoservers.yaml"),
-			filepath.Join(crds, "core.openbaoconfig.io_openbaoendpoints.yaml"),
+			filepath.Join(crds, "core.obco.dev_baoconnections.yaml"),
+			filepath.Join(crds, "core.obco.dev_clusterbaoconnections.yaml"),
+			filepath.Join(crds, "core.obco.dev_baoservers.yaml"),
+			filepath.Join(crds, "core.obco.dev_baoendpoints.yaml"),
 		},
 	}
 	cfg, err := env.Start()
@@ -116,7 +116,7 @@ func serverSpec() corev1alpha1.ConnectionSpec {
 	return corev1alpha1.ConnectionSpec{ServerRef: corev1alpha1.ServerReference{Name: openbaoName}}
 }
 
-func TestOpenBaoConnectionValidation(t *testing.T) {
+func TestBaoConnectionValidation(t *testing.T) {
 	requireEnvtest(t)
 	ensureValidationNamespace(t)
 	token := &corev1alpha1.TokenAuth{SecretRef: commonv1alpha1.SecretKeySelector{Name: "t", Key: tokenKey}}
@@ -124,7 +124,7 @@ func TestOpenBaoConnectionValidation(t *testing.T) {
 	cases := []struct {
 		name    string
 		auth    corev1alpha1.ConnectionAuth
-		mutate  func(*corev1alpha1.OpenBaoConnectionSpec)
+		mutate  func(*corev1alpha1.BaoConnectionSpec)
 		wantErr string
 	}{
 		{name: tokenKey, auth: corev1alpha1.ConnectionAuth{Token: token}},
@@ -166,15 +166,15 @@ func TestOpenBaoConnectionValidation(t *testing.T) {
 		{
 			name:    "empty server name",
 			auth:    corev1alpha1.ConnectionAuth{Token: token},
-			mutate:  func(s *corev1alpha1.OpenBaoConnectionSpec) { s.ServerRef.Name = "" },
+			mutate:  func(s *corev1alpha1.BaoConnectionSpec) { s.ServerRef.Name = "" },
 			wantErr: "spec.serverRef.name",
 		},
 	}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			conn := &corev1alpha1.OpenBaoConnection{
+			conn := &corev1alpha1.BaoConnection{
 				ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("conn-%d", i), Namespace: validationNamespace},
-				Spec:       corev1alpha1.OpenBaoConnectionSpec{ConnectionSpec: serverSpec(), Auth: tc.auth},
+				Spec:       corev1alpha1.BaoConnectionSpec{ConnectionSpec: serverSpec(), Auth: tc.auth},
 			}
 			if tc.mutate != nil {
 				tc.mutate(&conn.Spec)
@@ -184,12 +184,12 @@ func TestOpenBaoConnectionValidation(t *testing.T) {
 	}
 }
 
-func TestOpenBaoConnectionDefaults(t *testing.T) {
+func TestBaoConnectionDefaults(t *testing.T) {
 	requireEnvtest(t)
 	ensureValidationNamespace(t)
-	conn := &corev1alpha1.OpenBaoConnection{
+	conn := &corev1alpha1.BaoConnection{
 		ObjectMeta: metav1.ObjectMeta{Name: "defaults", Namespace: validationNamespace},
-		Spec: corev1alpha1.OpenBaoConnectionSpec{
+		Spec: corev1alpha1.BaoConnectionSpec{
 			ConnectionSpec: serverSpec(),
 			Auth: corev1alpha1.ConnectionAuth{JWT: &corev1alpha1.JWTAuth{
 				Role: "r", ServiceAccountRef: saRef(), Audiences: []string{openbaoName},
@@ -204,7 +204,7 @@ func TestOpenBaoConnectionDefaults(t *testing.T) {
 	}
 }
 
-func TestClusterOpenBaoConnectionValidation(t *testing.T) {
+func TestClusterBaoConnectionValidation(t *testing.T) {
 	requireEnvtest(t)
 	cases := []struct {
 		name    string
@@ -333,20 +333,20 @@ func TestClusterOpenBaoConnectionValidation(t *testing.T) {
 	}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			conn := &corev1alpha1.ClusterOpenBaoConnection{
+			conn := &corev1alpha1.ClusterBaoConnection{
 				ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("cluster-conn-%d", i)},
-				Spec:       corev1alpha1.ClusterOpenBaoConnectionSpec{ConnectionSpec: serverSpec(), Auth: tc.auth},
+				Spec:       corev1alpha1.ClusterBaoConnectionSpec{ConnectionSpec: serverSpec(), Auth: tc.auth},
 			}
 			assertConnectionCreate(t, conn, tc.wantErr)
 		})
 	}
 }
 
-func TestClusterOpenBaoConnectionInjectedIdentityDefault(t *testing.T) {
+func TestClusterBaoConnectionInjectedIdentityDefault(t *testing.T) {
 	requireEnvtest(t)
-	conn := &corev1alpha1.ClusterOpenBaoConnection{
+	conn := &corev1alpha1.ClusterBaoConnection{
 		ObjectMeta: metav1.ObjectMeta{Name: "injected-default"},
-		Spec: corev1alpha1.ClusterOpenBaoConnectionSpec{
+		Spec: corev1alpha1.ClusterBaoConnectionSpec{
 			ConnectionSpec: serverSpec(),
 			Auth: corev1alpha1.ClusterConnectionAuth{Kubernetes: &corev1alpha1.ClusterKubernetesAuth{
 				Role: "r", InjectedIdentity: &corev1alpha1.InjectedIdentity{},
@@ -361,10 +361,10 @@ func TestClusterOpenBaoConnectionInjectedIdentityDefault(t *testing.T) {
 	}
 }
 
-// TestOpenBaoConnectionRejectsOperatorSources proves the namespaced schema has no injected identity or file
+// TestBaoConnectionRejectsOperatorSources proves the namespaced schema has no injected identity or file
 // source: strict field validation rejects them, and the default validation prunes them so the
 // serviceAccountRef and secretRef rules still apply.
-func TestOpenBaoConnectionRejectsOperatorSources(t *testing.T) {
+func TestBaoConnectionRejectsOperatorSources(t *testing.T) {
 	requireEnvtest(t)
 	ensureValidationNamespace(t)
 	cases := []struct {
@@ -489,9 +489,9 @@ func TestClusterConnectionAllowedNamespacesEnvtest(t *testing.T) {
 	requireEnvtest(t)
 	ensureValidationNamespace(t)
 	ctx := context.Background()
-	server := &corev1alpha1.OpenBaoServer{
+	server := &corev1alpha1.BaoServer{
 		ObjectMeta: metav1.ObjectMeta{Name: "allowedns"},
-		Spec:       corev1alpha1.OpenBaoServerSpec{Address: testAddress},
+		Spec:       corev1alpha1.BaoServerSpec{Address: testAddress},
 	}
 	if err := envtestClient.Create(ctx, server); err != nil {
 		t.Fatal(err)
@@ -506,9 +506,9 @@ func TestClusterConnectionAllowedNamespacesEnvtest(t *testing.T) {
 		"selector": {allowed: &metav1.LabelSelector{MatchLabels: map[string]string{tenantLabel: "true"}}, denied: true},
 	} {
 		t.Run(name, func(t *testing.T) {
-			conn := &corev1alpha1.ClusterOpenBaoConnection{
+			conn := &corev1alpha1.ClusterBaoConnection{
 				ObjectMeta: metav1.ObjectMeta{Name: "allowedns-" + name},
-				Spec: corev1alpha1.ClusterOpenBaoConnectionSpec{
+				Spec: corev1alpha1.ClusterBaoConnectionSpec{
 					ConnectionSpec: corev1alpha1.ConnectionSpec{ServerRef: corev1alpha1.ServerReference{Name: server.Name}},
 					Auth: corev1alpha1.ClusterConnectionAuth{Kubernetes: &corev1alpha1.ClusterKubernetesAuth{
 						Role: "r", InjectedIdentity: &corev1alpha1.InjectedIdentity{},
@@ -542,9 +542,9 @@ func TestDriftIntervalFloorEnvtest(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		endpoint := &corev1alpha1.OpenBaoEndpoint{
+		endpoint := &corev1alpha1.BaoEndpoint{
 			ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("drift-floor-%d", i), Namespace: validationNamespace},
-			Spec: corev1alpha1.OpenBaoEndpointSpec{
+			Spec: corev1alpha1.BaoEndpointSpec{
 				ResourceSpec: commonv1alpha1.ResourceSpec{
 					ConnectionRef: commonv1alpha1.ConnectionReference{Name: openbaoName},
 					DriftInterval: &metav1.Duration{Duration: d},

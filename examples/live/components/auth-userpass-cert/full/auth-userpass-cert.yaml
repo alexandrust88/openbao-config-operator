@@ -1,12 +1,12 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: userpass
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -40,15 +40,15 @@ spec:
     counterResetDuration: 10m
     disable: false
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: cert
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -77,13 +77,13 @@ spec:
     - X-Request-Id
   tokenType: default-service
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: userpass-read
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -99,13 +99,13 @@ spec:
   allowWildcardsInIdentityTemplates: false
   allowSlashesInIdentityTemplates: false
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: cert-device-read
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -121,13 +121,13 @@ spec:
   allowWildcardsInIdentityTemplates: false
   allowSlashesInIdentityTemplates: false
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: UserpassUser
 metadata:
   name: userpass-alice
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -155,13 +155,13 @@ spec:
     - 127.0.0.1/32
   tokenType: service
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: UserpassUser
 metadata:
   name: userpass-bob
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -179,13 +179,13 @@ spec:
   tokenMaxTTL: 1h
   tokenType: batch
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthConfig
 metadata:
   name: cert-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
@@ -197,13 +197,13 @@ spec:
   enableIdentityAliasMetadata: true
   ocspCacheSize: 1000
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthRole
 metadata:
   name: cert-device
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -280,13 +280,13 @@ spec:
     - 127.0.0.1/32
   tokenType: service
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: UserpassUser
 metadata:
   name: userpass-carol
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -302,13 +302,13 @@ spec:
     - name: userpass-read
   tokenType: default
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthRole
 metadata:
   name: cert-kiosk
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -344,13 +344,13 @@ spec:
   tokenTTL: 15m
   tokenType: batch
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthRole
 metadata:
   name: cert-sensor
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -385,13 +385,13 @@ spec:
     - name: cert-device-read
   tokenType: default
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthCRL
 metadata:
   name: cert-crl-url
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -402,13 +402,13 @@ spec:
   name: team_ca
   url: https://example.com/ca.crl
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthCRL
 metadata:
   name: cert-crl-pem
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete

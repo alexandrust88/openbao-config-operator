@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=userpassusers,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=userpassusers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=userpassusers/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=userpassusers,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=userpassusers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=userpassusers/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupUserpassUser registers the UserpassUser controller with the manager.

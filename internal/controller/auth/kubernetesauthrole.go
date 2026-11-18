@@ -13,9 +13,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=kubernetesauthroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=kubernetesauthroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=kubernetesauthroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=kubernetesauthroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=kubernetesauthroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=kubernetesauthroles/finalizers,verbs=update
 
 // SetupKubernetesAuthRole registers the KubernetesAuthRole controller with the manager.
 func SetupKubernetesAuthRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

@@ -1,20 +1,20 @@
-# OktaAuthUser (auth.openbaoconfig.io/v1alpha1)
+# OktaAuthUser (auth.obco.dev/v1alpha1)
 # OktaAuthUser manages an Okta user entry in an OpenBao Okta auth method at auth/<mountPath>/users/<name>.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#oktaauthuser
+# Reference: https://docs.obco.dev/reference/api/auth/#oktaauthuser
 # Curated example: examples/auth/oktaauthuser.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: OktaAuthUser
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -25,6 +25,6 @@ spec:
   managementPolicy: Manage
   mountPath: okta
   name: example
-  namespace: example
+  openbaoNamespace: example
   policies:
   - default

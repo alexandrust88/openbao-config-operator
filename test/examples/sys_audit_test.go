@@ -31,12 +31,12 @@ func TestSysAuditExamples(t *testing.T) {
 		}
 	}
 
-	const meta = "apiVersion: sys.openbaoconfig.io/v1alpha1\nkind: Audit\nmetadata: {name: invalid, namespace: openbao-config}\n"
+	const meta = "apiVersion: sys.obco.dev/v1alpha1\nkind: Audit\nmetadata: {name: invalid, namespace: openbao-config}\n"
 	for _, tt := range []struct {
 		name, spec, wantErr string
 	}{
 		{name: "child namespace", wantErr: "root namespace",
-			spec: "spec: {connectionRef: {name: openbao}, namespace: team, type: file}"},
+			spec: "spec: {connectionRef: {name: openbao}, openbaoNamespace: team, type: file}"},
 		{name: "unknown type", wantErr: "spec.type",
 			spec: "spec: {connectionRef: {name: openbao}, type: kafka}"},
 		{name: "option set twice", wantErr: "both options and optionsSecretRefs",
@@ -53,7 +53,7 @@ func TestSysAuditExamples(t *testing.T) {
 	}
 
 	t.Run("immutable", func(t *testing.T) {
-		audit := sysConfigExamplesDecodeString(t, `apiVersion: sys.openbaoconfig.io/v1alpha1
+		audit := sysConfigExamplesDecodeString(t, `apiVersion: sys.obco.dev/v1alpha1
 kind: Audit
 metadata: {name: immutable, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, type: file, path: file, description: d, options: {file_path: stdout},

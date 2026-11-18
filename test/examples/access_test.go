@@ -18,9 +18,9 @@ func TestAccessExamples(t *testing.T) {
 		t.Fatal(err)
 	}
 	k8s := secretsStartEnv(t, root, []string{
-		"access.openbaoconfig.io_accesslevels.yaml",
-		"access.openbaoconfig.io_accessgrants.yaml",
-		"access.openbaoconfig.io_accesslayouts.yaml",
+		"access.obco.dev_accesslevels.yaml",
+		"access.obco.dev_accessgrants.yaml",
+		"access.obco.dev_accesslayouts.yaml",
 	})
 	ctx := context.Background()
 
@@ -36,7 +36,7 @@ func TestAccessExamples(t *testing.T) {
 	}
 
 	t.Run("validation", func(t *testing.T) {
-		const head = "apiVersion: access.openbaoconfig.io/v1alpha1\nmetadata: {name: x, namespace: default}\n"
+		const head = "apiVersion: access.obco.dev/v1alpha1\nmetadata: {name: x, namespace: default}\n"
 		const rule = "rules: [{mount: secret, path: 'apps/{sa.namespace}/*', level: read}]"
 		for _, tt := range []struct {
 			name, doc, wantErr string

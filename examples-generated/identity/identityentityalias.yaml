@@ -1,0 +1,29 @@
+# IdentityEntityAlias (identity.obco.dev/v1alpha1)
+# IdentityEntityAlias links a login on an auth mount to an OpenBao identity entity (`identity/entity-alias`).
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: aliasName, connectionRef.
+#
+# Reference: https://docs.obco.dev/reference/api/identity/#identityentityalias
+# Curated example: examples/identity/identityentityalias.yaml
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntityAlias
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  aliasName: example
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: Create
+  customMetadata:
+    example: example
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  entityID: example
+  managementPolicy: Manage
+  mountAccessor: example
+  openbaoNamespace: example

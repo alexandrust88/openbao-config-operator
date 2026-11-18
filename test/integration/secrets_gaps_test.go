@@ -419,12 +419,12 @@ func gapsSetup(ctx context.Context, t *testing.T) env {
 
 	crds := make([]string, 0, 6)
 	for _, name := range []string{
-		"auth.openbaoconfig.io_certauthcrls.yaml",
-		"secrets.openbaoconfig.io_kvsecretmetadata.yaml",
-		"secrets.openbaoconfig.io_pkicelroles.yaml",
-		"secrets.openbaoconfig.io_pkikeyconfigs.yaml",
-		"secrets.openbaoconfig.io_transitcacheconfigs.yaml",
-		"secrets.openbaoconfig.io_transitkeyconfigs.yaml",
+		"auth.obco.dev_certauthcrls.yaml",
+		"secrets.obco.dev_kvsecretmetadata.yaml",
+		"secrets.obco.dev_pkicelroles.yaml",
+		"secrets.obco.dev_pkikeyconfigs.yaml",
+		"secrets.obco.dev_transitcacheconfigs.yaml",
+		"secrets.obco.dev_transitkeyconfigs.yaml",
 	} {
 		crds = append(crds, filepath.Join(root, "config", "crd", "bases", name))
 	}

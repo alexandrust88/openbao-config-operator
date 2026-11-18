@@ -1,4 +1,4 @@
-apiVersion: openbaoconfig.io/v1alpha1
+apiVersion: obco.dev/v1alpha1
 kind: Observe
 metadata:
   name: observe

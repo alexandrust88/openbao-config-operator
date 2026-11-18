@@ -1,4 +1,4 @@
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: MFAMethod
 metadata:
   name: obco-totp
@@ -7,7 +7,7 @@ metadata:
     obco.example.com/mfa: required
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   driftDetection: Enabled
@@ -35,14 +35,14 @@ stringData:
   secret-key: fake-duo-secret-key-not-real
   integration-key: FAKEDUOINTEGRATIONKEY
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: MFAMethod
 metadata:
   name: obco-duo
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   driftDetection: Enabled
@@ -71,14 +71,14 @@ type: Opaque
 stringData:
   api-token: fake-okta-api-token-not-real
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: MFAMethod
 metadata:
   name: obco-okta
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   driftDetection: Enabled
@@ -111,14 +111,14 @@ stringData:
     admin_url=https://idpxnyl3m.pingidentity.com/pingid
     authenticator_url=https://authenticator.pingone.com/pingid/ppm
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: MFAMethod
 metadata:
   name: obco-pingid
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   driftDetection: Enabled

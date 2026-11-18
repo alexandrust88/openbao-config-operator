@@ -20,7 +20,7 @@ configs:
     timeout.reconciliation.jitter: 0s
     application.resourceTrackingMethod: annotation
     resource.customizations: |
-      "*.openbaoconfig.io/*":
+      "*.obco.dev/*":
         health.lua: |
           local hs = {status = "Progressing", message = "Waiting for the operator to reconcile"}
           if obj.status == nil or obj.status.conditions == nil then

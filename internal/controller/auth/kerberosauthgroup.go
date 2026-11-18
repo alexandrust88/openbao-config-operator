@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=kerberosauthgroups,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=kerberosauthgroups/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=kerberosauthgroups/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=kerberosauthgroups,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=kerberosauthgroups/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=kerberosauthgroups/finalizers,verbs=update
 
 // SetupKerberosAuthGroup registers the KerberosAuthGroup controller with the manager.
 func SetupKerberosAuthGroup(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthstsroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthstsroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthstsroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthstsroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthstsroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthstsroles/finalizers,verbs=update
 
 // SetupAWSAuthSTSRole registers the AWSAuthSTSRole controller with the manager.
 func SetupAWSAuthSTSRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

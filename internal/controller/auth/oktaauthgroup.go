@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=oktaauthgroups,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=oktaauthgroups/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=oktaauthgroups/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=oktaauthgroups,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=oktaauthgroups/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=oktaauthgroups/finalizers,verbs=update
 
 // SetupOktaAuthGroup registers the OktaAuthGroup controller with the manager.
 func SetupOktaAuthGroup(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {
