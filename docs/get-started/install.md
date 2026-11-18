@@ -15,7 +15,7 @@ OpenBao server that already runs; it does not install one. To try it on a laptop
 
 - Kubernetes 1.31 or later (the chart's `kubeVersion`) and `kubectl` with cluster-admin rights for
   the install, which creates CRDs and cluster roles.
-- Helm 3.8 or later. Helm 4 reads the chart's armoured signing key as it is; Helm 3 needs it
+- Helm 3.8 or later. Helm 4.3 or later reads the chart's armoured signing key as it is; older versions need it
   converted ([Verify the chart signature](#verify-the-chart-signature)).
 - An initialised, unsealed OpenBao server that the operator pods can reach.
 
@@ -43,8 +43,8 @@ a layer of the OCI chart.
     The fingerprint must be `FECBF5840F506776191497D4561068F2CF22E472`, the key Artifact Hub
     shows for the chart.
 
-2. Helm 4 reads the armoured key file `openbao-config-operator.asc` as it is. Helm 3 reads only a
-   binary keyring, so convert the key for Helm 3:
+2. Helm 4.3 or later reads the armoured key file `openbao-config-operator.asc` as it is. Older versions read only a
+   binary keyring, so convert the key for them:
 
     ```bash
     gpg --dearmor < openbao-config-operator.asc > openbao-config-operator.gpg

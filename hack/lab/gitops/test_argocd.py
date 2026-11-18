@@ -16,7 +16,7 @@ class ArgoTests(unittest.TestCase):
                                   text=True, capture_output=True, check=True).stdout
         for value in ('https://openbao.github.io/openbao-helm',
                       'https://docs.obco.dev/charts',
-                      'chart: openbao-config-operator', 'targetRevision: 0.4.0',
+                      'chart: openbao-config-operator', 'targetRevision: 1.0.0',
                       'path: gitops/config', 'path: gitops/openbao/bootstrap'):
             self.assertIn(value, rendered)
         self.assertNotIn('obco-gitops.svc', rendered)

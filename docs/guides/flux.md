@@ -202,8 +202,8 @@ spec:
   interval: 1h
   url: oci://ghcr.io/alexandrust88/charts/openbao-config-operator
   ref:
-    tag: 0.4.0
-    digest: sha256:3135e1c82f6cc5893b2606cd725f309c4402b6a8cf9f54b3419df529b3c4caa3
+    tag: 1.0.0
+    digest: sha256:d2d6b7a0a0c2ac5f45f38ba15fabaa5e1d8caa30de122874e3a1fa98448f1442
   layerSelector:
     mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
     operation: copy

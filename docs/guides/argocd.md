@@ -410,7 +410,7 @@ spec:
   sources:
     - repoURL: https://docs.obco.dev/charts
       chart: openbao-config-operator
-      targetRevision: 0.4.0
+      targetRevision: 1.0.0
       helm:
         releaseName: openbao-config-operator
         valueFiles:
