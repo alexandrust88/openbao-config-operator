@@ -8,7 +8,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import Mock, patch
 
-from databases import common, postgresql, mysql, mariadb, sql_common
+from databases import cassandra, common, influxdb, mariadb, mysql, postgresql, sql_common, valkey
 
 
 class DatabaseTests(unittest.TestCase):
@@ -75,6 +75,47 @@ class DatabaseTests(unittest.TestCase):
                         else:
                             self.assertFalse(connection['mysql']['tlsSkipVerify'])
                             self.assertEqual(connection['mysql']['tlsCA'], 'synthetic-ca')
+
+    def test_applied_objects_match_installed_crd_schemas(self):
+        schemas = {}
+        for path in (common.ROOT / 'config/crd/bases').glob('*.yaml'):
+            crd = common.load_manifest(path)['spec']
+            for version in crd['versions']:
+                schemas[crd['group'] + '/' + version['name'], crd['names']['kind']] = version['schema']['openAPIV3Schema']
+
+        def unknown_fields(value, schema, path):
+            if isinstance(value, list):
+                return [error for index, item in enumerate(value) for error in unknown_fields(item, schema.get('items', {}), f'{path}[{index}]')]
+            if not isinstance(value, dict) or schema.get('x-kubernetes-preserve-unknown-fields'):
+                return []
+            properties = schema.get('properties', {})
+            if not properties:
+                return [] if 'additionalProperties' in schema else [path + ': unexpected object']
+            return [error for key, item in value.items() for error in
+                    (unknown_fields(item, properties[key], path + '.' + key) if key in properties else [path + '.' + key])]
+
+        with patch.object(common.lab, 'kube', return_value=json.dumps({'data': {'ca.crt': 'synthetic-ca'}})):
+            for provider in (postgresql, mysql, mariadb, cassandra, influxdb, valkey):
+                fixture = Path(provider.__file__).with_suffix('.yaml')
+                applied = common.load_manifest(fixture)['items'] if fixture.exists() else []
+                applied += [item for tenant in common.TENANTS for item in common.objects(provider, tenant)]
+                for item in applied:
+                    with self.subTest(provider=provider.NAME, kind=item['kind'], name=item['metadata']['name']):
+                        self.assertNotIn('openbaoconfig', item['apiVersion'])
+                        if not item['apiVersion'].split('/')[0].endswith('.obco.dev'):
+                            continue
+                        schema = schemas.get((item['apiVersion'], item['kind']))
+                        self.assertIsNotNone(schema, 'no CRD in config/crd/bases')
+                        self.assertEqual(unknown_fields(item['spec'], schema['properties']['spec'], 'spec'), [])
+
+    def test_apply_failure_shows_kubectl_stderr_except_for_secrets(self):
+        failed = Mock(returncode=1, stdout='', stderr='strict decoding error: unknown field "spec.namespace"\n')
+        with patch.object(common.lab.subprocess, 'run', return_value=failed):
+            with self.assertRaisesRegex(RuntimeError, r'apply -f -: strict decoding error: unknown field "spec.namespace"$'):
+                common.lab.apply([common.lab.obj('ConfigMap', 'fixture', 'default')])
+            with self.assertRaises(RuntimeError) as raised:
+                common.lab.apply([common.lab.secret('fixture', 'default', {'password': 'private'})])
+        self.assertEqual(str(raised.exception), 'kubectl failed: apply -f -')
 
     def test_probe_credentials_are_secret_refs_and_tls_mount_has_only_public_ca(self):
         with patch.object(common.lab, 'apply') as apply, patch.object(common.lab, 'kube', return_value='{"ok":true}'):

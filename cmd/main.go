@@ -150,12 +150,13 @@ func run() error {
 	restConfig := ctrl.GetConfigOrDie()
 	cacheOpts := cacheOptions(watchNamespaces)
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
-		Scheme:                  scheme,
-		Metrics:                 metricsOptions,
-		HealthProbeBindAddress:  probeAddr,
-		PprofBindAddress:        pprofAddr,
-		LeaderElection:          enableLeaderElection,
-		LeaderElectionID:        "openbao-config-operator.openbaoconfig.io", // stable across releases, or old and new managers in the same namespace both lead during an upgrade
+		Scheme:                 scheme,
+		Metrics:                metricsOptions,
+		HealthProbeBindAddress: probeAddr,
+		PprofBindAddress:       pprofAddr,
+		LeaderElection:         enableLeaderElection,
+		// Stable across releases, or an old and a new manager in the same namespace both lead during an upgrade.
+		LeaderElectionID:        "openbao-config-operator.openbaoconfig.io",
 		LeaderElectionNamespace: operatorNamespace,
 		Cache:                   cacheOpts,
 		Client:                  clientOptions(),

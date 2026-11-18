@@ -38,6 +38,12 @@ LABEL = {"app.kubernetes.io/part-of": "obco-lab-identity"}
 PLAYWRIGHT_IMAGE = "mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579"
 
 
+class KubectlError(RuntimeError):
+    def __init__(self, args, stderr):
+        super().__init__("kubectl failed: " + " ".join(args[:3]))
+        self.stderr = stderr
+
+
 def kube(*args, data=None):
     if not CONTEXT.startswith("kind-"):
         raise RuntimeError("identity lab requires an explicitly named kind context")
@@ -45,12 +51,17 @@ def kube(*args, data=None):
                             text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=360)
     if result.returncode:
         # kubectl errors can echo Secret patches; do not include its output here.
-        raise RuntimeError("kubectl failed: " + " ".join(args[:3]))
+        raise KubectlError(args, result.stderr)
     return result.stdout
 
 
 def apply(objects):
-    kube("apply", "-f", "-", data=json.dumps({"apiVersion": "v1", "kind": "List", "items": objects}))
+    try:
+        kube("apply", "-f", "-", data=json.dumps({"apiVersion": "v1", "kind": "List", "items": objects}))
+    except KubectlError as error:
+        if any(item.get("kind") == "Secret" for item in objects):
+            raise
+        raise RuntimeError(str(error) + ": " + error.stderr.strip()) from None
 
 
 def obj(kind, name, namespace=NAMESPACE, api="v1", **fields):

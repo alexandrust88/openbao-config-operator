@@ -9,6 +9,6 @@ connectionRef:
   name: {{ .Values.connectionRef }}
 deletionPolicy: Orphan
 {{- if ne .Values.tenant "root" }}
-namespace: lab-{{ .Values.tenant }}
+openbaoNamespace: lab-{{ .Values.tenant }}
 {{- end }}
 {{- end -}}
