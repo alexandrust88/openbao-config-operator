@@ -38,24 +38,24 @@ kubectl -n openbao exec deploy/openbao -- bao write auth/kubernetes/role/openbao
 kubectl apply -f examples/tutorials/platform-owner/namespace.yaml \
   -f examples/tutorials/platform-owner/openbaoserver.yaml \
   -f examples/tutorials/platform-owner/clusteropenbaoconnection.yaml
-kubectl wait openbaoserver/openbao clusteropenbaoconnection/platform --for=condition=Ready --timeout=2m
+kubectl wait baoserver/openbao clusterbaoconnection/platform --for=condition=Ready --timeout=2m
 # --8<-- [end:connect]
 
-[ "$(kubectl get clusteropenbaoconnection platform -o jsonpath='{.status.authenticated}')" = true ] ||
-  fail "the ClusterOpenBaoConnection platform is not authenticated"
+[ "$(kubectl get clusterbaoconnection platform -o jsonpath='{.status.authenticated}')" = true ] ||
+  fail "the ClusterBaoConnection platform is not authenticated"
 
 # --8<-- [start:configure]
 kubectl apply -f examples/tutorials/platform-owner/root-config.yaml \
   -f examples/tutorials/platform-owner/platform-namespace.yaml
 kubectl -n platform wait --for=condition=Ready --timeout=3m \
-  policy.sys.openbaoconfig.io/platform-auditor \
-  authmount.sys.openbaoconfig.io/approle \
-  openbaonamespace.sys.openbaoconfig.io/platform \
-  secretsmount.sys.openbaoconfig.io/platform-secret
+  aclpolicy.sys.obco.dev/platform-auditor \
+  authmount.sys.obco.dev/approle \
+  baonamespace.sys.obco.dev/platform \
+  secretsmount.sys.obco.dev/platform-secret
 # --8<-- [end:configure]
 
 # --8<-- [start:status]
-kubectl -n platform get openbao
+kubectl -n platform get obco
 # --8<-- [end:status]
 
 # --8<-- [start:verify]

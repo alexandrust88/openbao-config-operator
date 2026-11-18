@@ -1,0 +1,16 @@
+# The token is read from a file in the operator pod at every login, such as the token sink of an agent sidecar
+# that keeps it renewed (for example one injected through the chart's podAnnotations).
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
+metadata:
+  name: platform-agent
+spec:
+  serverRef:
+    name: openbao
+  auth:
+    token:
+      filesystem:
+        path: /vault/secrets/token
+  allowedNamespaces:
+    matchLabels:
+      obco.dev/platform: "true"

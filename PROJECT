@@ -3,7 +3,7 @@
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
 cliVersion: 4.13.1
-domain: openbaoconfig.io
+domain: obco.dev
 layout:
 - go.kubebuilder.io/v4
 multigroup: true
@@ -13,7 +13,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: TransitKeyConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -21,7 +21,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: TransitCacheConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -29,7 +29,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: PKIKeyConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -37,7 +37,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: PKICELRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -45,7 +45,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: KVSecretMetadata
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -53,7 +53,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: CertAuthCRL
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -61,7 +61,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: access
   kind: AccessGrant
   path: github.com/alexandrust88/openbao-config-operator/api/access/v1alpha1
@@ -69,7 +69,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: access
   kind: AccessLayout
   path: github.com/alexandrust88/openbao-config-operator/api/access/v1alpha1
@@ -77,7 +77,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: access
   kind: AccessLevel
   path: github.com/alexandrust88/openbao-config-operator/api/access/v1alpha1
@@ -85,7 +85,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: AppRole
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -93,7 +93,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: AppRoleSecretID
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -101,7 +101,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: AWSAuthCertificate
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -109,7 +109,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: AWSAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -117,7 +117,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: AWSAuthIdentityConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -125,7 +125,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: AWSAuthRole
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -133,7 +133,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: AWSAuthSTSRole
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -141,7 +141,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: AWSAuthTidyConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -149,7 +149,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: AzureAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -157,7 +157,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: AzureAuthRole
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -165,7 +165,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: CertAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -173,7 +173,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: CertAuthRole
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -181,7 +181,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: CFAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -189,7 +189,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: CFAuthRole
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -197,7 +197,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: GCPAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -205,7 +205,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: GCPAuthRole
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -213,7 +213,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: GitHubAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -221,7 +221,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: GitHubAuthTeam
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -229,7 +229,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: GitHubAuthUser
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -237,7 +237,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: JWTAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -245,7 +245,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: JWTAuthRole
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -253,7 +253,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: JWTCELRole
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -261,7 +261,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: KerberosAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -269,7 +269,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: KerberosAuthGroup
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -277,7 +277,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: KerberosAuthLDAPConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -285,7 +285,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: KubernetesAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -293,7 +293,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: KubernetesAuthRole
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -301,7 +301,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: LDAPAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -309,7 +309,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: LDAPAuthGroup
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -317,7 +317,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: LDAPAuthUser
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -325,7 +325,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: OCIAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -333,7 +333,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: OCIAuthRole
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -341,7 +341,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: OktaAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -349,7 +349,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: OktaAuthGroup
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -357,7 +357,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: OktaAuthUser
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -365,7 +365,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: RADIUSAuthConfig
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -373,7 +373,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: RADIUSAuthUser
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -381,7 +381,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: TokenRole
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
@@ -389,85 +389,85 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: auth
   kind: UserpassUser
   path: github.com/alexandrust88/openbao-config-operator/api/auth/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: core
-  kind: ClusterOpenBaoConnection
+  kind: ClusterBaoConnection
   path: github.com/alexandrust88/openbao-config-operator/api/core/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: core
-  kind: OpenBaoConnection
+  kind: BaoConnection
   path: github.com/alexandrust88/openbao-config-operator/api/core/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: core
-  kind: OpenBaoEndpoint
+  kind: BaoEndpoint
   path: github.com/alexandrust88/openbao-config-operator/api/core/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: core
-  kind: OpenBaoServer
+  kind: BaoServer
   path: github.com/alexandrust88/openbao-config-operator/api/core/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
-  kind: Entity
+  kind: IdentityEntity
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
-  kind: EntityAlias
+  kind: IdentityEntityAlias
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
-  kind: GroupAlias
+  kind: IdentityGroupAlias
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
-  kind: GroupMembership
+  kind: IdentityGroupMembership
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
-  kind: Group
+  kind: IdentityGroup
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
   kind: MFALoginEnforcement
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
@@ -475,7 +475,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
   kind: MFAMethod
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
@@ -483,7 +483,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
   kind: OIDCAssignment
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
@@ -491,7 +491,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
   kind: OIDCClient
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
@@ -499,7 +499,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
   kind: OIDCConfig
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
@@ -507,7 +507,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
   kind: OIDCKey
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
@@ -515,7 +515,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
   kind: OIDCProvider
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
@@ -523,7 +523,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
   kind: OIDCRole
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
@@ -531,7 +531,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: identity
   kind: OIDCScope
   path: github.com/alexandrust88/openbao-config-operator/api/identity/v1alpha1
@@ -539,7 +539,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: AWSSecretsConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -547,7 +547,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: AWSSecretsRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -555,7 +555,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: AzureSecretsConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -563,7 +563,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: AzureSecretsRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -571,7 +571,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: ConsulSecretsConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -579,7 +579,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: ConsulSecretsRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -587,7 +587,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: DatabaseConnection
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -595,7 +595,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: DatabaseRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -603,7 +603,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: DatabaseStaticRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -611,7 +611,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: GCPImpersonatedAccount
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -619,7 +619,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: GCPRoleset
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -627,7 +627,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: GCPSecretsConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -635,7 +635,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: GCPStaticAccount
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -643,7 +643,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: GitHubSecretsConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -651,7 +651,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: GitHubSecretsRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -659,7 +659,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: KubernetesSecretsConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -667,7 +667,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: KubernetesSecretsRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -675,7 +675,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: KVConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -683,7 +683,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: KVSecret
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -691,7 +691,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: LDAPSecretsConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -699,7 +699,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: LDAPSecretsDynamicRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -707,7 +707,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: LDAPSecretsStaticRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -715,7 +715,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: MongoDBAtlasSecretsConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -723,7 +723,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: MongoDBAtlasSecretsRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -731,7 +731,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: NomadSecretsConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -739,7 +739,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: NomadSecretsRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -747,7 +747,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: PKIACMEConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -755,7 +755,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: PKIAutoTidy
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -763,7 +763,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: PKIConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -771,7 +771,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: PKIIssuer
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -779,7 +779,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: PKIKey
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -787,7 +787,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: PKIRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -795,7 +795,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: QuaySecretsConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -803,7 +803,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: QuaySecretsRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -811,7 +811,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: QuaySecretsStaticRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -819,7 +819,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: RabbitMQConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -827,7 +827,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: RabbitMQRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -835,7 +835,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: RandomSecret
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -843,7 +843,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: SSHCA
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -851,7 +851,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: SSHRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -859,7 +859,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: TerraformCloudSecretsConfig
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -867,7 +867,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: TerraformCloudSecretsRole
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -875,7 +875,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: TOTPKey
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -883,7 +883,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: secrets
   kind: TransitKey
   path: github.com/alexandrust88/openbao-config-operator/api/secrets/v1alpha1
@@ -891,7 +891,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: AuditRequestHeader
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -899,7 +899,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: Audit
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -907,7 +907,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: AuthMount
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -915,7 +915,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: CORSConfig
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -923,7 +923,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: KeyRotationConfig
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -931,7 +931,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: Logger
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -939,15 +939,15 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
-  kind: OpenBaoNamespace
+  kind: BaoNamespace
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: PasswordPolicy
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -955,7 +955,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: Plugin
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -963,15 +963,15 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
-  kind: Policy
+  kind: ACLPolicy
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: QuotaConfig
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -979,7 +979,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: RaftAutopilot
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -987,7 +987,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: RateLimitQuota
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -995,7 +995,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: SecretsMount
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -1003,7 +1003,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
   kind: UIHeader
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
@@ -1011,9 +1011,9 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: openbaoconfig.io
+  domain: obco.dev
   group: sys
-  kind: Workflow
+  kind: BaoWorkflow
   path: github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1
   version: v1alpha1
 version: "3"

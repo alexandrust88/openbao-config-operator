@@ -15,9 +15,9 @@ import (
 
 // sysCELKinds are the sys CRDs, installed together so that a CRD the apiserver rejects (CEL cost) fails here.
 var sysCELKinds = []string{
-	"audits", "auditrequestheaders", "authmounts", "corsconfigs", "keyrotationconfigs", "loggers", "openbaonamespaces",
-	"passwordpolicies", "plugins", "policies", "quotaconfigs", "raftautopilots", "ratelimitquotas", "secretsmounts",
-	"uiheaders", "workflows",
+	"audits", "auditrequestheaders", "authmounts", "corsconfigs", "keyrotationconfigs", "loggers", "baonamespaces",
+	"passwordpolicies", "plugins", "aclpolicies", "quotaconfigs", "raftautopilots", "ratelimitquotas", "secretsmounts",
+	"uiheaders", "baoworkflows",
 }
 
 const sysCELSHA = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -31,7 +31,7 @@ func TestSysCELRules(t *testing.T) {
 	}
 	crds := make([]string, 0, len(sysCELKinds))
 	for _, kind := range sysCELKinds {
-		crds = append(crds, "sys.openbaoconfig.io_"+kind+".yaml")
+		crds = append(crds, "sys.obco.dev_"+kind+".yaml")
 	}
 	k8s := secretsStartEnv(t, root, crds)
 	ctx := context.Background()
@@ -40,38 +40,38 @@ func TestSysCELRules(t *testing.T) {
 	}
 
 	for _, tt := range []struct{ kind, spec, wantErr string }{
-		{"Audit", "{type: file, namespace: team, options: {file_path: stdout}}", "Audit exists only in the root namespace"},
+		{"Audit", "{type: file, openbaoNamespace: team, options: {file_path: stdout}}", "Audit exists only in the root namespace"},
 		{"Audit", "{type: file, options: {file_path: stdout}, optionsSecretRefs: {file_path: {name: s, key: k}}}",
 			"an option is set in both options and optionsSecretRefs"},
-		{"AuditRequestHeader", "{namespace: team}", "AuditRequestHeader exists only in the root namespace"},
+		{"AuditRequestHeader", "{openbaoNamespace: team}", "AuditRequestHeader exists only in the root namespace"},
 		{"AuthMount", "{type: kubernetes, userLockout: {threshold: 3}}", "userLockout is supported only for"},
 		{"AuthMount", "{type: userpass, defaultLeaseTTL: 2h, maxLeaseTTL: 1h}", "defaultLeaseTTL must not exceed maxLeaseTTL"},
-		{"CORSConfig", "{namespace: team, allowedOrigins: [https://a.example]}", "CORSConfig exists only in the root namespace"},
+		{"CORSConfig", "{openbaoNamespace: team, allowedOrigins: [https://a.example]}", "CORSConfig exists only in the root namespace"},
 		{"CORSConfig", "{allowedOrigins: ['*', https://a.example]}", "'*' must be the only entry of allowedOrigins"},
 		{"KeyRotationConfig", "{interval: 1h}", "interval must be 0 (disabled) or at least 24h"},
-		{"Logger", "{namespace: team, level: info}", "Logger exists only in the root namespace"},
-		{"OpenBaoNamespace", "{name: sys}", "the namespace name is reserved in OpenBao"},
-		{"OpenBaoNamespace", "{customMetadata: {openbaoconfig-uid: x}}", "without the reserved prefix openbaoconfig-"},
-		{"Plugin", "{namespace: team, type: auth, command: p, sha256: " + sysCELSHA + "}", "Plugin exists only in the root namespace"},
+		{"Logger", "{openbaoNamespace: team, level: info}", "Logger exists only in the root namespace"},
+		{"BaoNamespace", "{name: sys}", "the namespace name is reserved in OpenBao"},
+		{"BaoNamespace", "{customMetadata: {openbaoconfig-uid: x}}", "without the reserved prefix openbaoconfig-"},
+		{"Plugin", "{openbaoNamespace: team, type: auth, command: p, sha256: " + sysCELSHA + "}", "Plugin exists only in the root namespace"},
 		{"Plugin", "{type: auth, command: p, version: v1.0.0, deletionPolicy: Delete, sha256: " + sysCELSHA + "}",
 			"a versioned plugin cannot be deregistered by the operator"},
 		{"Plugin", "{type: auth, command: a..b, sha256: " + sysCELSHA + "}", "command must not contain '..'"},
-		{"Policy", "{name: root, policy: x}", "the root and response-wrapping policies cannot be changed"},
-		{"Policy", "{name: default, deletionPolicy: Delete, policy: x}", "the default policy cannot be deleted"},
-		{"Policy", "{policy: x, accessorRefs: {Bad: {mountPath: k}}}", "accessorRefs names are 1-63 characters"},
-		{"Policy", "{policy: x, accessorRefs: {k: {mountPath: k, authMountRef: {name: k}}}}", "exactly one of the fields in [authMountRef mountPath]"},
-		{"QuotaConfig", "{namespace: team}", "QuotaConfig exists only in the root namespace"},
-		{"RaftAutopilot", "{namespace: team}", "RaftAutopilot exists only in the root namespace"},
+		{"ACLPolicy", "{name: root, policy: x}", "the root and response-wrapping policies cannot be changed"},
+		{"ACLPolicy", "{name: default, deletionPolicy: Delete, policy: x}", "the default policy cannot be deleted"},
+		{"ACLPolicy", "{policy: x, accessorRefs: {Bad: {mountPath: k}}}", "accessorRefs names are 1-63 characters"},
+		{"ACLPolicy", "{policy: x, accessorRefs: {k: {mountPath: k, authMountRef: {name: k}}}}", "exactly one of the fields in [authMountRef mountPath]"},
+		{"QuotaConfig", "{openbaoNamespace: team}", "QuotaConfig exists only in the root namespace"},
+		{"RaftAutopilot", "{openbaoNamespace: team}", "RaftAutopilot exists only in the root namespace"},
 		{"RaftAutopilot", "{cleanupDeadServers: true, minQuorum: 2}", "cleanupDeadServers requires minQuorum of at least 3"},
 		{"RaftAutopilot", "{lastContactThreshold: 500ms}", "lastContactThreshold must be at least 1s"},
 		{"RaftAutopilot", "{deadServerLastContactThreshold: 30s}", "deadServerLastContactThreshold must be at least 1m"},
 		{"RaftAutopilot", "{serverStabilizationTime: 500ms}", "serverStabilizationTime must be at least 1s"},
-		{"RateLimitQuota", "{namespace: team, rate: '1'}", "rate limit quotas exist only in the root namespace"},
+		{"RateLimitQuota", "{openbaoNamespace: team, rate: '1'}", "rate limit quotas exist only in the root namespace"},
 		{"RateLimitQuota", "{role: r, rate: '1'}", "role requires path to name an auth method mount"},
 		{"RateLimitQuota", "{rate: '0'}", "rate must be greater than 0"},
 		{"RateLimitQuota", "{rate: '1', interval: 500ms}", "interval must be at least 1s"},
 		{"SecretsMount", "{type: kv-v2, options: {version: '2'}}", "set the KV version through type kv-v1/kv-v2 or options.version"},
-		{"UIHeader", "{namespace: team, values: [x]}", "UIHeader exists only in the root namespace"},
+		{"UIHeader", "{openbaoNamespace: team, values: [x]}", "UIHeader exists only in the root namespace"},
 		{"UIHeader", "{name: X-Vault-Token, values: [x]}", "X-Vault-* headers cannot be set"},
 	} {
 		t.Run("create "+tt.kind+" "+tt.wantErr, func(t *testing.T) {
@@ -103,13 +103,13 @@ func TestSysCELRules(t *testing.T) {
 		{"AuthMount", "{type: userpass}", "forceNoCache", true, "forceNoCache is immutable"},
 		{"AuthMount", "{type: userpass}", "pluginRef", map[string]any{"name": "p"}, "pluginRef is immutable"},
 		{"Logger", "{name: core, level: info}", "name", "expiration", "name is immutable"},
-		{"OpenBaoNamespace", "{name: a}", "name", "b", "name is immutable"},
+		{"BaoNamespace", "{name: a}", "name", "b", "name is immutable"},
 		{"PasswordPolicy", "{name: a, policy: x}", "name", "b", "name is immutable"},
 		{"Plugin", "{type: auth, command: p, sha256: " + sysCELSHA + "}", "type", "secret", "type is immutable"},
 		{"Plugin", "{type: auth, name: a, command: p, sha256: " + sysCELSHA + "}", "name", "b", "name is immutable"},
 		{"Plugin", "{type: auth, version: v1.0.0, command: p, sha256: " + sysCELSHA + "}", "version", "v1.0.1",
 			"version is immutable"},
-		{"Policy", "{name: a, policy: x}", "name", "b", "name is immutable"},
+		{"ACLPolicy", "{name: a, policy: x}", "name", "b", "name is immutable"},
 		{"RateLimitQuota", "{name: a, rate: '1'}", "name", "b", "name is immutable"},
 		{"RateLimitQuota", "{path: up, role: a, rate: '1'}", "role", "b", "role is immutable"},
 		{"SecretsMount", "{type: kv, path: a}", "path", "b", "path is immutable"},
@@ -117,7 +117,7 @@ func TestSysCELRules(t *testing.T) {
 		{"SecretsMount", "{type: kv, options: {version: '2'}}", "options", map[string]any{"version": "1"},
 			"a KV version 2 mount cannot be downgraded to version 1"},
 		{"UIHeader", "{name: X-A, values: [x]}", "name", "X-B", "name is immutable"},
-		{"Workflow", "{path: a, workflow: x}", "path", "b", "path is immutable"},
+		{"BaoWorkflow", "{path: a, workflow: x}", "path", "b", "path is immutable"},
 	} {
 		t.Run(fmt.Sprintf("update %s %s", tt.kind, tt.wantErr), func(t *testing.T) {
 			obj := sysCELObject(t, tt.kind, fmt.Sprintf("immutable-%d", i), tt.spec)
@@ -137,6 +137,6 @@ func TestSysCELRules(t *testing.T) {
 func sysCELObject(t *testing.T, kind, name, spec string) *unstructured.Unstructured {
 	t.Helper()
 	spec = strings.TrimSuffix(strings.TrimPrefix(spec, "{"), "}")
-	return secretsDecodeString(t, fmt.Sprintf("apiVersion: sys.openbaoconfig.io/v1alpha1\nkind: %s\n"+
+	return secretsDecodeString(t, fmt.Sprintf("apiVersion: sys.obco.dev/v1alpha1\nkind: %s\n"+
 		"metadata: {name: %s, namespace: openbao-config}\nspec: {connectionRef: {name: openbao}, %s}", kind, name, spec))
 }

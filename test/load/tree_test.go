@@ -65,7 +65,7 @@ var (
 	treeLevels = []string{levelParentNS, levelConnection, levelParentMounts, levelParentAuth, levelChildNS,
 		levelChildMounts, levelChildAuth}
 
-	namespaceKind     = newKind("ns", "sys", "OpenBaoNamespace", "openbaonamespaces", false, nil)
+	namespaceKind     = newKind("ns", "sys", "BaoNamespace", "baonamespaces", false, nil)
 	secretsMountKind  = newKind("kv", "sys", "SecretsMount", "secretsmounts", false, nil)
 	authMountKind     = newKind("k8s", "sys", "AuthMount", "authmounts", false, nil)
 	k8sAuthConfigKind = newKind("k8sc", "auth", "KubernetesAuthConfig", "kubernetesauthconfigs", false, nil)
@@ -76,7 +76,7 @@ var (
 )
 
 // planTree lays out the tree in creation order. Parent namespaces and the objects in them go through the root
-// connection with spec.namespace (root-to-child); each parent gets a connection into it that logs in at the root
+// connection with spec.openbaoNamespace (root-to-child); each parent gets a connection into it that logs in at the root
 // (child-connection-root-login), which creates the child namespaces and the objects in them.
 func planTree(s treeShape, caPEM string) []object {
 	byLevel := map[string][]object{}
@@ -86,10 +86,10 @@ func planTree(s treeShape, caPEM string) []object {
 		conn := connectionName + "-" + parent
 		add(levelParentNS, object{kind: namespaceKind, name: parent, orphan: true, spec: map[string]any{}})
 		add(levelConnection, object{kind: connectionKind, name: conn, spec: map[string]any{
-			"serverRef":     map[string]any{litName: connectionName},
-			"namespace":     parent,
-			"authNamespace": "",
-			"auth":          appRoleAuth(),
+			"serverRef":            map[string]any{litName: connectionName},
+			"openbaoNamespace":     parent,
+			"openbaoAuthNamespace": "",
+			"auth":                 appRoleAuth(),
 		}})
 		mounts, auth := namespaceObjects(s, caPEM, connectionName, parent, parent, parent)
 		add(levelParentMounts, mounts...)
@@ -117,7 +117,7 @@ func planTree(s treeShape, caPEM string) []object {
 // Every OpenBao name is the Kubernetes name, which carries the namespace as a prefix.
 func namespaceObjects(s treeShape, caPEM, conn, relNS, baoNS, prefix string) (mounts, auth []object) {
 	in := func(k kind, name string, spec map[string]any) object {
-		spec["namespace"] = relNS
+		spec["openbaoNamespace"] = relNS
 		return object{kind: k, name: name, conn: conn, baoNS: baoNS, spec: spec}
 	}
 	authMount := prefix + "-k8s"

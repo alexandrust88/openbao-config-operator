@@ -106,7 +106,7 @@ func sysRaftManager(ctx context.Context, t *testing.T, root, assets string, conn
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,
 		CRDInstallOptions: envtest.CRDInstallOptions{ErrorIfPathMissing: true, Paths: []string{
-			filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_raftautopilots.yaml"),
+			filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_raftautopilots.yaml"),
 		}},
 	}
 	cfg, err := testEnv.Start()

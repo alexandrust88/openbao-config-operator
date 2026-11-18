@@ -1,72 +1,174 @@
 ---
-description: "Configure and test OpenBao dynamic PostgreSQL credentials with tenant-scoped permissions, verified TLS and lease revocation."
+title: Issue dynamic OpenBao PostgreSQL credentials
+description: "Connect PostgreSQL to OpenBao over verified TLS and create a dynamic reader role with creation, renew and revocation statements."
 ---
 
-# Test dynamic PostgreSQL credentials
+# Issue dynamic PostgreSQL credentials
 
-Use this recipe after [starting the disposable database lab](../../tutorials/dynamic-database-credentials.md#1-start-a-separate-lab).
-It selects the pinned PostgreSQL 16 fixture; exact image tags and digests live in the
-[provider source](../../../hack/lab/databases/postgresql.py) and [manifest](../../../hack/lab/databases/postgresql.yaml).
+Configure a `DatabaseConnection` and a `DatabaseRole` with OpenBao Config Operator so OpenBao
+issues short-lived PostgreSQL users. The PostgreSQL plugin is built into OpenBao.
 
-## Run
+## Before you begin
 
-```sh
-make lab-database DATABASE_PROFILE=postgresql
+- The operator is installed and the `BaoConnection` named `openbao` in the Kubernetes namespace
+  `openbao-config` is `Ready` ([Install](../../get-started/install.md),
+  [Connect to OpenBao](../../get-started/connect.md)).
+- The connection's OpenBao policy allows these paths
+  ([OpenBao policy for the operator](../../operate/openbao-policy.md)):
+
+    ```hcl
+    path "database/config/*" { capabilities = ["create", "read", "update", "delete"] }
+    path "database/roles/*"  { capabilities = ["create", "read", "update", "delete"] }
+    ```
+
+    Append these lines to `openbao-configurer.hcl`, the connection's policy from Connect to OpenBao,
+    and write it again with `bao policy write openbao-configurer openbao-configurer.hcl`.
+
+- A `SecretsMount` with `type: database` at path `database` is `Ready`
+  ([Configure OpenBao database secrets](../../guides/database-secrets.md#1-enable-the-engine)).
+- A PostgreSQL server OpenBao can reach over TLS, with the database and schema the application
+  reads, an administrator that can `CREATE ROLE` and `GRANT`, and the CA that signed the server
+  certificate mounted as a file into the OpenBao pods.
+- The `bao` CLI, with `BAO_ADDR` and a token that can read the paths in the last step and revoke
+  leases (`sys/leases/revoke`, `update`).
+
+## 1. Store the administrator password
+
+OpenBao never returns the administrator password, so it comes from a Secret in the same
+Kubernetes namespace as the `DatabaseConnection`. Save this as `postgresql-root.yaml`; the password value
+is fake, replace it before you apply:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgresql-root
+  namespace: openbao-config
+type: Opaque
+stringData:
+  password: fake-root-password-not-real
 ```
 
-The runner configures root and `lab-alpha`, then performs real authentication, privilege,
-renewal and revocation checks. See the [shared assertions and boundaries](../../tutorials/dynamic-database-credentials.md#4-understand-the-assertions).
+```bash
+kubectl apply -f postgresql-root.yaml
+```
 
-## Connection settings
+## 2. Connect the database
 
-| Setting | Lab value |
-|---------|-----------|
-| `DatabaseConnection.spec.pluginName` | `postgresql-database-plugin` |
-| Typed plugin settings | `spec.postgresql` |
-| Database service | `postgresql.obco-db-postgresql.svc` |
-| Administrator password | `passwordSecretRef` to `database-postgresql-admin`, key `password`, in `obco-lab` |
-| Database mount | `lab-db-postgresql` in each OpenBao namespace |
-| Role | `reader`, the only entry in `allowedRoles` |
+Each `DatabaseConnection` holds one plugin and `pluginName` cannot change: use one connection per database
+engine. Save this as `database-connection.yaml`:
 
-This plugin is built into the pinned OpenBao server. No `Plugin` registration or `pluginRef`
-is required. The administrator Secret is generated outside Git; do not put its value in Helm values.
+```yaml
+apiVersion: secrets.obco.dev/v1alpha1
+kind: DatabaseConnection
+metadata:
+  name: postgresql
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: database
+  name: postgresql
+  pluginName: postgresql-database-plugin
+  allowedRoles:
+    - postgresql-reader
+  passwordSecretRef:
+    name: postgresql-root
+    key: password
+  postgresql:
+    connectionURL: postgresql://{{username}}:{{password}}@<postgres-host>:5432/<database>?sslmode=verify-full&sslrootcert=<ca-path-on-openbao-pods>
+    username: openbao
+    passwordAuthentication: scram-sha-256
+```
 
-## Permissions and lease lifecycle
+Replace `<postgres-host>` with a hostname OpenBao can resolve, `<database>` with the database the
+application reads, and `<ca-path-on-openbao-pods>` with the path of the CA file inside the
+OpenBao pods, not the operator pod. `sslmode=verify-full` checks the server certificate and its
+hostname. The URL keeps the `{{username}}` and `{{password}}` templates; the password stays in
+the Secret.
 
-The fixture creates database `app` and separate schemas `lab_root` and `lab_alpha`, each with
-one `probe` table. Reader roles receive `USAGE` on their schema and `SELECT` on its table;
-they receive no insert grant and no grant on the other schema. Creation uses `VALID UNTIL`,
-renewal updates it, and revocation removes privileges and drops the role.
+```bash
+kubectl apply -f database-connection.yaml
+kubectl -n openbao-config wait databaseconnection/postgresql --for=condition=Ready --timeout=2m
+```
 
-The workload's OpenBao token can issue only this role. The test administrator performs renewal
-and revocation; the suite does not grant those capabilities to the workload.
+## 3. Create a dynamic role
 
-The PostgreSQL lifecycle extension also uses separate, per-run administrators to exercise
-`rotateRootOnCreate` and scheduled `DatabaseStaticRole` rotation in root and `lab-alpha`.
-Those administrators have `CREATEROLE`, grant options only on their tenant's schema/table,
-and administration rights on a dedicated static reader. The shared bootstrap account is
-not rotated. The test requires the old administrator password to fail while issuance
-through the rotated connection still works. Static rotation keeps the username, changes
-the password and timestamp, rejects a fresh login with the old password and accepts the
-new password. It starts with a one-hour period for initial login checks, changes the CR to
-60 seconds for bounded scheduled-rotation polling, then restores one hour and reads the
-current credential before checking old/new logins. This avoids rotating a valid credential
-mid-probe. It does not test termination of existing sessions. These additional checks need a passing current-commit CI result.
+Save this as `database-role.yaml`:
 
-## TLS and engine-specific limits
+```yaml
+apiVersion: secrets.obco.dev/v1alpha1
+kind: DatabaseRole
+metadata:
+  name: postgresql-reader
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: database
+  name: postgresql-reader
+  dbName: postgresql
+  defaultTTL: 1h
+  maxTTL: 24h
+  creationStatements:
+    - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';
+    - GRANT USAGE ON SCHEMA <schema> TO "{{name}}";
+    - GRANT SELECT ON ALL TABLES IN SCHEMA <schema> TO "{{name}}";
+  renewStatements:
+    - ALTER ROLE "{{name}}" VALID UNTIL '{{expiration}}';
+  revocationStatements:
+    - REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA <schema> FROM "{{name}}";
+    - REVOKE USAGE ON SCHEMA <schema> FROM "{{name}}";
+    - DROP ROLE IF EXISTS "{{name}}";
+```
 
-The connection uses `sslmode=verify-full` and SCRAM-SHA-256 password authentication. Its
-`sslrootcert` points to `/database-ca/postgresql/ca.crt` **inside OpenBao**, not the operator
-pod. The installer mounts the disposable CA into the owned OpenBao fixture and waits for
-its rollout. Probe Jobs independently verify the CA and assert that their session uses TLS.
+Replace `<schema>` with the schema the application reads.
 
-## Adapt or clean up
+```bash
+kubectl apply -f database-role.yaml
+kubectl -n openbao-config wait databaserole/postgresql-reader --for=condition=Ready --timeout=2m
+```
 
-Keep the database administrator capable of the configured creation and revocation statements,
-but scope generated users to their actual application data. A successful connection check is
-not proof that those statements work: rerun the lifecycle after changing them.
-The [database configuration chart](../../../gitops/databases/chart/Chart.yaml) supplies the shared
-mount, connection, role and workload-auth resources; provider-specific settings and statements
-come from the fixture source linked above.
+Keep the administrator able to run the creation and revocation statements, and scope generated
+users to the data the application needs. A `Ready` connection does not prove that the statements
+work; the next step logs in to check them.
 
-Follow the [shared cleanup](../../tutorials/dynamic-database-credentials.md#remove-the-lab) when finished.
+## 4. Check that it worked
+
+The resources are `Ready`:
+
+```bash
+kubectl -n openbao-config wait databaseconnection/postgresql databaserole/postgresql-reader \
+  --for=condition=Ready --timeout=2m
+```
+
+OpenBao issues credentials:
+
+```bash
+bao read database/creds/postgresql-reader
+```
+
+OpenBao returns a `username`, a `password` and a `lease_id`. Log in to PostgreSQL with them and
+confirm that the grants match the creation statements. Then revoke the lease:
+
+```bash
+bao lease revoke <lease_id>
+```
+
+`<lease_id>` is the `lease_id` from the previous output. A new login with the same password is
+refused.
+
+## Troubleshooting
+
+| symptom | check |
+|---------|-------|
+| `DatabaseConnection` is not `Ready` | the administrator Secret, a hostname OpenBao can resolve, the CA path on the OpenBao pods, and the administrator's privileges |
+| `bao read database/creds/postgresql-reader` fails with `is not an allowed role` | `allowedRoles` includes `postgresql-reader` |
+| login works but grants are wrong | the creation statements and the object names in the database |
+
+## Related
+
+- API reference: [DatabaseConnection](../../reference/api/secrets.md#databaseconnection),
+  [DatabaseRole](../../reference/api/secrets.md#databaserole)
+- [Configure OpenBao database secrets](../../guides/database-secrets.md)
+- [Issue dynamic database credentials](../../tutorials/dynamic-database-credentials.md)

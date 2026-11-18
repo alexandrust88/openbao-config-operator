@@ -1,0 +1,47 @@
+# BaoEndpoint (core.obco.dev/v1alpha1)
+# BaoEndpoint writes any JSON payload to any OpenBao API path and keeps it in sync: the escape hatch for settings
+# without a typed kind.
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef, path.
+#
+# Reference: https://docs.obco.dev/reference/api/core/#baoendpoint
+# Curated example: examples/core/baoendpoint.yaml
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoEndpoint
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: Create
+  data:
+    key: value
+  dataSecretRef:
+    key: value
+    name: baoendpoint-data-secret-ref
+  deletePath: example
+  deletionPolicy: Orphan
+  disableDelete: true
+  disableRead: true
+  driftDetection: Enabled
+  driftInterval: 1h
+  ignoreAbsentFields: true
+  managementPolicy: Manage
+  openbaoNamespace: example
+  path: example
+  readPath: example
+  writeOnlyFields:
+  - example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: baoendpoint-data-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

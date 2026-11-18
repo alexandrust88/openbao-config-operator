@@ -56,7 +56,7 @@ class PostgreSQLLifecycleTests(unittest.TestCase):
             self.assertNotEqual(user, administrator)
             self.assertEqual(dynamic['dbName'], config['name'])
             self.assertEqual(static['dbName'], config['name'])
-            self.assertEqual(config.get('namespace'), 'lab-alpha' if tenant == 'alpha' else None)
+            self.assertEqual(config.get('openbaoNamespace'), 'lab-alpha' if tenant == 'alpha' else None)
             self.assertTrue(all(item['spec']['deletionPolicy'] == 'Delete' for item in objects))
         with self.assertRaises(ValueError):
             lifecycle.names("root'; DROP ROLE openbao; --")

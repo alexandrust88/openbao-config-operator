@@ -21,7 +21,7 @@ class MachineJWTTests(unittest.TestCase):
             if obj['kind'] == 'JWTAuthRole' and obj['spec']['name'] != 'wrong-audience':
                 self.assertEqual(obj['spec']['boundAudiences'], ['project-audience'])
                 self.assertNotIn('tokenPolicies', obj['spec'])
-            if obj['kind'] == 'Group':
+            if obj['kind'] == 'IdentityGroup':
                 self.assertTrue(obj['spec']['policies'][0].startswith('saas-auth0-'))
         with self.assertRaises(ValueError):
             jwt.render({**human, 'jwt_mount_suffix': '/outside'})

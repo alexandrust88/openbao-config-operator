@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=jwtcelroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=jwtcelroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=jwtcelroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=jwtcelroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=jwtcelroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=jwtcelroles/finalizers,verbs=update
 
 // SetupJWTCELRole registers the JWTCELRole controller with the manager.
 func SetupJWTCELRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

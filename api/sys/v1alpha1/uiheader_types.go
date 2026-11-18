@@ -22,7 +22,7 @@ import (
 	commonv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/common/v1alpha1"
 )
 
-// +kubebuilder:validation:XValidation:rule="!has(self.__namespace__) || self.__namespace__ == ''",message="UIHeader exists only in the root namespace: leave namespace empty"
+// +kubebuilder:validation:XValidation:rule="!has(self.openbaoNamespace) || self.openbaoNamespace == ''",message="UIHeader exists only in the root namespace: leave openbaoNamespace empty"
 // +kubebuilder:validation:XValidation:rule="has(self.name) == has(oldSelf.name) && (!has(self.name) || self.name == oldSelf.name)",message="name is immutable"
 
 // UIHeaderSpec defines a custom HTTP response header that OpenBao returns with its web UI, at sys/config/ui/headers/<name>. UI headers exist only in the root namespace.
@@ -53,7 +53,7 @@ type UIHeaderStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=openbao
+// +kubebuilder:resource:categories=obco;obco-sys
 // +kubebuilder:validation:XValidation:rule="!(has(self.spec.name) ? self.spec.name : self.metadata.name).lowerAscii().startsWith('x-vault-')",message="X-Vault-* headers cannot be set"
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`

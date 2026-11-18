@@ -1,4 +1,4 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: rmq
@@ -7,7 +7,7 @@ spec:
     name: openbao
   type: rabbitmq
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: RabbitMQConfig
 metadata:
   name: rmq-config
@@ -23,7 +23,7 @@ spec:
     key: password
   verifyConnection: false
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: RabbitMQRole
 metadata:
   name: rmq-app

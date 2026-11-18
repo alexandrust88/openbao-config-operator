@@ -14,7 +14,7 @@ spec.loader.exec_module(diag)
 
 class DiagnosticsTests(unittest.TestCase):
     def test_only_safe_status_fields_are_printed(self):
-        value = {'items': [{'kind': 'Policy', 'metadata': {'name': 'reader', 'namespace': 'lab', 'generation': 3, 'annotations': {'token': 'private'}},
+        value = {'items': [{'kind': 'ACLPolicy', 'metadata': {'name': 'reader', 'namespace': 'lab', 'generation': 3, 'annotations': {'token': 'private'}},
                            'spec': {'password': 'private'}, 'data': {'token': 'private'},
                            'status': {'observedGeneration': 3, 'conditions': [
                                {'type': 'Ready', 'status': 'True', 'reason': 'Available', 'observedGeneration': 2, 'message': 'private'},
@@ -23,7 +23,7 @@ class DiagnosticsTests(unittest.TestCase):
         response = type('Response', (), {'returncode': 0, 'stdout': json.dumps(value)})()
         output = io.StringIO()
         with patch.dict(os.environ, {'LAB_CONTEXT': 'kind-fixture'}), patch.object(diag.subprocess, 'run', return_value=response), contextlib.redirect_stdout(output):
-            diag.report('policies.sys.openbaoconfig.io')
+            diag.report('aclpolicies.sys.obco.dev')
         text = output.getvalue()
         self.assertNotIn('private', text)
         self.assertIn('ReconcileError', text)

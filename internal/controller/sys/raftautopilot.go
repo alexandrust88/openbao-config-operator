@@ -13,9 +13,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=raftautopilots,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=raftautopilots/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=raftautopilots/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=raftautopilots,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=raftautopilots/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=raftautopilots/finalizers,verbs=update
 
 const (
 	raftAutopilotPath = "sys/storage/raft/autopilot/configuration"

@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	nsmKindConnection = "OpenBaoConnection"
+	nsmKindConnection = "BaoConnection"
 	nsmKindSecret     = "Secret"
 	nsmKeyName        = "name"
 	nsmKeyKind        = "kind"
@@ -36,7 +36,7 @@ const (
 
 // nsmConnectionKinds are configured by the harness itself, not reconciled through the engine.
 var nsmConnectionKinds = map[string]bool{
-	nsmKindConnection: true, "ClusterOpenBaoConnection": true, "OpenBaoServer": true,
+	nsmKindConnection: true, "ClusterBaoConnection": true, "BaoServer": true,
 }
 
 // nsmMount is a mount a kind needs before it can be reconciled.
@@ -52,7 +52,7 @@ var nsmMountTypes = func() map[string]nsmMount {
 	for m, kinds := range map[nsmMount][]string{
 		{auth: true, typ: "kubernetes"}: {"KubernetesAuthConfig", "KubernetesAuthRole", "AccessGrant"},
 		{auth: true, typ: "jwt"}:        {"JWTAuthConfig", "JWTAuthRole", "JWTCELRole"},
-		{auth: true, typ: "approle"}:    {"AppRole", "AppRoleSecretID", "EntityAlias", "GroupAlias"},
+		{auth: true, typ: "approle"}:    {"AppRole", "AppRoleSecretID", "IdentityEntityAlias", "IdentityGroupAlias"},
 		{auth: true, typ: "cert"}:       {"CertAuthConfig", "CertAuthRole", "CertAuthCRL"},
 		{auth: true, typ: "userpass"}:   {"UserpassUser"},
 		{typ: "kv", version: "2"}:       {"KVSecret", "KVConfig", "KVSecretMetadata", "RandomSecret"},
@@ -347,7 +347,7 @@ type nsmRef struct {
 var nsmNameReferents = map[string]map[string]string{
 	"AccessGrant":    {"rules.level": "AccessLevel"},
 	"AccessLayout":   {"roles.levels.level": "AccessLevel"},
-	"OIDCAssignment": {"entities.entityName": "Entity", "groups.groupName": "Group"},
+	"OIDCAssignment": {"entities.entityName": "IdentityEntity", "groups.groupName": "IdentityGroup"},
 	"OIDCClient":     {"key": "OIDCKey", "assignments": "OIDCAssignment"},
 	"OIDCProvider":   {"allowedClients.clientName": "OIDCClient", "scopesSupported": "OIDCScope"},
 	"OIDCRole":       {"key": "OIDCKey"},
@@ -405,7 +405,7 @@ func nsmRefNames(v any, field string) []nsmRef {
 	return out
 }
 
-// nsmRewrite points an example document at the test namespace and connection and sets spec.namespace to specNS
+// nsmRewrite points an example document at the test namespace and connection and sets spec.openbaoNamespace to specNS
 // (removed when empty); spec.driftInterval is dropped so the manager flag sets the pace.
 func nsmRewrite(d *unstructured.Unstructured, ns, specNS string) *unstructured.Unstructured {
 	c := d.DeepCopy()
@@ -419,10 +419,10 @@ func nsmRewrite(d *unstructured.Unstructured, ns, specNS string) *unstructured.U
 	if _, ok := spec[nsmConnectionRef]; ok {
 		spec[nsmConnectionRef] = map[string]any{nsmKeyKind: nsmKindConnection, nsmKeyName: nsmConnection}
 	}
-	delete(spec, "namespace")
+	delete(spec, "openbaoNamespace")
 	delete(spec, "driftInterval")
 	if specNS != "" {
-		spec["namespace"] = specNS
+		spec["openbaoNamespace"] = specNS
 	}
 	return c
 }

@@ -23,7 +23,7 @@ const (
 	baoTenantA = "tenant-a"
 	baoTenantB = "tenant-b"
 
-	openbaoNamespaceResource = "openbaonamespaces.sys.openbaoconfig.io"
+	openbaoNamespaceResource = "baonamespaces.sys.obco.dev"
 
 	isolationSetupTimeout   = 5 * time.Minute
 	isolationReadyTimeout   = 3 * time.Minute
@@ -52,15 +52,15 @@ var deniedObjects = [][2]string{
 	{connectionResource, "a-only"},
 }
 
-const dotdotPolicy = `apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+const dotdotPolicy = `apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: dotdot
   namespace: e2e-tenant-b
 spec:
   connectionRef:
     name: tenant-b
-  namespace: ../tenant-a
+  openbaoNamespace: ../tenant-a
   name: app-b-dotdot
   policy: |
     path "secret/data/app" {
@@ -68,7 +68,7 @@ spec:
     }
 `
 
-const foreignSecretKVSecret = `apiVersion: secrets.openbaoconfig.io/v1alpha1
+const foreignSecretKVSecret = `apiVersion: secrets.obco.dev/v1alpha1
 kind: KVSecret
 metadata:
   name: foreign-secret
@@ -85,15 +85,15 @@ spec:
         namespace: e2e-tenant-a
 `
 
-const borrowedServiceAccountConnection = `apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+const borrowedServiceAccountConnection = `apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: borrowed-sa
   namespace: e2e-tenant-b
 spec:
   serverRef:
     name: e2e-isolation
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   auth:
     kubernetes:
       role: operator
@@ -104,8 +104,8 @@ spec:
         - openbao
 `
 
-const borrowedServiceAccountPolicy = `apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+const borrowedServiceAccountPolicy = `apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: via-borrowed-sa
   namespace: e2e-tenant-b
@@ -123,15 +123,15 @@ var _ = Describe("tenant isolation", Ordered, func() {
 	AfterEach(dumpDiagnosticsOnFailure)
 	AfterAll(removeIsolationTenants)
 
-	It("provisions two tenants in Kubernetes and OpenBao through a platform ClusterOpenBaoConnection", func() {
+	It("provisions two tenants in Kubernetes and OpenBao through a platform ClusterBaoConnection", func() {
 		mustRun("kubectl", "apply", "-f", "test/e2e/testdata/isolation-platform.yaml")
 		mustRun("kubectl", "wait", "--for=condition=Ready", "--timeout="+isolationSetupTimeout.String(),
 			serverResource+"/e2e-isolation", serverResource+"/e2e-isolation-tenant-a-only",
-			"clusteropenbaoconnections.core.openbaoconfig.io/e2e-isolation-platform")
+			"clusterbaoconnections.core.obco.dev/e2e-isolation-platform")
 		mustRun("kubectl", "-n", platformNamespace, "wait", "--for=condition=Ready", "--all",
-			"--timeout="+isolationSetupTimeout.String(), openbaoNamespaceResource+",authmounts.sys.openbaoconfig.io,"+
-				"secretsmounts.sys.openbaoconfig.io,kubernetesauthconfigs.auth.openbaoconfig.io,"+
-				"kubernetesauthroles.auth.openbaoconfig.io,"+policyResource)
+			"--timeout="+isolationSetupTimeout.String(), openbaoNamespaceResource+",authmounts.sys.obco.dev,"+
+				"secretsmounts.sys.obco.dev,kubernetesauthconfigs.auth.obco.dev,"+
+				"kubernetesauthroles.auth.obco.dev,"+policyResource)
 		for _, ns := range []string{baoTenantA, baoTenantB} {
 			Expect(bao("read", "-namespace="+ns, "-field=policy", "sys/policies/acl/tenant")).
 				To(ContainSubstring(`path "sys/policies/acl/app-*"`))
@@ -167,13 +167,13 @@ var _ = Describe("tenant isolation", Ordered, func() {
 	It("refuses tenant-b writes outside its OpenBao namespace and its policy", func() {
 		By("a policy outside the app-* names the tenant-b login may write")
 		expectRefused(policyResource, "escalate", commonv1alpha1.ReasonPermissionDenied)
-		By("spec.namespace tenant-a, which stays below tenant-b's connection namespace")
+		By("spec.openbaoNamespace tenant-a, which stays below tenant-b's connection namespace")
 		expectRefused(policyResource, "cross-namespace",
 			commonv1alpha1.ReasonPermissionDenied, commonv1alpha1.ReasonReferenceNotReady)
-		By("spec.namespace ../tenant-a, which the CRD rejects")
+		By("spec.openbaoNamespace ../tenant-a, which the CRD rejects")
 		out, err := runStdin(dotdotPolicy, "kubectl", "apply", "-f", "-")
 		Expect(err).To(HaveOccurred())
-		Expect(out).To(And(ContainSubstring("spec.namespace"), ContainSubstring("should match")))
+		Expect(out).To(And(ContainSubstring("spec.openbaoNamespace"), ContainSubstring("should match")))
 		_, err = run("kubectl", "-n", tenantBNamespace, "get", policyResource, "dotdot")
 		Expect(err).To(HaveOccurred())
 
@@ -216,13 +216,13 @@ var _ = Describe("tenant isolation", Ordered, func() {
 		}
 	})
 
-	It("refuses tenant-b on a ClusterOpenBaoConnection and an OpenBaoServer whose allowedNamespaces exclude it", func() {
-		By("the platform ClusterOpenBaoConnection, which logs in as the operator")
+	It("refuses tenant-b on a ClusterBaoConnection and a BaoServer whose allowedNamespaces exclude it", func() {
+		By("the platform ClusterBaoConnection, which logs in as the operator")
 		expectRefused(policyResource, "via-platform", commonv1alpha1.ReasonConnectionDenied)
 		Expect(conditionField(tenantBNamespace, policyResource, "via-platform", commonv1alpha1.ConditionSynced,
 			"message")).To(ContainSubstring("not in allowedNamespaces"))
 
-		By("an OpenBaoServer that admits tenant-a only, whose a-only connection in tenant-a is Ready")
+		By("a BaoServer that admits tenant-a only, whose a-only connection in tenant-a is Ready")
 		expectConnectionRefused("a-only", commonv1alpha1.ReasonConnectionDenied)
 		expectRefused(policyResource, "via-a-only", commonv1alpha1.ReasonConnectionNotReady)
 
@@ -321,7 +321,7 @@ func isolationHolds() error {
 	return baoAbsent(baoTenantB, "secret/data/b-from-a")
 }
 
-// removeIsolationTenants deletes the tenants' resources before the platform's, so the OpenBaoNamespaces still have
+// removeIsolationTenants deletes the tenants' resources before the platform's, so the BaoNamespaces still have
 // their connection when they delete the tenants' OpenBao namespaces and everything in them.
 func removeIsolationTenants() {
 	runBestEffort("kubectl", "-n", tenantBNamespace, "delete", "--ignore-not-found", "--wait", "--timeout=2m",

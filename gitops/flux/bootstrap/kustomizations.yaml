@@ -53,35 +53,35 @@ items:
         - name: openbao
         - name: operator
       healthCheckExprs:
-        - apiVersion: sys.openbaoconfig.io/v1alpha1
-          kind: Policy
+        - apiVersion: sys.obco.dev/v1alpha1
+          kind: ACLPolicy
           current: has(status.conditions) && status.conditions.exists(c, c.type == 'Ready' && c.status == 'True' && c.observedGeneration == metadata.generation) && status.conditions.exists(c, c.type == 'Synced' && c.status == 'True' && c.observedGeneration == metadata.generation)
           failed: has(status.conditions) && status.conditions.exists(c, (c.type == 'Ready' || c.type == 'Synced') && c.status == 'False' && c.observedGeneration == metadata.generation && c.reason == 'ReconcileError')
-        - apiVersion: sys.openbaoconfig.io/v1alpha1
+        - apiVersion: sys.obco.dev/v1alpha1
           kind: SecretsMount
           current: has(status.conditions) && status.conditions.exists(c, c.type == 'Ready' && c.status == 'True' && c.observedGeneration == metadata.generation) && status.conditions.exists(c, c.type == 'Synced' && c.status == 'True' && c.observedGeneration == metadata.generation)
           failed: has(status.conditions) && status.conditions.exists(c, (c.type == 'Ready' || c.type == 'Synced') && c.status == 'False' && c.observedGeneration == metadata.generation && c.reason == 'ReconcileError')
-        - apiVersion: sys.openbaoconfig.io/v1alpha1
+        - apiVersion: sys.obco.dev/v1alpha1
           kind: AuthMount
           current: has(status.conditions) && status.conditions.exists(c, c.type == 'Ready' && c.status == 'True' && c.observedGeneration == metadata.generation) && status.conditions.exists(c, c.type == 'Synced' && c.status == 'True' && c.observedGeneration == metadata.generation)
           failed: has(status.conditions) && status.conditions.exists(c, (c.type == 'Ready' || c.type == 'Synced') && c.status == 'False' && c.observedGeneration == metadata.generation && c.reason == 'ReconcileError')
-        - apiVersion: sys.openbaoconfig.io/v1alpha1
-          kind: OpenBaoNamespace
+        - apiVersion: sys.obco.dev/v1alpha1
+          kind: BaoNamespace
           current: has(status.conditions) && status.conditions.exists(c, c.type == 'Ready' && c.status == 'True' && c.observedGeneration == metadata.generation) && status.conditions.exists(c, c.type == 'Synced' && c.status == 'True' && c.observedGeneration == metadata.generation)
           failed: has(status.conditions) && status.conditions.exists(c, (c.type == 'Ready' || c.type == 'Synced') && c.status == 'False' && c.observedGeneration == metadata.generation && c.reason == 'ReconcileError')
-        - apiVersion: auth.openbaoconfig.io/v1alpha1
+        - apiVersion: auth.obco.dev/v1alpha1
           kind: AppRole
           current: has(status.conditions) && status.conditions.exists(c, c.type == 'Ready' && c.status == 'True' && c.observedGeneration == metadata.generation) && status.conditions.exists(c, c.type == 'Synced' && c.status == 'True' && c.observedGeneration == metadata.generation)
           failed: has(status.conditions) && status.conditions.exists(c, (c.type == 'Ready' || c.type == 'Synced') && c.status == 'False' && c.observedGeneration == metadata.generation && c.reason == 'ReconcileError')
-        - apiVersion: secrets.openbaoconfig.io/v1alpha1
+        - apiVersion: secrets.obco.dev/v1alpha1
           kind: TransitKey
           current: has(status.conditions) && status.conditions.exists(c, c.type == 'Ready' && c.status == 'True' && c.observedGeneration == metadata.generation) && status.conditions.exists(c, c.type == 'Synced' && c.status == 'True' && c.observedGeneration == metadata.generation)
           failed: has(status.conditions) && status.conditions.exists(c, (c.type == 'Ready' || c.type == 'Synced') && c.status == 'False' && c.observedGeneration == metadata.generation && c.reason == 'ReconcileError')
-        - apiVersion: core.openbaoconfig.io/v1alpha1
-          kind: OpenBaoServer
+        - apiVersion: core.obco.dev/v1alpha1
+          kind: BaoServer
           current: has(status.conditions) && status.conditions.exists(c, c.type == 'Ready' && c.status == 'True' && c.observedGeneration == metadata.generation)
           failed: has(status.conditions) && status.conditions.exists(c, (c.type == 'Ready' || c.type == 'Synced') && c.status == 'False' && c.observedGeneration == metadata.generation && c.reason == 'ReconcileError')
-        - apiVersion: core.openbaoconfig.io/v1alpha1
-          kind: OpenBaoConnection
+        - apiVersion: core.obco.dev/v1alpha1
+          kind: BaoConnection
           current: has(status.conditions) && status.conditions.exists(c, c.type == 'Ready' && c.status == 'True' && c.observedGeneration == metadata.generation)
           failed: has(status.conditions) && status.conditions.exists(c, (c.type == 'Ready' || c.type == 'Synced') && c.status == 'False' && c.observedGeneration == metadata.generation && c.reason == 'ReconcileError')

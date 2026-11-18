@@ -1,4 +1,4 @@
-# CFAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# CFAuthConfig (auth.obco.dev/v1alpha1)
 # CFAuthConfig manages the configuration of an OpenBao Cloud Foundry auth method at auth/<mountPath>/config.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
@@ -6,9 +6,9 @@
 # The Secrets after it hold fake values for the secret references. Required spec fields: cfAPIAddr, connectionRef,
 # identityCACertificates.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#cfauthconfig
+# Reference: https://docs.obco.dev/reference/api/auth/#cfauthconfig
 # Curated example: examples/auth/cfauthconfig.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CFAuthConfig
 metadata:
   name: example
@@ -32,7 +32,7 @@ spec:
     name: cfauthconfig-cf-password-secret-ref
   cfUsername: example
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -47,7 +47,7 @@ spec:
   loginMaxSecondsNotBefore: 1
   managementPolicy: Manage
   mountPath: cf
-  namespace: example
+  openbaoNamespace: example
 ---
 apiVersion: v1
 kind: Secret

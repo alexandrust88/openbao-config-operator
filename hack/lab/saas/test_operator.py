@@ -14,7 +14,7 @@ import operator_lab as lab
 
 def fixture(provider="auth0"):
     return {"status": "complete", "complete": True, "provider": provider, "issuer": "https://tenant.example.test/",
-            "connection_name": "fixture-users", "groups_claim": "https://openbaoconfig.io/groups", "oidc_client_id": "fake-client", "oidc_client_secret": "fake-secret",
+            "connection_name": "fixture-users", "groups_claim": "https://obco.dev/groups", "oidc_client_id": "fake-client", "oidc_client_secret": "fake-secret",
             "users": [{"namespace": t, "role": r, "username": f"{t}-{r}", "password": "fake-password", "group": f"{t}-{r}"}
                       for t in lab.TENANTS for r in lab.ROLES]}
 
@@ -33,7 +33,7 @@ class LocalProviderTests(unittest.TestCase):
             roles = [obj["spec"] for obj in objects if obj["kind"] == "JWTAuthRole"]
             self.assertEqual(len(roles), 9)
             self.assertTrue(all(role["oidcScopes"] == ["profile", "email", "groups"] for role in roles))
-            self.assertEqual({obj["spec"]["name"] for obj in objects if obj["kind"] == "OpenBaoNamespace"}, {f"saas-{provider}-alpha", f"saas-{provider}-beta"})
+            self.assertEqual({obj["spec"]["name"] for obj in objects if obj["kind"] == "BaoNamespace"}, {f"saas-{provider}-alpha", f"saas-{provider}-beta"})
             for changes in ({"issuer": issuer + "wrong"}, {"provider": "okta"}, {"provider": "auth0"}, {"issuer": "http://untrusted.test"}, {"oidc_scopes": "profile"}, {"oidc_scopes": ["profile email"]}, {"token_endpoint_auth_method": "none"}):
                 with self.subTest(provider=provider, changes=changes), self.assertRaises(ValueError):
                     lab.validate_state({**state, **changes})
@@ -53,7 +53,7 @@ class RenderTests(unittest.TestCase):
             self.assertEqual(spec["allowedRedirectURIs"], [lab.CALLBACK])
             self.assertNotIn("tokenPolicies", spec)
             self.assertEqual(len(spec["boundClaims"][state["groups_claim"]]), 1)
-        self.assertEqual({x["spec"]["namespace"] for x in roles if "namespace" in x["spec"]}, {"saas-auth0-alpha", "saas-auth0-beta"})
+        self.assertEqual({x["spec"]["openbaoNamespace"] for x in roles if "openbaoNamespace" in x["spec"]}, {"saas-auth0-alpha", "saas-auth0-beta"})
         self.assertTrue(all(x["spec"]["type"] == "oidc" for x in objects if x["kind"] == "AuthMount"))
 
     def test_provider_resources_do_not_overlap(self):
@@ -79,7 +79,7 @@ class RenderTests(unittest.TestCase):
         public = json.dumps([x for x in objects if x["kind"] != "Secret"])
         self.assertNotIn("fake-secret", public)
         self.assertNotIn("fake-password", json.dumps(objects))
-        self.assertEqual(sum(x["kind"] == "GroupMembership" for x in objects), 9)
+        self.assertEqual(sum(x["kind"] == "IdentityGroupMembership" for x in objects), 9)
 
     def test_ambiguous_groups_and_missing_roles_rejected(self):
         state = fixture()
@@ -269,7 +269,7 @@ class TokenTests(unittest.TestCase):
 class GroupChangeTests(unittest.TestCase):
     class Kube:
         def __init__(self):
-            self.current = next(obj for obj in lab.render(fixture()) if obj["kind"] == "Group" and obj["metadata"]["name"] == "saas-auth0-alpha-read")
+            self.current = next(obj for obj in lab.render(fixture()) if obj["kind"] == "IdentityGroup" and obj["metadata"]["name"] == "saas-auth0-alpha-read")
             self.current["metadata"].update(resourceVersion="1", uid="fake-group-uid")
             self.original = copy.deepcopy(self.current)
             self.applied = []
@@ -349,7 +349,7 @@ class GroupChangeTests(unittest.TestCase):
             kube.current["spec"]["policies"] = ["another-owner"]
             raise RuntimeError("browser failed")
         with patch.object(lab, "browser_auth", side_effect=changed):
-            with self.assertRaisesRegex(RuntimeError, "Group changed concurrently"):
+            with self.assertRaisesRegex(RuntimeError, "IdentityGroup changed concurrently"):
                 lab.test_group_policy_change(self.Bao(), fixture(), kube)
         self.assertEqual(kube.current["spec"]["policies"], ["another-owner"])
         self.assertEqual(len(kube.applied), 1)

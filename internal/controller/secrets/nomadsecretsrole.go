@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=nomadsecretsroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=nomadsecretsroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=nomadsecretsroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=nomadsecretsroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=nomadsecretsroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=nomadsecretsroles/finalizers,verbs=update
 
 // SetupNomadSecretsRole registers the NomadSecretsRole controller with the manager.
 func SetupNomadSecretsRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

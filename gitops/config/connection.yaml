@@ -1,5 +1,5 @@
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoServer
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoServer
 metadata:
   name: gitops-openbao
 spec:
@@ -15,8 +15,8 @@ spec:
   allowedAudiences:
     - openbao
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: gitops-openbao
   namespace: obco-gitops

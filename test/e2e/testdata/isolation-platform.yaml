@@ -1,5 +1,5 @@
 # The platform side of the tenant isolation test: two tenant namespaces in Kubernetes and in OpenBao, each with its
-# own kubernetes auth mount, role and policy, configured through the operator with a ClusterOpenBaoConnection that
+# own kubernetes auth mount, role and policy, configured through the operator with a ClusterBaoConnection that
 # logs in as the operator (admin) and admits only e2e-platform.
 apiVersion: v1
 kind: Namespace
@@ -11,14 +11,14 @@ kind: Namespace
 metadata:
   name: e2e-tenant-a
   labels:
-    e2e.openbaoconfig.io/isolation: tenant
+    e2e.obco.dev/isolation: tenant
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
   name: e2e-tenant-b
   labels:
-    e2e.openbaoconfig.io/isolation: tenant
+    e2e.obco.dev/isolation: tenant
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -52,8 +52,8 @@ stringData:
   username: app-b
   password: tenant-b-password-not-real
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoServer
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoServer
 metadata:
   name: e2e-isolation
 spec:
@@ -65,12 +65,12 @@ spec:
       key: ca.crt
   allowedNamespaces:
     matchLabels:
-      e2e.openbaoconfig.io/isolation: tenant
+      e2e.obco.dev/isolation: tenant
   allowedAudiences:
     - openbao
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoServer
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoServer
 metadata:
   name: e2e-isolation-tenant-a-only
 spec:
@@ -86,8 +86,8 @@ spec:
   allowedAudiences:
     - openbao
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: ClusterOpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
 metadata:
   name: e2e-isolation-platform
 spec:
@@ -101,120 +101,120 @@ spec:
     matchLabels:
       kubernetes.io/metadata.name: e2e-platform
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: tenant-a
   namespace: e2e-platform
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
   deletionPolicy: Delete
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: tenant-b
   namespace: e2e-platform
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
   deletionPolicy: Delete
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: tenant-a-kubernetes
   namespace: e2e-platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   path: kubernetes
   type: kubernetes
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: tenant-b-kubernetes
   namespace: e2e-platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
-  namespace: tenant-b
+  openbaoNamespace: tenant-b
   path: kubernetes
   type: kubernetes
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: tenant-a-secret
   namespace: e2e-platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   path: secret
   type: kv-v2
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: tenant-b-secret
   namespace: e2e-platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
-  namespace: tenant-b
+  openbaoNamespace: tenant-b
   path: secret
   type: kv-v2
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthConfig
 metadata:
   name: tenant-a-kubernetes
   namespace: e2e-platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   mountPath: kubernetes
   kubernetesHost: https://kubernetes.default.svc
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthConfig
 metadata:
   name: tenant-b-kubernetes
   namespace: e2e-platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
-  namespace: tenant-b
+  openbaoNamespace: tenant-b
   mountPath: kubernetes
   kubernetesHost: https://kubernetes.default.svc
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: tenant-a-tenant
   namespace: e2e-platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   name: tenant
   policy: |
     path "sys/policies/acl/app-*" {
@@ -227,16 +227,16 @@ spec:
       capabilities = ["read", "delete"]
     }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: tenant-b-tenant
   namespace: e2e-platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
-  namespace: tenant-b
+  openbaoNamespace: tenant-b
   name: tenant
   policy: |
     path "sys/policies/acl/app-*" {
@@ -249,16 +249,16 @@ spec:
       capabilities = ["read", "delete"]
     }
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthRole
 metadata:
   name: tenant-a-operator
   namespace: e2e-platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   mountPath: kubernetes
   name: operator
   boundServiceAccountNames:
@@ -270,16 +270,16 @@ spec:
     - tenant
   tokenTTL: 10m
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthRole
 metadata:
   name: tenant-b-operator
   namespace: e2e-platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
-  namespace: tenant-b
+  openbaoNamespace: tenant-b
   mountPath: kubernetes
   name: operator
   boundServiceAccountNames:

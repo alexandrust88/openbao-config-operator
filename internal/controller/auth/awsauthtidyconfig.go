@@ -12,9 +12,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthtidyconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthtidyconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthtidyconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthtidyconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthtidyconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthtidyconfigs/finalizers,verbs=update
 
 // SetupAWSAuthTidyConfig registers the AWSAuthTidyConfig controller with the manager.
 func SetupAWSAuthTidyConfig(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

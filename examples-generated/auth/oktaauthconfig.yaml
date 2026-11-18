@@ -1,13 +1,13 @@
-# OktaAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# OktaAuthConfig (auth.obco.dev/v1alpha1)
 # OktaAuthConfig manages the configuration of an OpenBao Okta auth method at auth/<mountPath>/config.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef, orgName.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#oktaauthconfig
+# Reference: https://docs.obco.dev/reference/api/auth/#oktaauthconfig
 # Curated example: examples/auth/oktaauthconfig.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: OktaAuthConfig
 metadata:
   name: example
@@ -19,7 +19,7 @@ spec:
   baseURL: https://openbao.example.com:8200
   bypassOktaMFA: true
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -27,7 +27,7 @@ spec:
   driftInterval: 1h
   managementPolicy: Manage
   mountPath: okta
-  namespace: example
+  openbaoNamespace: example
   orgName: example
   policyRefs:
   - name: example

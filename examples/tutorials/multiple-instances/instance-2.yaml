@@ -1,24 +1,24 @@
 # Configuration only the second OpenBao gets: a KV version 2 secrets engine and a userpass auth method.
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: instance-2-kv
   namespace: platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: platform-2
   type: kv-v2
   description: Secrets of the second OpenBao
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: instance-2-userpass
   namespace: platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: platform-2
   path: userpass
   type: userpass

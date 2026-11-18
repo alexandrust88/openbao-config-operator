@@ -4,7 +4,7 @@ description: "Design decision for OpenBao Config Operator: create by default and
 
 # 0015. Create by default and orphan by default
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; implemented. Date: 2026-11-14.
 
 Supersedes the defaults of [ADR 0004](0004-creation-and-deletion-policy-defaults.md).
 

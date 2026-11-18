@@ -11,11 +11,11 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/refs"
 )
 
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=mfaloginenforcements,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=mfaloginenforcements/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=mfaloginenforcements/finalizers,verbs=update
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=mfamethods;entities;groups,verbs=get;list;watch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=authmounts,verbs=get;list;watch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=mfaloginenforcements,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=mfaloginenforcements/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=mfaloginenforcements/finalizers,verbs=update
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=mfamethods;identityentities;identitygroups,verbs=get;list;watch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=authmounts,verbs=get;list;watch
 
 // SetupMFALoginEnforcement registers the MFALoginEnforcement controller with the manager.
 func SetupMFALoginEnforcement(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

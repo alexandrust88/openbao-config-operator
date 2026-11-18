@@ -1,13 +1,13 @@
-# AWSAuthRole (auth.openbaoconfig.io/v1alpha1)
+# AWSAuthRole (auth.obco.dev/v1alpha1)
 # AWSAuthRole manages a role of an OpenBao AWS auth method at auth/<mountPath>/role/<name>.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#awsauthrole
+# Reference: https://docs.obco.dev/reference/api/auth/#awsauthrole
 # Curated example: examples/auth/awsauthrole.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AWSAuthRole
 metadata:
   name: example
@@ -33,7 +33,7 @@ spec:
   boundVPCIDs:
   - example
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -44,7 +44,7 @@ spec:
   managementPolicy: Manage
   mountPath: aws
   name: example
-  namespace: example
+  openbaoNamespace: example
   policyRefs:
   - name: example
   resolveAWSUniqueIDs: true

@@ -1,0 +1,19 @@
+# The example manages a mount, whose read answers 400 (not 404) while it is absent; a password policy reads 404.
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoEndpoint
+metadata:
+  name: team-password-policy
+  namespace: openbao-config
+  annotations:
+    obco.dev/allow-destructive-delete: "true"
+spec:
+  connectionRef:
+    name: openbao
+  path: sys/policies/password/team-password-policy
+  deletionPolicy: Delete
+  data:
+    policy: |
+      length = 24
+      rule "charset" {
+        charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+      }

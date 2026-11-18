@@ -1,12 +1,12 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: ep-space
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -15,24 +15,24 @@ spec:
   managementPolicy: Manage
   name: ep-space
   customMetadata:
-    purpose: raw API calls through OpenBaoEndpoint
+    purpose: raw API calls through BaoEndpoint
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoEndpoint
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoEndpoint
 metadata:
   name: ep-token-role
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: openbao-cluster
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: ep-space
+  openbaoNamespace: ep-space
   path: auth/token/roles/live-kit
   readPath: auth/token/roles/live-kit
   deletePath: auth/token/roles/live-kit
@@ -47,24 +47,24 @@ spec:
     path_suffix: live-kit
     token_explicit_max_ttl: 24h
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoEndpoint
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoEndpoint
 metadata:
   name: ep-kv-mount
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: ep-space
+  openbaoNamespace: ep-space
   path: sys/mounts/kv
   deletePath: sys/mounts/kv
   data:
@@ -73,22 +73,22 @@ spec:
     options:
       version: "2"
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoEndpoint
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoEndpoint
 metadata:
   name: ep-kv-tune
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: ep-space
+  openbaoNamespace: ep-space
   path: sys/mounts/kv/tune
   disableDelete: true
   ignoreAbsentFields: true
@@ -100,24 +100,24 @@ spec:
     max_lease_ttl: 24h
     listing_visibility: hidden
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoEndpoint
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoEndpoint
 metadata:
   name: ep-app-secret
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: ep-space
+  openbaoNamespace: ep-space
   path: kv/data/app
   deletePath: kv/metadata/app
   disableRead: true

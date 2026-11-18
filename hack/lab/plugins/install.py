@@ -70,14 +70,14 @@ def main():
         subprocess.run([str(ROOT / "bin/helm"), "upgrade", "--install", "lab-ldap", str(ROOT / "hack/lab/plugins/chart"),
                         "--kube-context", CONTEXT, "--namespace", IDENTITY, "--values", str(values_file),
                         "--wait", "--timeout", "5m"], check=True, stdout=subprocess.DEVNULL)
-    for resource in ("plugins.sys.openbaoconfig.io/lab-auth-ldap", "authmounts.sys.openbaoconfig.io/lab-ldap",
-                     "policies.sys.openbaoconfig.io/lab-ldap-group", "policies.sys.openbaoconfig.io/lab-ldap-user",
-                     "ldapauthconfigs.auth.openbaoconfig.io/lab-ldap", "ldapauthgroups.auth.openbaoconfig.io/lab-ldap-admins",
-                     "ldapauthusers.auth.openbaoconfig.io/lab-ldap-admin",
-                     "secretsmounts.sys.openbaoconfig.io/lab-ldap-data",
-                     "kvsecrets.secrets.openbaoconfig.io/lab-ldap-data-group",
-                     "kvsecrets.secrets.openbaoconfig.io/lab-ldap-data-user",
-                     "kvsecrets.secrets.openbaoconfig.io/lab-ldap-data-forbidden"):
+    for resource in ("plugins.sys.obco.dev/lab-auth-ldap", "authmounts.sys.obco.dev/lab-ldap",
+                     "aclpolicies.sys.obco.dev/lab-ldap-group", "aclpolicies.sys.obco.dev/lab-ldap-user",
+                     "ldapauthconfigs.auth.obco.dev/lab-ldap", "ldapauthgroups.auth.obco.dev/lab-ldap-admins",
+                     "ldapauthusers.auth.obco.dev/lab-ldap-admin",
+                     "secretsmounts.sys.obco.dev/lab-ldap-data",
+                     "kvsecrets.secrets.obco.dev/lab-ldap-data-group",
+                     "kvsecrets.secrets.obco.dev/lab-ldap-data-user",
+                     "kvsecrets.secrets.obco.dev/lab-ldap-data-forbidden"):
         kubectl("-n", NAMESPACE, "wait", "--for=condition=Ready", "--timeout=5m", resource)
     print("LDAP profile Ready: official plugin, LDAPS directory, config, group and user mappings")
 

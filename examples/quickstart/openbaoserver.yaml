@@ -1,7 +1,7 @@
 # Evaluation only: the dev server of openbao-dev.yaml speaks plain HTTP, which allowInsecureHTTP permits.
-# A real server uses an https:// address and a caBundle, as in examples/core/openbaoserver.yaml.
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoServer
+# A real server uses an https:// address and a caBundle, as in examples/core/baoserver.yaml.
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoServer
 metadata:
   name: quickstart
 spec:
@@ -9,6 +9,6 @@ spec:
   allowInsecureHTTP: true
   allowedNamespaces:
     matchLabels:
-      openbaoconfig.io/tenant: "true"
+      obco.dev/tenant: "true"
   allowedAudiences:
     - openbao

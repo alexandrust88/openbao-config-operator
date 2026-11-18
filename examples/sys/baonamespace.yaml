@@ -1,0 +1,20 @@
+# Creates the OpenBao namespace team-a with custom metadata; with deletionPolicy Orphan the namespace and its
+# contents stay when the resource is deleted.
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
+metadata:
+  name: obco-team-a
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: CreateOrAdopt
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  name: team-a
+  customMetadata:
+    owner: team-a
+    cost-center: "4711"

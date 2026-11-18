@@ -43,7 +43,7 @@ import (
 
 // Defaults applied by New to zero Options fields.
 const (
-	DefaultFinalizer  = "openbaoconfig.io/finalizer"
+	DefaultFinalizer  = "obco.dev/finalizer"
 	DefaultFieldOwner = "openbao-config-operator"
 )
 
@@ -64,7 +64,7 @@ const (
 
 var (
 	writesTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "openbao_writes_total",
+		Name: "obco_writes_total",
 		Help: "Writes the engine sent to OpenBao, by kind.",
 	}, []string{labelKind})
 	registerMetrics sync.Once
@@ -330,7 +330,7 @@ func (r *Reconciler[T]) connect(ctx context.Context, p *pass[T]) (ctrl.Result, b
 	}
 	if err := openbao.ValidateNamespace(spec.Namespace); err != nil {
 		res, err := r.fail(ctx, obj, p.before, commonv1alpha1.ReasonInvalidSpec,
-			fmt.Errorf("spec.namespace: %w: %w", ErrInvalidSpec, err))
+			fmt.Errorf("spec.openbaoNamespace: %w: %w", ErrInvalidSpec, err))
 		return res, true, err
 	}
 	p.bao = base
@@ -1045,7 +1045,7 @@ func (r *Reconciler[T]) deleteRemote(ctx context.Context, obj T) error {
 	}
 	recordedNamespace := strings.Trim(status.Namespace, "/")
 	if err := openbao.ValidateNamespace(recordedNamespace); err != nil {
-		return fmt.Errorf("status.namespace: %w", err)
+		return fmt.Errorf("status.openbaoNamespace: %w", err)
 	}
 	baseSegments, recorded := namespaceSegments(base.Namespace()), namespaceSegments(recordedNamespace)
 	if len(recorded) < len(baseSegments) || !slices.Equal(recorded[:len(baseSegments)], baseSegments) {
@@ -1512,7 +1512,7 @@ func (r *Reconciler[T]) setCondition(obj T, conditionType string, status metav1.
 	})
 }
 
-// recordReady sets openbao_resource_ready from the Ready condition of obj.
+// recordReady sets obco_resource_ready from the Ready condition of obj.
 func (r *Reconciler[T]) recordReady(obj T) {
 	ready := meta.FindStatusCondition(obj.GetResourceStatus().Conditions, commonv1alpha1.ConditionReady)
 	if ready == nil {

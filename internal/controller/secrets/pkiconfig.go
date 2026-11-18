@@ -14,10 +14,10 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiconfigs/finalizers,verbs=update
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiissuers,verbs=get;list;watch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiissuers,verbs=get;list;watch
 
 // SetupPKIConfig registers the PKIConfig controller with the manager.
 func SetupPKIConfig(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

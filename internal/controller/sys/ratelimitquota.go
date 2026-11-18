@@ -14,9 +14,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=ratelimitquotas,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=ratelimitquotas/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=ratelimitquotas/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=ratelimitquotas,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=ratelimitquotas/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=ratelimitquotas/finalizers,verbs=update
 
 // SetupRateLimitQuota registers the RateLimitQuota controller with the manager.
 func SetupRateLimitQuota(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

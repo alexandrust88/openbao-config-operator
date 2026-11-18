@@ -20,9 +20,9 @@ import (
 
 const (
 	// connectionFinalizer holds a connection while a resource still needs it to clean up in OpenBao.
-	connectionFinalizer = "openbaoconfig.io/connection-in-use"
-	// serverFinalizer holds an OpenBaoServer while a connection still references it.
-	serverFinalizer = "openbaoconfig.io/server-in-use"
+	connectionFinalizer = "obco.dev/connection-in-use"
+	// serverFinalizer holds a BaoServer while a connection still references it.
+	serverFinalizer = "obco.dev/server-in-use"
 	// connectionUseIndex maps a managed resource that holds the engine finalizer to its connection key.
 	connectionUseIndex = "spec.connectionRef.inUse"
 	inUseRecheck       = 5 * time.Second
@@ -35,7 +35,7 @@ func indexManagedKinds(ctx context.Context, mgr ctrl.Manager) ([]func() client.O
 	scheme := mgr.GetScheme()
 	var gvks []schema.GroupVersionKind
 	for gvk := range scheme.AllKnownTypes() {
-		if strings.HasSuffix(gvk.Group, ".openbaoconfig.io") && !strings.HasSuffix(gvk.Kind, "List") {
+		if strings.HasSuffix(gvk.Group, ".obco.dev") && !strings.HasSuffix(gvk.Kind, "List") {
 			gvks = append(gvks, gvk)
 		}
 	}

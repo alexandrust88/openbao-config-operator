@@ -1,20 +1,20 @@
-# GCPAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# GCPAuthConfig (auth.obco.dev/v1alpha1)
 # GCPAuthConfig manages the configuration of an OpenBao GCP auth method at auth/<mountPath>/config.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#gcpauthconfig
+# Reference: https://docs.obco.dev/reference/api/auth/#gcpauthconfig
 # Curated example: examples/auth/gcpauthconfig.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: GCPAuthConfig
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   credentialsSecretRef:
@@ -36,7 +36,7 @@ spec:
   - example
   managementPolicy: Manage
   mountPath: gcp
-  namespace: example
+  openbaoNamespace: example
 ---
 apiVersion: v1
 kind: Secret

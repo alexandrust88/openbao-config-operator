@@ -36,9 +36,9 @@ KEYCLOAK_ISSUER = LOCAL_ISSUERS["keycloak"]
 def local_provider(state):
     return state.get("provider") in LOCAL_ISSUERS and state.get("issuer") == LOCAL_ISSUERS[state["provider"]]
 
-GROUPS = {"OpenBaoNamespace": "sys", "Policy": "sys", "SecretsMount": "sys", "AuthMount": "sys",
-          "JWTAuthConfig": "auth", "JWTAuthRole": "auth", "Group": "identity", "GroupAlias": "identity",
-          "GroupMembership": "identity", "KVSecret": "secrets", "TransitKey": "secrets"}
+GROUPS = {"BaoNamespace": "sys", "ACLPolicy": "sys", "SecretsMount": "sys", "AuthMount": "sys",
+          "JWTAuthConfig": "auth", "JWTAuthRole": "auth", "IdentityGroup": "identity", "IdentityGroupAlias": "identity",
+          "IdentityGroupMembership": "identity", "KVSecret": "secrets", "TransitKey": "secrets"}
 
 
 def load_state(path):
@@ -115,12 +115,12 @@ def render(state, kube_namespace="obco-lab", connection="lab-openbao"):
     p = prefix(state)
     label = {"app.kubernetes.io/part-of": p}
     def obj(kind, name, spec=None, tenant="root", **fields):
-        item = {"apiVersion": GROUPS[kind] + ".openbaoconfig.io/v1alpha1" if kind in GROUPS else "v1",
+        item = {"apiVersion": GROUPS[kind] + ".obco.dev/v1alpha1" if kind in GROUPS else "v1",
                 "kind": kind, "metadata": {"name": name, "namespace": kube_namespace, "labels": label.copy()}, **fields}
         if spec is not None:
             common = {"connectionRef": {"name": connection}, "deletionPolicy": "Orphan"}
             if tenant != "root":
-                common["namespace"] = bao_namespace(state, tenant)
+                common["openbaoNamespace"] = bao_namespace(state, tenant)
             item["spec"] = {**common, **spec}
         return item
     objects = [obj("Secret", p + "-oidc", type="Opaque", stringData={"client-secret": state["oidc_client_secret"]}),
@@ -128,7 +128,7 @@ def render(state, kube_namespace="obco-lab", connection="lab-openbao"):
     for tenant in TENANTS:
         name = p + "-" + tenant
         if tenant != "root":
-            objects.append(obj("OpenBaoNamespace", name, {"name": bao_namespace(state, tenant)}))
+            objects.append(obj("BaoNamespace", name, {"name": bao_namespace(state, tenant)}))
         for engine, kind in (("kv", "kv"), ("transit", "transit")):
             spec = {"path": p + "-" + engine, "type": kind}
             if engine == "kv":
@@ -143,17 +143,17 @@ def render(state, kube_namespace="obco-lab", connection="lab-openbao"):
         objects += [obj("AuthMount", name + "-oidc", {"path": mount, "type": "oidc"}, tenant),
                     obj("JWTAuthConfig", name + "-oidc", config, tenant)]
         shared = p + "-session"
-        objects += [obj("Policy", name + "-session", {"name": shared,
+        objects += [obj("ACLPolicy", name + "-session", {"name": shared,
                        "policy": 'path "auth/token/revoke-self" { capabilities = ["update"] }\n'}, tenant),
-                    obj("Group", name + "-session", {"name": shared, "type": "internal", "policies": [shared]}, tenant)]
+                    obj("IdentityGroup", name + "-session", {"name": shared, "type": "internal", "policies": [shared]}, tenant)]
         for role in ROLES:
             user = next(x for x in state["users"] if x["namespace"] == tenant and x["role"] == role)
             policy_name = p + "-" + role
-            objects += [obj("Policy", name + "-" + role, {"name": policy_name, "policy": policy(state, role)}, tenant),
-                        obj("Group", name + "-" + role, {"name": policy_name, "type": "external", "policies": [policy_name]}, tenant),
-                        obj("GroupAlias", name + "-" + role, {"aliasName": user["group"], "mountPath": p + "-oidc",
+            objects += [obj("ACLPolicy", name + "-" + role, {"name": policy_name, "policy": policy(state, role)}, tenant),
+                        obj("IdentityGroup", name + "-" + role, {"name": policy_name, "type": "external", "policies": [policy_name]}, tenant),
+                        obj("IdentityGroupAlias", name + "-" + role, {"aliasName": user["group"], "mountPath": p + "-oidc",
                             "groupRef": {"name": name + "-" + role}}, tenant),
-                        obj("GroupMembership", name + "-" + role, {"groupRef": {"name": name + "-session"},
+                        obj("IdentityGroupMembership", name + "-" + role, {"groupRef": {"name": name + "-session"},
                             "memberGroupRef": {"name": name + "-" + role}}, tenant)]
             common = {"name": role, "userClaim": "sub", "tokenTTL": "5m", "tokenMaxTTL": "10m", "tokenNoDefaultPolicy": True}
             objects += [obj("JWTAuthRole", name + "-oidc-" + role, {**common, "mountPath": p + "-oidc", "roleType": "oidc",
@@ -539,17 +539,17 @@ def test_browser(bao, state):
 
 def test_group_policy_change(bao, state, kube, kube_namespace="obco-lab"):
     name = prefix(state) + "-alpha-read"
-    resource = "groups.identity.openbaoconfig.io"
+    resource = "identitygroups.identity.obco.dev"
     def read_group():
         return json.loads(kube.run("-n", kube_namespace, "get", resource, name, "-o", "json"))
     original = read_group()
     if original.get("metadata", {}).get("labels", {}).get("app.kubernetes.io/part-of") != prefix(state):
-        raise RuntimeError("policy-change regression requires the owned lab Group")
-    if original.get("spec", {}).get("namespace") != bao_namespace(state, "alpha") or original["spec"].get("policies") != [prefix(state) + "-read"]:
-        raise RuntimeError("policy-change regression requires the unmodified alpha read Group")
+        raise RuntimeError("policy-change regression requires the owned lab IdentityGroup")
+    if original.get("spec", {}).get("openbaoNamespace") != bao_namespace(state, "alpha") or original["spec"].get("policies") != [prefix(state) + "-read"]:
+        raise RuntimeError("policy-change regression requires the unmodified alpha read IdentityGroup")
     original_spec = copy.deepcopy(original["spec"])
     def manifest(current, spec):
-        return {"apiVersion": original["apiVersion"], "kind": "Group", "metadata": {
+        return {"apiVersion": original["apiVersion"], "kind": "IdentityGroup", "metadata": {
                     "name": name, "namespace": kube_namespace, "labels": original["metadata"]["labels"],
                     "resourceVersion": current["metadata"]["resourceVersion"]}, "spec": spec}
     changed_spec = {**original_spec, "policies": []}
@@ -567,9 +567,9 @@ def test_group_policy_change(bao, state, kube, kube_namespace="obco-lab"):
         try:
             expected = {prefix(state) + "-session"}
             if not auth.get("entity_id") or set(auth.get("identity_policies") or []) != expected or set(auth.get("policies") or []) != expected or auth.get("token_policies"):
-                raise RuntimeError("removing the external Group policy did not change the identity grant")
+                raise RuntimeError("removing the external IdentityGroup policy did not change the identity grant")
             status, _ = bao.request("alpha", "GET", prefix(state) + "-kv/data/app/config", token=token)
-            expect(status, 403, "operator Group policy removal denies data read")
+            expect(status, 403, "operator IdentityGroup policy removal denies data read")
         finally:
             status, _ = bao.request("alpha", "POST", "auth/token/revoke-self", token=token)
             expect(status, 204, "revoke policy-change test token")
@@ -578,13 +578,13 @@ def test_group_policy_change(bao, state, kube, kube_namespace="obco-lab"):
         # The API omits an empty policies slice; this is the same removed grant.
         current_spec = {**current.get("spec", {}), "policies": current.get("spec", {}).get("policies", [])}
         if current["metadata"].get("uid") != original["metadata"].get("uid") or current_spec not in (changed_spec, original_spec):
-            raise RuntimeError("Group changed concurrently; inspect the lab Group spec before retrying")
+            raise RuntimeError("IdentityGroup changed concurrently; inspect the lab IdentityGroup spec before retrying")
         restored = manifest(current, original_spec)
         if current_spec == changed_spec:
             kube.apply([restored])
         kube.wait([restored])
     browser_login(bao, state, "alpha", "read", reader)
-    print("alpha/read: operator Group policy removal denied data; restoration reconciled and fresh OIDC regained read")
+    print("alpha/read: operator IdentityGroup policy removal denied data; restoration reconciled and fresh OIDC regained read")
 
 
 def showcase(bao, state, kube, kube_namespace="obco-lab"):
@@ -621,10 +621,10 @@ def main():
         elif args.command == "apply":
             kube = Kube(args.context)
             objects = render(state, args.kube_namespace, args.connection)
-            namespaces = [o for o in objects if o["kind"] == "OpenBaoNamespace"]
+            namespaces = [o for o in objects if o["kind"] == "BaoNamespace"]
             kube.apply(namespaces)
             kube.wait(namespaces)
-            kube.apply([o for o in objects if o["kind"] != "OpenBaoNamespace"])
+            kube.apply([o for o in objects if o["kind"] != "BaoNamespace"])
             kube.wait(objects)
             print("SaaS identity CRDs Ready")
         else:

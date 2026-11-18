@@ -1,4 +1,4 @@
-# MFALoginEnforcement (identity.openbaoconfig.io/v1alpha1)
+# MFALoginEnforcement (identity.obco.dev/v1alpha1)
 # MFALoginEnforcement requires login MFA at `identity/mfa/login-enforcement/<name>` for the selected auth mounts, auth
 # method types, entities or groups.
 #
@@ -6,9 +6,9 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef, mfaMethods.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/identity/#mfaloginenforcement
+# Reference: https://docs.obco.dev/reference/api/identity/#mfaloginenforcement
 # Curated example: examples/identity/mfaloginenforcement.yaml
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: MFALoginEnforcement
 metadata:
   name: example
@@ -19,7 +19,7 @@ spec:
   authMounts:
   - mountAccessor: example
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -33,4 +33,4 @@ spec:
   mfaMethods:
   - methodID: example
   name: example
-  namespace: example
+  openbaoNamespace: example

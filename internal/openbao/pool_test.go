@@ -272,10 +272,10 @@ func TestRetryOn5xxAndMetrics(t *testing.T) {
 		t.Fatalf("keys=%v hits=%d, want 2 keys after one retry", keys, hits)
 	}
 	if got := testutil.ToFloat64(requestsTotal.WithLabelValues(t.Name(), "LIST", "503")); got != 1 {
-		t.Errorf("openbao_requests_total{code=503} = %v, want 1", got)
+		t.Errorf("obco_requests_total{code=503} = %v, want 1", got)
 	}
 	if got := testutil.ToFloat64(requestsTotal.WithLabelValues(t.Name(), "LIST", "200")); got != 1 {
-		t.Errorf("openbao_requests_total{code=200} = %v, want 1", got)
+		t.Errorf("obco_requests_total{code=200} = %v, want 1", got)
 	}
 	if got := testutil.ToFloat64(requestsTotal.WithLabelValues(t.Name(), "PUT", "200")); got != 1 {
 		t.Errorf("login requests = %v, want 1", got)

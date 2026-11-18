@@ -52,7 +52,7 @@ def install_bao_trust(certificate):
     import json
     current = json.loads(common.lab.kube('-n', 'openbao', 'get', 'statefulset', 'openbao', '-o', 'json'))
     cluster = common.lab.CONTEXT.removeprefix('kind-')
-    if current['metadata'].get('labels', {}).get('lab.openbaoconfig.io/cluster') != cluster:
+    if current['metadata'].get('labels', {}).get('lab.obco.dev/cluster') != cluster:
         raise RuntimeError('Influx trust extension requires the owned disposable OpenBao fixture')
     container = next(item for item in current['spec']['template']['spec']['containers'] if item['name'] == 'openbao')
     trust = next((item for item in container.get('env', []) if item['name'] == 'SSL_CERT_DIR'), None)

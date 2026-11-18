@@ -138,10 +138,10 @@ func TestOIDCScope(t *testing.T) {
 }
 
 func TestOIDCAssignment(t *testing.T) {
-	entity := oidcReady(&identityv1alpha1.Entity{ObjectMeta: oidcMeta(litAlice)}, "11111111-aaaa-bbbb-cccc-000000000001")
-	devA := oidcReady(&identityv1alpha1.Group{ObjectMeta: metav1.ObjectMeta{Name: "dev-a", Namespace: litTeam,
+	entity := oidcReady(&identityv1alpha1.IdentityEntity{ObjectMeta: oidcMeta(litAlice)}, "11111111-aaaa-bbbb-cccc-000000000001")
+	devA := oidcReady(&identityv1alpha1.IdentityGroup{ObjectMeta: metav1.ObjectMeta{Name: "dev-a", Namespace: litTeam,
 		Labels: map[string]string{litTeam: litDev}}}, "22222222-aaaa-bbbb-cccc-000000000001")
-	devB := oidcReady(&identityv1alpha1.Group{ObjectMeta: metav1.ObjectMeta{Name: "dev-b", Namespace: litTeam,
+	devB := oidcReady(&identityv1alpha1.IdentityGroup{ObjectMeta: metav1.ObjectMeta{Name: "dev-b", Namespace: litTeam,
 		Labels: map[string]string{litTeam: litDev}}}, "22222222-aaaa-bbbb-cccc-000000000002")
 	bao := newOIDCBao(map[string]map[string]any{
 		"identity/entity/name/bob": {"id": litBobEntityID},

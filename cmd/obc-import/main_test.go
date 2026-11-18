@@ -30,17 +30,17 @@ func TestParse(t *testing.T) {
 		t.Fatal(err)
 	}
 	if c.address != "https://bao.example" || c.token != "t" || c.namespace != "tenants" || c.output != "-" ||
-		c.connectionKind != "OpenBaoConnection" {
+		c.connectionKind != "BaoConnection" {
 		t.Errorf("defaults from env = %+v", c)
 	}
 
 	c, err = parse(append(required, "-address", "https://other", "-recursive", "-o", "dir", "-server", "openbao",
-		"-connection-kind", "ClusterOpenBaoConnection"), &bytes.Buffer{}, getenv)
+		"-connection-kind", "ClusterBaoConnection"), &bytes.Buffer{}, getenv)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if c.address != "https://other" || !c.recursive || c.output != "dir" || c.server != "openbao" ||
-		c.connectionKind != "ClusterOpenBaoConnection" {
+		c.connectionKind != "ClusterBaoConnection" {
 		t.Errorf("flags = %+v", c)
 	}
 
@@ -71,7 +71,7 @@ func TestSummarize(t *testing.T) {
 			{Object: "UserpassUser/alice", Field: "spec.passwordSecretRef", Secret: "alice", Key: "password"},
 			{Object: "KVSecret/top", Field: "spec.dataFrom[0].secretRef", Secret: "top"},
 		},
-		Notes: []string{"Policy/x: Observe will report drift on policy"},
+		Notes: []string{"ACLPolicy/x: Observe will report drift on policy"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -81,19 +81,19 @@ write-only inputs OpenBao never returns; create these Secrets before managementP
   UserpassUser/alice spec.passwordSecretRef: Secret alice key password
   KVSecret/top spec.dataFrom[0].secretRef: Secret top
 notes:
-  Policy/x: Observe will report drift on policy
+  ACLPolicy/x: Observe will report drift on policy
 `
 	if buf.String() != want {
 		t.Errorf("summary:\n%s\nwant:\n%s", buf.String(), want)
 	}
 
 	buf.Reset()
-	insecure := &corev1alpha1.OpenBaoServer{ObjectMeta: metav1.ObjectMeta{Name: "openbao"},
-		Spec: corev1alpha1.OpenBaoServerSpec{Address: "http://127.0.0.1:8200", AllowInsecureHTTP: true}}
+	insecure := &corev1alpha1.BaoServer{ObjectMeta: metav1.ObjectMeta{Name: "openbao"},
+		Spec: corev1alpha1.BaoServerSpec{Address: "http://127.0.0.1:8200", AllowInsecureHTTP: true}}
 	if err := summarize(&buf, &importer.Result{Objects: []client.Object{insecure}}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), "warning: OpenBaoServer/openbao sets allowInsecureHTTP: true for http://127.0.0.1:8200") {
+	if !strings.Contains(buf.String(), "warning: BaoServer/openbao sets allowInsecureHTTP: true for http://127.0.0.1:8200") {
 		t.Errorf("summary without the insecure-address warning:\n%s", buf.String())
 	}
 }

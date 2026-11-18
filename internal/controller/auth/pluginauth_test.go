@@ -65,7 +65,7 @@ type pluginCase struct {
 	fields     engine.FieldSpec
 	secretRefs []string
 	secrets    []client.Object
-	// connectionRef is the example's connection, which the referenced Policy shares.
+	// connectionRef is the example's connection, which the referenced ACLPolicy shares.
 	connectionRef commonv1alpha1.ConnectionReference
 	golden        struct {
 		Path    string         `json:"path"`
@@ -79,7 +79,7 @@ type pluginCase struct {
 
 func (c pluginCase) mount() string { return strings.Split(c.path, "/")[1] }
 
-// resolver serves the example's Secrets and the Ready Policy that the examples reference in policyRefs.
+// resolver serves the example's Secrets and the Ready ACLPolicy that the examples reference in policyRefs.
 func (c pluginCase) resolver(withSecrets bool) engine.Resolver {
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
@@ -88,7 +88,7 @@ func (c pluginCase) resolver(withSecrets bool) engine.Resolver {
 	if err := sysv1alpha1.AddToScheme(scheme); err != nil {
 		panic(err)
 	}
-	policy := &sysv1alpha1.Policy{ObjectMeta: metav1.ObjectMeta{Name: "obco-team-a-reader", Namespace: pluginTestNamespace}}
+	policy := &sysv1alpha1.ACLPolicy{ObjectMeta: metav1.ObjectMeta{Name: "obco-team-a-reader", Namespace: pluginTestNamespace}}
 	policy.Spec.ConnectionRef = c.connectionRef
 	policy.Spec.Name = "team-a-reader"
 	policy.Status.Conditions = []metav1.Condition{{Type: commonv1alpha1.ConditionReady, Status: metav1.ConditionTrue}}

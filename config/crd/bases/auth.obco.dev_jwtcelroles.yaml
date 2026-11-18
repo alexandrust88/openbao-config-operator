@@ -1,0 +1,397 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: jwtcelroles.auth.obco.dev
+spec:
+  group: auth.obco.dev
+  names:
+    categories:
+    - obco
+    - obco-auth
+    kind: JWTCELRole
+    listKind: JWTCELRoleList
+    plural: jwtcelroles
+    singular: jwtcelrole
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Synced")].status
+      name: Synced
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: "JWTCELRole manages a CEL role of an OpenBao JWT auth method
+          at auth/<mountPath>/cel/role/<name>. OpenBao only. Use it when a CEL program
+          over the JWT claims, rather than fixed bound claims, must decide the login
+          and the issued token.\n\nExample:\n\n\tspec:\n\t  connectionRef:\n\t    name:
+          openbao\n\t  mountPath: jwt\n\t  boundAudiences: [openbao]\n\t  celProgram:\n\t
+          \   expression: \"claims.sub == 'ci-runner' ? pb.Auth{policies: ['ci-read']}
+          : false\"\n\t  message: permission denied"
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Desired state of a CEL role of a JWT auth method, written
+              to auth/<mountPath>/cel/role/<name>. OpenBao replaces the whole role
+              on every write, so unset fields are reset to their OpenBao defaults.
+            properties:
+              boundAudiences:
+                description: 'Values accepted in the aud claim; any match is enough.
+                  Unlike a JWTAuthRole, a JWT without an aud claim is not rejected,
+                  so the program must check it when needed. Maps to `bound_audiences`.
+                  Example: [openbao]'
+                items:
+                  maxLength: 512
+                  type: string
+                maxItems: 64
+                type: array
+                x-kubernetes-list-type: set
+              celProgram:
+                description: 'CEL program that authorizes the login and shapes the
+                  issued token. OpenBao applies no claim checks beyond signature,
+                  leeways and boundAudiences; the program must validate everything
+                  else. Required. Maps to `cel_program`. Example: {expression: "claims.sub
+                  == ''ci-runner''"}'
+                properties:
+                  expression:
+                    description: 'Main CEL expression, evaluated over the JWT claims.
+                      It returns true to allow the login, false or a string message
+                      to deny it, or a pb.Auth object that describes the token to
+                      issue (policies, TTLs, metadata). Required. Maps to `cel_program.expression`.
+                      Example: "claims.sub == ''ci-runner'' ? pb.Auth{policies: [''ci-read'']}
+                      : false"'
+                    maxLength: 16384
+                    minLength: 1
+                    type: string
+                  variables:
+                    description: 'Variables evaluated in order before the main expression,
+                      at most 32. Maps to `cel_program.variables`. Example: [{name:
+                      is_admin, expression: "''admins'' in claims.groups"}]'
+                    items:
+                      description: Named CEL expression that later variables and the
+                        main expression can use.
+                      properties:
+                        expression:
+                          description: 'CEL expression that computes the variable;
+                            it can read the JWT claims as claims. Maps to `cel_program.variables[].expression`.
+                            Example: "''platform-admins'' in claims.groups"'
+                          maxLength: 16384
+                          minLength: 1
+                          type: string
+                        name:
+                          description: 'Name of the variable, referenced by later
+                            variables and the main expression. Letters, digits and
+                            underscores, not starting with a digit. Maps to `cel_program.variables[].name`.
+                            Example: is_admin'
+                          maxLength: 128
+                          minLength: 1
+                          pattern: ^[A-Za-z_][A-Za-z0-9_]*$
+                          type: string
+                      required:
+                      - expression
+                      - name
+                      type: object
+                    maxItems: 32
+                    type: array
+                    x-kubernetes-list-type: atomic
+                required:
+                - expression
+                type: object
+              clockSkewLeeway:
+                anyOf:
+                - type: integer
+                - type: string
+                description: 'Clock skew allowed on every time-based claim (iat, exp,
+                  nbf): a number of seconds, a duration such as 30s or 2m, or -1 to
+                  disable it. 0 or unset uses the OpenBao default of 60 seconds. Maps
+                  to `clock_skew_leeway`. Example: 60'
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must be -1, a number of seconds or a duration such as 30s
+                  rule: 'type(self) == int ? self >= -1 : self.matches(''^([0-9]+(s|m|h))+$'')'
+              connectionRef:
+                description: Connection used to reach and log in to OpenBao. Immutable.
+                properties:
+                  kind:
+                    default: BaoConnection
+                    description: 'Kind of the connection: BaoConnection (in the same
+                      Kubernetes namespace as this resource) or ClusterBaoConnection
+                      (cluster-scoped; its allowedNamespaces must select this namespace).
+                      Default: BaoConnection.'
+                    enum:
+                    - BaoConnection
+                    - ClusterBaoConnection
+                    type: string
+                  name:
+                    description: 'Name of the BaoConnection or ClusterBaoConnection.
+                      Example: openbao'
+                    maxLength: 253
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                type: object
+              creationPolicy:
+                default: Create
+                description: 'How an object that already exists in OpenBao, and is
+                  not yet owned by this resource, is treated. Create (default): create
+                  the object; an existing one is refused with reason Conflict. Adopt:
+                  take over an existing object and never create one. CreateOrAdopt:
+                  create it, or take over an existing one. Settings that always exist
+                  in OpenBao (configuration singletons) need Adopt or CreateOrAdopt.'
+                enum:
+                - Create
+                - Adopt
+                - CreateOrAdopt
+                type: string
+              deletionPolicy:
+                default: Orphan
+                description: 'What happens in OpenBao when this resource is deleted.
+                  Orphan (default): the OpenBao object stays. Delete: the object is
+                  removed (a configuration singleton is reset to its defaults); data
+                  and key holders (mounts, namespaces, KV data, audit devices, endpoints,
+                  transit, PKI, SSH CA and TOTP keys, MFA methods, entities) are removed
+                  only while the resource carries the annotation obco.dev/allow-destructive-delete:
+                  "true". Kinds whose OpenBao object cannot be deleted reject Delete.'
+                enum:
+                - Delete
+                - Orphan
+                type: string
+              driftDetection:
+                default: Enabled
+                description: 'Whether OpenBao is re-read periodically to detect and
+                  repair out-of-band changes. Enabled (default): re-read every driftInterval.
+                  Disabled: write only when the spec or a referenced Secret changes.'
+                enum:
+                - Enabled
+                - Disabled
+                type: string
+              driftInterval:
+                description: 'How often OpenBao is re-read for drift, as a duration
+                  of at least 30s. Default: the operator''s interval for the kind
+                  (15m for kinds that grant access such as policies, auth mounts and
+                  roles, 1h for the rest), with jitter. Example: 30m'
+                maxLength: 32
+                type: string
+                x-kubernetes-validations:
+                - message: driftInterval must be at least 30s
+                  rule: duration(self) >= duration('30s')
+              expirationLeeway:
+                anyOf:
+                - type: integer
+                - type: string
+                description: 'Clock skew allowed when checking the exp claim: a number
+                  of seconds, a duration such as 30s or 2m, or -1 to disable the check.
+                  0 or unset uses the OpenBao default of 150 seconds. Maps to `expiration_leeway`.
+                  Example: 30s'
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must be -1, a number of seconds or a duration such as 30s
+                  rule: 'type(self) == int ? self >= -1 : self.matches(''^([0-9]+(s|m|h))+$'')'
+              managementPolicy:
+                default: Manage
+                description: 'Whether the operator writes to OpenBao. Manage (default):
+                  converge OpenBao to the spec, create and delete as the policies
+                  say. Observe: only read the object and report drift in the conditions;
+                  never write or delete.'
+                enum:
+                - Manage
+                - Observe
+                type: string
+              message:
+                description: 'Static error message returned when the program denies
+                  a login. Maps to `message`. Example: permission denied'
+                maxLength: 1024
+                type: string
+              mountPath:
+                default: jwt
+                description: 'Path of the JWT auth method, without the auth/ prefix.
+                  Defaults to jwt. Immutable. Example: jwt'
+                maxLength: 128
+                minLength: 1
+                pattern: ^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*$
+                type: string
+              name:
+                description: 'Name of the CEL role in OpenBao, used in the auth/<mountPath>/cel/login
+                  request. Defaults to metadata.name. Immutable. Example: ci-runner'
+                maxLength: 128
+                minLength: 1
+                pattern: ^[a-z0-9_]([a-z0-9_.-]*[a-z0-9_])?$
+                type: string
+              notBeforeLeeway:
+                anyOf:
+                - type: integer
+                - type: string
+                description: 'Clock skew allowed when checking the nbf claim: a number
+                  of seconds, a duration such as 30s or 2m, or -1 to disable the check.
+                  0 or unset uses the OpenBao default of 150 seconds. Maps to `not_before_leeway`.
+                  Example: 30s'
+                x-kubernetes-int-or-string: true
+                x-kubernetes-validations:
+                - message: must be -1, a number of seconds or a duration such as 30s
+                  rule: 'type(self) == int ? self >= -1 : self.matches(''^([0-9]+(s|m|h))+$'')'
+              openbaoNamespace:
+                description: 'OpenBao namespace of the object, relative to the connection''s
+                  base namespace; empty means the connection namespace itself. Segments
+                  are separated by "/", without leading or trailing slash. Immutable:
+                  it cannot be added, changed or removed after creation. Example:
+                  team-a/apps'
+                maxLength: 256
+                pattern: ^[A-Za-z0-9_-][A-Za-z0-9._-]*(/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$
+                type: string
+            required:
+            - celProgram
+            - connectionRef
+            type: object
+            x-kubernetes-validations:
+            - message: mountPath is immutable
+              rule: has(self.mountPath) == has(oldSelf.mountPath) && (!has(self.mountPath)
+                || self.mountPath == oldSelf.mountPath)
+            - message: name is immutable
+              rule: has(self.name) == has(oldSelf.name) && (!has(self.name) || self.name
+                == oldSelf.name)
+            - message: openbaoNamespace is immutable
+              rule: has(self.openbaoNamespace) == has(oldSelf.openbaoNamespace) &&
+                (!has(self.openbaoNamespace) || self.openbaoNamespace == oldSelf.openbaoNamespace)
+            - message: connectionRef is immutable
+              rule: self.connectionRef == oldSelf.connectionRef
+          status:
+            description: Observed state of the CEL role, written by the operator.
+            properties:
+              acquired:
+                description: 'How the operator came to own the object: Created (it
+                  created it) or Adopted (it took over an existing one). Empty until
+                  owned.'
+                type: string
+              conditions:
+                description: 'Current state as conditions: Ready (the OpenBao object
+                  matches the spec) and Synced (the last reconcile succeeded), each
+                  with a reason such as Available, Drifted, Conflict, ConnectionNotReady
+                  or PermissionDenied, and the generation it describes.'
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              id:
+                description: 'Identifier OpenBao generated for the object (an entity,
+                  group or alias ID, or a mount accessor), for kinds that have one;
+                  other resources reference it. Example: 6c9f3e0a-1b2c-4d5e-8f90-123456789abc'
+                type: string
+              observedGeneration:
+                description: The metadata.generation of this resource that the operator
+                  last reconciled.
+                format: int64
+                type: integer
+              openbaoNamespace:
+                description: 'Absolute OpenBao namespace the object was written in;
+                  empty means the root namespace. If it later differs from the spec,
+                  reconciling stops with reason NamespaceChanged. Example: team-a/apps'
+                type: string
+              path:
+                description: 'Full OpenBao API path of the object, including its namespace,
+                  as last written; deletion uses it even after the spec changed. Example:
+                  team-a/sys/policies/acl/app-read'
+                type: string
+              rotationNonce:
+                description: Value of the resource's rotation nonce when one-time
+                  inputs, such as a root credential that OpenBao rotates afterwards,
+                  were last sent; changing the nonce in the spec sends them again.
+                type: string
+              serverID:
+                description: 'Cluster ID of the OpenBao server the object was acquired
+                  on. If the connection later reaches another server, reconciling
+                  stops with reason ServerChanged and nothing is written or deleted.
+                  Example: 80f7de92-c12e-e960-4754-255c32fc6b53'
+                type: string
+              writeOnlyHash:
+                description: Keyed hash (HMAC-SHA256) of the write-only inputs, such
+                  as passwords read from Secrets; a change forces a write. It never
+                  contains or reveals the values.
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

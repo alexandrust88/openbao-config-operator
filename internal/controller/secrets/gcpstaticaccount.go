@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=gcpstaticaccounts,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=gcpstaticaccounts/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=gcpstaticaccounts/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=gcpstaticaccounts,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=gcpstaticaccounts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=gcpstaticaccounts/finalizers,verbs=update
 
 // SetupGCPStaticAccount registers the GCPStaticAccount controller with the manager.
 func SetupGCPStaticAccount(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

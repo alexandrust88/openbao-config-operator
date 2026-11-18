@@ -2,7 +2,7 @@
 name: db-{{ .root.Values.provider }}-{{ .root.Values.tenant }}-{{ .suffix }}
 namespace: {{ .root.Values.configNamespace }}
 labels:
-  lab.openbaoconfig.io/profile: database
+  lab.obco.dev/profile: database
 {{- end -}}
 {{- define "database-demo.common" -}}
 connectionRef:

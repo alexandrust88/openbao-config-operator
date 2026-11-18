@@ -127,7 +127,7 @@ gpg_batch=(gpg --homedir "$gnupg" --batch --pinentry-mode loopback --passphrase-
 "${gpg_batch[@]}" --export-secret-keys >"$out/keys/dryrun-helm.key"
 "${gpg_batch[@]}" --armor --export >"$out/keys/dryrun-helm.asc"
 tgz=$(GNUPGHOME=$gnupg SIGN_KEYRING=$out/keys/dryrun-helm.key SIGN_PASSPHRASE_FILE=$gnupg/passphrase \
-  SIGN_KEY_URL=https://alexandrust88.github.io/openbao-config-operator/charts/pgp-public-key.asc \
+  SIGN_KEY_URL=https://docs.obco.dev/charts/pgp-public-key.asc \
   "$repo_root/hack/release/package-chart.sh" "$tag" "$image" "$index_digest" "$out/dist")
 "$HELM" verify --keyring "$out/keys/dryrun-helm.asc" "$tgz" >/dev/null || { echo "dry-run: helm verify failed for $tgz" >&2; exit 1; }
 fingerprint=$("${gpg_batch[@]}" --with-colons --show-keys "$out/keys/dryrun-helm.asc" | awk -F: '$1 == "fpr" {print $10; exit}')
@@ -159,7 +159,7 @@ rebuilt=$("$repo_root/hack/release/examples-bundle.sh" "$tag" "$out/examples-reb
 cmp -s "$examples" "$rebuilt" || { echo "dry-run: $(basename "$examples") is not reproducible" >&2; exit 1; }
 rm -rf -- "$out/examples-rebuild"
 listing=$(tar -tzf "$examples")
-for want in examples/core/openbaoserver.yaml examples-generated/core/openbaoserver.yaml; do
+for want in examples/core/baoserver.yaml examples-generated/core/baoserver.yaml; do
   grep -qxF "$want" <<<"$listing" || { echo "dry-run: $(basename "$examples") lacks $want" >&2; exit 1; }
 done
 if grep -vE '^examples(-generated)?/[^./][^/]*(/[^./][^/]*)*$' <<<"$listing"; then

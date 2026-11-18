@@ -9,46 +9,46 @@ replacements:
       fieldPath: data.kubernetesNamespace
     targets:
       - select:
-          kind: OpenBaoServer
+          kind: BaoServer
           name: conn-server-dev
         fieldPaths:
           - spec.allowedNamespaces.matchExpressions.0.values.0
       - select:
-          kind: OpenBaoServer
+          kind: BaoServer
           name: conn-server-secret-ca
         fieldPaths:
           - spec.caBundle.secretRef.namespace
           - spec.allowedNamespaces.matchLabels.[kubernetes.io/metadata.name]
       - select:
-          kind: ClusterOpenBaoConnection
+          kind: ClusterBaoConnection
           name: conn-cluster-approle
         fieldPaths:
           - spec.allowedNamespaces.matchExpressions.0.values.0
           - spec.auth.appRole.roleIDSecretRef.namespace
           - spec.auth.appRole.secretIDSecretRef.namespace
       - select:
-          kind: ClusterOpenBaoConnection
+          kind: ClusterBaoConnection
           name: conn-cluster-jwt-sa
         fieldPaths:
           - spec.allowedNamespaces.matchLabels.[kubernetes.io/metadata.name]
           - spec.auth.jwt.serviceAccountRef.namespace
       - select:
-          kind: ClusterOpenBaoConnection
+          kind: ClusterBaoConnection
           name: conn-cluster-jwt-injected
         fieldPaths:
           - spec.allowedNamespaces.matchLabels.[kubernetes.io/metadata.name]
       - select:
-          kind: ClusterOpenBaoConnection
+          kind: ClusterBaoConnection
           name: conn-cluster-k8s-injected
         fieldPaths:
           - spec.allowedNamespaces.matchLabels.[kubernetes.io/metadata.name]
       - select:
-          kind: ClusterOpenBaoConnection
+          kind: ClusterBaoConnection
           name: conn-cluster-token-file
         fieldPaths:
           - spec.allowedNamespaces.matchLabels.[kubernetes.io/metadata.name]
       - select:
-          kind: ClusterOpenBaoConnection
+          kind: ClusterBaoConnection
           name: conn-cluster-token-secret
         fieldPaths:
           - spec.allowedNamespaces.matchLabels.[kubernetes.io/metadata.name]

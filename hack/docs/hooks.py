@@ -119,6 +119,8 @@ def expand(nav, docs):
             index = f"reference/api/{group}.md"
             if index in generated:
                 kinds = sorted(p for p in generated if p.startswith(f"reference/api/{group}-"))
+                # The nav shows the kind (the page H1); the page title keeps "<Kind> CRD reference" for search.
+                kinds = [{re.search(r"^# (.+)$", generated[p], re.M).group(1): p} for p in kinds]
                 result.append({apiref.GROUP_LABELS[group]: [index, *kinds]})
         return result
     if isinstance(nav, str) and nav.endswith("/"):

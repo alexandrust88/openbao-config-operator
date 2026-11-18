@@ -246,7 +246,7 @@ func TestMFAMethodObserveWriteDelete(t *testing.T) {
 func TestMFALoginEnforcement(t *testing.T) {
 	method := oidcReady(&identityv1alpha1.MFAMethod{ObjectMeta: oidcMeta(litOtp)}, "method-from-ref")
 	mount := oidcReady(&sysv1alpha1.AuthMount{ObjectMeta: oidcMeta(litUserpass)}, "auth_userpass_ref")
-	group := oidcReady(&identityv1alpha1.Group{ObjectMeta: oidcMeta("admins")}, "group-from-ref")
+	group := oidcReady(&identityv1alpha1.IdentityGroup{ObjectMeta: oidcMeta("admins")}, "group-from-ref")
 	bao := newOIDCBao(map[string]map[string]any{
 		"identity/mfa/method/m-1": {"id": litM1, litName: "duo-login", litNamespacePath: ""},
 		"sys/auth":                {"oidc/": map[string]any{litAccessor: litAuthOIDCName, litType: "oidc"}},
@@ -319,9 +319,9 @@ func TestMFAMethodIsDestructive(t *testing.T) {
 }
 
 func TestEntityIsDestructive(t *testing.T) {
-	var kind engine.Destructive = EntityAdapter{}
+	var kind engine.Destructive = IdentityEntityAdapter{}
 	if !kind.Destructive() {
-		t.Error("Entity must need the destructive-delete annotation: deleting an entity drops its TOTP enrolments")
+		t.Error("IdentityEntity must need the destructive-delete annotation: deleting an entity drops its TOTP enrolments")
 	}
 }
 

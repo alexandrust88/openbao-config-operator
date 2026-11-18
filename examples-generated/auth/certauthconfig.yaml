@@ -1,20 +1,20 @@
-# CertAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# CertAuthConfig (auth.obco.dev/v1alpha1)
 # CertAuthConfig manages the mount-wide settings of an OpenBao TLS certificate auth method at auth/<mountPath>/config.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#certauthconfig
+# Reference: https://docs.obco.dev/reference/api/auth/#certauthconfig
 # Curated example: examples/auth/certauthconfig.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: CertAuthConfig
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Adopt
   deletionPolicy: Orphan
@@ -24,5 +24,5 @@ spec:
   enableIdentityAliasMetadata: true
   managementPolicy: Manage
   mountPath: cert
-  namespace: example
   ocspCacheSize: 2
+  openbaoNamespace: example

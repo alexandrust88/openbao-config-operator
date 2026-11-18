@@ -29,13 +29,13 @@ func TestEmptySpecMatchesServerDefaults(t *testing.T) {
 		assertDiff(t, desired, map[string]any{"description": "old", litTemplate: ""}, a.Fields(), "description")
 	})
 	t.Run("group", func(t *testing.T) {
-		a := GroupAdapter{}
-		desired, _ := a.Desired(ctx, nil, &identityv1alpha1.Group{ObjectMeta: idtMeta("g0")})
+		a := IdentityGroupAdapter{}
+		desired, _ := a.Desired(ctx, nil, &identityv1alpha1.IdentityGroup{ObjectMeta: idtMeta("g0")})
 		assertNoDiff(t, desired, map[string]any{"type": "internal", "policies": nil, "metadata": nil}, a.Fields())
 	})
 	t.Run("entity alias", func(t *testing.T) {
-		entity := idtReady(&identityv1alpha1.Entity{ObjectMeta: idtMeta(litAlice)}, idtEntityID)
-		a := EntityAliasAdapter{Reader: idtReader(t, entity), Conns: idtConns{client: newIdtBao()}}
+		entity := idtReady(&identityv1alpha1.IdentityEntity{ObjectMeta: idtMeta(litAlice)}, idtEntityID)
+		a := IdentityEntityAliasAdapter{Reader: idtReader(t, entity), Conns: idtConns{client: newIdtBao()}}
 		ea := newEntityAlias()
 		ea.Spec.CustomMetadata = nil
 		desired, err := a.Desired(ctx, nil, ea)
@@ -119,7 +119,7 @@ func TestMetadataMarker(t *testing.T) {
 }
 
 func TestGroupMembershipSharesItsGroupPath(t *testing.T) {
-	a := GroupMembershipAdapter{}
+	a := IdentityGroupMembershipAdapter{}
 	if !a.SharedPath() {
 		t.Error("several GroupMemberships write to one group and must opt out of path ownership")
 	}
@@ -129,21 +129,21 @@ func TestGroupMembershipSharesItsGroupPath(t *testing.T) {
 }
 
 func TestDriftTiers(t *testing.T) {
-	for name, tier := range map[string]engine.DriftTier{"group": GroupAdapter{}, "groupmembership": GroupMembershipAdapter{}} {
+	for name, tier := range map[string]engine.DriftTier{"group": IdentityGroupAdapter{}, "groupmembership": IdentityGroupMembershipAdapter{}} {
 		if tier.DriftTier() != engine.TierAccessCritical {
 			t.Errorf("%s must be access-critical", name)
 		}
 	}
 }
 
-type entityMarkerAdapter struct{ EntityAdapter }
+type entityMarkerAdapter struct{ IdentityEntityAdapter }
 
 func (a entityMarkerAdapter) Mark(desired engine.Payload, m engine.OwnershipMarker) engine.Payload {
-	return a.EntityAdapter.Mark(nil, desired, m)
+	return a.IdentityEntityAdapter.Mark(nil, desired, m)
 }
 
-type groupMarkerAdapter struct{ GroupAdapter }
+type groupMarkerAdapter struct{ IdentityGroupAdapter }
 
 func (a groupMarkerAdapter) Mark(desired engine.Payload, m engine.OwnershipMarker) engine.Payload {
-	return a.GroupAdapter.Mark(nil, desired, m)
+	return a.IdentityGroupAdapter.Mark(nil, desired, m)
 }

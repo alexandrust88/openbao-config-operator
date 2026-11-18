@@ -35,10 +35,10 @@ const (
 	injectedJWTType  = "jwt"
 )
 
-func injectedClusterConnection(auth corev1alpha1.ClusterConnectionAuth) *corev1alpha1.ClusterOpenBaoConnection {
-	return &corev1alpha1.ClusterOpenBaoConnection{
+func injectedClusterConnection(auth corev1alpha1.ClusterConnectionAuth) *corev1alpha1.ClusterBaoConnection {
+	return &corev1alpha1.ClusterBaoConnection{
 		ObjectMeta: metav1.ObjectMeta{Name: injectedConnName, UID: "uid-cluster", Generation: 1},
-		Spec: corev1alpha1.ClusterOpenBaoConnectionSpec{
+		Spec: corev1alpha1.ClusterBaoConnectionSpec{
 			ConnectionSpec:    corev1alpha1.ConnectionSpec{ServerRef: corev1alpha1.ServerReference{Name: openbaoName}},
 			Auth:              auth,
 			AllowedNamespaces: &metav1.LabelSelector{},
@@ -46,9 +46,9 @@ func injectedClusterConnection(auth corev1alpha1.ClusterConnectionAuth) *corev1a
 	}
 }
 
-// injectedReconciler reconciles conn against a Ready OpenBaoServer at address.
+// injectedReconciler reconciles conn against a Ready BaoServer at address.
 func injectedReconciler(t *testing.T, pool connection.Pool, address string,
-	conn *corev1alpha1.ClusterOpenBaoConnection) *connectionReconciler {
+	conn *corev1alpha1.ClusterBaoConnection) *connectionReconciler {
 	t.Helper()
 	server := testServer()
 	server.Spec.Address, server.Spec.AllowInsecureHTTP = address, true
@@ -58,18 +58,18 @@ func injectedReconciler(t *testing.T, pool connection.Pool, address string,
 		resolver:  &connection.Resolver{Client: c, Pool: pool},
 		pool:      pool,
 		kind:      commonv1alpha1.ConnectionKindCluster,
-		newObject: func() connectionObject { return &corev1alpha1.ClusterOpenBaoConnection{} },
-		newList:   func() client.ObjectList { return &corev1alpha1.ClusterOpenBaoConnectionList{} },
+		newObject: func() connectionObject { return &corev1alpha1.ClusterBaoConnection{} },
+		newList:   func() client.ObjectList { return &corev1alpha1.ClusterBaoConnectionList{} },
 	}
 }
 
-func injectedReconcileAndGet(t *testing.T, r *connectionReconciler) *corev1alpha1.ClusterOpenBaoConnection {
+func injectedReconcileAndGet(t *testing.T, r *connectionReconciler) *corev1alpha1.ClusterBaoConnection {
 	t.Helper()
 	key := types.NamespacedName{Name: injectedConnName}
 	if _, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: key}); err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	got := &corev1alpha1.ClusterOpenBaoConnection{}
+	got := &corev1alpha1.ClusterBaoConnection{}
 	if err := r.Get(context.Background(), key, got); err != nil {
 		t.Fatal(err)
 	}

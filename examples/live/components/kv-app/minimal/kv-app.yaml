@@ -1,4 +1,4 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: kv
@@ -7,7 +7,7 @@ spec:
     name: openbao
   type: kv-v2
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVConfig
 metadata:
   name: kv-config
@@ -17,7 +17,7 @@ spec:
   creationPolicy: CreateOrAdopt
   mountPath: kv
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: PasswordPolicy
 metadata:
   name: app-passwords
@@ -30,7 +30,7 @@ spec:
       charset = "abcdefghijklmnopqrstuvwxyz0123456789"
     }
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVSecret
 metadata:
   name: app-config
@@ -43,7 +43,7 @@ spec:
     - secretRef:
         name: live-kv-app
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: RandomSecret
 metadata:
   name: app-password
@@ -53,8 +53,8 @@ spec:
   mountPath: kv
   path: app/password
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: app-reader
 spec:
@@ -65,7 +65,7 @@ spec:
       capabilities = ["read"]
     }
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVSecretMetadata
 metadata:
   name: kv-app-metadata

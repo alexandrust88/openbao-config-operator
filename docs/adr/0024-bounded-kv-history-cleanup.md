@@ -4,7 +4,9 @@ description: "Bound KV v2 destructive cleanup to a persisted version cutoff, ret
 
 # 0024. Bounded KV history cleanup
 
-Status: proposed for this release. Date: 2026-11-17.
+Status: accepted; implemented. Date: 2026-11-17.
+
+Update 2026-11-18: [OpenBao policy for the operator](../operate/openbao-policy.md) lists the permissions this cleanup needs.
 
 ## Context
 

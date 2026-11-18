@@ -21,10 +21,10 @@ def apply():
     state = state_from_credentials(identity.credentials())
     kube = lab.Kube(identity.CONTEXT)
     objects = lab.render(state, identity.NAMESPACE, identity.CONNECTION)
-    namespaces = [obj for obj in objects if obj["kind"] == "OpenBaoNamespace"]
+    namespaces = [obj for obj in objects if obj["kind"] == "BaoNamespace"]
     kube.apply(namespaces)
     kube.wait(namespaces)
-    kube.apply([obj for obj in objects if obj["kind"] != "OpenBaoNamespace"])
+    kube.apply([obj for obj in objects if obj["kind"] != "BaoNamespace"])
     kube.wait(objects)
     print("Keycloak OIDC showcase CRDs Ready")
 

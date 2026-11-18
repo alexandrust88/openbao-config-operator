@@ -220,12 +220,12 @@ func confStartCluster(t *testing.T, assets, crdDir, dir string) confCluster {
 	return confCluster{k8s: k8s, kubeconfig: kubeconfig}
 }
 
-// confCreateServer creates the cluster-scoped OpenBaoServer named confConnection that admits every namespace;
-// only CRD sets with the OpenBaoServer kind (v2) have it.
+// confCreateServer creates the cluster-scoped BaoServer named confConnection that admits every namespace;
+// only CRD sets with the BaoServer kind (v2) have it.
 func confCreateServer(ctx context.Context, k8s client.Client, addr string) error {
 	server := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "core.openbaoconfig.io/v1alpha1",
-		"kind":       "OpenBaoServer",
+		"apiVersion": "core.obco.dev/v1alpha1",
+		"kind":       "BaoServer",
 		"metadata":   map[string]any{confKeyName: confConnection},
 		"spec": map[string]any{"address": addr, "allowInsecureHTTP": true, "requestTimeout": "10s",
 			"allowedNamespaces": map[string]any{}},
@@ -233,9 +233,9 @@ func confCreateServer(ctx context.Context, k8s client.Client, addr string) error
 	return k8s.Create(ctx, server)
 }
 
-// confConnect creates the namespace, the AppRole credentials Secret and an OpenBaoConnection named
+// confConnect creates the namespace, the AppRole credentials Secret and a BaoConnection named
 // confConnection whose base OpenBao namespace is baoNamespace (root when empty), and waits for it to be Ready.
-// With an OpenBaoServer (v2) the connection names it; otherwise it carries the address itself.
+// With a BaoServer (v2) the connection names it; otherwise it carries the address itself.
 func confConnect(ctx context.Context, e *confEnv, ns, baoNamespace string) error {
 	k8s := e.cluster.k8s
 	if err := k8s.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}); err != nil &&
@@ -262,12 +262,12 @@ func confConnect(ctx context.Context, e *confEnv, ns, baoNamespace string) error
 		spec["address"], spec["requestTimeout"] = e.bao.addr, "10s"
 	}
 	if baoNamespace != "" {
-		spec["namespace"] = baoNamespace
-		spec["authNamespace"] = ""
+		spec["openbaoNamespace"] = baoNamespace
+		spec["openbaoAuthNamespace"] = ""
 	}
 	conn := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "core.openbaoconfig.io/v1alpha1",
-		"kind":       "OpenBaoConnection",
+		"apiVersion": "core.obco.dev/v1alpha1",
+		"kind":       "BaoConnection",
 		"metadata":   map[string]any{confKeyName: confConnection, "namespace": ns},
 		"spec":       spec,
 	}}
@@ -338,7 +338,7 @@ func (m *confManager) stop() {
 	}
 }
 
-// confMetrics holds openbao_writes_total by kind and controller_runtime_reconcile_total by controller.
+// confMetrics holds obco_writes_total by kind and controller_runtime_reconcile_total by controller.
 type confMetrics struct {
 	writes     map[string]float64
 	reconciles map[string]float64
@@ -360,7 +360,7 @@ func (m *confManager) scrape() (confMetrics, error) {
 	sc.Buffer(make([]byte, 1<<20), 1<<20)
 	for sc.Scan() {
 		line := sc.Text()
-		if !strings.HasPrefix(line, "openbao_writes_total{") && !strings.HasPrefix(line, "controller_runtime_reconcile_total{") {
+		if !strings.HasPrefix(line, "obco_writes_total{") && !strings.HasPrefix(line, "controller_runtime_reconcile_total{") {
 			continue
 		}
 		cut := strings.LastIndexByte(line, ' ')
@@ -373,7 +373,7 @@ func (m *confManager) scrape() (confMetrics, error) {
 		}
 		name, labels := confParseSeries(line[:cut])
 		switch name {
-		case "openbao_writes_total":
+		case "obco_writes_total":
 			out.writes[labels["kind"]] += value
 		case "controller_runtime_reconcile_total":
 			out.reconciles[labels["controller"]] += value

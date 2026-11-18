@@ -66,7 +66,7 @@ class DatabaseTests(unittest.TestCase):
                         connection = next(item['spec'] for item in resources if item['kind'] == 'DatabaseConnection')
                         role = next(item['spec'] for item in resources if item['kind'] == 'DatabaseRole')
                         self.assertEqual(connection['allowedRoles'], ['reader'])
-                        self.assertEqual(connection.get('namespace'), None if tenant == 'root' else 'lab-alpha')
+                        self.assertEqual(connection.get('openbaoNamespace'), None if tenant == 'root' else 'lab-alpha')
                         self.assertIn('lab_' + tenant, role['creationStatements'][0])
                         self.assertNotIn('GRANT ALL', role['creationStatements'][0])
                         self.assertIn('passwordSecretRef', connection)

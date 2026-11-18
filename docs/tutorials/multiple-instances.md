@@ -1,25 +1,26 @@
 ---
-description: "Connect one OpenBao Config Operator installation to multiple OpenBao servers with separate identities and credentials."
+title: "Tutorial: manage several OpenBao servers"
+description: "Connect one OpenBao Config Operator installation to two OpenBao servers and give each its own configuration."
 ---
 
 # Manage several OpenBao servers
 
 In this tutorial you are the platform owner again. You start a second OpenBao next to the
-quickstart's, declare it as its own server with its own connection, and give each server a
-different configuration plus one policy they share. At the end you check that each server holds
-exactly its own objects.
+quickstart's, declare it to the OpenBao Config Operator as its own server with its own connection,
+and give each server a different configuration plus one policy they share. At the end you check
+that each server holds exactly its own objects.
 
 It takes about five minutes.
 
 ## Before you begin
 
-Finish [Set up the platform](platform-owner.md). This tutorial reuses its namespace `platform`,
-its connection `platform` to the first OpenBao, and its operator policy.
+Finish [Set up the platform](platform-owner.md). This tutorial reuses its Kubernetes namespace
+`platform`, its connection `platform` to the first OpenBao, and its operator policy.
 
 ## 1. Start a second OpenBao
 
 Apply [`examples/tutorials/multiple-instances/openbao-2.yaml`](../../examples/tutorials/multiple-instances/openbao-2.yaml):
-the same dev-mode OpenBao as the quickstart's, in the namespace `openbao-2`.
+the same dev-mode OpenBao as the quickstart's, in the Kubernetes namespace `openbao-2`.
 
 ```bash
 --8<-- "hack/docs/tutorial-multiple-instances.sh:openbao-2"
@@ -53,35 +54,37 @@ Success! Data written to: auth/kubernetes/role/openbao-config-operator
 
 ## 3. Declare the second server and its connection
 
-The second OpenBao gets its own `OpenBaoServer` and its own connection. The server `openbao-2`
-sets no `allowedNamespaces`, so no tenant connection may use it; the `ClusterOpenBaoConnection`
-`platform-2` reaches it for the namespace `platform`.
+The second OpenBao gets its own `BaoServer` and its own connection. The server `openbao-2`
+sets no `allowedNamespaces`, so no tenant connection may use it; the `ClusterBaoConnection`
+`platform-2` reaches it for the Kubernetes namespace `platform`.
 
 The first OpenBao is now declared twice: as `quickstart` by the quickstart and as `openbao` by the
-previous tutorial. The tutorials keep both. Each `OpenBaoServer` has its own allow-lists and its
+previous tutorial. The tutorials keep both. Each `BaoServer` has its own allow-lists and its
 own `rateLimit`, so on a real platform declare each OpenBao once.
 
 === "openbaoserver.yaml"
 
-    ```yaml
+    ```yaml title="examples/tutorials/multiple-instances/openbaoserver.yaml"
     --8<-- "examples/tutorials/multiple-instances/openbaoserver.yaml"
     ```
 
 === "clusteropenbaoconnection.yaml"
 
-    ```yaml
+    ```yaml title="examples/tutorials/multiple-instances/clusteropenbaoconnection.yaml"
     --8<-- "examples/tutorials/multiple-instances/clusteropenbaoconnection.yaml"
     ```
+
+Apply both and wait until the server and the connection are `Ready`:
 
 ```bash
 --8<-- "hack/docs/tutorial-multiple-instances.sh:connect"
 ```
 
 ```text title="Expected output"
-openbaoserver.core.openbaoconfig.io/openbao-2 created
-clusteropenbaoconnection.core.openbaoconfig.io/platform-2 created
-openbaoserver.core.openbaoconfig.io/openbao-2 condition met
-clusteropenbaoconnection.core.openbaoconfig.io/platform-2 condition met
+baoserver.core.obco.dev/openbao-2 created
+clusterbaoconnection.core.obco.dev/platform-2 created
+baoserver.core.obco.dev/openbao-2 condition met
+clusterbaoconnection.core.obco.dev/platform-2 condition met
 ```
 
 ## 4. Configure each server
@@ -97,31 +100,34 @@ A resource's `connectionRef` decides which server it lands on:
 
 === "instance-1.yaml"
 
-    ```yaml
+    ```yaml title="examples/tutorials/multiple-instances/instance-1.yaml"
     --8<-- "examples/tutorials/multiple-instances/instance-1.yaml"
     ```
 
 === "instance-2.yaml"
 
-    ```yaml
+    ```yaml title="examples/tutorials/multiple-instances/instance-2.yaml"
     --8<-- "examples/tutorials/multiple-instances/instance-2.yaml"
     ```
 
 === "shared-policy.yaml"
 
-    ```yaml
+    ```yaml title="examples/tutorials/multiple-instances/shared-policy.yaml"
     --8<-- "examples/tutorials/multiple-instances/shared-policy.yaml"
     ```
+
+Apply the three files and wait until the six resources are `Ready`:
 
 ```bash
 --8<-- "hack/docs/tutorial-multiple-instances.sh:configure"
 ```
 
-Every resource reports `condition met`.
+Each of the six resources reports `condition met`.
 
 ## 5. See which server each resource is bound to
 
-Each resource records the cluster id of the OpenBao it was written to in `status.serverID`:
+Each resource records the cluster id of the OpenBao it was written to in `status.serverID`. List
+the resources with their connection and that id:
 
 ```bash
 --8<-- "hack/docs/tutorial-multiple-instances.sh:servers"
@@ -156,12 +162,17 @@ among the secrets engines; and `userpass/` among the auth methods. The first ser
 ## What you built
 
 - Two OpenBao servers managed from one Kubernetes cluster, each reached through its own
-  `OpenBaoServer` and connection.
+  `BaoServer` and connection.
 - Configuration that differs per server, and one policy kept identical on both.
-- Proof that a resource bound to one server never writes to the other.
+- A check, on both servers, that each resource reached only the server its connection names.
+
+## Clean up
+
+Keep the cluster for the next lesson. To stop here, delete it as [Tutorials](index.md#clean-up)
+describes.
 
 ## Next steps
 
 - [Onboard two tenants](tenant-onboarding.md) on the first server.
-- [Connections reference](../reference/connections.md): `OpenBaoServer` and
-  `ClusterOpenBaoConnection` fields.
+- [Connections reference](../reference/connections.md): `BaoServer` and
+  `ClusterBaoConnection` fields.

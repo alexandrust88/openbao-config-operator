@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=ldapsecretsstaticroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=ldapsecretsstaticroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=ldapsecretsstaticroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=ldapsecretsstaticroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=ldapsecretsstaticroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=ldapsecretsstaticroles/finalizers,verbs=update
 
 // SetupLDAPSecretsStaticRole registers the LDAPSecretsStaticRole controller with the manager.
 func SetupLDAPSecretsStaticRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

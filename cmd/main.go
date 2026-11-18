@@ -109,7 +109,7 @@ func run() error {
 	flag.IntVar(&maxConcurrentHighVolume, "max-concurrent-reconciles-high-volume", 8,
 		"Maximum concurrent reconciles of the kinds that usually have many objects (roles, policies, entities, groups).")
 	flag.IntVar(&writeBudgetPerMinute, "write-budget-per-minute", 60,
-		"Maximum rewrites per minute per OpenBaoServer of objects the operator already owns with an unchanged "+
+		"Maximum rewrites per minute per BaoServer of objects the operator already owns with an unchanged "+
 			"spec; creates, adoptions and spec changes are exempt. -1 disables.")
 	flag.BoolVar(&enablePluginKinds, "enable-plugin-kinds", false,
 		"Run the controllers of kinds that need an external OpenBao plugin (cloud, GitHub, Okta, LDAP, Kerberos, "+
@@ -155,7 +155,7 @@ func run() error {
 		HealthProbeBindAddress:  probeAddr,
 		PprofBindAddress:        pprofAddr,
 		LeaderElection:          enableLeaderElection,
-		LeaderElectionID:        "openbao-config-operator.openbaoconfig.io",
+		LeaderElectionID:        "openbao-config-operator.openbaoconfig.io", // stable across releases, or old and new managers in the same namespace both lead during an upgrade
 		LeaderElectionNamespace: operatorNamespace,
 		Cache:                   cacheOpts,
 		Client:                  clientOptions(),
@@ -247,7 +247,7 @@ func cacheOptions(watchNamespaces string) cache.Options {
 func requireCRDs(mapper meta.RESTMapper, controllers []kindController) error {
 	for _, c := range controllers {
 		group, kind, _ := strings.Cut(c.name, "/")
-		gk := schema.GroupKind{Group: group + ".openbaoconfig.io", Kind: kind}
+		gk := schema.GroupKind{Group: group + ".obco.dev", Kind: kind}
 		if _, err := mapper.RESTMapping(gk, "v1alpha1"); err != nil {
 			return fmt.Errorf("--enable-plugin-kinds: the CRD of %s is not installed (chart value pluginKinds.enabled): %w",
 				c.name, err)

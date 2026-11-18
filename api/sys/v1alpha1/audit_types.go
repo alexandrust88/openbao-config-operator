@@ -30,7 +30,7 @@ type AuditType string
 // +kubebuilder:validation:MaxLength=4096
 type AuditOptionValue string
 
-// +kubebuilder:validation:XValidation:rule="!has(self.__namespace__) || self.__namespace__ == ''",message="Audit exists only in the root namespace: leave namespace empty"
+// +kubebuilder:validation:XValidation:rule="!has(self.openbaoNamespace) || self.openbaoNamespace == ''",message="Audit exists only in the root namespace: leave openbaoNamespace empty"
 // +kubebuilder:validation:XValidation:rule="has(self.path) == has(oldSelf.path) && (!has(self.path) || self.path == oldSelf.path)",message="path is immutable"
 // +kubebuilder:validation:XValidation:rule="self.type == oldSelf.type",message="type is immutable"
 // +kubebuilder:validation:XValidation:rule="has(self.description) == has(oldSelf.description) && (!has(self.description) || self.description == oldSelf.description)",message="description is immutable"
@@ -81,19 +81,19 @@ type AuditStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=openbao
+// +kubebuilder:resource:categories=obco;obco-sys
 // +kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.type`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
-// Audit enables an OpenBao audit device at sys/audit/<path>, in the root namespace only; every field is immutable. OpenBao accepts this only when the server configuration sets unsafe_allow_api_audit_creation; otherwise declare the device in the server configuration and use creationPolicy Adopt to assert it exists. The default deletionPolicy Orphan keeps the device; Delete needs the annotation openbaoconfig.io/allow-destructive-delete: "true".
+// Audit enables an OpenBao audit device at sys/audit/<path>, in the root namespace only; every field is immutable. OpenBao accepts this only when the server configuration sets unsafe_allow_api_audit_creation; otherwise declare the device in the server configuration and use creationPolicy Adopt to assert it exists. The default deletionPolicy Orphan keeps the device; Delete needs the annotation obco.dev/allow-destructive-delete: "true".
 //
 // Example:
 //
 //	spec:
 //	  connectionRef:
-//	    kind: ClusterOpenBaoConnection
+//	    kind: ClusterBaoConnection
 //	    name: openbao
 //	  type: file
 //	  path: file

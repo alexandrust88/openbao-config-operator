@@ -4,7 +4,7 @@ namePrefix: ccr-full-
 labels:
   - pairs:
       app.kubernetes.io/part-of: openbao-live-kit
-      live.openbaoconfig.io/overlay: ccr-full
+      live.obco.dev/overlay: ccr-full
 resources:
   - ../../../params
 components:

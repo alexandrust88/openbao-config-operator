@@ -26,7 +26,7 @@ import (
 // +kubebuilder:validation:Enum=trace;debug;info;warn;error
 type LogLevel string
 
-// +kubebuilder:validation:XValidation:rule="!has(self.__namespace__) || self.__namespace__ == ''",message="Logger exists only in the root namespace: leave namespace empty"
+// +kubebuilder:validation:XValidation:rule="!has(self.openbaoNamespace) || self.openbaoNamespace == ''",message="Logger exists only in the root namespace: leave openbaoNamespace empty"
 // +kubebuilder:validation:XValidation:rule="has(self.name) == has(oldSelf.name) && (!has(self.name) || self.name == oldSelf.name)",message="name is immutable"
 
 // LoggerSpec sets the runtime log level of one named OpenBao logger at sys/loggers/<name>. The level applies to the node that serves the request and is not persisted: after a restart the server uses its configured level until the next drift check applies the spec again. Deleting the resource with deletionPolicy Delete resets the logger to the configured level.
@@ -52,7 +52,7 @@ type LoggerStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=openbao
+// +kubebuilder:resource:categories=obco;obco-sys
 // +kubebuilder:printcolumn:name="Level",type=string,JSONPath=`.spec.level`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`

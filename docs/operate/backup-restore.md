@@ -1,4 +1,5 @@
 ---
+title: Back up and restore OpenBao Config Operator configuration
 description: "Plan backup and recovery for operator-managed configuration and understand the separate OpenBao data backup responsibilities."
 ---
 
@@ -17,16 +18,16 @@ so a complete recovery needs both the resources and an OpenBao snapshot.
 | one-time outputs: AppRole secret IDs, OIDC client IDs and secrets, exported PKI private keys, `RandomSecret` copies | Kubernetes Secrets written through `writeSecretRef`, owned by the resource | Velero, or generating new ones |
 | server-generated IDs and accessors (entities, groups, aliases, mounts) | OpenBao, copied into `status.id` and `status` fields | an OpenBao snapshot; recreating gives new IDs |
 | data: KV values not set by a spec, `RandomSecret` values, transit, PKI and SSH key material, database root passwords after `rotate-root`, tokens and leases | OpenBao only | an OpenBao snapshot only |
-| ownership and progress: `status.acquired`, `status.path`, `status.namespace`, `status.writeOnlyHash` | resource status | not needed; see [status is not restored](#status-is-not-restored) |
-| members a `GroupMembership` added, children of an `AccessGrant` or `AccessLayout` | resource status | lost with the status; see below |
+| ownership and progress: `status.acquired`, `status.path`, `status.openbaoNamespace`, `status.writeOnlyHash` | resource status | not needed; see [status is not restored](#status-is-not-restored) |
+| members an `IdentityGroupMembership` added, children of an `AccessGrant` or `AccessLayout` | resource status | lost with the status; see below |
 | the key of `status.writeOnlyHash` | the hash-key Secret | Velero or a manual copy |
 
 ## What to back up
 
-1. The custom resources: Git, or `kubectl get openbao -A -o yaml` for a point-in-time copy.
+1. The custom resources: Git, or `kubectl get obco -A -o yaml` for a point-in-time copy.
 2. The Secrets the resources and connections reference.
 3. The output Secrets written through `writeSecretRef`.
-4. The hash-key Secret, `openbao-config-operator-hash-key` in the operator namespace.
+4. The hash-key Secret, `openbao-config-operator-hash-key` in the operator Kubernetes namespace.
 5. OpenBao itself, with its own snapshot tooling (`bao operator raft snapshot save` for integrated
    storage).
 
@@ -34,10 +35,10 @@ so a complete recovery needs both the resources and an OpenBao snapshot.
 
 The Secret holds the HMAC key of `status.writeOnlyHash`. Losing it costs one write: each resource
 with write-only inputs finds that its recorded hash no longer matches and writes once. It matters
-only when the resources and their status survive, for example when the operator namespace is
+only when the resources and their status survive, for example when the operator Kubernetes namespace is
 deleted and recreated. When the status is gone as well, every such resource writes once anyway.
 
-```sh
+```bash
 kubectl get secret openbao-config-operator-hash-key -n openbao-config-operator -o yaml > hash-key.yaml
 ```
 
@@ -82,8 +83,8 @@ existing object it does not own yet:
 Set `creationPolicy: CreateOrAdopt` or `Adopt` for a restore. Each resource with write-only inputs
 writes once, because its status has no hash yet.
 
-Kinds with an ownership marker in OpenBao (entities, groups, namespaces) also compare the cluster
-ID. Without `--cluster-id`, the cluster ID is the UID of the `kube-system` namespace, which changes
+Kinds with an ownership marker in OpenBao (`IdentityEntity`, `IdentityGroup`, `BaoNamespace`,
+`KVSecretMetadata`) also compare the cluster ID. Without `--cluster-id`, the cluster ID is the UID of the `kube-system` Kubernetes namespace, which changes
 when the cluster is rebuilt, so these objects stop with `Conflict` ("carries the ownership marker
 of another cluster") whatever the `creationPolicy`. Set the same `--cluster-id` through the chart's
 `extraArgs` on the rebuilt cluster as on the old one; if the old cluster had none, set it to the old
@@ -95,7 +96,7 @@ Velero and GitOps tools restore spec and metadata but not status by default. The
 need the status for most kinds: it re-acquires objects by adoption as above. Three kinds keep
 state in status that cannot be rebuilt:
 
-- `GroupMembership` records the members it added (`status.memberEntityIDs`,
+- `IdentityGroupMembership` records the members it added (`status.memberEntityIDs`,
   `status.memberGroupIDs`) and removes only those. After a restore it adds the members in its
   spec again, but it no longer removes members it added earlier and that the spec no longer lists.
 - `AccessGrant` and `AccessLayout` record the objects they wrote in `status.children`. After a
@@ -105,10 +106,10 @@ state in status that cannot be rebuilt:
 
 ## Velero
 
-Back up the operator namespace (for the hash-key Secret) and every namespace that holds custom
+Back up the operator Kubernetes namespace (for the hash-key Secret) and every Kubernetes namespace that holds custom
 resources, with their Secrets:
 
-```sh
+```bash
 velero backup create openbao-config \
   --include-namespaces openbao-config-operator,team-a,team-b \
   --include-cluster-resources=true
@@ -131,28 +132,38 @@ Points to check:
 the OpenBao object stays ([ADR 0015](../adr/0015-create-and-orphan-by-default.md)). `Delete` is set
 per resource. It removes the object, or resets a configuration singleton to its defaults; data holders
 are removed only while the resource carries the annotation
-`openbaoconfig.io/allow-destructive-delete: "true"`. The [kind catalogue](../kinds.md) lists these
-destructive kinds; among them `Entity`, whose delete erases the MFA TOTP secrets enrolled for it. Kinds whose OpenBao object cannot be deleted reject `Delete`.
+`obco.dev/allow-destructive-delete: "true"`. The [kind catalogue](../kinds.md) lists these
+destructive kinds; among them `IdentityEntity`, whose delete erases the MFA TOTP secrets enrolled for it. Kinds whose OpenBao object cannot be deleted reject `Delete`.
 
-Without the annotation, a data holder with `Delete` in a live Kubernetes Namespace stays `Terminating` with
+Without the annotation, a data holder with `Delete` in a live Kubernetes namespace stays `Terminating` with
 reason `DeleteGuarded`. In a terminating Namespace the operator leaves the object in OpenBao, records a Warning
 event with reason `Orphaned` and removes the finalizer, so deleting a Namespace never destroys guarded data.
 
-The operator adds the finalizer `openbaoconfig.io/finalizer` only when the effective policy is
-`Delete`, and removes it when the policy changes to `Orphan`. On deletion with `Delete` it deletes
-`status.path` in `status.namespace`. If the connection or a credential is missing, the finalizer
-stays and `Synced` reports `CleanupBlocked` until the delete succeeds.
+The operator adds the finalizer `obco.dev/finalizer` only when the effective policy is
+`Delete`. A deletion that hangs on it is covered in
+[Troubleshooting](troubleshooting.md#stuck-finalizers).
 
 An orphaned object stays in OpenBao, unmanaged. Re-creating the resource adopts it again
 (`CreateOrAdopt` or `Adopt`).
 
 ## Uninstall and CRD deletion
 
-The uninstall steps, including how to remove the operator and leave OpenBao untouched, are in the
-[install guide](../get-started/install.md#uninstall).
+The uninstall steps, including how to remove the operator and leave OpenBao untouched, are in
+[Uninstall](uninstall.md).
 
 With `crds.keep=false`, `helm uninstall` deletes the CRDs, and Kubernetes deletes every custom
 resource with them. What happens in OpenBao then depends on timing: while a manager still runs, it
-deletes every object whose policy is `Delete`, such as policies and roles. Once the manager is
+deletes every object whose resource sets `deletionPolicy: Delete` (data holders only with the
+`obco.dev/allow-destructive-delete` annotation). Once the manager is
 gone, the finalizers block the deletion and the CRDs stay `Terminating`. Neither outcome is safe,
 so keep `crds.keep=true`.
+
+## Related
+
+- [Install](../get-started/install.md)
+- [Uninstall](uninstall.md)
+- [Install options](install-options.md)
+- [Migrate](../guides/migration.md)
+- [Kind catalogue](../kinds.md)
+- [Upgrade](upgrade.md)
+- [Troubleshooting](troubleshooting.md)

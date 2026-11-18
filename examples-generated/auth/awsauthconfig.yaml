@@ -1,13 +1,13 @@
-# AWSAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# AWSAuthConfig (auth.obco.dev/v1alpha1)
 # AWSAuthConfig manages the AWS client configuration of an OpenBao AWS auth method at auth/<mountPath>/config/client.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#awsauthconfig
+# Reference: https://docs.obco.dev/reference/api/auth/#awsauthconfig
 # Curated example: examples/auth/awsauthconfig.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AWSAuthConfig
 metadata:
   name: example
@@ -19,7 +19,7 @@ spec:
   allowedSTSHeaderValues:
   - example
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -31,7 +31,7 @@ spec:
   managementPolicy: Manage
   maxRetries: 1
   mountPath: aws
-  namespace: example
+  openbaoNamespace: example
   secretKeySecretRef:
     key: value
     name: awsauthconfig-secret-key-secret-ref

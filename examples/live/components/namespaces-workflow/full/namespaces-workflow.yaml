@@ -1,12 +1,12 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: ns-team
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
@@ -18,67 +18,67 @@ spec:
     owner: platform
     cost-center: "4711"
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: OpenBaoNamespace
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
 metadata:
   name: ns-apps
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: ns-team
+  openbaoNamespace: ns-team
   name: ns-apps
   customMetadata:
     owner: apps
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: ns-kv
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: ns-team
+  openbaoNamespace: ns-team
   path: ns-kv
   type: kv-v2
   description: Team secrets inside the team namespace
   listingVisibility: unauth
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: PasswordPolicy
 metadata:
   name: ns-passwords
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: ns-team
+  openbaoNamespace: ns-team
   name: ns-passwords
   policy: |
     length = 24
@@ -87,22 +87,22 @@ spec:
       min-chars = 1
     }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: ns-team-reader
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: ns-team
+  openbaoNamespace: ns-team
   name: ns-team-reader
   policy: |
     path "+/data/*" {
@@ -112,22 +112,22 @@ spec:
       capabilities = ["update"]
     }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Workflow
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoWorkflow
 metadata:
   name: ns-generate-password
   labels:
-    live.openbaoconfig.io/nested: "true"
+    live.obco.dev/nested: "true"
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Delete
   driftDetection: Enabled
   driftInterval: 30m
   managementPolicy: Manage
-  namespace: ns-team
+  openbaoNamespace: ns-team
   path: ns-generate-password
   description: Generates a password with a password policy and stores it in a KV v2 mount.
   casRequired: true

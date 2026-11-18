@@ -1,10 +1,10 @@
 # Identity templates: a folder per entity name, per entity ID and per group membership.
 # A Kubernetes login creates an entity named entity_<random> unless an alias already points at a named
-# entity. The EntityAlias below binds team-a/app (by ServiceAccount UID, the default alias name source)
+# entity. The IdentityEntityAlias below binds team-a/app (by ServiceAccount UID, the default alias name source)
 # to the entity "billing", which is a member of the group "developers".
 #   kubectl get serviceaccount app -n team-a -o jsonpath='{.metadata.uid}'
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Entity
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntity
 metadata:
   name: billing
   namespace: openbao-config
@@ -12,8 +12,8 @@ spec:
   connectionRef:
     name: openbao
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: EntityAlias
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityEntityAlias
 metadata:
   name: billing-kubernetes
   namespace: openbao-config
@@ -26,8 +26,8 @@ spec:
   entityRef:
     name: billing
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: Group
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroup
 metadata:
   name: developers
   namespace: openbao-config
@@ -35,8 +35,8 @@ spec:
   connectionRef:
     name: openbao
 ---
-apiVersion: identity.openbaoconfig.io/v1alpha1
-kind: GroupMembership
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupMembership
 metadata:
   name: developers-billing
   namespace: openbao-config
@@ -48,8 +48,8 @@ spec:
   entityRef:
     name: billing
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: entity-own-folder
   namespace: openbao-config
@@ -64,8 +64,8 @@ spec:
       capabilities = ["create", "read", "update"]
     }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: group-folder
   namespace: openbao-config

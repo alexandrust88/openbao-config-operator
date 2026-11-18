@@ -4,8 +4,8 @@
 // envtest, the manager built from ./cmd and one `bao server -dev` per mode (namespaces team-a, team-a/apps and
 // team-b in each), and writes the kind x mode matrix to .tmp/night/ns-matrix.md (NSM_OUT).
 //
-// U1 logs in at the root and operates in the root (u1a), in team-a and team-a/apps through spec.namespace (u1b),
-// and in team-a through a connection based there with authNamespace "" (u1c). U2 logs in through an AppRole mount
+// U1 logs in at the root and operates in the root (u1a), in team-a and team-a/apps through spec.openbaoNamespace (u1b),
+// and in team-a through a connection based there with openbaoAuthNamespace "" (u1c). U2 logs in through an AppRole mount
 // inside team-a and operates in team-a and team-a/apps (u2); its negatives point the same team-a login at the root
 // and at team-b and must be refused without a write. Every operator request carries the attribution header, which
 // the declarative audit device of each server logs, so the suite proves per object where it wrote and that it wrote
@@ -94,12 +94,12 @@ func nsmModes() []*nsmMode {
 	teamA := nsmTeamA
 	return []*nsmMode{
 		{name: "u1a", title: "U1a root login, root", expect: ""},
-		{name: "u1b", title: "U1b root login, spec.namespace team-a", specNS: nsmTeamA, expect: nsmTeamA},
-		{name: "u1b-nested", title: "U1b root login, spec.namespace team-a/apps", specNS: nsmTeamAApps, expect: nsmTeamAApps},
-		{name: "u1c", title: "U1c connection team-a, authNamespace \"\"", connNamespace: nsmTeamA, authNamespace: &root,
+		{name: "u1b", title: "U1b root login, spec.openbaoNamespace team-a", specNS: nsmTeamA, expect: nsmTeamA},
+		{name: "u1b-nested", title: "U1b root login, spec.openbaoNamespace team-a/apps", specNS: nsmTeamAApps, expect: nsmTeamAApps},
+		{name: "u1c", title: "U1c connection team-a, openbaoAuthNamespace \"\"", connNamespace: nsmTeamA, authNamespace: &root,
 			expect: nsmTeamA},
 		{name: "u2", title: "U2 team-a login, team-a", connNamespace: nsmTeamA, tenantLogin: true, expect: nsmTeamA},
-		{name: "u2-nested", title: "U2 team-a login, spec.namespace apps", connNamespace: nsmTeamA, tenantLogin: true,
+		{name: "u2-nested", title: "U2 team-a login, spec.openbaoNamespace apps", connNamespace: nsmTeamA, tenantLogin: true,
 			specNS: "apps", expect: nsmTeamAApps},
 		{name: "u2-root", title: "U2 negative: team-a login, connection at root", authNamespace: &teamA,
 			tenantLogin: true, expect: "", negative: true},
@@ -108,7 +108,7 @@ func nsmModes() []*nsmMode {
 	}
 }
 
-// nsmEscapes are spec.namespace values that would leave the connection namespace if they were accepted.
+// nsmEscapes are spec.openbaoNamespace values that would leave the connection namespace if they were accepted.
 var nsmEscapes = []string{"..", "../team-b", "/team-b", "team-a/../team-b", "./team-a", "apps/"}
 
 // nsmCellState is what one object reached, read after the run.
@@ -266,9 +266,9 @@ func nsmRunProbes(t *testing.T, b *nsmBao) []*nsmProbe {
 		{"Logger", http.MethodGet, "sys/loggers"},
 		{"RaftAutopilot", http.MethodGet, "sys/storage/raft/autopilot/configuration"},
 		{nsmKindKeyRot, http.MethodGet, "sys/rotate/config"},
-		{"Workflow", http.MethodGet, "sys/workflows/manage?list=true"},
-		{"OpenBaoNamespace", http.MethodGet, "sys/namespaces?list=true"},
-		{"Policy", http.MethodGet, "sys/policies/acl/default"},
+		{"BaoWorkflow", http.MethodGet, "sys/workflows/manage?list=true"},
+		{"BaoNamespace", http.MethodGet, "sys/namespaces?list=true"},
+		{"ACLPolicy", http.MethodGet, "sys/policies/acl/default"},
 		{"PasswordPolicy", http.MethodGet, "sys/policies/password?list=true"},
 		{"AuthMount", http.MethodGet, "sys/auth"},
 		{"SecretsMount", http.MethodGet, "sys/mounts"},
@@ -294,14 +294,14 @@ func nsmRunProbes(t *testing.T, b *nsmBao) []*nsmProbe {
 	return out
 }
 
-// nsmEscapeCheck creates the first example of k with each escaping spec.namespace and expects the CRD to reject it.
+// nsmEscapeCheck creates the first example of k with each escaping spec.openbaoNamespace and expects the CRD to reject it.
 func nsmEscapeCheck(ctx context.Context, k8s client.Client, k *nsmKind, ns string) string {
 	docs := k.examples()
 	if len(docs) == 0 {
 		return "-"
 	}
-	if props, _ := k.Spec["properties"].(map[string]any); props["namespace"] == nil {
-		return "n/a (no spec.namespace)"
+	if props, _ := k.Spec["properties"].(map[string]any); props["openbaoNamespace"] == nil {
+		return "n/a (no spec.openbaoNamespace)"
 	}
 	var accepted []string
 	for i, value := range nsmEscapes {
@@ -312,7 +312,7 @@ func nsmEscapeCheck(ctx context.Context, k8s client.Client, k *nsmKind, ns strin
 		case err == nil:
 			accepted = append(accepted, value)
 			_ = k8s.Delete(ctx, obj)
-		case !nsmIsInvalid(err) || !strings.Contains(err.Error(), "spec.namespace"):
+		case !nsmIsInvalid(err) || !strings.Contains(err.Error(), "spec.openbaoNamespace"):
 			accepted = append(accepted, value+" ("+nsmShortErr(err)+")")
 		}
 	}
@@ -323,7 +323,7 @@ func nsmEscapeCheck(ctx context.Context, k8s client.Client, k *nsmKind, ns strin
 }
 
 // nsmApply creates the examples of every kind under test and their referents in mode m's Kubernetes namespace with
-// m's spec.namespace, Secrets first, and enables the mounts they need in m's target namespace.
+// m's spec.openbaoNamespace, Secrets first, and enables the mounts they need in m's target namespace.
 func nsmApply(ctx context.Context, t *testing.T, k8s client.Client, c *nsmCatalog, rows []*nsmRow, m *nsmMode) {
 	t.Helper()
 	m.createErrs, m.states = map[string][]string{}, map[string]nsmCellState{}
@@ -407,7 +407,7 @@ func nsmReadState(ctx context.Context, k8s client.Client, obj *unstructured.Unst
 		return nsmCellState{nsmObjState: nsmObjState{reason: "GetFailed", message: err.Error()}}
 	}
 	s := nsmCellState{nsmObjState: nsmStateOf(cur)}
-	s.statusNS, _, _ = unstructured.NestedString(cur.Object, "status", "namespace")
+	s.statusNS, _, _ = unstructured.NestedString(cur.Object, "status", "openbaoNamespace")
 	s.statusPath, _, _ = unstructured.NestedString(cur.Object, "status", "path")
 	s.statusNS = strings.Trim(s.statusNS, "/")
 	return s
@@ -550,7 +550,7 @@ func nsmCheckPositive(m *nsmMode, d *unstructured.Unstructured, s nsmCellState, 
 		return ""
 	}
 	if s.statusNS != m.expect {
-		return fmt.Sprintf("status.namespace %q, want %q", s.statusNS, m.expect)
+		return fmt.Sprintf("status.openbaoNamespace %q, want %q", s.statusNS, m.expect)
 	}
 	if outside := nsmWrites(m.audit, res, func(ns string) bool { return ns != m.expect }); len(outside) > 0 {
 		return "wrote outside " + nsmShow(m.expect) + ": " + strings.Join(outside, ", ")
@@ -710,11 +710,11 @@ func nsmWriteReport(t *testing.T, out string, modes []*nsmMode, rows []*nsmRow, 
 		}
 		fmt.Fprintf(&b, "- `%s`: %s; %s\n", m.name, m.title, target)
 	}
-	b.WriteString("\npass: every example that is Ready in u1a is Ready, status.namespace is the target, it reads " +
+	b.WriteString("\npass: every example that is Ready in u1a is Ready, status.openbaoNamespace is the target, it reads " +
 		"back there with the root token, every write the audit log attributes to it (X-Openbao-Config-Resource) is in " +
 		"the target namespace and none happened during 3.5 drift intervals at rest. root-only refused: reason " +
-		"RootOnlyKind and no OpenBao call for the object; (CRD) when the CRD itself rejects spec.namespace. refused: never Ready, reason PermissionDenied, " +
-		"ReferenceNotReady or RootOnlyKind, and no successful write in any namespace. escape: spec.namespace values " +
+		"RootOnlyKind and no OpenBao call for the object; (CRD) when the CRD itself rejects spec.openbaoNamespace. refused: never Ready, reason PermissionDenied, " +
+		"ReferenceNotReady or RootOnlyKind, and no successful write in any namespace. escape: spec.openbaoNamespace values " +
 		strings.Join(nsmEscapes, ", ") + " rejected by the CRD.\n\n")
 	b.WriteString("| kind |")
 	for _, m := range modes {
@@ -735,9 +735,9 @@ func nsmWriteReport(t *testing.T, out string, modes []*nsmMode, rows []*nsmRow, 
 		fmt.Fprintf(&b, " %s | %s |\n", r.escape, strings.ReplaceAll(notes, "\n", " "))
 	}
 	for _, kind := range slices.Sorted(maps.Keys(nsmConnectionKinds)) {
-		note := "the harness: each mode is one OpenBaoServer and one OpenBaoConnection"
-		if kind == "ClusterOpenBaoConnection" {
-			note = "not exercised here; it resolves namespaces like OpenBaoConnection (internal/connection)"
+		note := "the harness: each mode is one BaoServer and one BaoConnection"
+		if kind == "ClusterBaoConnection" {
+			note = "not exercised here; it resolves namespaces like BaoConnection (internal/connection)"
 		}
 		fmt.Fprintf(&b, "| %s |%s - | %s |\n", kind, strings.Repeat(" - |", len(modes)), note)
 	}

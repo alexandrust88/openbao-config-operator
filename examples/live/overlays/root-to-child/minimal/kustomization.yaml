@@ -4,7 +4,7 @@ namePrefix: r2c-min-
 labels:
   - pairs:
       app.kubernetes.io/part-of: openbao-live-kit
-      live.openbaoconfig.io/overlay: r2c-min
+      live.obco.dev/overlay: r2c-min
 resources:
   - ../../../params
 components:
@@ -20,20 +20,20 @@ replacements:
       fieldPath: data.tenantNamespace
     targets:
       - select:
-          group: ^(sys|auth|secrets|identity|access)\.openbaoconfig\.io$
+          group: ^(sys|auth|secrets|identity|access)\.obco\.dev$
         reject:
           - kind: AccessLevel
-          - labelSelector: live.openbaoconfig.io/nested=true
+          - labelSelector: live.obco.dev/nested=true
         fieldPaths:
-          - spec.namespace
+          - spec.openbaoNamespace
         options:
           create: true
       - select:
-          kind: OpenBaoEndpoint
+          kind: BaoEndpoint
         reject:
-          - labelSelector: live.openbaoconfig.io/nested=true
+          - labelSelector: live.obco.dev/nested=true
         fieldPaths:
-          - spec.namespace
+          - spec.openbaoNamespace
         options:
           create: true
   - source:
@@ -45,9 +45,9 @@ replacements:
         index: 0
     targets:
       - select:
-          labelSelector: live.openbaoconfig.io/nested=true
+          labelSelector: live.obco.dev/nested=true
         fieldPaths:
-          - spec.namespace
+          - spec.openbaoNamespace
         options:
           delimiter: "-"
           index: -1
@@ -57,9 +57,9 @@ replacements:
       fieldPath: data.tenantNamespace
     targets:
       - select:
-          labelSelector: live.openbaoconfig.io/nested=true
+          labelSelector: live.obco.dev/nested=true
         fieldPaths:
-          - spec.namespace
+          - spec.openbaoNamespace
         options:
           delimiter: /
           index: -1

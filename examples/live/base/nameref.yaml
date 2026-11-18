@@ -1,48 +1,48 @@
 # A namePrefix renames these fields together with the object they name, so each overlay gets its own OpenBao names.
-# Policy accessorRefs keys are fixed (kubernetes, approle, jwt, userpass, cert): kustomize has no wildcard for map keys.
+# ACLPolicy accessorRefs keys are fixed (kubernetes, approle, jwt, userpass, cert): kustomize has no wildcard for map keys.
 nameReference:
-  - kind: OpenBaoServer
+  - kind: BaoServer
     fieldSpecs:
       - path: spec/serverRef/name
-        kind: OpenBaoConnection
+        kind: BaoConnection
       - path: spec/serverRef/name
-        kind: ClusterOpenBaoConnection
-  - kind: OpenBaoConnection
+        kind: ClusterBaoConnection
+  - kind: BaoConnection
     fieldSpecs:
       - path: spec/connectionRef/name
-  - kind: ClusterOpenBaoConnection
+  - kind: ClusterBaoConnection
     fieldSpecs:
       - path: spec/connectionRef/name
   - kind: ConfigMap
     fieldSpecs:
       - path: spec/caBundle/configMapRef/name
-        kind: OpenBaoServer
-  - kind: OpenBaoNamespace
+        kind: BaoServer
+  - kind: BaoNamespace
     fieldSpecs:
       - path: spec/name
-        kind: OpenBaoNamespace
-      - path: spec/namespace
+        kind: BaoNamespace
+      - path: spec/openbaoNamespace
   - kind: AuthMount
     fieldSpecs:
       - path: spec/path
         kind: AuthMount
       - path: spec/accessorRefs/kubernetes/authMountRef/name
-        kind: Policy
+        kind: ACLPolicy
       - path: spec/accessorRefs/approle/authMountRef/name
-        kind: Policy
+        kind: ACLPolicy
       - path: spec/accessorRefs/jwt/authMountRef/name
-        kind: Policy
+        kind: ACLPolicy
       - path: spec/accessorRefs/userpass/authMountRef/name
-        kind: Policy
+        kind: ACLPolicy
       - path: spec/accessorRefs/cert/authMountRef/name
-        kind: Policy
+        kind: ACLPolicy
       - path: spec/mountPath
       - path: spec/path
         kind: RateLimitQuota
       - path: spec/mountRef/name
-        kind: EntityAlias
+        kind: IdentityEntityAlias
       - path: spec/mountRef/name
-        kind: GroupAlias
+        kind: IdentityGroupAlias
       - path: spec/authMountRef/name
         kind: AccessGrant
       - path: spec/authMounts
@@ -67,16 +67,16 @@ nameReference:
   - kind: Plugin
     fieldSpecs:
       - path: spec/pluginRef/name
-  - kind: Policy
+  - kind: ACLPolicy
     fieldSpecs:
       - path: spec/name
-        kind: Policy
+        kind: ACLPolicy
       - path: spec/policyRefs/name
       - path: spec/tokenPolicies
       - path: spec/policies
-        kind: Entity
+        kind: IdentityEntity
       - path: spec/policies
-        kind: Group
+        kind: IdentityGroup
       - path: spec/allowedPolicies
         kind: TokenRole
       - path: spec/disallowedPolicies
@@ -99,18 +99,18 @@ nameReference:
         kind: AppRoleSecretID
       - path: spec/roleName
         kind: AppRoleSecretID
-  - kind: Entity
+  - kind: IdentityEntity
     fieldSpecs:
       - path: spec/name
-        kind: Entity
+        kind: IdentityEntity
       - path: spec/entityRef/name
-        kind: EntityAlias
+        kind: IdentityEntityAlias
       - path: spec/entityName
-        kind: EntityAlias
+        kind: IdentityEntityAlias
       - path: spec/entityRef/name
-        kind: GroupMembership
+        kind: IdentityGroupMembership
       - path: spec/entityName
-        kind: GroupMembership
+        kind: IdentityGroupMembership
       - path: spec/entities/entityRef/name
         kind: MFALoginEnforcement
       - path: spec/entities/entityName
@@ -119,18 +119,18 @@ nameReference:
         kind: OIDCAssignment
       - path: spec/entities/entityName
         kind: OIDCAssignment
-  - kind: Group
+  - kind: IdentityGroup
     fieldSpecs:
       - path: spec/name
-        kind: Group
+        kind: IdentityGroup
       - path: spec/groupRef/name
-        kind: GroupAlias
+        kind: IdentityGroupAlias
       - path: spec/groupName
-        kind: GroupAlias
+        kind: IdentityGroupAlias
       - path: spec/groupRef/name
-        kind: GroupMembership
+        kind: IdentityGroupMembership
       - path: spec/groupName
-        kind: GroupMembership
+        kind: IdentityGroupMembership
       - path: spec/groups/groupRef/name
         kind: MFALoginEnforcement
       - path: spec/groups/groupName
@@ -140,9 +140,9 @@ nameReference:
       - path: spec/groups/groupName
         kind: OIDCAssignment
       - path: spec/memberGroupRef/name
-        kind: GroupMembership
+        kind: IdentityGroupMembership
       - path: spec/memberGroupName
-        kind: GroupMembership
+        kind: IdentityGroupMembership
   - kind: MFAMethod
     fieldSpecs:
       - path: spec/name
@@ -261,10 +261,10 @@ nameReference:
         kind: TOTPKey
       - path: spec/generate/writeSecretRef/name
         kind: TOTPKey
-  - kind: Workflow
+  - kind: BaoWorkflow
     fieldSpecs:
       - path: spec/path
-        kind: Workflow
+        kind: BaoWorkflow
   - kind: Audit
     fieldSpecs:
       - path: spec/path

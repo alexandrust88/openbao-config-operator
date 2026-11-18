@@ -32,13 +32,13 @@ func RootOnlyError(adapter any, kind, namespace string) error {
 	}
 	if ns := strings.Trim(namespace, "/"); ns != "" && ns != "root" {
 		return fmt.Errorf("%s: OpenBao namespace %q is not the root namespace; use a connection based in the root "+
-			"namespace and no spec.namespace: %w", kind, ns, ErrRootOnly)
+			"namespace and no spec.openbaoNamespace: %w", kind, ns, ErrRootOnly)
 	}
 	return nil
 }
 
 // refuseRootOnly stops the reconcile of a root-only kind whose effective namespace (p.bao) is not the root. It runs
-// once the connection and spec.namespace are resolved and before the first OpenBao call for the resource.
+// once the connection and spec.openbaoNamespace are resolved and before the first OpenBao call for the resource.
 func (r *Reconciler[T]) refuseRootOnly(ctx context.Context, p *pass[T]) (ctrl.Result, bool, error) {
 	cause := RootOnlyError(r.adapter, r.kind, p.bao.Namespace())
 	if cause == nil {

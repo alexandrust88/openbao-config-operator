@@ -4,23 +4,23 @@ description: "Planned OpenBao Config Operator work and priorities for contributo
 
 # Backlog
 
-These are real outcomes that are planned and not implemented yet. The order of work, by release, and the phases
-are only in the [roadmap](../maintainers/roadmap.md); this page holds the outcomes behind them and the work that is
-not a single kind. Known
-limitations of what already exists belong in the [tech-debt register](tech-debt.md).
+These are real outcomes that are planned and not implemented yet. The order of work, by release,
+and the phases are only in the [roadmap](../maintainers/roadmap.md); this page holds the outcomes
+behind them and the work that is not a single kind. Known limitations of what already exists belong
+in the [tech-debt register](tech-debt.md).
 
 ## BL-001: Pick an owned API group domain before the first release
 
-Status: closed on 2026-11-15. The maintainers keep `openbaoconfig.io`; it has shipped in every release since v0.1.0 and
-[ADR 0008](../adr/0008-provisional-api-group-domain.md) records the decision.
+Status: done: every group is under the owned domain `obco.dev` from the first release, 1.0.0
+([ADR 0025](../adr/0025-move-the-api-to-obco-dev.md), which supersedes
+[ADR 0008](../adr/0008-provisional-api-group-domain.md)).
 
 Goal: publish v1alpha1 under an API group domain that will not be renamed.
 
 Acceptance criteria:
 
-- ADR 0008 is accepted with the chosen domain.
-- No rename: every group, the annotation prefix, `PROJECT`, the chart, the docs and the samples keep
-  `openbaoconfig.io`.
+- An accepted ADR records the chosen domain.
+- Every group, the annotation prefix, `PROJECT`, the chart, the docs and the samples use `obco.dev`.
 
 ## BL-002: Core configuration kinds
 
@@ -28,7 +28,7 @@ Status: done (test/apicoverage, docs/api-coverage.md)
 
 Goal: a platform team can configure namespaces, mounts, the Kubernetes, JWT/OIDC, AppRole and
 token auth methods, the core identity objects, password policies, rate-limit quotas and KV and
-random secrets with typed kinds instead of `OpenBaoEndpoint`.
+random secrets with typed kinds instead of `BaoEndpoint`.
 
 Constraints: cross-object fields use flexible references (exactly one of a literal, an OpenBao
 name or path, a same-namespace Kubernetes ref or a label selector); KV values come only from
@@ -49,7 +49,7 @@ Goal: manage `sys/audit/<path>` declaratively.
 
 Rationale: OpenBao refuses to create audit devices through the API unless the server sets
 `unsafe_allow_api_audit_creation`, and declarative audit configuration in the server config is
-the recommended path. `OpenBaoEndpoint` covers the API path meanwhile.
+the recommended path. `BaoEndpoint` covers the API path meanwhile.
 
 Acceptance criteria: a design, recorded as an ADR, that states when the kind applies, how it
 reports a server that refuses API creation, and why it does not weaken the server's default.
@@ -90,14 +90,13 @@ Kinds for features OpenBao does not have are not planned.
 
 ## BL-007: Short API group names and kubectl short names
 
-Status: open for kubectl short names. The group rename this item proposed is rejected: the domain stays
-`openbaoconfig.io` (BL-001, [ADR 0008](../adr/0008-provisional-api-group-domain.md)).
+Status: done ([ADR 0025](../adr/0025-move-the-api-to-obco-dev.md)): the groups are under `obco.dev`,
+the most used kinds have `bao*` short names (for example `baopol` for ACLPolicy and `baosm` for SecretsMount), and a
+CI test (`test/apidocs/names_test.go`) keeps plurals and short names clear of other operators. The short-name table
+in docs/kinds.md is open.
 
-Goal: shorter names to type. `openbaoconfig.io` makes long CRD and RBAC names, and generic short names such as
-`policy` collide with other operators.
-
-Proposal: add a unique `+kubebuilder:resource:shortName` of 2 to 8 characters to every kind (for example `obpol`
-for Policy and `obsm` for SecretsMount).
+Goal: short names to type, and CRD and RBAC names that do not collide with other operators on generic names
+such as `policies`.
 
 Acceptance criteria:
 - a short-name table in docs/kinds.md, unique across the catalogue and against core Kubernetes resources;
@@ -119,12 +118,12 @@ Acceptance criteria:
   verification, OpenBao-side policy for the operator, audit settings, upgrade and key rotation;
 - an independent review of the finished implementation against the threat model, with findings filed and fixed.
 
-## BL-009: Remaining typed-kind gaps
+## BL-009: Typed kinds for earlier Endpoint-only paths { #bl-009-remaining-typed-kind-gaps }
 
 Status: done
 
 The listed gaps are implemented, including CertAuthCRL, TransitCacheConfig, TransitKeyConfig,
-KVSecretMetadata, PKICELRole and PKIKeyConfig. Paths that stay on OpenBaoEndpoint are classified in
+KVSecretMetadata, PKICELRole and PKIKeyConfig. Paths that stay on BaoEndpoint are classified in
 [API coverage](../api-coverage.md): cubbyhole, sys/raw, sys/loggers, SSH issuer and zero-address
 configuration, the LDAP library set, and external keys (those need a KMS plugin).
 
@@ -141,10 +140,10 @@ API surface is caught automatically. The report shows covered, Endpoint-only and
 
 Status: open
 
-- GroupMembership and AccessGrant/AccessLayout keep which members and children they own only in status. A
+- IdentityGroupMembership and AccessGrant/AccessLayout keep which members and children they own only in status. A
   restore of the CRs without status cannot rebuild ownership. Use the server-side ownership marker (or a
   deterministic naming scheme that can be recomputed) so a status-less restore adopts exactly its own objects.
-- Done: the Helm chart OCI artifact now gets a CycloneDX SBOM attestation in release.yml.
+- Done: the Helm chart OCI artefact now gets a CycloneDX SBOM attestation in release.yml.
 
 ## BL-012: Remaining v2 rule gaps
 
@@ -155,7 +154,7 @@ Status: open
 - Design rule 9: the self-init example is verified by examples/self-init/verify.sh (docker). Run it in the e2e workflow
   on GitHub runners so it is a CI gate.
 - Safety 8: tenant quotas are documented only; add an e2e step that a ResourceQuota count blocks the 11th object.
-- Unbounded strings read by CEL (about 55 duration strings, Entity/Group metadata values, JWT leeways): add
+- Unbounded strings read by CEL (about 55 duration strings, IdentityEntity/IdentityGroup metadata values, JWT leeways): add
   MaxLength for cost headroom.
 
 ## BL-013: NetworkPolicy on by default
@@ -177,8 +176,8 @@ request. Done:
 
 - Renovate tracks `BAO_VERSION` in the Makefile (`# renovate: datasource=github-releases depName=openbao/openbao`,
   matched by the Makefile custom manager in `renovate.json`); its pull request runs integration and API coverage.
-- Server version from `sys/health` on `OpenBaoServer` status (`status.version` in
-  `api/core/v1alpha1/openbaoserver_types.go`), and acquired objects bound to their server by cluster id with reason
+- Server version from `sys/health` on `BaoServer` status (`status.version` in
+  `api/core/v1alpha1/baoserver_types.go`), and acquired objects bound to their server by cluster id with reason
   `ServerChanged` (`internal/engine/reconciler.go`).
 
 Missing pieces:
@@ -210,7 +209,7 @@ Secret. Secrets written before the fingerprint existed stay accepted, as for PKI
 
 Status: open
 
-The write budget (ADR 0018) is one sliding window per `OpenBaoServer`, shared by every namespace. Changed input
+The write budget (ADR 0018) is one sliding window per `BaoServer`, shared by every namespace. Changed input
 Secrets no longer spend it, but one namespace with many objects that drift (or a kind that flaps) can still use
 the whole window and delay other namespaces' drift repairs on the same server. Give each namespace a fair share
 of the window (for example a per-namespace sub-budget, or round-robin between namespaces with held-back writes),

@@ -12,7 +12,7 @@ import identity as lab
 TENANTS = ('root', 'alpha')
 MOUNT = 'lab-transit'
 AUTH = 'transit-k8s'
-LABEL = {'lab.openbaoconfig.io/profile': 'transit'}
+LABEL = {'lab.obco.dev/profile': 'transit'}
 ENCRYPTION = ('aes128-gcm96', 'aes256-gcm96', 'chacha20-poly1305', 'xchacha20-poly1305', 'rsa-2048', 'rsa-3072', 'rsa-4096')
 SIGNING = ('ecdsa-p256', 'ecdsa-p384', 'ecdsa-p521', 'ed25519', 'rsa-2048', 'rsa-3072', 'rsa-4096', 'mldsa-44', 'mldsa-65', 'mldsa-87')
 ALGORITHMS = tuple(dict.fromkeys((*ENCRYPTION, *SIGNING, 'hmac')))
@@ -22,8 +22,8 @@ def cr(kind, name, spec, tenant='root'):
     group = 'secrets' if kind == 'TransitKey' else ('auth' if kind.startswith('KubernetesAuth') else 'sys')
     shared = {'connectionRef': {'name': lab.CONNECTION}, 'deletionPolicy': 'Orphan'}
     if tenant != 'root':
-        shared['namespace'] = 'lab-' + tenant
-    return {'apiVersion': group + '.openbaoconfig.io/v1alpha1', 'kind': kind,
+        shared['openbaoNamespace'] = 'lab-' + tenant
+    return {'apiVersion': group + '.obco.dev/v1alpha1', 'kind': kind,
             'metadata': {'name': 'transit-' + tenant + '-' + name, 'namespace': lab.NAMESPACE, 'labels': LABEL},
             'spec': {**shared, **spec}}
 
@@ -42,7 +42,7 @@ def objects(tenant):
     values = [cr('SecretsMount', 'mount', {'path': MOUNT, 'type': 'transit'}, tenant),
               cr('AuthMount', 'auth', {'path': AUTH, 'type': 'kubernetes'}, tenant),
               cr('KubernetesAuthConfig', 'auth', {'mountPath': AUTH, 'kubernetesHost': 'https://kubernetes.default.svc:443'}, tenant),
-              cr('Policy', 'app', {'name': 'transit-app', 'policy': policy}, tenant),
+              cr('ACLPolicy', 'app', {'name': 'transit-app', 'policy': policy}, tenant),
               cr('KubernetesAuthRole', 'app', {'mountPath': AUTH, 'name': 'transit-app',
                  'boundServiceAccountNames': ['transit-app'], 'boundServiceAccountNamespaces': [namespace],
                  'audience': 'openbao', 'tokenPolicies': ['transit-app'], 'tokenTTL': '15m',
@@ -58,7 +58,7 @@ def objects(tenant):
 
 
 def up():
-    child = lab.cr('OpenBaoNamespace', 'lab-alpha', {'name': 'lab-alpha'})
+    child = lab.cr('BaoNamespace', 'lab-alpha', {'name': 'lab-alpha'})
     lab.apply([child])
     lab.wait_ready([child])
     ca = json.loads(lab.kube('-n', 'openbao', 'get', 'configmap', 'openbao-ca', '-o', 'json'))['data']
@@ -219,7 +219,7 @@ def lifecycle(bao, tenant, token, admin):
                 return any(c.get('reason') == 'DeleteGuarded' for c in value.get('status', {}).get('conditions', []))
             wait(guarded, 'destructive delete guarded')
             lab.expect(bao.request(tenant, 'GET', MOUNT + '/keys/' + key, token=admin)[0], 200, 'guarded key retained')
-            lab.kube('-n', lab.NAMESPACE, 'annotate', 'transitkey', name, 'openbaoconfig.io/allow-destructive-delete=true')
+            lab.kube('-n', lab.NAMESPACE, 'annotate', 'transitkey', name, 'obco.dev/allow-destructive-delete=true')
         lab.kube('-n', lab.NAMESPACE, 'wait', '--for=delete', 'transitkey/' + name, '--timeout=120s')
         lab.expect(bao.request(tenant, 'GET', MOUNT + '/keys/' + key, token=admin)[0], 404 if key == 'guard' else 200, 'remote deletion policy')
         if key == 'orphan':

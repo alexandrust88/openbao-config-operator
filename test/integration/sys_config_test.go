@@ -39,7 +39,7 @@ import (
 
 const sysCfgWorkflow = "flow \"health\" {\n  request \"read\" {\n    operation = \"read\"\n    path = \"sys/health\"\n  }\n}\n"
 
-// TestIntegrationSysConfig runs the sys singletons, UIHeader, AuditRequestHeader, Workflow and Plugin against
+// TestIntegrationSysConfig runs the sys singletons, UIHeader, AuditRequestHeader, BaoWorkflow and Plugin against
 // envtest and bao server -dev (inmem storage, with a plugin directory).
 func TestIntegrationSysConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -276,9 +276,9 @@ func testSysCfgRaftAutopilot(ctx context.Context, t *testing.T, e env) {
 
 func testSysCfgWorkflow(ctx context.Context, t *testing.T, e env) {
 	const path = "sys/workflows/manage/itest/health"
-	workflow := &sysv1alpha1.Workflow{
+	workflow := &sysv1alpha1.BaoWorkflow{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-workflow", Namespace: namespace},
-		Spec: sysv1alpha1.WorkflowSpec{
+		Spec: sysv1alpha1.BaoWorkflowSpec{
 			ResourceSpec: sysCfgSpec(commonv1alpha1.DeletionPolicyDelete),
 			Path:         "itest/health",
 			Description:  "reads health",
@@ -290,7 +290,7 @@ func testSysCfgWorkflow(ctx context.Context, t *testing.T, e env) {
 	want := map[string]any{"workflow": sysCfgWorkflow, "description": "reads health", "cas_required": true}
 	waitFor(t, "workflow written", func() error { return sysCfgExpect(ctx, e.bao, path, want) })
 	waitFor(t, "workflow ready", func() error { return expectReady(ctx, e.k8s, workflow) })
-	sysCfgExpectNoWrites(t, "Workflow")
+	sysCfgExpectNoWrites(t, "BaoWorkflow")
 
 	sysCfgWriteWorkflow(ctx, t, e.bao, path, map[string]any{"workflow": sysCfgWorkflow, "description": "tampered", "cas_required": true})
 	waitFor(t, "workflow repaired despite cas_required", func() error { return sysCfgExpect(ctx, e.bao, path, want) })
@@ -442,7 +442,7 @@ func sysCfgWrites(t *testing.T, kind string) float64 {
 		t.Fatal(err)
 	}
 	for _, family := range families {
-		if family.GetName() != "openbao_writes_total" {
+		if family.GetName() != "obco_writes_total" {
 			continue
 		}
 		for _, m := range family.GetMetric() {
@@ -485,8 +485,8 @@ func sysCfgSetup(ctx context.Context, t *testing.T) (env, string) {
 
 	crds := make([]string, 0, 9)
 	for _, name := range []string{"corsconfigs", "uiheaders", "loggers", "auditrequestheaders", "quotaconfigs",
-		"keyrotationconfigs", "raftautopilots", "workflows", "plugins"} {
-		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_"+name+".yaml"))
+		"keyrotationconfigs", "raftautopilots", "baoworkflows", "plugins"} {
+		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_"+name+".yaml"))
 	}
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,
@@ -521,7 +521,7 @@ func sysCfgSetup(ctx context.Context, t *testing.T) (env, string) {
 	opts := itestEngineOptions()
 	for _, setupKind := range []func(ctrl.Manager, engine.Connections, engine.Options) error{
 		sys.SetupCORSConfig, sys.SetupUIHeader, sys.SetupLogger, sys.SetupAuditRequestHeader, sys.SetupQuotaConfig,
-		sys.SetupKeyRotationConfig, sys.SetupRaftAutopilot, sys.SetupWorkflow, sys.SetupPlugin,
+		sys.SetupKeyRotationConfig, sys.SetupRaftAutopilot, sys.SetupBaoWorkflow, sys.SetupPlugin,
 	} {
 		if err := setupKind(mgr, conns, opts); err != nil {
 			t.Fatal(err)

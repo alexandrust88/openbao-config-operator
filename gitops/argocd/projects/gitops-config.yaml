@@ -12,22 +12,22 @@ spec:
   namespaceResourceWhitelist:
     - group: ""
       kind: ConfigMap
-    - group: core.openbaoconfig.io
-      kind: OpenBaoConnection
-    - group: sys.openbaoconfig.io
-      kind: Policy
-    - group: sys.openbaoconfig.io
+    - group: core.obco.dev
+      kind: BaoConnection
+    - group: sys.obco.dev
+      kind: ACLPolicy
+    - group: sys.obco.dev
       kind: SecretsMount
-    - group: sys.openbaoconfig.io
+    - group: sys.obco.dev
       kind: AuthMount
-    - group: sys.openbaoconfig.io
-      kind: OpenBaoNamespace
-    - group: auth.openbaoconfig.io
+    - group: sys.obco.dev
+      kind: BaoNamespace
+    - group: auth.obco.dev
       kind: AppRole
-    - group: secrets.openbaoconfig.io
+    - group: secrets.obco.dev
       kind: TransitKey
   clusterResourceWhitelist:
-    - group: core.openbaoconfig.io
-      kind: OpenBaoServer
+    - group: core.obco.dev
+      kind: BaoServer
   orphanedResources:
     warn: false

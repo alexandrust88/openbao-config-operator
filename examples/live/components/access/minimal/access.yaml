@@ -1,4 +1,4 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: acc-kv
@@ -7,7 +7,7 @@ spec:
     name: openbao
   type: kv-v2
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: acc-kubernetes
@@ -16,7 +16,7 @@ spec:
     name: openbao
   type: kubernetes
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: acc-jwt
@@ -25,7 +25,7 @@ spec:
     name: openbao
   type: jwt
 ---
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessLevel
 metadata:
   name: acc-read
@@ -33,7 +33,7 @@ spec:
   data:
     - read
 ---
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessGrant
 metadata:
   name: acc-workloads
@@ -50,7 +50,7 @@ spec:
       path: apps/app/*
       level: acc-read
 ---
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessLayout
 metadata:
   name: acc-teams

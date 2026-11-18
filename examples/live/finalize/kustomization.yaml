@@ -17,13 +17,13 @@ replacements:
         options:
           create: true
       - select:
-          kind: OpenBaoServer
+          kind: BaoServer
           name: openbao-server
         fieldPaths:
           - spec.caBundle.configMapRef.namespace
           - spec.allowedNamespaces.matchLabels.[kubernetes.io/metadata.name]
       - select:
-          kind: ClusterOpenBaoConnection
+          kind: ClusterBaoConnection
           name: openbao-cluster
         fieldPaths:
           - spec.allowedNamespaces.matchLabels.[kubernetes.io/metadata.name]
@@ -34,7 +34,7 @@ replacements:
       fieldPath: data.openbaoAddress
     targets:
       - select:
-          kind: OpenBaoServer
+          kind: BaoServer
           name: openbao-server
         fieldPaths:
           - spec.address
@@ -44,7 +44,7 @@ replacements:
       fieldPath: data.caConfigMap
     targets:
       - select:
-          kind: OpenBaoServer
+          kind: BaoServer
           name: openbao-server
         fieldPaths:
           - spec.caBundle.configMapRef.name
@@ -54,7 +54,7 @@ replacements:
       fieldPath: data.caKey
     targets:
       - select:
-          kind: OpenBaoServer
+          kind: BaoServer
           name: openbao-server
         fieldPaths:
           - spec.caBundle.configMapRef.key
@@ -64,32 +64,32 @@ replacements:
       fieldPath: data.audience
     targets:
       - select:
-          kind: OpenBaoServer
+          kind: BaoServer
           name: openbao-server
         fieldPaths:
           - spec.allowedAudiences.0
       - select:
-          group: core.openbaoconfig.io
-          kind: (Cluster)?OpenBaoConnection
+          group: core.obco.dev
+          kind: (Cluster)?BaoConnection
           name: ^openbao(-cluster)?$
         fieldPaths:
           - spec.auth.kubernetes.audiences.0
 patches:
   - path: waves/0-connections.yaml
     target:
-      kind: ^(OpenBaoServer|OpenBaoConnection|ClusterOpenBaoConnection)$
+      kind: ^(BaoServer|BaoConnection|ClusterBaoConnection)$
   - path: waves/1-namespaces.yaml
     target:
-      kind: ^(OpenBaoNamespace|Plugin)$
+      kind: ^(BaoNamespace|Plugin)$
   - path: waves/2-mounts.yaml
     target:
-      kind: ^(AuthMount|SecretsMount|Policy|PasswordPolicy|Audit|AuditRequestHeader|CORSConfig|QuotaConfig|UIHeader|Logger|RaftAutopilot|KeyRotationConfig|Workflow|AccessLevel|Entity|Group|OIDCConfig|OIDCKey|OIDCScope|MFAMethod|TokenRole|OpenBaoEndpoint)$
+      kind: ^(AuthMount|SecretsMount|ACLPolicy|PasswordPolicy|Audit|AuditRequestHeader|CORSConfig|QuotaConfig|UIHeader|Logger|RaftAutopilot|KeyRotationConfig|BaoWorkflow|AccessLevel|IdentityEntity|IdentityGroup|OIDCConfig|OIDCKey|OIDCScope|MFAMethod|TokenRole|BaoEndpoint)$
   - path: waves/3-configs.yaml
     target:
       kind: ^(KubernetesAuthConfig|JWTAuthConfig|CertAuthConfig|KVConfig|DatabaseConnection|RabbitMQConfig|KubernetesSecretsConfig|SSHCA|PKIKey|PKIIssuer|TransitKey|TOTPKey|RateLimitQuota)$
   - path: waves/4-roles.yaml
     target:
-      kind: ^(KubernetesAuthRole|JWTAuthRole|JWTCELRole|AppRole|CertAuthRole|UserpassUser|KVSecret|RandomSecret|EntityAlias|GroupAlias|GroupMembership|OIDCRole|OIDCAssignment|OIDCClient|PKIRole|PKIConfig|PKIACMEConfig|PKIAutoTidy|DatabaseRole|DatabaseStaticRole|SSHRole|KubernetesSecretsRole|RabbitMQRole)$
+      kind: ^(KubernetesAuthRole|JWTAuthRole|JWTCELRole|AppRole|CertAuthRole|UserpassUser|KVSecret|RandomSecret|IdentityEntityAlias|IdentityGroupAlias|IdentityGroupMembership|OIDCRole|OIDCAssignment|OIDCClient|PKIRole|PKIConfig|PKIACMEConfig|PKIAutoTidy|DatabaseRole|DatabaseStaticRole|SSHRole|KubernetesSecretsRole|RabbitMQRole)$
   - path: waves/5-access.yaml
     target:
       kind: ^(AppRoleSecretID|OIDCProvider|MFALoginEnforcement|AccessGrant|AccessLayout)$

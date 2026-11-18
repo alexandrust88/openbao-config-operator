@@ -1,5 +1,5 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: child-reader
   namespace: obco-gitops
@@ -10,13 +10,13 @@ spec:
   deletionPolicy: Orphan
   driftDetection: Enabled
   driftInterval: 30s
-  namespace: gitops-team
+  openbaoNamespace: gitops-team
   name: gitops-reader
   policy: |-
     path "gitops-kv/data/app/*" { capabilities = ["read"] }
     path "gitops-kv/metadata/app/*" { capabilities = ["list"] }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: child-kv
@@ -28,13 +28,13 @@ spec:
   deletionPolicy: Orphan
   driftDetection: Enabled
   driftInterval: 30s
-  namespace: gitops-team
+  openbaoNamespace: gitops-team
   path: gitops-kv
   type: kv
   options:
     version: "2"
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: child-transit
@@ -46,11 +46,11 @@ spec:
   deletionPolicy: Orphan
   driftDetection: Enabled
   driftInterval: 30s
-  namespace: gitops-team
+  openbaoNamespace: gitops-team
   path: gitops-transit
   type: transit
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: TransitKey
 metadata:
   name: child-key
@@ -62,12 +62,12 @@ spec:
   deletionPolicy: Orphan
   driftDetection: Enabled
   driftInterval: 30s
-  namespace: gitops-team
+  openbaoNamespace: gitops-team
   mountPath: gitops-transit
   name: app
   type: aes256-gcm96
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: child-auth
@@ -79,11 +79,11 @@ spec:
   deletionPolicy: Orphan
   driftDetection: Enabled
   driftInterval: 30s
-  namespace: gitops-team
+  openbaoNamespace: gitops-team
   path: gitops-approle
   type: approle
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AppRole
 metadata:
   name: child-role
@@ -95,7 +95,7 @@ spec:
   deletionPolicy: Orphan
   driftDetection: Enabled
   driftInterval: 30s
-  namespace: gitops-team
+  openbaoNamespace: gitops-team
   mountPath: gitops-approle
   name: reader
   tokenPolicies:

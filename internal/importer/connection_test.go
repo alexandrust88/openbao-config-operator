@@ -8,7 +8,7 @@ import (
 	corev1alpha1 "github.com/alexandrust88/openbao-config-operator/api/core/v1alpha1"
 )
 
-// TestServerCABundleInPlatformNamespace keeps the trust anchor of the emitted OpenBaoServer out of the tenant
+// TestServerCABundleInPlatformNamespace keeps the trust anchor of the emitted BaoServer out of the tenant
 // namespace of the resources, where anyone who can write Secrets would control TLS trust for the server.
 func TestServerCABundleInPlatformNamespace(t *testing.T) {
 	imp := &importer{result: &Result{}, opts: Options{
@@ -16,9 +16,9 @@ func TestServerCABundleInPlatformNamespace(t *testing.T) {
 		Namespace:  "team-a",
 		Server:     &Server{Name: "openbao", Address: "https://bao.example", CABundle: true, CANamespace: "openbao-system"},
 	}}
-	server, ok := imp.serverObjects()[0].(*corev1alpha1.OpenBaoServer)
+	server, ok := imp.serverObjects()[0].(*corev1alpha1.BaoServer)
 	if !ok {
-		t.Fatal("first object is not the OpenBaoServer")
+		t.Fatal("first object is not the BaoServer")
 	}
 	ref := server.Spec.CABundle.SecretRef
 	if ref == nil || ref.Namespace != "openbao-system" || ref.Name != "openbao-ca" {

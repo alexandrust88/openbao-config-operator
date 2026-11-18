@@ -11,9 +11,9 @@ import (
 	corev1alpha1 "github.com/alexandrust88/openbao-config-operator/api/core/v1alpha1"
 )
 
-// Server describes the OpenBaoServer to emit with the resources, and the connection to it that they reference.
+// Server describes the BaoServer to emit with the resources, and the connection to it that they reference.
 type Server struct {
-	// Name of the cluster-scoped OpenBaoServer.
+	// Name of the cluster-scoped BaoServer.
 	Name string
 	// Address of the OpenBao API.
 	Address string
@@ -32,13 +32,13 @@ const tokenAudience = "openbao"
 // namespaceNameLabel is set by Kubernetes on every Namespace to its name.
 const namespaceNameLabel = "kubernetes.io/metadata.name"
 
-// serverObjects returns the OpenBaoServer and the connection named by opts.Connection. The connection logs in with
+// serverObjects returns the BaoServer and the connection named by opts.Connection. The connection logs in with
 // Kubernetes auth as the ServiceAccount named after it, with the OpenBao role of the same name; a note says so.
 func (imp *importer) serverObjects() []client.Object {
 	opts, srv := imp.opts, imp.opts.Server
 	allowed := &metav1.LabelSelector{MatchLabels: map[string]string{namespaceNameLabel: opts.Namespace}}
-	server := &corev1alpha1.OpenBaoServer{}
-	server.SetGroupVersionKind(corev1alpha1.GroupVersion.WithKind("OpenBaoServer"))
+	server := &corev1alpha1.BaoServer{}
+	server.SetGroupVersionKind(corev1alpha1.GroupVersion.WithKind("BaoServer"))
 	server.Name = srv.Name
 	server.Spec.Address = srv.Address
 	server.Spec.AllowInsecureHTTP = strings.HasPrefix(srv.Address, "http://")
@@ -47,7 +47,7 @@ func (imp *importer) serverObjects() []client.Object {
 		ref := &corev1alpha1.NamespacedCABundleReference{Namespace: srv.CANamespace, Name: srv.Name + "-ca",
 			Key: corev1alpha1.DefaultCABundleKey}
 		server.Spec.CABundle = &corev1alpha1.CABundleSource{SecretRef: ref}
-		imp.result.Notes = append(imp.result.Notes, fmt.Sprintf("OpenBaoServer/%s trusts the CA bundle in Secret "+
+		imp.result.Notes = append(imp.result.Notes, fmt.Sprintf("BaoServer/%s trusts the CA bundle in Secret "+
 			"%s/%s key %s: create it there, in a namespace only the platform team can write", srv.Name, ref.Namespace,
 			ref.Name, ref.Key))
 	}
@@ -59,8 +59,8 @@ func (imp *importer) serverObjects() []client.Object {
 		opts.Namespace, name, tokenAudience))
 
 	if opts.Connection.Kind == commonv1alpha1.ConnectionKindCluster {
-		conn := &corev1alpha1.ClusterOpenBaoConnection{}
-		conn.SetGroupVersionKind(corev1alpha1.GroupVersion.WithKind("ClusterOpenBaoConnection"))
+		conn := &corev1alpha1.ClusterBaoConnection{}
+		conn.SetGroupVersionKind(corev1alpha1.GroupVersion.WithKind("ClusterBaoConnection"))
 		conn.Name = name
 		conn.Spec.ConnectionSpec = connSpec
 		conn.Spec.AllowedNamespaces = allowed
@@ -69,8 +69,8 @@ func (imp *importer) serverObjects() []client.Object {
 		return []client.Object{server, conn}
 	}
 	server.Spec.AllowedNamespaces = allowed
-	conn := &corev1alpha1.OpenBaoConnection{}
-	conn.SetGroupVersionKind(corev1alpha1.GroupVersion.WithKind("OpenBaoConnection"))
+	conn := &corev1alpha1.BaoConnection{}
+	conn.SetGroupVersionKind(corev1alpha1.GroupVersion.WithKind("BaoConnection"))
 	conn.Name, conn.Namespace = name, opts.Namespace
 	conn.Spec.ConnectionSpec = connSpec
 	conn.Spec.Auth.Kubernetes = &corev1alpha1.KubernetesAuth{Role: name, Audiences: []string{tokenAudience},

@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=azureauthroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=azureauthroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=azureauthroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=azureauthroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=azureauthroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=azureauthroles/finalizers,verbs=update
 
 // SetupAzureAuthRole registers the AzureAuthRole controller with the manager.
 func SetupAzureAuthRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

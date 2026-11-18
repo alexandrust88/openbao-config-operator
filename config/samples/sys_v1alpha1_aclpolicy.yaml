@@ -1,0 +1,15 @@
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
+metadata:
+  labels:
+    app.kubernetes.io/name: openbao-config-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: aclpolicy-sample
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: baoconnection-sample
+  policy: |
+    path "secret/data/sample/*" {
+      capabilities = ["read"]
+    }

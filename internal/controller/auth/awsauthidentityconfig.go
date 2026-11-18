@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthidentityconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthidentityconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthidentityconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthidentityconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthidentityconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthidentityconfigs/finalizers,verbs=update
 
 // SetupAWSAuthIdentityConfig registers the AWSAuthIdentityConfig controller with the manager.
 func SetupAWSAuthIdentityConfig(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

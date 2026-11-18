@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=ldapauthusers,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=ldapauthusers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=ldapauthusers/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=ldapauthusers,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=ldapauthusers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=ldapauthusers/finalizers,verbs=update
 
 // SetupLDAPAuthUser registers the LDAPAuthUser controller with the manager.
 func SetupLDAPAuthUser(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

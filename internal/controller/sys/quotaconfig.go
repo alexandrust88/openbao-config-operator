@@ -11,9 +11,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=quotaconfigs,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=quotaconfigs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=quotaconfigs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=quotaconfigs,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=quotaconfigs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=quotaconfigs/finalizers,verbs=update
 
 const (
 	quotaConfigPath  = "sys/quotas/config"

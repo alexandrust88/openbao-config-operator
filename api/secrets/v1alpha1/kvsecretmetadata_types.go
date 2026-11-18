@@ -76,12 +76,12 @@ type KVSecretMetadataStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=openbao
+// +kubebuilder:resource:categories=obco;obco-secrets
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
-// KVSecretMetadata sets the per-secret metadata of one KV version 2 secret at `<mount>/metadata/<path>`: version retention, check-and-set and custom metadata. It does not write secret values. Delete removes the secret and every version, so it requires openbaoconfig.io/allow-destructive-delete.
+// KVSecretMetadata sets the per-secret metadata of one KV version 2 secret at `<mount>/metadata/<path>`: version retention, check-and-set and custom metadata. It does not write secret values. Delete removes the secret and every version, so it requires obco.dev/allow-destructive-delete.
 //
 // Example:
 //

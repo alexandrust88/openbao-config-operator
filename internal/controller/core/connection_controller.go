@@ -1,4 +1,4 @@
-// Package core holds the controllers of the core.openbaoconfig.io group.
+// Package core holds the controllers of the core.obco.dev group.
 package core
 
 import (
@@ -40,7 +40,7 @@ const (
 )
 
 // The retry bounds while the connection's OpenBao namespace does not exist yet, which is usual when the connection
-// and its OpenBaoNamespace are applied together.
+// and its BaoNamespace are applied together.
 const (
 	minNamespaceRetry = 2 * time.Second
 	maxNamespaceRetry = 30 * time.Second
@@ -52,14 +52,14 @@ type connectionObject interface {
 	GetConnectionStatus() *corev1alpha1.ConnectionStatus
 }
 
-// +kubebuilder:rbac:groups=core.openbaoconfig.io,resources=openbaoconnections;clusteropenbaoconnections,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=core.openbaoconfig.io,resources=openbaoconnections/finalizers;clusteropenbaoconnections/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core.openbaoconfig.io,resources=openbaoconnections/status;clusteropenbaoconnections/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core.obco.dev,resources=baoconnections;clusterbaoconnections,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=core.obco.dev,resources=baoconnections/finalizers;clusterbaoconnections/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core.obco.dev,resources=baoconnections/status;clusterbaoconnections/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=secrets;configmaps;namespaces,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=serviceaccounts/token,verbs=create
 // +kubebuilder:rbac:urls=/.well-known/openid-configuration,verbs=get
 
-// connectionReconciler checks one connection kind against its OpenBaoServer and authenticates it.
+// connectionReconciler checks one connection kind against its BaoServer and authenticates it.
 type connectionReconciler struct {
 	client.Client
 	resolver  *connection.Resolver
@@ -73,7 +73,7 @@ type connectionReconciler struct {
 	keys sync.Map
 }
 
-// SetupConnectionControllers registers the OpenBaoServer, OpenBaoConnection and ClusterOpenBaoConnection
+// SetupConnectionControllers registers the BaoServer, BaoConnection and ClusterBaoConnection
 // controllers and returns the resolver the managed kinds reach OpenBao through. A namespaced connection is never
 // given a token for one of apiServerAudiences; connection.APIServerAudiences discovers them.
 func SetupConnectionControllers(mgr ctrl.Manager, pool *openbao.Pool, apiServerAudiences []string) (
@@ -101,17 +101,17 @@ func setupConnectionControllers(mgr ctrl.Manager, resolver *connection.Resolver,
 		newList   func() client.ObjectList
 	}{
 		{
-			name:      "openbaoconnection",
+			name:      "baoconnection",
 			kind:      commonv1alpha1.ConnectionKindNamespaced,
 			tenant:    true,
-			newObject: func() connectionObject { return &corev1alpha1.OpenBaoConnection{} },
-			newList:   func() client.ObjectList { return &corev1alpha1.OpenBaoConnectionList{} },
+			newObject: func() connectionObject { return &corev1alpha1.BaoConnection{} },
+			newList:   func() client.ObjectList { return &corev1alpha1.BaoConnectionList{} },
 		},
 		{
-			name:      "clusteropenbaoconnection",
+			name:      "clusterbaoconnection",
 			kind:      commonv1alpha1.ConnectionKindCluster,
-			newObject: func() connectionObject { return &corev1alpha1.ClusterOpenBaoConnection{} },
-			newList:   func() client.ObjectList { return &corev1alpha1.ClusterOpenBaoConnectionList{} },
+			newObject: func() connectionObject { return &corev1alpha1.ClusterBaoConnection{} },
+			newList:   func() client.ObjectList { return &corev1alpha1.ClusterBaoConnectionList{} },
 		},
 	}
 	for _, kind := range kinds {
@@ -135,7 +135,7 @@ func setupConnectionControllers(mgr ctrl.Manager, resolver *connection.Resolver,
 			Named(kind.name).
 			For(kind.newObject(), builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 			Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(r.referencing("Secret")), builder.OnlyMetadata).
-			Watches(&corev1alpha1.OpenBaoServer{}, handler.EnqueueRequestsFromMapFunc(r.usingServer))
+			Watches(&corev1alpha1.BaoServer{}, handler.EnqueueRequestsFromMapFunc(r.usingServer))
 		if kind.tenant {
 			b = b.Watches(&corev1.Namespace{}, handler.EnqueueRequestsFromMapFunc(r.inNamespace), builder.OnlyMetadata,
 				builder.WithPredicates(predicate.LabelChangedPredicate{}))
@@ -154,7 +154,7 @@ func serverName(obj client.Object) []string {
 	return nil
 }
 
-// Reconcile checks the connection against its OpenBaoServer, authenticates and records the result. It always
+// Reconcile checks the connection against its BaoServer, authenticates and records the result. It always
 // requeues to re-check.
 func (r *connectionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	obj := r.newObject()
@@ -210,7 +210,7 @@ func (r *connectionReconciler) finalize(ctx context.Context, obj connectionObjec
 	if controllerutil.ContainsFinalizer(obj, connectionFinalizer) {
 		ref := commonv1alpha1.ConnectionReference{Kind: r.kind, Name: name.Name}
 		counts := countAll
-		if cluster, ok := obj.(*corev1alpha1.ClusterOpenBaoConnection); ok {
+		if cluster, ok := obj.(*corev1alpha1.ClusterBaoConnection); ok {
 			// A resource in a namespace the connection does not admit never used it, so its finalizer cannot hold it.
 			counts = func(item client.Object) (bool, error) {
 				return r.resolver.ClusterAdmits(ctx, cluster, item.GetNamespace())
@@ -276,7 +276,7 @@ func (r *connectionReconciler) observe(ctx context.Context, obj connectionObject
 		if cond != nil {
 			reason = cond.Reason
 		}
-		fail(corev1alpha1.ReasonServerNotReady, fmt.Sprintf("OpenBaoServer %s is not ready: %s", server.Name, reason))
+		fail(corev1alpha1.ReasonServerNotReady, fmt.Sprintf("BaoServer %s is not ready: %s", server.Name, reason))
 		return
 	}
 
@@ -331,7 +331,7 @@ func (r *connectionReconciler) usingServer(ctx context.Context, obj client.Objec
 }
 
 // inNamespace re-checks the tenant connections of a namespace whose labels changed, since the labels decide
-// which OpenBaoServers admit them.
+// which BaoServers admit them.
 func (r *connectionReconciler) inNamespace(ctx context.Context, obj client.Object) []reconcile.Request {
 	return r.enqueue(ctx, client.InNamespace(obj.GetName()))
 }

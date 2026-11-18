@@ -23,10 +23,10 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=approlesecretids,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=approlesecretids/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=approlesecretids/finalizers,verbs=update
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=approles,verbs=get;list;watch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=approlesecretids,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=approlesecretids/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=approlesecretids/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=approles,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update
 
 // Keys of the AppRoleSecretID payload that are not sent to OpenBao: the role the secret ID belongs to, and the

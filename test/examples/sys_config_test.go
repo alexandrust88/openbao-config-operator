@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
 
-// TestSysConfigExamples installs the sys singleton, UIHeader, AuditRequestHeader, Workflow and Plugin CRDs into
+// TestSysConfigExamples installs the sys singleton, UIHeader, AuditRequestHeader, BaoWorkflow and Plugin CRDs into
 // envtest, applies their examples/sys files with a server-side dry run and checks their CEL rules.
 func TestSysConfigExamples(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
@@ -28,7 +28,7 @@ func TestSysConfigExamples(t *testing.T) {
 		t.Fatal(err)
 	}
 	kinds := []string{"corsconfig", "uiheader", "logger", "auditrequestheader", "quotaconfig", "keyrotationconfig",
-		"raftautopilot", "workflow", "plugin"}
+		"raftautopilot", "baoworkflow", "plugin"}
 	k8s := sysConfigExamplesEnv(t, root, kinds)
 	ctx := context.Background()
 	if err := k8s.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openbao-config"}}); err != nil {
@@ -46,12 +46,12 @@ func TestSysConfigExamples(t *testing.T) {
 	}
 
 	t.Run("validation", func(t *testing.T) {
-		const meta = "apiVersion: sys.openbaoconfig.io/v1alpha1\nmetadata: {name: invalid, namespace: openbao-config}\n"
+		const meta = "apiVersion: sys.obco.dev/v1alpha1\nmetadata: {name: invalid, namespace: openbao-config}\n"
 		for _, tt := range []struct {
 			name, doc, wantErr string
 		}{
 			{name: "cors in a child namespace", wantErr: "root namespace", doc: `kind: CORSConfig
-spec: {connectionRef: {name: openbao}, namespace: team, allowedOrigins: [https://a.example.com]}`},
+spec: {connectionRef: {name: openbao}, openbaoNamespace: team, allowedOrigins: [https://a.example.com]}`},
 			{name: "cors wildcard with others", wantErr: "only entry", doc: `kind: CORSConfig
 spec: {connectionRef: {name: openbao}, allowedOrigins: ["*", https://a.example.com]}`},
 			{name: "x-vault ui header", wantErr: "X-Vault-* headers cannot be set", doc: `kind: UIHeader
@@ -82,7 +82,7 @@ spec: {connectionRef: {name: openbao}, type: auth, command: a..b,
 	})
 
 	t.Run("defaults only", func(t *testing.T) {
-		const meta = "apiVersion: sys.openbaoconfig.io/v1alpha1\nmetadata: {name: defaults, namespace: openbao-config}\n"
+		const meta = "apiVersion: sys.obco.dev/v1alpha1\nmetadata: {name: defaults, namespace: openbao-config}\n"
 		for _, doc := range []string{"kind: KeyRotationConfig\nspec: {connectionRef: {name: openbao}}",
 			"kind: RaftAutopilot\nspec: {connectionRef: {name: openbao}, minQuorum: 0}"} {
 			if err := k8s.Create(ctx, sysConfigExamplesDecodeString(t, meta+doc), client.DryRunAll); err != nil {
@@ -92,7 +92,7 @@ spec: {connectionRef: {name: openbao}, type: auth, command: a..b,
 	})
 
 	t.Run("x-vault ui header from metadata.name", func(t *testing.T) {
-		obj := sysConfigExamplesDecodeString(t, `apiVersion: sys.openbaoconfig.io/v1alpha1
+		obj := sysConfigExamplesDecodeString(t, `apiVersion: sys.obco.dev/v1alpha1
 kind: UIHeader
 metadata: {name: x-vault-token, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, values: [x]}`)
@@ -102,7 +102,7 @@ spec: {connectionRef: {name: openbao}, values: [x]}`)
 	})
 
 	t.Run("immutable", func(t *testing.T) {
-		plugin := sysConfigExamplesDecodeString(t, `apiVersion: sys.openbaoconfig.io/v1alpha1
+		plugin := sysConfigExamplesDecodeString(t, `apiVersion: sys.obco.dev/v1alpha1
 kind: Plugin
 metadata: {name: immutable, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, type: auth, name: ldap, command: p, version: v1.0.0,
@@ -127,7 +127,7 @@ func sysConfigExamplesEnv(t *testing.T, root string, kinds []string) client.Clie
 	assets := testenv.RequireAssets(t, root)
 	crds := make([]string, 0, len(kinds))
 	for _, kind := range kinds {
-		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_"+kind+"s.yaml"))
+		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_"+kind+"s.yaml"))
 	}
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,

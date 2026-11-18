@@ -560,7 +560,7 @@ func secretsExpectFields(ctx context.Context, bao openbao.Client, path string, w
 	return nil
 }
 
-// secretsExpectNoWrites checks that openbao_writes_total for kind stays flat over three drift intervals.
+// secretsExpectNoWrites checks that obco_writes_total for kind stays flat over three drift intervals.
 func secretsExpectNoWrites(t *testing.T, kind string) {
 	t.Helper()
 	before := secretsWrites(t, kind)
@@ -582,7 +582,7 @@ func secretsWrites(t *testing.T, kind string) float64 {
 		t.Fatal(err)
 	}
 	for _, family := range families {
-		if family.GetName() != "openbao_writes_total" {
+		if family.GetName() != "obco_writes_total" {
 			continue
 		}
 		for _, m := range family.GetMetric() {
@@ -616,7 +616,7 @@ func secretsSetup(ctx context.Context, t *testing.T) env {
 
 	crds := make([]string, 0, 3)
 	for _, name := range []string{"kvsecrets", "randomsecrets", "kvconfigs"} {
-		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "secrets.openbaoconfig.io_"+name+".yaml"))
+		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "secrets.obco.dev_"+name+".yaml"))
 	}
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,

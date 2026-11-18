@@ -1,4 +1,4 @@
-# OIDCKey (identity.openbaoconfig.io/v1alpha1)
+# OIDCKey (identity.obco.dev/v1alpha1)
 # OIDCKey manages a named key at `identity/oidc/key/<name>` that signs OpenBao identity tokens and OIDC provider
 # tokens.
 #
@@ -6,9 +6,9 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/identity/#oidckey
+# Reference: https://docs.obco.dev/reference/api/identity/#oidckey
 # Curated example: examples/identity/oidckey.yaml
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCKey
 metadata:
   name: example
@@ -18,7 +18,7 @@ spec:
   allowedClientIDs:
   - example
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -26,6 +26,6 @@ spec:
   driftInterval: 1h
   managementPolicy: Manage
   name: example
-  namespace: example
+  openbaoNamespace: example
   rotationPeriod: 1h
   verificationTTL: 1h

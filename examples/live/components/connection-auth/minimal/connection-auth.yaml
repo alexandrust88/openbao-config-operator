@@ -1,5 +1,5 @@
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: conn-approle
 spec:
@@ -14,8 +14,8 @@ spec:
         name: live-connection-auth-approle
         key: secret-id
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: conn-approle-reader
 spec:

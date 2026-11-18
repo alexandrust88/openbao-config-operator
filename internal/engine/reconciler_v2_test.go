@@ -105,7 +105,7 @@ func TestV2PathIndexConflict(t *testing.T) {
 			t.Fatalf("message does not name the owner: %q", v2Condition(got, commonv1alpha1.ConditionSynced).Message)
 		}
 		if after := testutil.ToFloat64(conflictsTotal.WithLabelValues(litTestResource)); after != before+1 {
-			t.Fatalf("openbao_conflicts_total = %v, want %v", after, before+1)
+			t.Fatalf("obco_conflicts_total = %v, want %v", after, before+1)
 		}
 	})
 	t.Run("older resource keeps reconciling", func(t *testing.T) {
@@ -559,11 +559,11 @@ func TestV2DriftRepairsAndLag(t *testing.T) {
 	h.store.putPolicy(Payload{keyPolicy: "out-of-band"})
 	h.mustReconcile()
 	if repairs() != start+1 {
-		t.Fatalf("openbao_drift_repairs_total = %v, want %v", repairs(), start+1)
+		t.Fatalf("obco_drift_repairs_total = %v, want %v", repairs(), start+1)
 	}
 	lag := testutil.ToFloat64(driftLag.WithLabelValues(ConnectionKey(testNamespace, newResource(testName).Spec.ConnectionRef)))
 	if lag < 90 || lag > 120 {
-		t.Fatalf("openbao_drift_lag_seconds = %v, want about 90", lag)
+		t.Fatalf("obco_drift_lag_seconds = %v, want about 90", lag)
 	}
 }
 
@@ -759,7 +759,7 @@ func TestV2WriteBudget(t *testing.T) {
 	held := h.getName("second")
 	assertCondition(t, held, commonv1alpha1.ConditionSynced, metav1.ConditionFalse, commonv1alpha1.ReasonWriteBudgetExceeded)
 	if exhausted() != start+1 {
-		t.Fatalf("openbao_write_budget_exhausted_total = %v, want %v", exhausted(), start+1)
+		t.Fatalf("obco_write_budget_exhausted_total = %v, want %v", exhausted(), start+1)
 	}
 	h.drainEvents()
 	if _, err := h.reconcileName("second"); err != nil {
@@ -1078,17 +1078,17 @@ func TestV2PathRecordedAfterStatusWriter(t *testing.T) {
 
 func TestConnectionIndexAndReadyPredicate(t *testing.T) {
 	obj := newResource(testName)
-	if got := ConnectionIndexFunc(obj); !slices.Equal(got, []string{"OpenBaoConnection/" + testNamespace + "/bao"}) {
+	if got := ConnectionIndexFunc(obj); !slices.Equal(got, []string{"BaoConnection/" + testNamespace + "/bao"}) {
 		t.Fatalf("index = %v", got)
 	}
 	obj.Spec.ConnectionRef.Kind = commonv1alpha1.ConnectionKindCluster
-	if got := ConnectionIndexFunc(obj); !slices.Equal(got, []string{"ClusterOpenBaoConnection/bao"}) {
+	if got := ConnectionIndexFunc(obj); !slices.Equal(got, []string{"ClusterBaoConnection/bao"}) {
 		t.Fatalf("cluster index = %v", got)
 	}
 
 	p := connectionReadyChanged()
-	notReady := &corev1alpha1.OpenBaoConnection{}
-	ready := &corev1alpha1.OpenBaoConnection{}
+	notReady := &corev1alpha1.BaoConnection{}
+	ready := &corev1alpha1.BaoConnection{}
 	meta.SetStatusCondition(&ready.Status.Conditions, metav1.Condition{
 		Type: commonv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Ready"})
 	if !p.Update(event.UpdateEvent{ObjectOld: notReady, ObjectNew: ready}) {
@@ -1106,18 +1106,18 @@ func TestConnectionIndexAndReadyPredicate(t *testing.T) {
 // re-probed for a new spec, or is being deleted re-queues its resources.
 func TestConnectionPredicatePassesReadyToReadyChanges(t *testing.T) {
 	p := connectionReadyChanged()
-	ready := &corev1alpha1.OpenBaoConnection{}
+	ready := &corev1alpha1.BaoConnection{}
 	ready.Generation = 1
 	ready.Status.ObservedGeneration = 1
 	meta.SetStatusCondition(&ready.Status.Conditions, metav1.Condition{
 		Type: commonv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Ready", ObservedGeneration: 1})
-	for name, edit := range map[string]func(*corev1alpha1.OpenBaoConnection){
-		"spec change": func(c *corev1alpha1.OpenBaoConnection) {
+	for name, edit := range map[string]func(*corev1alpha1.BaoConnection){
+		"spec change": func(c *corev1alpha1.BaoConnection) {
 			c.Spec.Namespace = "team-b"
 			c.Generation = 2
 		},
-		"new spec probed": func(c *corev1alpha1.OpenBaoConnection) { c.Status.ObservedGeneration = 2 },
-		"deletion":        func(c *corev1alpha1.OpenBaoConnection) { c.DeletionTimestamp = &metav1.Time{Time: time.Now()} },
+		"new spec probed": func(c *corev1alpha1.BaoConnection) { c.Status.ObservedGeneration = 2 },
+		"deletion":        func(c *corev1alpha1.BaoConnection) { c.DeletionTimestamp = &metav1.Time{Time: time.Now()} },
 	} {
 		changed := ready.DeepCopy()
 		edit(changed)

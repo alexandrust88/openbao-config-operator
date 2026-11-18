@@ -4,7 +4,7 @@ description: "Design decision for OpenBao Config Operator: openBao API changes a
 
 # 0023. OpenBao API changes and the CRD lifecycle
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; partly implemented, with the open detection and runtime items tracked in [BL-014](../project/backlog.md#bl-014-detect-openbao-api-changes-automatically). Date: 2026-11-14.
 
 ## Context
 

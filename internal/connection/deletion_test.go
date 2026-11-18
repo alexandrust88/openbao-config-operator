@@ -13,7 +13,7 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-const litFinalizer = "openbaoconfig.io/connection-in-use"
+const litFinalizer = "obco.dev/connection-in-use"
 
 // TestForDeletingConnectionKeepsLastConfig lets the resources a deleted connection still holds clean up after
 // its credentials are gone, as when the whole Namespace is deleted.
@@ -64,7 +64,7 @@ func TestForDeletingConnectionRechecksAdmission(t *testing.T) {
 	if err := r.Client.Delete(ctx, conn); err != nil {
 		t.Fatal(err)
 	}
-	server := &corev1alpha1.OpenBaoServer{}
+	server := &corev1alpha1.BaoServer{}
 	if err := r.Client.Get(ctx, client.ObjectKey{Name: serverName}, server); err != nil {
 		t.Fatal(err)
 	}
@@ -116,9 +116,9 @@ func TestServerFor(t *testing.T) {
 
 func TestConnectionKey(t *testing.T) {
 	for want, ref := range map[string]commonv1alpha1.ConnectionReference{
-		"OpenBaoConnection/team-a/bao":   {Name: connName},
-		"ClusterOpenBaoConnection/bao":   {Kind: commonv1alpha1.ConnectionKindCluster, Name: connName},
-		"OpenBaoConnection/team-a/other": {Kind: commonv1alpha1.ConnectionKindNamespaced, Name: "other"},
+		"BaoConnection/team-a/bao":   {Name: connName},
+		"ClusterBaoConnection/bao":   {Kind: commonv1alpha1.ConnectionKindCluster, Name: connName},
+		"BaoConnection/team-a/other": {Kind: commonv1alpha1.ConnectionKindNamespaced, Name: "other"},
 	} {
 		if got := engine.ConnectionKey(teamA, ref); got != want {
 			t.Errorf("engine.ConnectionKey(%+v) = %q, want %q", ref, got, want)

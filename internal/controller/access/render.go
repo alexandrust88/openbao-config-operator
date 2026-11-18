@@ -1,4 +1,4 @@
-// Package access holds the controllers of the access.openbaoconfig.io kinds.
+// Package access holds the controllers of the access.obco.dev kinds.
 package access
 
 import (

@@ -4,7 +4,7 @@ description: "Design decision for OpenBao Config Operator: drift tiers and per-s
 
 # 0014. Drift tiers and per-server request budget
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; implemented. Date: 2026-11-14.
 
 ## Context
 

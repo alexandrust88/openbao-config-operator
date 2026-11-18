@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=gcpimpersonatedaccounts,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=gcpimpersonatedaccounts/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=gcpimpersonatedaccounts/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=gcpimpersonatedaccounts,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=gcpimpersonatedaccounts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=gcpimpersonatedaccounts/finalizers,verbs=update
 
 // SetupGCPImpersonatedAccount registers the GCPImpersonatedAccount controller with the manager.
 func SetupGCPImpersonatedAccount(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

@@ -7,21 +7,21 @@ import (
 )
 
 // ConnectionKind names the kind of connection a resource references.
-// +kubebuilder:validation:Enum=OpenBaoConnection;ClusterOpenBaoConnection
+// +kubebuilder:validation:Enum=BaoConnection;ClusterBaoConnection
 type ConnectionKind string
 
 const (
-	ConnectionKindNamespaced ConnectionKind = "OpenBaoConnection"
-	ConnectionKindCluster    ConnectionKind = "ClusterOpenBaoConnection"
+	ConnectionKindNamespaced ConnectionKind = "BaoConnection"
+	ConnectionKindCluster    ConnectionKind = "ClusterBaoConnection"
 )
 
 // ConnectionReference selects the connection used to reach OpenBao.
 type ConnectionReference struct {
-	// Kind of the connection: OpenBaoConnection (in the same Kubernetes namespace as this resource) or ClusterOpenBaoConnection (cluster-scoped; its allowedNamespaces must select this namespace). Default: OpenBaoConnection.
-	// +kubebuilder:default=OpenBaoConnection
+	// Kind of the connection: BaoConnection (in the same Kubernetes namespace as this resource) or ClusterBaoConnection (cluster-scoped; its allowedNamespaces must select this namespace). Default: BaoConnection.
+	// +kubebuilder:default=BaoConnection
 	// +optional
 	Kind ConnectionKind `json:"kind,omitempty"`
-	// Name of the OpenBaoConnection or ClusterOpenBaoConnection. Example: openbao
+	// Name of the BaoConnection or ClusterBaoConnection. Example: openbao
 	// +required
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:MaxLength=253
@@ -91,7 +91,7 @@ type LocalObjectReference struct {
 
 // ResourceSpec is embedded inline in the spec of every managed kind.
 //
-// +kubebuilder:validation:XValidation:rule="has(self.__namespace__) == has(oldSelf.__namespace__) && (!has(self.__namespace__) || self.__namespace__ == oldSelf.__namespace__)",message="namespace is immutable"
+// +kubebuilder:validation:XValidation:rule="has(self.openbaoNamespace) == has(oldSelf.openbaoNamespace) && (!has(self.openbaoNamespace) || self.openbaoNamespace == oldSelf.openbaoNamespace)",message="openbaoNamespace is immutable"
 // +kubebuilder:validation:XValidation:rule="self.connectionRef == oldSelf.connectionRef",message="connectionRef is immutable"
 type ResourceSpec struct {
 	// Connection used to reach and log in to OpenBao. Immutable.
@@ -101,12 +101,12 @@ type ResourceSpec struct {
 	// +kubebuilder:validation:MaxLength=256
 	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9_-][A-Za-z0-9._-]*(/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$`
 	// +optional
-	Namespace string `json:"namespace,omitempty"`
+	Namespace string `json:"openbaoNamespace,omitempty"`
 	// How an object that already exists in OpenBao, and is not yet owned by this resource, is treated. Create (default): create the object; an existing one is refused with reason Conflict. Adopt: take over an existing object and never create one. CreateOrAdopt: create it, or take over an existing one. Settings that always exist in OpenBao (configuration singletons) need Adopt or CreateOrAdopt.
 	// +kubebuilder:default=Create
 	// +optional
 	CreationPolicy CreationPolicy `json:"creationPolicy,omitempty"`
-	// What happens in OpenBao when this resource is deleted. Orphan (default): the OpenBao object stays. Delete: the object is removed (a configuration singleton is reset to its defaults); data and key holders (mounts, namespaces, KV data, audit devices, endpoints, transit, PKI, SSH CA and TOTP keys, MFA methods, entities) are removed only while the resource carries the annotation openbaoconfig.io/allow-destructive-delete: "true". Kinds whose OpenBao object cannot be deleted reject Delete.
+	// What happens in OpenBao when this resource is deleted. Orphan (default): the OpenBao object stays. Delete: the object is removed (a configuration singleton is reset to its defaults); data and key holders (mounts, namespaces, KV data, audit devices, endpoints, transit, PKI, SSH CA and TOTP keys, MFA methods, entities) are removed only while the resource carries the annotation obco.dev/allow-destructive-delete: "true". Kinds whose OpenBao object cannot be deleted reject Delete.
 	// +kubebuilder:default=Orphan
 	// +optional
 	DeletionPolicy DeletionPolicy `json:"deletionPolicy,omitempty"`
@@ -135,11 +135,11 @@ const (
 	ManagementPolicyObserve ManagementPolicy = "Observe"
 )
 
-// AnnotationPaused set to "true" on a managed object, its Kubernetes Namespace or its OpenBaoServer stops reconciling (no reads, writes or deletes) until removed, so an incident change is not reverted.
-const AnnotationPaused = "openbaoconfig.io/paused"
+// AnnotationPaused set to "true" on a managed object, its Kubernetes Namespace or its BaoServer stops reconciling (no reads, writes or deletes) until removed, so an incident change is not reverted.
+const AnnotationPaused = "obco.dev/paused"
 
 // AnnotationAllowDestructiveDelete must be "true" before a Delete policy removes a destructive object (mount, namespace, KV data) or an update recreates one.
-const AnnotationAllowDestructiveDelete = "openbaoconfig.io/allow-destructive-delete"
+const AnnotationAllowDestructiveDelete = "obco.dev/allow-destructive-delete"
 
 // AcquiredState records how the operator came to own an OpenBao object.
 type AcquiredState string
@@ -197,7 +197,7 @@ type ResourceStatus struct {
 	Path string `json:"path,omitempty"`
 	// Absolute OpenBao namespace the object was written in; empty means the root namespace. If it later differs from the spec, reconciling stops with reason NamespaceChanged. Example: team-a/apps
 	// +optional
-	Namespace string `json:"namespace,omitempty"`
+	Namespace string `json:"openbaoNamespace,omitempty"`
 	// Cluster ID of the OpenBao server the object was acquired on. If the connection later reaches another server, reconciling stops with reason ServerChanged and nothing is written or deleted. Example: 80f7de92-c12e-e960-4754-255c32fc6b53
 	// +optional
 	ServerID string `json:"serverID,omitempty"`

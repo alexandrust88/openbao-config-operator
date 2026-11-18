@@ -4,7 +4,7 @@ description: "Design decision for OpenBao Config Operator: cRD versioning withou
 
 # 0020. CRD versioning without webhooks
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; not yet applied, because every CRD still serves only `v1alpha1`. Date: 2026-11-14.
 
 ## Context
 

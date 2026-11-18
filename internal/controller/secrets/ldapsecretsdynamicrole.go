@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=ldapsecretsdynamicroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=ldapsecretsdynamicroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=ldapsecretsdynamicroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=ldapsecretsdynamicroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=ldapsecretsdynamicroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=ldapsecretsdynamicroles/finalizers,verbs=update
 
 // SetupLDAPSecretsDynamicRole registers the LDAPSecretsDynamicRole controller with the manager.
 func SetupLDAPSecretsDynamicRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

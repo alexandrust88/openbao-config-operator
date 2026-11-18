@@ -1,11 +1,11 @@
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: openbao
 spec:
   serverRef:
     name: openbao-server
-  namespace: team-a
+  openbaoNamespace: team-a
   auth:
     kubernetes:
       mountPath: kubernetes
@@ -15,14 +15,14 @@ spec:
       audiences:
         - openbao-config-operator
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: ClusterOpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
 metadata:
   name: openbao-cluster
 spec:
   serverRef:
     name: openbao-server
-  namespace: team-a
+  openbaoNamespace: team-a
   allowedNamespaces:
     matchLabels:
       kubernetes.io/metadata.name: openbao-live

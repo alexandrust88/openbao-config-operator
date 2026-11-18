@@ -30,12 +30,12 @@ func TestConformanceSteadyRequiresObservation(t *testing.T) {
 				if tc.advances {
 					reconciles = requests.Add(1)
 				}
-				_, _ = fmt.Fprintf(w, "go_goroutines 10\nopenbao_writes_total{kind=\"Policy\"} 0\n"+
-					"controller_runtime_reconcile_total{controller=\"policy.sys.openbaoconfig.io\",result=\"success\"} %d\n", reconciles)
+				_, _ = fmt.Fprintf(w, "go_goroutines 10\nobco_writes_total{kind=\"ACLPolicy\"} 0\n"+
+					"controller_runtime_reconcile_total{controller=\"aclpolicy.sys.obco.dev\",result=\"success\"} %d\n", reconciles)
 			}))
 			defer server.Close()
 			mgr := &confManager{metricsURL: server.URL}
-			kind := &confKind{Kind: "Policy", Group: "sys.openbaoconfig.io"}
+			kind := &confKind{Kind: "ACLPolicy", Group: "sys.obco.dev"}
 			writes, err := confSteady(mgr, kind, 1, time.Nanosecond)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("steady writes=%d err=%v, want error=%v", writes, err, tc.wantErr)

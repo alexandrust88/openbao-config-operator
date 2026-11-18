@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidckeys,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidckeys/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidckeys/finalizers,verbs=update
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidckeys,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidckeys/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidckeys/finalizers,verbs=update
 
 // builtinOIDCName is the name of the key and the provider that OpenBao creates and refuses to delete.
 const builtinOIDCName = "default"

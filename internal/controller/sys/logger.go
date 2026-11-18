@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=loggers,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=loggers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=loggers/finalizers,verbs=update
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=loggers,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=loggers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=loggers/finalizers,verbs=update
 
 // SetupLogger registers the Logger controller with the manager.
 func SetupLogger(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

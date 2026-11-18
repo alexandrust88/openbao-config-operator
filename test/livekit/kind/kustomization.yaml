@@ -11,14 +11,14 @@ resources:
   - child-minimal
 patches:
   - target:
-      kind: OpenBaoServer
+      kind: BaoServer
       name: .*-(openbao-server|conn-server-secret-ca|conn-server-dev)
     patch: |-
       - op: replace
         path: /spec/address
         value: https://openbao-active.openbao.svc:8200
   - target:
-      kind: OpenBaoServer
+      kind: BaoServer
       name: .*-conn-server-dev
     patch: |-
       - op: remove

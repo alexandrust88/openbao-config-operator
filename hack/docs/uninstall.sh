@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The uninstall procedure of docs/get-started/install.md, run last by hack/docs/tutorials.sh on the cluster that the
+# The uninstall procedure of docs/operate/uninstall.md, run last by hack/docs/tutorials.sh on the cluster that the
 # quickstart and the four tutorials left. It removes the OpenBao configuration of tenant-b (deletionPolicy Delete and
 # the destructive-delete annotation) and keeps everything else (Orphan), then checks both in OpenBao after the
 # manager and the CRDs are gone. The page includes the sections between the snippet markers; the scoping to tenant-b
@@ -29,7 +29,7 @@ bao_2() {
 
 # count_managed prints how many resources match the jq condition $1.
 count_managed() {
-  kubectl get openbao --all-namespaces -o json | jq "[.items[] | select($1)] | length"
+  kubectl get obco --all-namespaces -o json | jq "[.items[] | select($1)] | length"
 }
 
 # wait_finalizer waits up to 2 minutes until the platform resource $1 carries the engine finalizer.
@@ -37,19 +37,19 @@ wait_finalizer() {
   local finalizers=""
   for _ in $(seq 1 24); do
     finalizers=$(kubectl -n platform get "$1" -o jsonpath='{.metadata.finalizers}')
-    grep -q 'openbaoconfig.io/finalizer' <<<"$finalizers" && return 0
+    grep -q 'obco.dev/finalizer' <<<"$finalizers" && return 0
     sleep 5
   done
-  fail "$1 has no finalizer openbaoconfig.io/finalizer after 2 minutes: $finalizers"
+  fail "$1 has no finalizer obco.dev/finalizer after 2 minutes: $finalizers"
 }
 
 # The resources of tenant-b that accept deletionPolicy Delete. Its KubernetesAuthConfig rejects Delete; it goes with
 # the auth method.
 tenant_b=(
-  openbaonamespace.sys.openbaoconfig.io/tenant-b
-  authmount.sys.openbaoconfig.io/tenant-b-kubernetes
-  policy.sys.openbaoconfig.io/tenant-b-admin
-  kubernetesauthrole.auth.openbaoconfig.io/tenant-b-operator
+  baonamespace.sys.obco.dev/tenant-b
+  authmount.sys.obco.dev/tenant-b-kubernetes
+  aclpolicy.sys.obco.dev/tenant-b-admin
+  kubernetesauthrole.auth.obco.dev/tenant-b-operator
 )
 
 kubectl config use-context "kind-$KIND_CLUSTER"
@@ -58,7 +58,7 @@ kubectl config use-context "kind-$KIND_CLUSTER"
 [ "$(count_managed '.spec.deletionPolicy == "Delete"')" -ge 2 ] || fail "the tutorials left fewer than two Delete resources"
 
 # --8<-- [start:orphan]
-kubectl get openbao --all-namespaces -o json \
+kubectl get obco --all-namespaces -o json \
   | jq -r '.items[] | select(.spec.deletionPolicy == "Delete")
       | "\(.metadata.namespace) \(.kind | ascii_downcase).\(.apiVersion | split("/")[0])/\(.metadata.name)"' \
   | while read -r namespace resource; do
@@ -76,20 +76,20 @@ for resource in "${tenant_b[@]}"; do
 done
 
 # --8<-- [start:destructive]
-kubectl get openbao --all-namespaces -o json \
+kubectl get obco --all-namespaces -o json \
   | jq -r '.items[] | select(.spec.deletionPolicy == "Delete")
       | "\(.metadata.namespace) \(.kind | ascii_downcase).\(.apiVersion | split("/")[0])/\(.metadata.name)"' \
   | while read -r namespace resource; do
-      kubectl -n "$namespace" annotate "$resource" openbaoconfig.io/allow-destructive-delete=true --overwrite
+      kubectl -n "$namespace" annotate "$resource" obco.dev/allow-destructive-delete=true --overwrite
     done
 # --8<-- [end:destructive]
 
-annotated=$(count_managed '.metadata.annotations["openbaoconfig.io/allow-destructive-delete"] == "true"')
+annotated=$(count_managed '.metadata.annotations["obco.dev/allow-destructive-delete"] == "true"')
 [ "$annotated" = "${#tenant_b[@]}" ] || fail "$annotated resources carry the destructive-delete annotation, want ${#tenant_b[@]}"
 
 # --8<-- [start:delete-resources]
-resources=$(kubectl get crd -o name | cut -d/ -f2 | grep '\.openbaoconfig\.io$' \
-  | grep -vxE '(openbaoservers|openbaoconnections|clusteropenbaoconnections)\.core\.openbaoconfig\.io' \
+resources=$(kubectl get crd -o name | cut -d/ -f2 | grep '\.obco\.dev$' \
+  | grep -vxE '(baoservers|baoconnections|clusterbaoconnections)\.core\.obco\.dev' \
   | paste -sd, -)
 kubectl delete "$resources" --all --all-namespaces --timeout=10m
 # --8<-- [end:delete-resources]
@@ -101,19 +101,19 @@ namespaces=$(bao_1 namespace list)
 grep -qx 'tenant-a/' <<<"$namespaces" || fail "the OpenBao namespace tenant-a went with deletionPolicy Orphan"
 
 # --8<-- [start:delete-connections]
-kubectl delete openbaoconnections.core.openbaoconfig.io,clusteropenbaoconnections.core.openbaoconfig.io \
+kubectl delete baoconnections.core.obco.dev,clusterbaoconnections.core.obco.dev \
   --all --all-namespaces --timeout=5m
 # --8<-- [end:delete-connections]
 
 # --8<-- [start:delete-servers]
-kubectl delete openbaoservers.core.openbaoconfig.io --all --timeout=5m
+kubectl delete baoservers.core.obco.dev --all --timeout=5m
 # --8<-- [end:delete-servers]
 
 # --8<-- [start:check]
-kubectl get openbao --all-namespaces
+kubectl get obco --all-namespaces
 # --8<-- [end:check]
 
-left=$(kubectl get openbao --all-namespaces -o name)
+left=$(kubectl get obco --all-namespaces -o name)
 [ -z "$left" ] || fail "objects of the operator are left before the uninstall: $left"
 
 # --8<-- [start:helm-uninstall]
@@ -129,11 +129,11 @@ done
 [ -z "$manager" ] || fail "the manager is still running 2 minutes after helm uninstall: $manager"
 
 # --8<-- [start:crds]
-kubectl get crd -o name | grep '\.openbaoconfig\.io$' | xargs kubectl delete --timeout=5m
+kubectl get crd -o name | grep '\.obco\.dev$' | xargs kubectl delete --timeout=5m
 # --8<-- [end:crds]
 
 crds=$(kubectl get crd -o name)
-if grep '\.openbaoconfig\.io$' <<<"$crds"; then
+if grep '\.obco\.dev$' <<<"$crds"; then
   fail "CRDs of the operator are left, Terminating or not"
 fi
 

@@ -1,4 +1,4 @@
-# AccessLevel (access.openbaoconfig.io/v1alpha1)
+# AccessLevel (access.obco.dev/v1alpha1)
 # AccessLevel is a named, reusable set of ACL capabilities on KV version 2 secret data and metadata, such as reader,
 # writer or owner.
 #
@@ -6,9 +6,9 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: none.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/access/#accesslevel
+# Reference: https://docs.obco.dev/reference/api/access/#accesslevel
 # Curated example: examples/access/accesslevel.yaml
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessLevel
 metadata:
   name: example

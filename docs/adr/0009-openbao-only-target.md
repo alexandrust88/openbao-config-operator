@@ -4,7 +4,9 @@ description: "Design decision for OpenBao Config Operator: openBao-only target. 
 
 # 0009. OpenBao-only target
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; implemented. Date: 2026-11-14.
+
+Update 2026-11-18: no released CRD has a connection `status.flavor` field. The probe in `internal/openbao/probe.go` still computes a flavour, but nothing stores it; that code is the remaining leftover.
 
 ## Context
 

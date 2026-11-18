@@ -20,7 +20,7 @@ func TestIdentityCELRules(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	crds, err := filepath.Glob(filepath.Join(root, "config", "crd", "bases", "identity.openbaoconfig.io_*.yaml"))
+	crds, err := filepath.Glob(filepath.Join(root, "config", "crd", "bases", "identity.obco.dev_*.yaml"))
 	if err != nil || len(crds) != 14 {
 		t.Fatalf("identity CRDs: %v %v", crds, err)
 	}
@@ -39,15 +39,15 @@ func TestIdentityCELRules(t *testing.T) {
 			name, doc, wantErr string
 		}{
 			{name: "entity marker key", wantErr: keys,
-				doc: "kind: Entity\nmetadata: {name: m1}\nspec: {connectionRef: {name: openbao}, metadata: {openbaoconfig-uid: x}}"},
+				doc: "kind: IdentityEntity\nmetadata: {name: m1}\nspec: {connectionRef: {name: openbao}, metadata: {openbaoconfig-uid: x}}"},
 			{name: "group key with a dot", wantErr: keys,
-				doc: "kind: Group\nmetadata: {name: m2}\nspec: {connectionRef: {name: openbao}, metadata: {team.name: x}}"},
+				doc: "kind: IdentityGroup\nmetadata: {name: m2}\nspec: {connectionRef: {name: openbao}, metadata: {team.name: x}}"},
 			{name: "group vault key", wantErr: keys,
-				doc: "kind: Group\nmetadata: {name: m3}\nspec: {connectionRef: {name: openbao}, metadata: {vault-x: x}}"},
+				doc: "kind: IdentityGroup\nmetadata: {name: m3}\nspec: {connectionRef: {name: openbao}, metadata: {vault-x: x}}"},
 			{name: "group root policy", wantErr: "policies cannot contain root",
-				doc: "kind: Group\nmetadata: {name: p}\nspec: {connectionRef: {name: openbao}, policies: [root]}"},
+				doc: "kind: IdentityGroup\nmetadata: {name: p}\nspec: {connectionRef: {name: openbao}, policies: [root]}"},
 			{name: "group alias with two groups", wantErr: "set exactly one of groupID, groupName, groupRef and groupSelector",
-				doc: "kind: GroupAlias\nmetadata: {name: ga}\nspec: {connectionRef: {name: openbao}, aliasName: a, mountPath: oidc, groupID: g, groupName: other}"},
+				doc: "kind: IdentityGroupAlias\nmetadata: {name: ga}\nspec: {connectionRef: {name: openbao}, aliasName: a, mountPath: oidc, groupID: g, groupName: other}"},
 			{name: "provider client with two choices", wantErr: "set exactly one of clientID, clientName, clientRef and",
 				doc: "kind: OIDCProvider\nmetadata: {name: p}\nspec: {connectionRef: {name: openbao}, allowedClients: [{clientID: a, clientName: b}]}"},
 			{name: "assignment group with two choices", wantErr: "set exactly one of groupID, groupName, groupRef and groupSelector",
@@ -68,7 +68,7 @@ func TestIdentityCELRules(t *testing.T) {
 				}
 			})
 		}
-		ok := oidcExamplesDoc(t, "kind: Entity\nmetadata: {name: ok}\nspec: {connectionRef: {name: openbao}, metadata: {team: a, a/b=c+d_e-f: x}}")
+		ok := oidcExamplesDoc(t, "kind: IdentityEntity\nmetadata: {name: ok}\nspec: {connectionRef: {name: openbao}, metadata: {team: a, a/b=c+d_e-f: x}}")
 		if err := k8s.Create(ctx, ok, client.DryRunAll); err != nil {
 			t.Errorf("valid metadata keys refused: %v", err)
 		}
@@ -76,7 +76,7 @@ func TestIdentityCELRules(t *testing.T) {
 
 	t.Run("name immutable", func(t *testing.T) {
 		for _, doc := range []string{
-			"kind: Group\nmetadata: {name: imm-group}\nspec: {connectionRef: {name: openbao}, name: a}",
+			"kind: IdentityGroup\nmetadata: {name: imm-group}\nspec: {connectionRef: {name: openbao}, name: a}",
 			"kind: OIDCRole\nmetadata: {name: imm-role}\nspec: {connectionRef: {name: openbao}, name: a, key: k}",
 			"kind: OIDCScope\nmetadata: {name: imm-scope}\nspec: {connectionRef: {name: openbao}, name: a}",
 			"kind: OIDCProvider\nmetadata: {name: imm-provider}\nspec: {connectionRef: {name: openbao}, name: a}",

@@ -86,7 +86,7 @@ type TokenFields struct {
 	// +optional
 	TokenPolicies []string `json:"tokenPolicies,omitempty"`
 
-	// Policy resources in this Kubernetes namespace whose OpenBao policy names are added to tokenPolicies. The role waits until each Policy is Ready; each Policy must use the same connectionRef and namespace as the role. Example: [{name: app-read}]
+	// ACLPolicy resources in this Kubernetes namespace whose OpenBao policy names are added to tokenPolicies. The role waits until each ACLPolicy is Ready; each ACLPolicy must use the same connectionRef and namespace as the role. Example: [{name: app-read}]
 	// +kubebuilder:validation:MaxItems=32
 	// +listType=map
 	// +listMapKey=name

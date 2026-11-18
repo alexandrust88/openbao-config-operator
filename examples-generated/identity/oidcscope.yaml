@@ -1,4 +1,4 @@
-# OIDCScope (identity.openbaoconfig.io/v1alpha1)
+# OIDCScope (identity.obco.dev/v1alpha1)
 # OIDCScope manages a scope of the OpenBao OIDC provider at `identity/oidc/scope/<name>`: a template of claims added
 # to ID tokens when a client requests the scope.
 #
@@ -6,16 +6,16 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/identity/#oidcscope
+# Reference: https://docs.obco.dev/reference/api/identity/#oidcscope
 # Curated example: examples/identity/oidcscope.yaml
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCScope
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -24,5 +24,5 @@ spec:
   driftInterval: 1h
   managementPolicy: Manage
   name: example
-  namespace: example
+  openbaoNamespace: example
   template: '{'

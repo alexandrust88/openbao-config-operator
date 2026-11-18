@@ -1,4 +1,4 @@
-# AWSAuthCertificate (auth.openbaoconfig.io/v1alpha1)
+# AWSAuthCertificate (auth.obco.dev/v1alpha1)
 # AWSAuthCertificate manages an AWS public certificate of an OpenBao AWS auth method at
 # auth/<mountPath>/config/certificate/<name>.
 #
@@ -6,9 +6,9 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: awsPublicCert, connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#awsauthcertificate
+# Reference: https://docs.obco.dev/reference/api/auth/#awsauthcertificate
 # Curated example: examples/auth/awsauthcertificate.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AWSAuthCertificate
 metadata:
   name: example
@@ -19,7 +19,7 @@ spec:
     ZmFrZS1ub3QtYS1jZXJ0aWZpY2F0ZQ==
     -----END CERTIFICATE-----
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -28,5 +28,5 @@ spec:
   managementPolicy: Manage
   mountPath: aws
   name: example
-  namespace: example
+  openbaoNamespace: example
   type: pkcs7

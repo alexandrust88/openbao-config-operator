@@ -22,7 +22,7 @@ import (
 	commonv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/common/v1alpha1"
 )
 
-// +kubebuilder:validation:XValidation:rule="!has(self.__namespace__) || self.__namespace__ == ''",message="RaftAutopilot exists only in the root namespace: leave namespace empty"
+// +kubebuilder:validation:XValidation:rule="!has(self.openbaoNamespace) || self.openbaoNamespace == ''",message="RaftAutopilot exists only in the root namespace: leave openbaoNamespace empty"
 // +kubebuilder:validation:XValidation:rule="!has(self.cleanupDeadServers) || !self.cleanupDeadServers || (has(self.minQuorum) && self.minQuorum >= 3)",message="cleanupDeadServers requires minQuorum of at least 3"
 // +kubebuilder:validation:XValidation:rule="!has(self.lastContactThreshold) || duration(self.lastContactThreshold) >= duration('1s')",message="lastContactThreshold must be at least 1s"
 // +kubebuilder:validation:XValidation:rule="!has(self.deadServerLastContactThreshold) || duration(self.deadServerLastContactThreshold) >= duration('1m')",message="deadServerLastContactThreshold must be at least 1m"
@@ -72,7 +72,7 @@ type RaftAutopilotStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=openbao
+// +kubebuilder:resource:categories=obco;obco-sys
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`

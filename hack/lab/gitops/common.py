@@ -195,8 +195,8 @@ def regression(h, provider, bao):
     print('Public Git configuration: root/tenant auth, ACL denials and transit round trips passed', flush=True)
     drift = 'path "gitops-kv/data/app/*" { capabilities = ["read"] }'
     for tenant in ('root', 'child'):
-        h.kubectl('-n', NAMESPACE, 'patch', 'policies.sys.openbaoconfig.io', tenant + '-reader', '--type=merge', '-p', json.dumps({'spec': {'policy': drift}}))
-    eventually(lambda: all(h.get('policies.sys.openbaoconfig.io', t + '-reader', NAMESPACE)['spec']['policy'] == policy() for t in ('root', 'child')), 'GitOps Kubernetes drift repair')
+        h.kubectl('-n', NAMESPACE, 'patch', 'aclpolicies.sys.obco.dev', tenant + '-reader', '--type=merge', '-p', json.dumps({'spec': {'policy': drift}}))
+    eventually(lambda: all(h.get('aclpolicies.sys.obco.dev', t + '-reader', NAMESPACE)['spec']['policy'] == policy() for t in ('root', 'child')), 'GitOps Kubernetes drift repair')
     for tenant in ('root', 'child'):
         if bao.request(tenant, 'PUT', 'sys/policies/acl/gitops-reader', {'policy': drift})[0] != 204:
             raise RuntimeError('Unable to introduce OpenBao policy drift')

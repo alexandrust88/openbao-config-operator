@@ -1,4 +1,4 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: Plugin
 metadata:
   name: lab-auth-ldap
@@ -13,7 +13,7 @@ spec:
   sha256: {{ required "plugin.sha256 must identify the baked LDAP plugin executable" .Values.plugin.sha256 | quote }}
   deletionPolicy: Orphan
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: lab-ldap
@@ -26,7 +26,7 @@ spec:
   pluginRef: {name: lab-auth-ldap}
   deletionPolicy: Orphan
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: LDAPAuthConfig
 metadata:
   name: lab-ldap
@@ -52,8 +52,8 @@ spec:
   tokenTTL: 5m
   tokenMaxTTL: 15m
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: lab-ldap-group
   namespace: {{ .Values.configNamespace | quote }}
@@ -63,8 +63,8 @@ spec:
   name: lab-ldap-group
   policy: 'path "lab-ldap-data/data/group" { capabilities = ["read"] }'
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: lab-ldap-user
   namespace: {{ .Values.configNamespace | quote }}
@@ -74,7 +74,7 @@ spec:
   name: lab-ldap-user
   policy: 'path "lab-ldap-data/data/user" { capabilities = ["read"] }'
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: LDAPAuthGroup
 metadata:
   name: lab-ldap-admins
@@ -86,7 +86,7 @@ spec:
   name: lldap_admin
   policies: [lab-ldap-group]
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: LDAPAuthUser
 metadata:
   name: lab-ldap-admin
@@ -98,7 +98,7 @@ spec:
   name: admin
   policies: [lab-ldap-user]
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: lab-ldap-data
@@ -120,7 +120,7 @@ metadata:
 stringData:
   value: {{ printf "lab-ldap-%s-fixture" $name | quote }}
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVSecret
 metadata:
   name: lab-ldap-data-{{ $name }}

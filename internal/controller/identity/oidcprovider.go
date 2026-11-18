@@ -13,10 +13,10 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/refs"
 )
 
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcproviders,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcproviders/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcproviders/finalizers,verbs=update
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcclients,verbs=get;list;watch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcproviders,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcproviders/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcproviders/finalizers,verbs=update
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcclients,verbs=get;list;watch
 
 // SetupOIDCProvider registers the OIDCProvider controller with the manager.
 func SetupOIDCProvider(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

@@ -10,14 +10,14 @@ import (
 	"testing"
 )
 
-const testResource = "Policy/team/reader"
+const testResource = "ACLPolicy/team/reader"
 
 func TestWithResourceAttributionSanitises(t *testing.T) {
 	long := strings.Repeat("a", 300)
 	tests := map[string]string{
-		testResource:                testResource,
-		"Policy/team/r\neader\x00é": testResource,
-		long:                        long[:maxAttributionLength],
+		testResource:                   testResource,
+		"ACLPolicy/team/r\neader\x00é": testResource,
+		long:                           long[:maxAttributionLength],
 	}
 	for in, want := range tests {
 		if got := attribution(WithResourceAttribution(t.Context(), in)); got != want {
@@ -81,7 +81,7 @@ func TestIntegrationAttributionInAuditLog(t *testing.T) {
 		t.Fatalf("audit request header: %v", err)
 	}
 
-	const resource = "Policy/team/audited-reader"
+	const resource = "ACLPolicy/team/audited-reader"
 	if _, err := root.Write(WithResourceAttribution(ctx, resource), "sys/policies/acl/audited-reader",
 		map[string]any{fieldPolicy: `path "kv/*" { capabilities = ["read"] }`}); err != nil {
 		t.Fatal(err)

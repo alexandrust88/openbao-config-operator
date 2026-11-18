@@ -22,7 +22,7 @@ import (
 	commonv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/common/v1alpha1"
 )
 
-// +kubebuilder:validation:XValidation:rule="!has(self.__namespace__) || self.__namespace__ == ''",message="CORSConfig exists only in the root namespace: leave namespace empty"
+// +kubebuilder:validation:XValidation:rule="!has(self.openbaoNamespace) || self.openbaoNamespace == ''",message="CORSConfig exists only in the root namespace: leave openbaoNamespace empty"
 // +kubebuilder:validation:XValidation:rule="!('*' in self.allowedOrigins) || size(self.allowedOrigins) == 1",message="'*' must be the only entry of allowedOrigins"
 
 // CORSConfigSpec enables cross-origin requests to OpenBao at sys/config/cors. The setting is server wide and exists only in the root namespace. Deleting the resource with deletionPolicy Delete disables CORS.
@@ -58,7 +58,7 @@ type CORSConfigStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=openbao
+// +kubebuilder:resource:categories=obco;obco-sys
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
@@ -69,7 +69,7 @@ type CORSConfigStatus struct {
 //
 //	spec:
 //	  connectionRef:
-//	    kind: ClusterOpenBaoConnection
+//	    kind: ClusterBaoConnection
 //	    name: openbao
 //	  allowedOrigins:
 //	    - https://ui.example.com

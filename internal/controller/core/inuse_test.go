@@ -17,10 +17,10 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-func inUseEndpoint(name string, ref commonv1alpha1.ConnectionReference, finalizers ...string) *corev1alpha1.OpenBaoEndpoint {
-	return &corev1alpha1.OpenBaoEndpoint{
+func inUseEndpoint(name string, ref commonv1alpha1.ConnectionReference, finalizers ...string) *corev1alpha1.BaoEndpoint {
+	return &corev1alpha1.BaoEndpoint{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: teamA, Finalizers: finalizers},
-		Spec: corev1alpha1.OpenBaoEndpointSpec{
+		Spec: corev1alpha1.BaoEndpointSpec{
 			ResourceSpec: commonv1alpha1.ResourceSpec{ConnectionRef: ref},
 			Path:         "sys/policies/acl/" + name,
 		},
@@ -36,7 +36,7 @@ func TestConnectionFinalizerAndReadyGauge(t *testing.T) {
 	}
 	gauge := connectionReady.WithLabelValues(string(commonv1alpha1.ConnectionKindNamespaced), teamA, connName)
 	if v := testutil.ToFloat64(gauge); v != 1 {
-		t.Errorf("openbao_connection_ready = %v, want 1", v)
+		t.Errorf("obco_connection_ready = %v, want 1", v)
 	}
 
 	if err := r.Delete(context.Background(), secret); err != nil {
@@ -44,7 +44,7 @@ func TestConnectionFinalizerAndReadyGauge(t *testing.T) {
 	}
 	reconcileAndGet(t, r)
 	if v := testutil.ToFloat64(gauge); v != 0 {
-		t.Errorf("openbao_connection_ready = %v, want 0 once the credentials are gone", v)
+		t.Errorf("obco_connection_ready = %v, want 0 once the credentials are gone", v)
 	}
 }
 
@@ -70,7 +70,7 @@ func TestConnectionHeldWhileInUse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	current := &corev1alpha1.OpenBaoConnection{}
+	current := &corev1alpha1.BaoConnection{}
 	if err := r.Get(ctx, req.NamespacedName, current); err != nil {
 		t.Fatalf("connection released while a resource holds it: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestConnectionHeldWhileInUse(t *testing.T) {
 		t.Errorf("invalidated = %v, want the released connection's client dropped", pool.invalidated)
 	}
 	if connectionReady.DeleteLabelValues(string(commonv1alpha1.ConnectionKindNamespaced), teamA, connName) {
-		t.Error("openbao_connection_ready series left after the release")
+		t.Error("obco_connection_ready series left after the release")
 	}
 }
 
@@ -141,9 +141,9 @@ func TestServerGetsFinalizer(t *testing.T) {
 func TestClusterConnectionIgnoresDeniedHolders(t *testing.T) {
 	ctx := context.Background()
 	const outsider = "inuse-outsider"
-	conn := &corev1alpha1.ClusterOpenBaoConnection{
+	conn := &corev1alpha1.ClusterBaoConnection{
 		ObjectMeta: metav1.ObjectMeta{Name: "platform", Finalizers: []string{connectionFinalizer}},
-		Spec: corev1alpha1.ClusterOpenBaoConnectionSpec{
+		Spec: corev1alpha1.ClusterBaoConnectionSpec{
 			ConnectionSpec:    corev1alpha1.ConnectionSpec{ServerRef: corev1alpha1.ServerReference{Name: openbaoName}},
 			AllowedNamespaces: &metav1.LabelSelector{MatchLabels: map[string]string{tenantLabel: "true"}},
 		},
@@ -155,8 +155,8 @@ func TestClusterConnectionIgnoresDeniedHolders(t *testing.T) {
 	r := newConnectionReconciler(t, &recordingPool{client: lookupSelfClient{}}, testServer(), conn, holder, squatter,
 		tenantNamespace(teamA), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: outsider}})
 	r.kind = commonv1alpha1.ConnectionKindCluster
-	r.newObject = func() connectionObject { return &corev1alpha1.ClusterOpenBaoConnection{} }
-	r.newList = func() client.ObjectList { return &corev1alpha1.ClusterOpenBaoConnectionList{} }
+	r.newObject = func() connectionObject { return &corev1alpha1.ClusterBaoConnection{} }
+	r.newList = func() client.ObjectList { return &corev1alpha1.ClusterBaoConnectionList{} }
 	req := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(conn)}
 	if err := r.Delete(ctx, conn); err != nil {
 		t.Fatal(err)
@@ -175,12 +175,12 @@ func TestClusterConnectionIgnoresDeniedHolders(t *testing.T) {
 	if _, err := r.Reconcile(ctx, req); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.Get(ctx, req.NamespacedName, &corev1alpha1.ClusterOpenBaoConnection{}); !apierrors.IsNotFound(err) {
+	if err := r.Get(ctx, req.NamespacedName, &corev1alpha1.ClusterBaoConnection{}); !apierrors.IsNotFound(err) {
 		t.Errorf("get after release: err = %v, want NotFound: the squatter's finalizer must not count", err)
 	}
 }
 
-// TestServerIgnoresDeniedConnections proves an OpenBaoConnection in a namespace the server does not admit cannot
+// TestServerIgnoresDeniedConnections proves a BaoConnection in a namespace the server does not admit cannot
 // hold the server.
 func TestServerIgnoresDeniedConnections(t *testing.T) {
 	ctx := context.Background()

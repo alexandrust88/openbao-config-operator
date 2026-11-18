@@ -57,7 +57,7 @@ kubectl -n openbao-2 exec deploy/openbao -- bao write auth/kubernetes/role/openb
 # --8<-- [start:connect]
 kubectl apply -f examples/tutorials/multiple-instances/openbaoserver.yaml \
   -f examples/tutorials/multiple-instances/clusteropenbaoconnection.yaml
-kubectl wait openbaoserver/openbao-2 clusteropenbaoconnection/platform-2 --for=condition=Ready --timeout=2m
+kubectl wait baoserver/openbao-2 clusterbaoconnection/platform-2 --for=condition=Ready --timeout=2m
 # --8<-- [end:connect]
 
 # --8<-- [start:configure]
@@ -65,30 +65,30 @@ kubectl apply -f examples/tutorials/multiple-instances/instance-1.yaml \
   -f examples/tutorials/multiple-instances/instance-2.yaml \
   -f examples/tutorials/multiple-instances/shared-policy.yaml
 kubectl -n platform wait --for=condition=Ready --timeout=3m \
-  policy.sys.openbaoconfig.io/instance-1-app \
-  kubernetesauthrole.auth.openbaoconfig.io/instance-1-app \
-  secretsmount.sys.openbaoconfig.io/instance-2-kv \
-  authmount.sys.openbaoconfig.io/instance-2-userpass \
-  policy.sys.openbaoconfig.io/ops-read-instance-1 \
-  policy.sys.openbaoconfig.io/ops-read-instance-2
+  aclpolicy.sys.obco.dev/instance-1-app \
+  kubernetesauthrole.auth.obco.dev/instance-1-app \
+  secretsmount.sys.obco.dev/instance-2-kv \
+  authmount.sys.obco.dev/instance-2-userpass \
+  aclpolicy.sys.obco.dev/ops-read-instance-1 \
+  aclpolicy.sys.obco.dev/ops-read-instance-2
 # --8<-- [end:configure]
 
 # --8<-- [start:servers]
-kubectl -n platform get policies.sys.openbaoconfig.io,kubernetesauthroles,secretsmounts,authmounts \
+kubectl -n platform get aclpolicies.sys.obco.dev,kubernetesauthroles,secretsmounts,authmounts \
   -o custom-columns=KIND:.kind,NAME:.metadata.name,CONNECTION:.spec.connectionRef.name,SERVER:.status.serverID
 # --8<-- [end:servers]
 
-server_1=$(server_id policy.sys.openbaoconfig.io/ops-read-instance-1)
-server_2=$(server_id policy.sys.openbaoconfig.io/ops-read-instance-2)
+server_1=$(server_id aclpolicy.sys.obco.dev/ops-read-instance-1)
+server_2=$(server_id aclpolicy.sys.obco.dev/ops-read-instance-2)
 if [ -z "$server_1" ] || [ -z "$server_2" ]; then
   fail "a shared policy has no status.serverID"
 fi
 [ "$server_1" != "$server_2" ] || fail "both shared policies report the same OpenBao cluster id $server_1"
-for obj in policy.sys.openbaoconfig.io/instance-1-app kubernetesauthrole.auth.openbaoconfig.io/instance-1-app \
-  policy.sys.openbaoconfig.io/platform-auditor; do
+for obj in aclpolicy.sys.obco.dev/instance-1-app kubernetesauthrole.auth.obco.dev/instance-1-app \
+  aclpolicy.sys.obco.dev/platform-auditor; do
   [ "$(server_id "$obj")" = "$server_1" ] || fail "$obj is not bound to the first OpenBao"
 done
-for obj in secretsmount.sys.openbaoconfig.io/instance-2-kv authmount.sys.openbaoconfig.io/instance-2-userpass; do
+for obj in secretsmount.sys.obco.dev/instance-2-kv authmount.sys.obco.dev/instance-2-userpass; do
   [ "$(server_id "$obj")" = "$server_2" ] || fail "$obj is not bound to the second OpenBao"
 done
 

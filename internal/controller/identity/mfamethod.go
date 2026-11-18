@@ -14,9 +14,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=mfamethods,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=mfamethods/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=mfamethods/finalizers,verbs=update
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=mfamethods,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=mfamethods/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=mfamethods/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupMFAMethod registers the MFAMethod controller with the manager.

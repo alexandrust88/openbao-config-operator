@@ -63,10 +63,10 @@ func readyStatus(generation int64) corev1alpha1.ConnectionStatus {
 	}}}
 }
 
-func namespacedConn(auth corev1alpha1.ConnectionAuth) *corev1alpha1.OpenBaoConnection {
-	return &corev1alpha1.OpenBaoConnection{
+func namespacedConn(auth corev1alpha1.ConnectionAuth) *corev1alpha1.BaoConnection {
+	return &corev1alpha1.BaoConnection{
 		ObjectMeta: metav1.ObjectMeta{Name: connName, Namespace: teamA, UID: "uid-1", Generation: 3},
-		Spec: corev1alpha1.OpenBaoConnectionSpec{
+		Spec: corev1alpha1.BaoConnectionSpec{
 			ConnectionSpec: corev1alpha1.ConnectionSpec{
 				ServerRef: corev1alpha1.ServerReference{Name: serverName},
 				Namespace: litTenantPath,
@@ -77,10 +77,10 @@ func namespacedConn(auth corev1alpha1.ConnectionAuth) *corev1alpha1.OpenBaoConne
 	}
 }
 
-func clusterConn(auth corev1alpha1.ClusterConnectionAuth, allowed *metav1.LabelSelector) *corev1alpha1.ClusterOpenBaoConnection {
-	return &corev1alpha1.ClusterOpenBaoConnection{
+func clusterConn(auth corev1alpha1.ClusterConnectionAuth, allowed *metav1.LabelSelector) *corev1alpha1.ClusterBaoConnection {
+	return &corev1alpha1.ClusterBaoConnection{
 		ObjectMeta: metav1.ObjectMeta{Name: clusterConnName, UID: "uid-2", Generation: 1},
-		Spec: corev1alpha1.ClusterOpenBaoConnectionSpec{
+		Spec: corev1alpha1.ClusterBaoConnectionSpec{
 			ConnectionSpec:    corev1alpha1.ConnectionSpec{ServerRef: corev1alpha1.ServerReference{Name: serverName}},
 			Auth:              auth,
 			AllowedNamespaces: allowed,
@@ -90,10 +90,10 @@ func clusterConn(auth corev1alpha1.ClusterConnectionAuth, allowed *metav1.LabelS
 }
 
 // tenantServer admits namespaces labelled as tenants and the openbao audience.
-func tenantServer() *corev1alpha1.OpenBaoServer {
-	return &corev1alpha1.OpenBaoServer{
+func tenantServer() *corev1alpha1.BaoServer {
+	return &corev1alpha1.BaoServer{
 		ObjectMeta: metav1.ObjectMeta{Name: serverName, Generation: 5},
-		Spec: corev1alpha1.OpenBaoServerSpec{
+		Spec: corev1alpha1.BaoServerSpec{
 			Address:           testAddress,
 			AllowedNamespaces: &metav1.LabelSelector{MatchLabels: map[string]string{tenantLabel: litTrue}},
 			AllowedAudiences:  []string{testAudience},
@@ -251,7 +251,7 @@ func TestForClusterAllowedNamespaces(t *testing.T) {
 	}
 }
 
-// TestForClusterHidesConfigDetail keeps platform detail of a ClusterOpenBaoConnection (Secret names, login errors)
+// TestForClusterHidesConfigDetail keeps platform detail of a ClusterBaoConnection (Secret names, login errors)
 // out of the conditions of the resources that use it, while the connection controller's ConfigFor keeps it.
 func TestForClusterHidesConfigDetail(t *testing.T) {
 	auth := corev1alpha1.ClusterConnectionAuth{Token: &corev1alpha1.ClusterTokenAuth{
@@ -260,7 +260,7 @@ func TestForClusterHidesConfigDetail(t *testing.T) {
 	conn := clusterConn(auth, &metav1.LabelSelector{})
 	r, _ := newResolver(t, conn, namespace(teamA, nil))
 	ref := commonv1alpha1.ConnectionReference{Kind: commonv1alpha1.ConnectionKindCluster, Name: clusterConnName}
-	want := "ClusterOpenBaoConnection " + clusterConnName + " is not ready (see its status)"
+	want := "ClusterBaoConnection " + clusterConnName + " is not ready (see its status)"
 
 	_, err := r.For(context.Background(), teamA, ref)
 	if !errors.Is(err, ErrReferenceNotFound) || err.Error() != want {
@@ -456,7 +456,7 @@ func TestCacheKeyCoversGenerationsAndCredential(t *testing.T) {
 	r, _ := newResolver(t, conn, tokenSecret)
 	ctx := context.Background()
 
-	key := func(conn *corev1alpha1.OpenBaoConnection, server *corev1alpha1.OpenBaoServer) string {
+	key := func(conn *corev1alpha1.BaoConnection, server *corev1alpha1.BaoServer) string {
 		t.Helper()
 		cfg, err := r.ConfigFor(ctx, conn, server)
 		if err != nil {

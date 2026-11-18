@@ -4,7 +4,9 @@ description: "Design decision for OpenBao Config Operator: write-once fields for
 
 # 0017. Write-once fields for rotated root credentials
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; partly implemented. Date: 2026-11-14.
+
+Update 2026-11-18: the engine supports the write-once class and the rotation nonce (`FieldSpec.WriteOnce` and `RotationNonce` in `internal/engine/contract.go`, `status.rotationNonce` in `api/common/v1alpha1/types.go`), but no adapter declares a write-once field yet. `DatabaseConnection` still sends `password` and `private_key` on create only when `rotateRootOnCreate` is set, and LDAP `bindpass` is still write-only.
 
 ## Context
 

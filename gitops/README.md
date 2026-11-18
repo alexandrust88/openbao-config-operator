@@ -15,9 +15,11 @@ The charts have explicit release versions. Application configuration lives in or
 so you can review changes, fork the repository and substitute your own values. The operator
 chart is pulled from its published Helm repository; it is not built from a copied chart directory.
 
-Follow the [Argo CD guide](../docs/how-to/argocd-lab.md) for Helm installation and app-of-apps,
-or the [Flux guide](../docs/how-to/flux-lab.md) for Helm sources and dependency ordering.
-Those guides cover the bootstrap Secrets, readiness checks, access and cleanup.
+[Run the Argo CD lab](../docs/how-to/argocd-lab.md) and [Run the Flux lab](../docs/how-to/flux-lab.md)
+list the files, the wave and dependency order, the bootstrap Secrets, the trust boundary and cleanup.
+To deploy this example step by step on your own cluster, follow
+[Deliver OpenBao configuration with Argo CD](../docs/guides/argocd.md) or
+[Deliver OpenBao configuration with Flux](../docs/guides/flux.md).
 
 To exercise either example in a fresh disposable kind cluster:
 

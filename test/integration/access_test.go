@@ -395,9 +395,9 @@ func setupAccess(ctx context.Context, t *testing.T) env {
 
 	crds := make([]string, 0, 4)
 	for _, plural := range []string{"accesslevels", "accessgrants", "accesslayouts"} {
-		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "access.openbaoconfig.io_"+plural+".yaml"))
+		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "access.obco.dev_"+plural+".yaml"))
 	}
-	crds = append(crds, filepath.Join(root, "config", "crd", "bases", "auth.openbaoconfig.io_kubernetesauthroles.yaml"))
+	crds = append(crds, filepath.Join(root, "config", "crd", "bases", "auth.obco.dev_kubernetesauthroles.yaml"))
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,
 		CRDInstallOptions:     envtest.CRDInstallOptions{Paths: crds, ErrorIfPathMissing: true},
@@ -472,7 +472,7 @@ func writesFor(t *testing.T, kind string) float64 {
 		t.Fatal(err)
 	}
 	for _, family := range families {
-		if family.GetName() != "openbao_writes_total" {
+		if family.GetName() != "obco_writes_total" {
 			continue
 		}
 		for _, metric := range family.GetMetric() {

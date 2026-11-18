@@ -5,7 +5,7 @@ description: Choose a local quickstart, install the operator, connect an existin
 
 # Get started
 
-openbao-config-operator manages the configuration of an OpenBao server that already runs: policies,
+OpenBao Config Operator manages the configuration of an OpenBao server that already runs: policies,
 auth methods and roles, secrets engines, identities. You declare each object as a Kubernetes custom
 resource; the operator writes it to OpenBao, checks it for drift and repairs it. The operator does
 not install, initialise or unseal OpenBao.
@@ -14,9 +14,9 @@ not install, initialise or unseal OpenBao.
 
 | you want to | start with | you are done when |
 |-------------|------------|-------------------|
-| try the operator on your laptop, with nothing to clean up afterwards | [Quickstart on kind](quickstart.md) | a policy, a KV mount, a Kubernetes auth role and a generated secret are `Ready`, a workload reads the secret, and the operator has repaired a change made behind its back |
-| install the operator on a cluster you run | [Install](install.md) | the manager Deployment is available and `kubectl get crd` lists the `*.openbaoconfig.io` CRDs |
-| point the operator at your OpenBao server | [Connect to OpenBao](connect.md) | `kubectl get openbaoserver` and `kubectl get openbaoconnection -A` show `Ready=True` |
+| try the operator on a local kind cluster that you delete afterwards | [Quickstart on kind](quickstart.md) | a policy, a KV mount, a Kubernetes auth role and a generated secret are `Ready`, a workload reads the secret, and the operator has repaired a change made behind its back |
+| install the operator on a cluster you run | [Install](install.md) | the manager Deployment is available and `kubectl get crd` lists the `*.obco.dev` CRDs |
+| point the operator at your OpenBao server | [Connect to OpenBao](connect.md) | `kubectl get baoserver` and `kubectl get baoconnection -A` show `Ready=True` |
 | bring a server that is already configured under the operator | [Import existing configuration](../guides/import.md), then [Migrate to the operator](../guides/migration.md) | every imported resource reports `Synced=True` with reason `Observed`, then `Ready=True` in `Manage` mode |
 
 !!! warning "The quickstart is for evaluation only"
@@ -38,9 +38,9 @@ Every path needs:
 ```mermaid
 flowchart LR
   subgraph k8s[Kubernetes]
-    server[OpenBaoServer<br/>address, CA, allowed tenants]
-    conn[OpenBaoConnection<br/>how to log in]
-    res[Policy, SecretsMount,<br/>KubernetesAuthRole, ...]
+    server[BaoServer<br/>address, CA, allowed tenants]
+    conn[BaoConnection<br/>how to log in]
+    res[ACLPolicy, SecretsMount,<br/>KubernetesAuthRole, ...]
     op[operator]
   end
   bao[(OpenBao)]
@@ -50,44 +50,26 @@ flowchart LR
   op -- logs in and writes --> bao
 ```
 
-A platform admin declares each OpenBao server once as an `OpenBaoServer`. A connection says how the
-operator logs in to that server, and every resource names its connection. The OpenBao policy behind
-the connection's identity is the limit of what the resources can change.
+The platform team declares each OpenBao server once as a `BaoServer`. It also creates each
+connection, which names the identity the operator logs in to that server as. Teams and tenants
+create the resources, and every resource names its connection. The OpenBao policy behind the
+connection's identity is the limit of what the resources can change.
 [Concepts](../concepts/index.md) explains the model.
-
-## Configure your first object
-
-Once the connection is Ready, [declare and verify an ACL policy](../guides/policies.md).
-Then [configure Kubernetes authentication](../guides/kubernetes-auth.md) to attach that policy
-to a workload login. The [security model](../security.md) explains which identity performs each
-operation and where tenant isolation is enforced.
 
 ## Next steps
 
 <div class="grid cards" markdown>
-
--   :material-rocket-launch: **[Quickstart on kind](quickstart.md)**
-
-    ---
-
-    Ten minutes, one script, a working operator and OpenBao on your laptop.
-
--   :material-download: **[Install](install.md)**
-
-    ---
-
-    Helm OCI chart, classic Helm repository or `install.yaml`, with release verification.
-
--   :material-connection: **[Connect to OpenBao](connect.md)**
-
-    ---
-
-    Declare your server, choose an auth method and check the connection.
 
 -   :material-book-open-variant: **[Guides](../guides/index.md)**
 
     ---
 
     Task-by-task: auth methods, secrets engines, identity, tenants.
+
+-   :material-lightbulb-outline: **[Concepts](../concepts/index.md)**
+
+    ---
+
+    The model behind reconciliation, ownership, tenancy and deletion.
 
 </div>

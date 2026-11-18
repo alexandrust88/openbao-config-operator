@@ -29,7 +29,7 @@ metadata:
     kubernetes.io/service-account.name: openbao-token-reviewer
 type: kubernetes.io/service-account-token
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: kubernetes
@@ -39,7 +39,7 @@ spec:
     name: openbao
   type: kubernetes
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: apps
@@ -49,7 +49,7 @@ spec:
     name: openbao
   type: kv-v2
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthConfig
 metadata:
   name: kubernetes

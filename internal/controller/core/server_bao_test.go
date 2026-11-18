@@ -55,10 +55,10 @@ func envtestSAPublicKey(t *testing.T) string {
 	return string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der}))
 }
 
-func devTenantConnection(name, namespace, audience string) *corev1alpha1.OpenBaoConnection {
-	return &corev1alpha1.OpenBaoConnection{
+func devTenantConnection(name, namespace, audience string) *corev1alpha1.BaoConnection {
+	return &corev1alpha1.BaoConnection{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
-		Spec: corev1alpha1.OpenBaoConnectionSpec{
+		Spec: corev1alpha1.BaoConnectionSpec{
 			ConnectionSpec: corev1alpha1.ConnectionSpec{ServerRef: corev1alpha1.ServerReference{Name: devServerName}},
 			Auth: corev1alpha1.ConnectionAuth{JWT: &corev1alpha1.JWTAuth{
 				MountPath:         devJWTMount,
@@ -103,9 +103,9 @@ func devConfigureJWT(t *testing.T, address, issuer string) {
 
 func devObjects(address string) []client.Object {
 	return []client.Object{
-		&corev1alpha1.OpenBaoServer{
+		&corev1alpha1.BaoServer{
 			ObjectMeta: metav1.ObjectMeta{Name: devServerName},
-			Spec: corev1alpha1.OpenBaoServerSpec{
+			Spec: corev1alpha1.BaoServerSpec{
 				Address:           address,
 				AllowInsecureHTTP: true,
 				AllowedNamespaces: &metav1.LabelSelector{MatchLabels: map[string]string{tenantLabel: devTenantLabel}},
@@ -126,9 +126,9 @@ func devObjects(address string) []client.Object {
 		devTenantConnection("outsider", devOutsiderNS, openbaoName),
 		devTenantConnection("wrong-audience", devTenantNS, "vault"),
 		devTenantConnection("tenant", devTenantNS, openbaoName),
-		&corev1alpha1.ClusterOpenBaoConnection{
+		&corev1alpha1.ClusterBaoConnection{
 			ObjectMeta: metav1.ObjectMeta{Name: "bao-dev-platform"},
-			Spec: corev1alpha1.ClusterOpenBaoConnectionSpec{
+			Spec: corev1alpha1.ClusterBaoConnectionSpec{
 				ConnectionSpec:    corev1alpha1.ConnectionSpec{ServerRef: corev1alpha1.ServerReference{Name: devServerName}},
 				AllowedNamespaces: &metav1.LabelSelector{},
 				Auth: corev1alpha1.ClusterConnectionAuth{Token: &corev1alpha1.ClusterTokenAuth{
@@ -139,7 +139,7 @@ func devObjects(address string) []client.Object {
 	}
 }
 
-// TestServerAndConnectionsAgainstDevServer runs the OpenBaoServer, OpenBaoConnection and ClusterOpenBaoConnection
+// TestServerAndConnectionsAgainstDevServer runs the BaoServer, BaoConnection and ClusterBaoConnection
 // controllers against envtest and bao -dev. The admitted tenant logs in with a real TokenRequest token; a tenant in
 // a namespace or with an audience the server does not allow is denied without any TokenRequest.
 func TestServerAndConnectionsAgainstDevServer(t *testing.T) {
@@ -173,12 +173,12 @@ func TestServerAndConnectionsAgainstDevServer(t *testing.T) {
 	resolver := &connection.Resolver{Client: c, Pool: pool, APIServerAudiences: []string{issuer}}
 	servers := &serverReconciler{Client: c, resolver: resolver, probe: openbao.Probe}
 	tenants := &connectionReconciler{Client: c, resolver: resolver, pool: pool,
-		newObject: func() connectionObject { return &corev1alpha1.OpenBaoConnection{} },
-		newList:   func() client.ObjectList { return &corev1alpha1.OpenBaoConnectionList{} },
+		newObject: func() connectionObject { return &corev1alpha1.BaoConnection{} },
+		newList:   func() client.ObjectList { return &corev1alpha1.BaoConnectionList{} },
 	}
 	platform := &connectionReconciler{Client: c, resolver: resolver, pool: pool,
-		newObject: func() connectionObject { return &corev1alpha1.ClusterOpenBaoConnection{} },
-		newList:   func() client.ObjectList { return &corev1alpha1.ClusterOpenBaoConnectionList{} },
+		newObject: func() connectionObject { return &corev1alpha1.ClusterBaoConnection{} },
+		newList:   func() client.ObjectList { return &corev1alpha1.ClusterBaoConnectionList{} },
 	}
 
 	ready := func(t *testing.T, r reconcile.Reconciler, obj client.Object, conditions func() []metav1.Condition) *metav1.Condition {
@@ -192,14 +192,14 @@ func TestServerAndConnectionsAgainstDevServer(t *testing.T) {
 		return meta.FindStatusCondition(conditions(), commonv1alpha1.ConditionReady)
 	}
 
-	server := &corev1alpha1.OpenBaoServer{ObjectMeta: metav1.ObjectMeta{Name: devServerName}}
+	server := &corev1alpha1.BaoServer{ObjectMeta: metav1.ObjectMeta{Name: devServerName}}
 	if cond := ready(t, servers, server, func() []metav1.Condition { return server.Status.Conditions }); cond == nil ||
 		cond.Status != metav1.ConditionTrue || server.Status.Version == "" || server.Status.Sealed {
 		t.Fatalf("server Ready = %+v, status %+v", cond, server.Status)
 	}
 
 	for _, name := range []struct{ name, namespace string }{{"outsider", devOutsiderNS}, {"wrong-audience", devTenantNS}} {
-		conn := &corev1alpha1.OpenBaoConnection{ObjectMeta: metav1.ObjectMeta{Name: name.name, Namespace: name.namespace}}
+		conn := &corev1alpha1.BaoConnection{ObjectMeta: metav1.ObjectMeta{Name: name.name, Namespace: name.namespace}}
 		cond := ready(t, tenants, conn, func() []metav1.Condition { return conn.Status.Conditions })
 		if cond == nil || cond.Reason != commonv1alpha1.ReasonConnectionDenied || conn.Status.Authenticated {
 			t.Errorf("%s: Ready = %+v, want ConnectionDenied", name.name, cond)
@@ -213,7 +213,7 @@ func TestServerAndConnectionsAgainstDevServer(t *testing.T) {
 		t.Fatalf("%d TokenRequests sent for denied connections", tokenRequests)
 	}
 
-	tenant := &corev1alpha1.OpenBaoConnection{ObjectMeta: metav1.ObjectMeta{Name: "tenant", Namespace: devTenantNS}}
+	tenant := &corev1alpha1.BaoConnection{ObjectMeta: metav1.ObjectMeta{Name: "tenant", Namespace: devTenantNS}}
 	if cond := ready(t, tenants, tenant, func() []metav1.Condition { return tenant.Status.Conditions }); cond == nil ||
 		cond.Status != metav1.ConditionTrue || !tenant.Status.Authenticated || tenant.Status.Version != server.Status.Version {
 		t.Fatalf("tenant Ready = %+v, status %+v", cond, tenant.Status)
@@ -233,7 +233,7 @@ func TestServerAndConnectionsAgainstDevServer(t *testing.T) {
 		t.Errorf("tenant token metadata = %v, want a %s login as role %s", self["meta"], devJWTMount, devTenantRole)
 	}
 
-	cluster := &corev1alpha1.ClusterOpenBaoConnection{ObjectMeta: metav1.ObjectMeta{Name: "bao-dev-platform"}}
+	cluster := &corev1alpha1.ClusterBaoConnection{ObjectMeta: metav1.ObjectMeta{Name: "bao-dev-platform"}}
 	if cond := ready(t, platform, cluster, func() []metav1.Condition { return cluster.Status.Conditions }); cond == nil ||
 		cond.Status != metav1.ConditionTrue || !cluster.Status.Authenticated {
 		t.Fatalf("cluster connection Ready = %+v", cond)

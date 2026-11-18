@@ -1,99 +1,179 @@
 ---
-title: Encrypt application data with OpenBao and Kubernetes workload identity
-description: Run an application against operator-managed transit keys, rotate and rewrap ciphertext, and test key access in root and tenant namespaces.
+title: Encrypt application data with OpenBao transit
+description: "Grant a workload encrypt and decrypt access to a transit key through Kubernetes authentication, then rotate the key and rewrap ciphertext."
 ---
 
-# Encrypt application data with OpenBao
+# Encrypt application data with OpenBao transit
 
-Run a small Go application that authenticates with its own Kubernetes
-ServiceAccount and encrypts data with operator-managed transit keys. The lab
-runs the application in OpenBao's root namespace and a child namespace, then
-checks rotation, ciphertext migration and access denials.
+Give a workload encrypt and decrypt access to a transit key managed by OpenBao Config Operator,
+then rotate the key and rewrap ciphertext. The application authenticates with its ServiceAccount;
+it never receives an OpenBao administrator token or the key material.
 
-## Start the lab
+## Before you begin
 
-From the repository checkout, follow the [local lab prerequisites](local-lab.md),
-then run:
+- The operator is installed and the `BaoConnection` named `openbao` in the Kubernetes namespace
+  `openbao-config` is `Ready` ([Install](../get-started/install.md),
+  [Connect to OpenBao](../get-started/connect.md)).
+- The connection's OpenBao policy allows these paths
+  ([OpenBao policy for the operator](../operate/openbao-policy.md)):
 
-```sh
-make lab-up
-make lab-transit
+    ```hcl
+    path "sys/policies/acl/transit-app"     { capabilities = ["create", "read", "update", "delete"] }
+    path "auth/kubernetes/role/transit-app" { capabilities = ["create", "read", "update", "delete"] }
+    ```
+
+    Append these lines to `openbao-configurer.hcl`, the connection's policy from Connect to OpenBao,
+    and write it again with `bao policy write openbao-configurer openbao-configurer.hcl`.
+
+- The `TransitKey` `app-encryption` (key `app` on the mount `transit`) from
+  [Manage transit encryption keys](../guides/transit.md) is `Ready`.
+- Kubernetes authentication is configured at the mount `kubernetes` (`AuthMount`,
+  `KubernetesAuthConfig`) as in [Configure Kubernetes authentication](../guides/kubernetes-auth.md).
+- The `bao` CLI, with `BAO_ADDR` and a token that can read the paths in the last step.
+
+## 1. Grant the workload encrypt and decrypt
+
+Create a policy that allows only the operations the application needs on this key, then bind the
+ServiceAccount `app` in the Kubernetes namespace `apps` to that policy. Save this as
+`transit-access.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apps
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app
+  namespace: apps
+---
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
+metadata:
+  name: transit-app
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  name: transit-app
+  policy: |
+    path "transit/encrypt/app" { capabilities = ["update"] }
+    path "transit/decrypt/app" { capabilities = ["update"] }
+    path "transit/rewrap/app" { capabilities = ["update"] }
+    path "auth/token/revoke-self" { capabilities = ["update"] }
+---
+apiVersion: auth.obco.dev/v1alpha1
+kind: KubernetesAuthRole
+metadata:
+  name: transit-app
+  namespace: openbao-config
+spec:
+  connectionRef:
+    name: openbao
+  mountPath: kubernetes
+  name: transit-app
+  boundServiceAccountNames:
+    - app
+  boundServiceAccountNamespaces:
+    - apps
+  audience: openbao
+  tokenTTL: 15m
+  tokenNoDefaultPolicy: true
+  policyRefs:
+    - name: transit-app
 ```
 
-The first command creates the disposable kind cluster, a TLS-enabled OpenBao
-raft cluster and an operator built from this checkout. The second builds the
-[Go application](https://github.com/alexandrust88/openbao-config-operator/tree/main/examples/apps/transit),
-loads its image into kind, applies operator resources and runs the regressions.
-It needs no external identity provider, cloud account or stored application token.
-
-The lab uses these resources:
-
-| Resource | Purpose |
-| --- | --- |
-| `OpenBaoNamespace` | Creates the child namespace used by the test. |
-| `SecretsMount` and `TransitKey` | Configure keys and their lifecycle settings. |
-| `AuthMount`, `KubernetesAuthConfig`, `KubernetesAuthRole` | Authenticate the application's projected ServiceAccount token. |
-| `Policy` | Grant operations on named keys; keep administration and other keys out of the workload's permissions. |
-| Kubernetes ServiceAccount and Job | Run the actual application with its own identity and mounted CA. |
-
-The workload receives neither an OpenBao administrator token nor transit key
-material. Each invocation logs in, performs its operation and revokes its session.
-The smoke Job emits only a success result. Failed operations report a status or
-fixed error message rather than an OpenBao response body.
-
-## Inspect the configuration
-
-The lab keeps its kubeconfig separate from your normal contexts:
-
-```sh
-export KUBECONFIG="$PWD/.tmp/lab/openbao-config-operator-lab/kubeconfig"
-kubectl -n obco-lab get transitkeys
-kubectl -n obco-lab get kubernetesauthroles,policies
+```bash
+kubectl apply -f transit-access.yaml
+kubectl -n openbao-config wait aclpolicies.sys.obco.dev/transit-app \
+  kubernetesauthrole/transit-app --for=condition=Ready --timeout=2m
 ```
 
-The regression creates and deletes dedicated test keys to exercise lifecycle
-behaviour. An absent deletion-test CR after a successful run is expected.
+Keep administration paths and other keys out of this policy. The workload requests a projected
+ServiceAccount token with audience `openbao`, logs in at `auth/kubernetes/login` with role
+`transit-app`, performs its operation, and revokes its token. A small Go sample that performs
+these calls is in [examples/apps/transit](../../examples/apps/transit/).
 
-## Understand the two migration operations
+## 2. Rotate the key and rewrap ciphertext
 
-| Operation | What changes | Where plaintext appears |
+| operation | what changes | where plaintext appears |
 | --- | --- | --- |
 | Rotate a key, then rewrap | Ciphertext moves to a newer version of the same key. | Inside OpenBao; the rewrap response contains ciphertext. |
 | Migrate to a different key | The application decrypts under the source key and encrypts under the destination key. | Inside OpenBao and the trusted application process. |
 
-Changing `TransitKey.spec.rotateNonce` requests a new key version; it does not
-rewrite application data. Persist and verify replacement ciphertext before
-raising `minDecryptionVersion` or retiring a key. Rewrapping cannot recover data
-after the key version required to decrypt it has been destroyed.
+Changing `rotateNonce` on the `TransitKey` to a new value requests a new key version; it does not
+rewrite application data. In Git, change `rotateNonce` in the `transit-key.yaml` of
+[Manage transit encryption keys](../guides/transit.md); from the command line:
 
-The application's [command reference](https://github.com/alexandrust88/openbao-config-operator/tree/main/examples/apps/transit#encrypt-and-decrypt)
-shows encrypt, decrypt, rewrap and cross-key migration with JSON over standard
-input. A decrypt result is sensitive output, not a safe log message. The example
-uses direct transit encryption, not envelope encryption or an atomic database
-migration.
-
-## Regression scope
-
-The `integration lab` workflow runs the transit profile on matching pull
-requests, weekly and on demand. It checks the application and the selected
-cryptographic and lifecycle cases against real OpenBao, rather than mocking
-successful login or encryption responses. The
-[regression source](https://github.com/alexandrust88/openbao-config-operator/blob/main/hack/lab/transit.py)
-is the executable case inventory.
-
-External-key providers require additional infrastructure and are outside this
-lab. Automatic rotation has a minimum one-hour period; a short CI run can verify
-its configuration but cannot prove that an hour has elapsed and rotation fired.
-These tests do not establish cryptographic certification, production throughput
-or recovery from loss of OpenBao storage.
-
-## Clean up
-
-```sh
-bin/kind delete cluster --name openbao-config-operator-lab
+```bash
+kubectl -n openbao-config patch transitkey app-encryption --type=merge \
+  -p '{"spec":{"rotateNonce":"rotation-2"}}'
+kubectl -n openbao-config wait transitkey/app-encryption --for=condition=Ready --timeout=2m
+bao read transit/keys/app
 ```
 
-Deleting this lab also removes its OpenBao storage. Keeping a `TransitKey` with
-`deletionPolicy: Orphan` protects against CR deletion, not destruction of the
-server's storage. For namespace-level controls, see
-[keep transit keys non-exportable](../security/transit-key-policy.md).
+OpenBao shows a higher `latest_version`. OpenBao also rotates the key automatically every
+`autoRotatePeriod` (at least one hour). Rewrap each stored ciphertext to the latest version with
+a token that holds the `transit-app` policy (step 3 shows how the workload logs in for one):
+
+```bash
+BAO_TOKEN=<token> bao write transit/rewrap/app ciphertext=<ciphertext>
+```
+
+`<token>` is that token and `<ciphertext>` is a value the application stored. Persist and verify
+the replacement ciphertext before raising `minDecryptionVersion` or retiring a key. Rewrapping
+cannot recover data after the key version required to decrypt it has been destroyed.
+
+!!! warning "Key deletion destroys ciphertext"
+    Keeping `deletionPolicy: Orphan` protects against accidental deletion of the custom resource. Destroying the
+    OpenBao storage or deleting the key with the destructive-delete guard still loses data that
+    depended on that key. See [Keep transit keys non-exportable](../security/transit-key-policy.md).
+
+## 3. Check that it worked
+
+The resources are `Ready`:
+
+```bash
+kubectl -n openbao-config wait transitkey/app-encryption \
+  aclpolicies.sys.obco.dev/transit-app kubernetesauthrole/transit-app \
+  --for=condition=Ready --timeout=2m
+```
+
+Log in as the workload with a token for the role's audience:
+
+```bash
+bao write -field=token auth/kubernetes/login role=transit-app \
+  jwt="$(kubectl -n apps create token app --audience openbao)"
+```
+
+With the token from that output, encrypt with the key `app`, decrypt the result, and try another
+key name:
+
+```bash
+BAO_TOKEN=<token> bao write transit/encrypt/app plaintext="$(printf 'hello' | base64)"
+BAO_TOKEN=<token> bao write transit/decrypt/app ciphertext=<ciphertext>
+BAO_TOKEN=<token> bao write transit/encrypt/other plaintext="$(printf 'hello' | base64)"
+```
+
+`<token>` is the token from the login and `<ciphertext>` is the `ciphertext` the first command
+returns. The first two commands succeed and the decrypt returns `aGVsbG8=`, the base64 of `hello`;
+the third is refused with `permission denied`.
+
+## Troubleshooting
+
+| symptom | check |
+|---------|-------|
+| `KubernetesAuthRole` reports `ReferenceNotReady` | the `ACLPolicy` and the Kubernetes auth mount and config are `Ready` |
+| login fails with audience or ServiceAccount errors | `audience` on the role matches the projected token; name and Kubernetes namespace match the bindings |
+| encrypt fails with permission denied | the policy paths use the mount and key name (`transit/encrypt/app`) |
+| `rotateNonce` changed but the version did not | the first value at creation does not rotate; change it again |
+
+## Related
+
+- API reference: [TransitKey](../reference/api/secrets.md#transitkey),
+  [ACLPolicy](../reference/api/sys.md#aclpolicy),
+  [KubernetesAuthRole](../reference/api/auth.md#kubernetesauthrole).
+- [Manage transit encryption keys](../guides/transit.md).
+- [Configure Kubernetes authentication](../guides/kubernetes-auth.md).

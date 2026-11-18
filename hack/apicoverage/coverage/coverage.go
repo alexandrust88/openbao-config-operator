@@ -245,7 +245,7 @@ func (d *Data) Report() string {
 		"require external plugins in the later server snapshot. Their CRDs remain in the plugin-gated catalogue;\n" +
 		"their absence from the builtin snapshot does not mean the operator removed those kinds. Snapshot\n" +
 		"coverage and live-tested compatibility are separate; see the [compatibility reference](reference/compatibility.md).\n\n## Endpoint-only paths\n\n" +
-		"Configuration paths without a typed kind. Manage them with the `OpenBaoEndpoint` kind; each is a candidate\n" +
+		"Configuration paths without a typed kind. Manage them with the `BaoEndpoint` kind; each is a candidate\n" +
 		"for a typed kind.\n\n| path | OpenBao | reason |\n|------|---------|--------|\n")
 	minors := map[string][]string{}
 	for _, s := range d.Snapshots {
@@ -275,7 +275,7 @@ Every writable (POST, PUT, PATCH, DELETE) path template in the pinned OpenAPI sn
 OpenBao minor is classified exactly once in ` + "`api-coverage/classification.yaml`" + `:
 
 - **typed**: a kind of this operator configures the object behind the path.
-- **Endpoint only**: configuration without a typed kind; use the ` + "`OpenBaoEndpoint`" + ` kind.
+- **Endpoint only**: configuration without a typed kind; use the ` + "`BaoEndpoint`" + ` kind.
   **unreviewed** paths are Endpoint only paths that nobody has classified yet.
 - **action**: a one-off operation, not configuration (login, issue, sign, rotate, revoke, tidy, ...).
 

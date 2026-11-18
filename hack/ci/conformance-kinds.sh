@@ -18,10 +18,10 @@ all() {
   exit 0
 }
 
-# A kind has a CRD (config/crd/bases/<group>.openbaoconfig.io_<plural>.yaml with singular: <kind>).
+# A kind has a CRD (config/crd/bases/<group>.obco.dev_<plural>.yaml with singular: <kind>).
 has_crd() {
   [[ $1 =~ ^[a-z0-9]+$ && $2 =~ ^[a-z0-9]+$ ]] &&
-    grep -qxE "[[:space:]]+singular: $2" "config/crd/bases/$1.openbaoconfig.io_"*.yaml 2>/dev/null
+    grep -qxE "[[:space:]]+singular: $2" "config/crd/bases/$1.obco.dev_"*.yaml 2>/dev/null
 }
 
 # A kind also has its API types and its adapter under the same lowercase name.
@@ -65,7 +65,7 @@ while IFS= read -r -d '' path || [ -n "$path" ]; do
     selected+="$kind"$'\n'
   elif [[ $path == test/conformance/fixtures/* ]]; then
     all "conformance suite changed"
-  elif [[ $path =~ ^config/crd/bases/([a-z0-9]+)\.openbaoconfig\.io_[a-z0-9]+\.yaml$ ]]; then
+  elif [[ $path =~ ^config/crd/bases/([a-z0-9]+)\.obco\.dev_[a-z0-9]+\.yaml$ ]]; then
     group=${BASH_REMATCH[1]}
     kind=""
     if [ -f "$path" ]; then kind=$(awk '$1 == "singular:" { print $2; exit }' "$path"); fi

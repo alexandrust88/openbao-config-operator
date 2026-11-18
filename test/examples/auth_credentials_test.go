@@ -21,12 +21,12 @@ func TestAuthCredentialExamples(t *testing.T) {
 		t.Fatal(err)
 	}
 	k8s := secretsStartEnv(t, root, []string{
-		"auth.openbaoconfig.io_approles.yaml",
-		"auth.openbaoconfig.io_approlesecretids.yaml",
-		"auth.openbaoconfig.io_tokenroles.yaml",
-		"auth.openbaoconfig.io_certauthconfigs.yaml",
-		"auth.openbaoconfig.io_certauthroles.yaml",
-		"auth.openbaoconfig.io_userpassusers.yaml",
+		"auth.obco.dev_approles.yaml",
+		"auth.obco.dev_approlesecretids.yaml",
+		"auth.obco.dev_tokenroles.yaml",
+		"auth.obco.dev_certauthconfigs.yaml",
+		"auth.obco.dev_certauthroles.yaml",
+		"auth.obco.dev_userpassusers.yaml",
 	})
 	ctx := context.Background()
 
@@ -45,7 +45,7 @@ func TestAuthCredentialExamples(t *testing.T) {
 	}
 
 	t.Run("validation", func(t *testing.T) {
-		const head = "apiVersion: auth.openbaoconfig.io/v1alpha1\nmetadata: {name: x, namespace: default}\n"
+		const head = "apiVersion: auth.obco.dev/v1alpha1\nmetadata: {name: x, namespace: default}\n"
 		for _, tt := range []struct {
 			name, doc, wantErr string
 		}{
@@ -134,7 +134,7 @@ spec: {connectionRef: {name: openbao}}`},
 			{"UserpassUser", "{connectionRef: {name: openbao}, name: r, passwordSecretRef: {name: s, key: p}}",
 				map[string]any{authCloudMountPath: authCredOther, authCloudName: authCredOther}},
 		} {
-			obj := secretsDecodeString(t, "apiVersion: auth.openbaoconfig.io/v1alpha1\nkind: "+tt.kind+
+			obj := secretsDecodeString(t, "apiVersion: auth.obco.dev/v1alpha1\nkind: "+tt.kind+
 				"\nmetadata: {name: immutable-"+strings.ToLower(tt.kind)+", namespace: default}\nspec: "+tt.spec)
 			if err := k8s.Create(ctx, obj); err != nil {
 				t.Fatalf("%s: %v", tt.kind, err)

@@ -1,11 +1,11 @@
-# The tenant namespace of the quickstart. The label lets the OpenBaoServer admit its connection. The operator
+# The tenant namespace of the quickstart. The label lets the BaoServer admit its connection. The operator
 # logs in to OpenBao as the ServiceAccount openbao-config; app is the workload that logs in later.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: quickstart
   labels:
-    openbaoconfig.io/tenant: "true"
+    obco.dev/tenant: "true"
 ---
 apiVersion: v1
 kind: ServiceAccount

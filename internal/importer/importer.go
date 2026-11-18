@@ -36,7 +36,7 @@ type Options struct {
 	Recursive bool
 	// IncludeKVPaths emits a KVSecret skeleton for every KV path; values are never read.
 	IncludeKVPaths bool
-	// Server, when set, also emits the OpenBaoServer and the connection that Connection names.
+	// Server, when set, also emits the BaoServer and the connection that Connection names.
 	Server *Server
 }
 

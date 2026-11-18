@@ -6,12 +6,12 @@ description: "Browse supported OpenBao custom resources, their managed API paths
 
 # Kind catalogue
 
-Every typed kind, with links to its fields, YAML examples and test evidence. The design is in the
-[architecture](architecture.md). Built-in kinds are implemented; their evidence identifies the tests and
-runtime each kind needs. A dev server alone cannot exercise cluster-specific features such as raft autopilot.
-The remaining built-in gaps are in [BL-009](project/backlog.md). The external-plugin kinds stay in the code but
-are disabled by default behind `--enable-plugin-kinds` (chart `pluginKinds.enabled`) until plugin
-support ([phase 5](maintainers/roadmap.md#phases)) works end to end.
+Every typed kind, with links to its fields and YAML examples. The design is in the
+[architecture](architecture.md). Built-in kinds are implemented; kinds that need cluster features, such as
+`RaftAutopilot` (raft storage), work only on a server that has them. Configuration paths without a typed kind are
+listed in [API coverage](api-coverage.md#endpoint-only-paths); use `BaoEndpoint` for them. The external-plugin
+kinds stay in the code but are disabled by default behind `--enable-plugin-kinds` (chart `pluginKinds.enabled`)
+until plugin support ([phase 5](maintainers/roadmap.md#phases)) works end to end.
 
 !!! warning "Plugin kinds are experimental"
 
@@ -20,69 +20,64 @@ support ([phase 5](maintainers/roadmap.md#phases)) works end to end.
     [API coverage](api-coverage.md) share for OpenBao 2.7.2, the figure this documentation cites, contains no
     plugin-kind path.
 
-Counts: 126 rows, one per CRD in `config/crd/bases`: 74 built-in kinds, all integration-tested, and 52
-plugin-gated kinds (the CRDs listed in `hack/chart/plugin-crds.txt`). The built-in kinds are `OpenBaoServer`, the two
-connection kinds, `OpenBaoEndpoint` and 70 typed OpenBao kinds. `test/apidocs/kinds_catalogue_test.go` checks these
-counts and the evidence paths. Features without a typed kind are listed under [not typed](#not-typed).
+Counts: 126 rows, one per CRD in `config/crd/bases`: 74 built-in kinds and 52 plugin-gated kinds.
+The built-in kinds are `BaoServer`, the two connection kinds, `BaoEndpoint` and 70 typed
+OpenBao kinds. Features without a typed kind are listed under [not typed](#not-typed).
 
-The API group domain `openbaoconfig.io` is final ([ADR 0008](adr/0008-provisional-api-group-domain.md)).
+The API groups are `<area>.obco.dev/v1alpha1`.
 
-Destructive kinds delete only with the annotation `openbaoconfig.io/allow-destructive-delete: "true"`
-([ADR 0013](adr/0013-destructive-delete-guard.md)): `SecretsMount`, `AuthMount`, `OpenBaoNamespace`, `KVSecret`,
-`RandomSecret`, `Audit`, `OpenBaoEndpoint`, `TransitKey`, `PKIIssuer`, `PKIKey`, `SSHCA`, `TOTPKey`, `MFAMethod`,
-`Entity` and `KVSecretMetadata`.
+Destructive kinds delete only with the annotation `obco.dev/allow-destructive-delete: "true"`
+([ADR 0013](adr/0013-destructive-delete-guard.md)): `SecretsMount`, `AuthMount`, `BaoNamespace`, `KVSecret`,
+`RandomSecret`, `Audit`, `BaoEndpoint`, `TransitKey`, `PKIIssuer`, `PKIKey`, `SSHCA`, `TOTPKey`, `MFAMethod`,
+`IdentityEntity` and `KVSecretMetadata`.
 
 ## Columns
 
 - **kind**: links to the complete API reference; **example** opens the YAML gallery for that kind.
-- **group**: the section; the full group is `<group>.openbaoconfig.io`.
+- **group**: the section; the full group is `<group>.obco.dev`.
 - **path**: OpenBao API path, relative to the resource's OpenBao namespace. `<m>` is a secrets
   mount path, `<b>` an auth mount path. `(u)` marks a path not yet confirmed in OpenBao source.
 - **availability**:
-  - `builtin`: compiled into OpenBao 2.7 (`internal/helper/builtinplugins/registry.go` or core).
-  - `external-plugin`: needs a plugin from openbao-plugins (or a third party) registered with
-    `Plugin`. Only LDAP, Kerberos and RADIUS are confirmed by OpenBao docs; the rest are `(u)`.
-    The kind reports `Unsupported` until the plugin is mounted.
-- **phase**: the [roadmap phase](maintainers/roadmap.md#phases) whose exit test covers the kind; the roadmap
-  defines the phases and their releases. `after 6`: plugin kinds outside the core plan; they stay gated until
-  each has a plugin and backend in CI.
+    - `builtin`: compiled into OpenBao 2.7 (core or the built-in plugin registry).
+    - `external-plugin`: needs a plugin from openbao-plugins (or a third party) registered with
+      `Plugin`. Only LDAP, Kerberos and RADIUS are confirmed by OpenBao docs; the rest are `(u)`.
+      The kind reports `Unsupported` until the plugin is mounted.
+- **phase**: the [roadmap phase](maintainers/roadmap.md#phases) whose exit criteria cover the kind.
+  `after 6`: plugin kinds outside the core plan; they stay gated until each has a plugin and backend.
 - **status**:
-  - `implemented`: types, adapter, unit and envtest tests; wired in `cmd/controllers.go`.
-  - `integration-tested`: implemented, and reconciled against a real `bao server -dev` in the
-    file named under evidence.
-  - `plugin-gated`: experimental; implemented with unit tests and recorded reads, but not tested against a
-    server, because OpenBao 2.7.2 does not ship the plugin; disabled by default.
-  - `in progress`: being implemented now; not in the code yet.
-  - `planned`: a later phase.
-- **evidence**: test files under `test/integration/` (build tag `integration`), other bao-backed
-  tests by full path, and `live` when the kind ran `Ready` on a live OpenBao 2.7.2 cluster
-  (create, update, steady state with zero rewrites, and delete where `Delete` is allowed).
+    - `implemented`: types, adapter and unit coverage; wired into the manager.
+    - `integration-tested`: implemented, and verified against a running OpenBao server.
+    - `plugin-gated`: experimental; implemented, but not verified against a server, because OpenBao
+      2.7.2 does not ship the plugin; disabled by default.
+    - `in progress`: being implemented now; not in the code yet.
+    - `planned`: a later phase.
+- **evidence**: for contributors, the source files that verify the kind against OpenBao; `live` means it reached
+  `Ready` on a live OpenBao 2.7.2 cluster (create, update, steady state with zero rewrites, and
+  delete where `Delete` is allowed).
 - **namespace scope** (in notes): every built-in kind works in the root and in any child namespace unless its
-  notes say otherwise; root-only kinds are refused with `RootOnlyKind` before any OpenBao call. Measured per kind
-  and connection mode by `test/nsmatrix` ([architecture](architecture.md#namespace-scope)).
+  notes say otherwise; root-only kinds are refused with `RootOnlyKind` before any OpenBao call
+  ([architecture](architecture.md#namespace-scope)).
 
 The engine applies the path index, the destructive guard and the drift tiers to every kind. Every built-in
-adapter returns its full payload with declared defaults, and the no-write and default conformance tests measure
-each built-in kind, except the cases in `test/conformance/exceptions.yaml`
-([not yet enforced](architecture.md#not-yet-enforced)). Write-only fields (absent from reads) are hashed into
+adapter returns its full payload with declared defaults. Write-only fields (absent from reads) are hashed into
 `status.writeOnlyHash` (HMAC), never compared.
 
 ## core
 
 | kind | path | availability | phase | status | evidence | notes |
 |------|------|--------------|-------|--------|----------|-------|
-| [`OpenBaoServer`](reference/api/core-openbaoserver.md) · [example](reference/examples/core.md#openbaoserver) | none (holds address, CA bundle, allowed namespaces and audiences, rate limit) | builtin | 1 | integration-tested | `internal/controller/core/server_bao_test.go`, `test/e2e` | cluster-scoped, platform-owned; connections name it with `serverRef` ([ADR 0010](adr/0010-openbaoserver-owns-address-and-audiences.md)) |
-| [`OpenBaoConnection`](reference/api/core-openbaoconnection.md) · [example](reference/examples/core.md#openbaoconnection) | login: `auth/<b>/login`; status: `sys/health`, `sys/seal-status`, `auth/token/lookup-self` | builtin | 1 | integration-tested | `internal/openbao/integration_test.go`, `internal/controller/core/connection_bao_test.go`, live | namespaced; Kubernetes/JWT auth uses TokenRequest for a ServiceAccount in the same namespace |
-| [`ClusterOpenBaoConnection`](reference/api/core-clusteropenbaoconnection.md) · [example](reference/examples/core.md#clusteropenbaoconnection) | same | builtin | 1 | integration-tested | `internal/openbao/integration_test.go`, `internal/controller/core/connection_bao_test.go` | cluster-scoped; `allowedNamespaces` selector |
-| [`OpenBaoEndpoint`](reference/api/core-openbaoendpoint.md) · [example](reference/examples/core.md#openbaoendpoint) | any | builtin | 1 | integration-tested | `integration_test.go`, live | escape hatch, see [ADR 0006](adr/0006-endpoint-escape-hatch.md); destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| [`BaoServer`](reference/api/core-baoserver.md) · [example](reference/examples/core.md#baoserver) | none (holds address, CA bundle, allowed namespaces and audiences, rate limit) | builtin | 1 | integration-tested | `internal/controller/core/server_bao_test.go`, `test/e2e` | cluster-scoped, platform-owned; connections name it with `serverRef` ([ADR 0010](adr/0010-openbaoserver-owns-address-and-audiences.md)) |
+| [`BaoConnection`](reference/api/core-baoconnection.md) · [example](reference/examples/core.md#baoconnection) | login: `auth/<b>/login`; status: `sys/health`, `sys/seal-status`, `auth/token/lookup-self` | builtin | 1 | integration-tested | `internal/openbao/integration_test.go`, `internal/controller/core/connection_bao_test.go`, live | namespaced; Kubernetes/JWT auth uses TokenRequest for a ServiceAccount in the same namespace |
+| [`ClusterBaoConnection`](reference/api/core-clusterbaoconnection.md) · [example](reference/examples/core.md#clusterbaoconnection) | same | builtin | 1 | integration-tested | `internal/openbao/integration_test.go`, `internal/controller/core/connection_bao_test.go` | cluster-scoped; `allowedNamespaces` selector |
+| [`BaoEndpoint`](reference/api/core-baoendpoint.md) · [example](reference/examples/core.md#baoendpoint) | any | builtin | 1 | integration-tested | `integration_test.go`, live | escape hatch, see [ADR 0006](adr/0006-endpoint-escape-hatch.md); destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 
 ## sys
 
 | kind | path | availability | phase | status | evidence | notes |
 |------|------|--------------|-------|--------|----------|-------|
-| [`Policy`](reference/api/sys-policy.md) · [example](reference/examples/sys.md#policy) | `sys/policies/acl/<name>` | builtin | 1 | integration-tested | `integration_test.go`, `sys_core_test.go`, `templated_acl_test.go`, live | ACL only; OpenBao has no EGP/RGP |
+| [`ACLPolicy`](reference/api/sys-aclpolicy.md) · [example](reference/examples/sys.md#aclpolicy) | `sys/policies/acl/<name>` | builtin | 1 | integration-tested | `integration_test.go`, `sys_core_test.go`, `templated_acl_test.go`, live | ACL only; OpenBao has no EGP/RGP |
 | [`PasswordPolicy`](reference/api/sys-passwordpolicy.md) · [example](reference/examples/sys.md#passwordpolicy) | `sys/policies/password/<name>` | builtin | 4 | integration-tested | `sys_core_test.go`, live |  |
-| [`OpenBaoNamespace`](reference/api/sys-openbaonamespace.md) · [example](reference/examples/sys.md#openbaonamespace) | `sys/namespaces/<path>` | builtin | 2 | integration-tested | `sys_core_test.go`, `templated_acl_test.go`, live | namespace scope: any (creates a child of its OpenBao namespace); delete leaves it `tainted` until purged (`ReconcileInProgress`); namespace sealing is not supported yet; default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| [`BaoNamespace`](reference/api/sys-baonamespace.md) · [example](reference/examples/sys.md#baonamespace) | `sys/namespaces/<path>` | builtin | 2 | integration-tested | `sys_core_test.go`, `templated_acl_test.go`, live | namespace scope: any (creates a child of its OpenBao namespace); delete leaves it `tainted` until purged (`ReconcileInProgress`); namespace sealing is not supported yet; default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | [`AuthMount`](reference/api/sys-authmount.md) · [example](reference/examples/sys.md#authmount) | `sys/auth/<path>`, `sys/auth/<path>/tune` | builtin | 2 | integration-tested | `identity_test.go`, `sys_core_test.go`, `templated_acl_test.go`, live | `type`, `local`, `seal_wrap` immutable; accessor in status; default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | [`SecretsMount`](reference/api/sys-secretsmount.md) · [example](reference/examples/sys.md#secretsmount) | `sys/mounts/<path>`, `sys/mounts/<path>/tune` | builtin | 2 | integration-tested | `sys_core_test.go`, `templated_acl_test.go`, live | as `AuthMount`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
 | [`Audit`](reference/api/sys-audit.md) · [example](reference/examples/sys.md#audit) | `sys/audit/<path>` | builtin | 4 | integration-tested | `sys_audit_test.go` | namespace scope: root only (`RootOnlyKind` elsewhere); types file, socket, syslog, http; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
@@ -95,7 +90,7 @@ each built-in kind, except the cases in `test/conformance/exceptions.yaml`
 | [`Logger`](reference/api/sys-logger.md) · [example](reference/examples/sys.md#logger) | `sys/loggers/<name>` | builtin | 4 | integration-tested | `sys_config_test.go` | namespace scope: root only (`RootOnlyKind` elsewhere); runtime log level; not persisted across a server restart (u), so drift repair re-applies it |
 | [`KeyRotationConfig`](reference/api/sys-keyrotationconfig.md) · [example](reference/examples/sys.md#keyrotationconfig) | `sys/rotate/config` | builtin | 4 | integration-tested | `sys_config_test.go` | namespace scope: root or a sealable namespace (`Unsupported` elsewhere); singleton; barrier key rotation, not secret rotation |
 | [`RaftAutopilot`](reference/api/sys-raftautopilot.md) · [example](reference/examples/sys.md#raftautopilot) | `sys/storage/raft/autopilot/configuration` | builtin | 4 | integration-tested | `sys_config_test.go` | namespace scope: root only (`RootOnlyKind` elsewhere); singleton; raft storage only |
-| [`Workflow`](reference/api/sys-workflow.md) · [example](reference/examples/sys.md#workflow) | `sys/workflows/manage/<path>` | builtin | 4 | integration-tested | `sys_config_test.go`, live | namespace scope: any; OpenBao only (profiles, 2.6+); extra |
+| [`BaoWorkflow`](reference/api/sys-baoworkflow.md) · [example](reference/examples/sys.md#baoworkflow) | `sys/workflows/manage/<path>` | builtin | 4 | integration-tested | `sys_config_test.go`, live | namespace scope: any; OpenBao only (profiles, 2.6+); extra |
 
 ## auth
 
@@ -200,11 +195,11 @@ each built-in kind, except the cases in `test/conformance/exceptions.yaml`
 
 | kind | path | availability | phase | status | evidence | notes |
 |------|------|--------------|-------|--------|----------|-------|
-| [`Entity`](reference/api/identity-entity.md) · [example](reference/examples/identity.md#entity) | `identity/entity/name/<name>` | builtin | 3 | integration-tested | `identity_test.go`, `templated_acl_test.go`, live | ID server-generated, kept in `status.id`; default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
-| [`EntityAlias`](reference/api/identity-entityalias.md) · [example](reference/examples/identity.md#entityalias) | `identity/entity-alias/id/<id>` | builtin | 3 | integration-tested | `identity_test.go`, `templated_acl_test.go`, live | no lookup by name; identity is (mount accessor, name), adopt by list and read |
-| [`Group`](reference/api/identity-group.md) · [example](reference/examples/identity.md#group) | `identity/group/name/<name>` | builtin | 3 | integration-tested | `identity_test.go`, `templated_acl_test.go`, live | `type` internal/external immutable; default `Orphan` |
-| [`GroupAlias`](reference/api/identity-groupalias.md) · [example](reference/examples/identity.md#groupalias) | `identity/group-alias/id/<id>` | builtin | 3 | integration-tested | `identity_test.go`, live | external groups only |
-| [`GroupMembership`](reference/api/identity-groupmembership.md) · [example](reference/examples/identity.md#groupmembership) | `identity/group/id/<id>` (`member_entity_ids`, `member_group_ids`) | builtin | 3 | integration-tested | `identity_test.go`, `templated_acl_test.go`, live | no endpoint of its own: read-modify-write of the group, removing only members it added |
+| [`IdentityEntity`](reference/api/identity-identityentity.md) · [example](reference/examples/identity.md#identityentity) | `identity/entity/name/<name>` | builtin | 3 | integration-tested | `identity_test.go`, `templated_acl_test.go`, live | ID server-generated, kept in `status.id`; default `Orphan`; destructive ([ADR 0013](adr/0013-destructive-delete-guard.md)) |
+| [`IdentityEntityAlias`](reference/api/identity-identityentityalias.md) · [example](reference/examples/identity.md#identityentityalias) | `identity/entity-alias/id/<id>` | builtin | 3 | integration-tested | `identity_test.go`, `templated_acl_test.go`, live | no lookup by name; identity is (mount accessor, name), adopt by list and read |
+| [`IdentityGroup`](reference/api/identity-identitygroup.md) · [example](reference/examples/identity.md#identitygroup) | `identity/group/name/<name>` | builtin | 3 | integration-tested | `identity_test.go`, `templated_acl_test.go`, live | `type` internal/external immutable; default `Orphan` |
+| [`IdentityGroupAlias`](reference/api/identity-identitygroupalias.md) · [example](reference/examples/identity.md#identitygroupalias) | `identity/group-alias/id/<id>` | builtin | 3 | integration-tested | `identity_test.go`, live | external groups only |
+| [`IdentityGroupMembership`](reference/api/identity-identitygroupmembership.md) · [example](reference/examples/identity.md#identitygroupmembership) | `identity/group/id/<id>` (`member_entity_ids`, `member_group_ids`) | builtin | 3 | integration-tested | `identity_test.go`, `templated_acl_test.go`, live | no endpoint of its own: read-modify-write of the group, removing only members it added |
 | [`OIDCConfig`](reference/api/identity-oidcconfig.md) · [example](reference/examples/identity.md#oidcconfig) | `identity/oidc/config` | builtin | 4 | integration-tested | `identity_oidc_test.go`, live | singleton (`issuer`) |
 | [`OIDCKey`](reference/api/identity-oidckey.md) · [example](reference/examples/identity.md#oidckey) | `identity/oidc/key/<name>` | builtin | 4 | integration-tested | `identity_oidc_test.go`, live |  |
 | [`OIDCRole`](reference/api/identity-oidcrole.md) · [example](reference/examples/identity.md#oidcrole) | `identity/oidc/role/<name>` | builtin | 4 | integration-tested | `identity_oidc_test.go`, live |  |
@@ -233,15 +228,15 @@ These features have no typed kind: OpenBao does not have them, or they are actio
 | Sentinel EGP and RGP policies | not-in-openbao | OpenBao has ACL policies only | - |
 | KMIP secrets engine | not-in-openbao | no KMIP engine in OpenBao | - |
 | Transform secrets engine | not-in-openbao | no Transform engine in OpenBao | - |
-| managed keys | not-in-openbao | OpenBao has `sys/external-keys` instead, with a different API | `OpenBaoEndpoint`; a typed external-keys kind may follow |
+| managed keys | not-in-openbao | OpenBao has `sys/external-keys` instead, with a different API | `BaoEndpoint`; a typed external-keys kind may follow |
 | legacy step-up MFA (`sys/mfa/method/...`) | not-in-openbao | login MFA covers it | `MFAMethod` |
 | lease count quotas | not-in-openbao | OpenBao has rate-limit quotas only | - |
 | raft snapshot agent configuration | not-in-openbao | OpenBao uses a separate snapshot agent | - |
 | secret rotation policies (`sys/policies/rotation/<name>`) | not-in-openbao (u) | no secret rotation manager in OpenBao | - |
-| container plugin runtimes | not-in-openbao (u) | not found in OpenBao | `OpenBaoEndpoint` |
-| pinned plugin versions | not-in-openbao (u) | OpenBao 2.7 pins plugins differently; to verify | `OpenBaoEndpoint` |
+| container plugin runtimes | not-in-openbao (u) | not found in OpenBao | `BaoEndpoint` |
+| pinned plugin versions | not-in-openbao (u) | OpenBao 2.7 pins plugins differently; to verify | `BaoEndpoint` |
 | Active Directory secrets engine | not-in-openbao | deprecated upstream; the LDAP engine replaces it | `LDAPSecretsConfig` |
-| AliCloud auth | not-in-openbao (u) | not built in; no OpenBao plugin confirmed | `OpenBaoEndpoint` |
+| AliCloud auth | not-in-openbao (u) | not built in; no OpenBao plugin confirmed | `BaoEndpoint` |
 | token creation | action-not-config | creating a token is an action; a token in a Secret is a credential to rotate, not config | `TokenRole` + workload login |
 | logins (AppRole, AWS) | action-not-config | a login | - |
 | AWS role tags | action-not-config | creates a role tag value each call | - |
@@ -251,7 +246,7 @@ These features have no typed kind: OpenBao does not have them, or they are actio
 
 ## Not catalogued
 
-Reachable with `OpenBaoEndpoint` and candidates for later typed kinds: OpenBao
+Reachable with `BaoEndpoint` and candidates for later typed kinds: OpenBao
 sealable-namespace operations, user lockout config (tune `user_lockout_config` on `AuthMount`), plugin reload,
 control groups, and the namespace API lock.
 

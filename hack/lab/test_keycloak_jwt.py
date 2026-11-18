@@ -21,10 +21,10 @@ class JWTTests(unittest.TestCase):
         objects = jwt.render(state())
         self.assertEqual(12, sum(o['kind'] == 'JWTAuthConfig' for o in objects))
         self.assertEqual(30, sum(o['kind'] == 'JWTAuthRole' for o in objects))
-        self.assertEqual(18, sum(o['kind'] == 'Group' for o in objects))
+        self.assertEqual(18, sum(o['kind'] == 'IdentityGroup' for o in objects))
         names = [(o['kind'], o['metadata']['name']) for o in objects]
         self.assertEqual(len(names), len(set(names)))
-        aliases = [o for o in objects if o['kind'] == 'GroupAlias']
+        aliases = [o for o in objects if o['kind'] == 'IdentityGroupAlias']
         self.assertEqual(18, len(aliases))
         self.assertEqual(18, len({o['spec']['groupRef']['name'] for o in aliases}))
         for o in objects:
@@ -39,7 +39,7 @@ class JWTTests(unittest.TestCase):
                 self.assertTrue(spec['tokenNoDefaultPolicy'])
                 self.assertNotIn('tokenPolicies', spec)
                 self.assertNotIn('allowedRedirectURIs', spec)
-            if o['kind'] == 'GroupMembership':
+            if o['kind'] == 'IdentityGroupMembership':
                 self.assertTrue(spec['groupRef']['name'].endswith('-session'))
                 self.assertIn('-jwt-', spec['memberGroupRef']['name'])
 

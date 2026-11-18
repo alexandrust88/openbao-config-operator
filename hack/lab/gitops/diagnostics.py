@@ -37,7 +37,7 @@ def report(resource):
 if __name__ == '__main__':
     for resource in ('pods', 'applications.argoproj.io', 'gitrepositories.source.toolkit.fluxcd.io',
                      'kustomizations.kustomize.toolkit.fluxcd.io', 'helmreleases.helm.toolkit.fluxcd.io',
-                     'policies.sys.openbaoconfig.io', 'openbaoconnections.core.openbaoconfig.io'):
+                     'aclpolicies.sys.obco.dev', 'baoconnections.core.obco.dev'):
         try:
             report(resource)
         except (subprocess.TimeoutExpired, ValueError):

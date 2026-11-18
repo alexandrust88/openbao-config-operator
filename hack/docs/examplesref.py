@@ -19,7 +19,7 @@ OTHER_SETS = [
     ("examples/quickstart", "the manifests of the quickstart tutorial"),
     ("examples/tutorials", "the manifests of the role-based tutorials, in the order they build on each other"),
     ("examples/policies/templated", "templated ACL policies, in the order they build on each other"),
-    ("examples/live", "the live kit: kustomize overlays that apply every kind to a real OpenBao, by login mode"),
+    ("examples/live", "for contributors, the live kit: kustomize overlays that apply every kind to a real OpenBao, by login mode"),
     ("examples/self-init", "an OpenBao self-init configuration and its verification script"),
 ]
 
@@ -77,9 +77,9 @@ def index_page(root, groups):
         "# Examples",
         "",
         "Curated examples live in `examples/<group>/<kind>.yaml`: realistic manifests, most with a comment that",
-        "explains the scenario. Generated samples live in `examples-generated/` (`make samples`): one per kind, with",
-        "every spec field set to a placeholder that passes the CRD validation. CI applies both with a server-side",
-        "dry run, and each release attaches them as `examples-<version>.tar.gz`.",
+        "explains the scenario. Generated samples live in `examples-generated/`: one per kind, with every spec field",
+        "set to a placeholder that passes the CRD validation. Every example is validated against the CRDs with a",
+        "server-side dry run, and each release attaches them as `examples-<version>.tar.gz`.",
         "",
         "Secret inputs are always references to a Kubernetes Secret by name and key; create the Secret first.",
         "",

@@ -28,8 +28,8 @@ helm_bin=${HELM:-helm}
 kubectl_bin=${KUBECTL:-kubectl}
 yq_bin=${YQ:-yq}
 
-# 0.1.0 was published before the OCM release fix (v0.1.1); upgrades are only checked from 0.1.1 on.
-min_previous_version=0.1.1
+# Releases before 1.0.0 were withdrawn (ADR 0025 moved the API to obco.dev); upgrades are only checked from 1.0.0 on.
+min_previous_version=1.0.0
 release=openbao-config-operator
 nokeep_release=obco-nokeep
 nokeep_namespace=$NAMESPACE-nokeep
@@ -74,8 +74,8 @@ diagnostics() {
   k get pods -A -o wide || true
   k get events -A --sort-by=.lastTimestamp | tail -n 150 || true
   k get crd -o custom-columns='NAME:.metadata.name,RELEASE:.metadata.annotations.meta\.helm\.sh/release-name,POLICY:.metadata.annotations.helm\.sh/resource-policy,CHART:.metadata.labels.helm\.sh/chart' |
-    grep -E 'NAME|openbaoconfig\.io' || true
-  k -n "$cr_namespace" get policies.sys.openbaoconfig.io -o yaml || true
+    grep -E 'NAME|obco\.dev' || true
+  k -n "$cr_namespace" get aclpolicies.sys.obco.dev -o yaml || true
 }
 
 on_exit() {
@@ -105,7 +105,7 @@ expected_crds() {
 }
 
 live_crds_json() {
-  k get crd -o json | jq '[.items[] | select(.spec.group | endswith(".openbaoconfig.io"))]'
+  k get crd -o json | jq '[.items[] | select(.spec.group | endswith(".obco.dev"))]'
 }
 
 # Names, keep policy and chart label of the live CRDs, as a file: the full CRDs exceed the argument size limit.
@@ -202,14 +202,14 @@ assert_step_annotation() {
 }
 
 cr_uid() {
-  k -n "$cr_namespace" get policies.sys.openbaoconfig.io lifecycle-probe -o jsonpath='{.metadata.uid}'
+  k -n "$cr_namespace" get aclpolicies.sys.obco.dev lifecycle-probe -o jsonpath='{.metadata.uid}'
 }
 
 assert_cr() {
   local got
-  got=$(cr_uid) || fail "Policy $cr_namespace/lifecycle-probe is gone"
-  [ "$got" = "$probe_uid" ] || fail "Policy $cr_namespace/lifecycle-probe was recreated (uid $got, want $probe_uid)"
-  ok "Policy $cr_namespace/lifecycle-probe kept (uid $got)"
+  got=$(cr_uid) || fail "ACLPolicy $cr_namespace/lifecycle-probe is gone"
+  [ "$got" = "$probe_uid" ] || fail "ACLPolicy $cr_namespace/lifecycle-probe was recreated (uid $got, want $probe_uid)"
+  ok "ACLPolicy $cr_namespace/lifecycle-probe kept (uid $got)"
 }
 
 assert_no_release() {
@@ -275,7 +275,7 @@ if [ -z "$PREVIOUS_VERSION" ]; then
   fi
 fi
 if [ -n "$PREVIOUS_VERSION" ] && [ "$(printf '%s\n%s\n' "$min_previous_version" "$PREVIOUS_VERSION" | sort -V | head -n1)" != "$min_previous_version" ]; then
-  echo "lifecycle: SKIP upgrade from $PREVIOUS_VERSION: released before the OCM release fix ($min_previous_version)"
+  echo "lifecycle: SKIP upgrade from $PREVIOUS_VERSION: released before $min_previous_version, on the withdrawn API"
   PREVIOUS_VERSION=
 fi
 if [ -n "$PREVIOUS_VERSION" ]; then
@@ -293,8 +293,8 @@ assert_available "$NAMESPACE" "$release"
 previous_image=$(deployment_image "$NAMESPACE" "$release")
 k create namespace "$cr_namespace" --dry-run=client -o yaml | k apply -f -
 k apply -f - <<EOF
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: lifecycle-probe
   namespace: $cr_namespace
@@ -382,8 +382,8 @@ until [ "$(live_crds_json | jq length)" = 0 ]; do
   [ "$SECONDS" -lt "$deadline" ] || fail "CRDs left after uninstall with crds.keep=false: $(live_crds_json | jq -r '.[].metadata.name')"
   sleep 5
 done
-! k -n "$cr_namespace" get policies.sys.openbaoconfig.io lifecycle-probe >/dev/null 2>&1 ||
-  fail "Policy $cr_namespace/lifecycle-probe survived the CRD deletion"
-ok "every openbaoconfig.io CRD and the Policy are deleted"
+! k -n "$cr_namespace" get aclpolicies.sys.obco.dev lifecycle-probe >/dev/null 2>&1 ||
+  fail "ACLPolicy $cr_namespace/lifecycle-probe survived the CRD deletion"
+ok "every obco.dev CRD and the ACLPolicy are deleted"
 
 step "all chart lifecycle scenarios passed"

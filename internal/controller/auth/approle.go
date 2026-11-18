@@ -12,9 +12,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=approles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=approles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=approles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=approles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=approles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=approles/finalizers,verbs=update
 
 // SetupAppRole registers the AppRole controller with the manager.
 func SetupAppRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

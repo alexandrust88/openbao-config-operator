@@ -39,7 +39,7 @@ if [ "$(kubectl config current-context)" != "kind-$kind_cluster" ]; then
 fi
 cd "$repo_root"
 
-# The kit overlay of a live.openbaoconfig.io/overlay label, which the overlay globs of the exceptions match.
+# The kit overlay of a live.obco.dev/overlay label, which the overlay globs of the exceptions match.
 overlay_dir() {
   case $1 in
     root-full) echo root/full ;;
@@ -156,7 +156,7 @@ excuse() {
 "$kustomize" build test/livekit/kind >"$rendered"
 test/livekit/crl-fixture.sh "$rendered" "$namespace"
 PLUGIN_SHA=$plugin_sha "$yq" -i '(select(.kind == "Plugin") | .spec.sha256) = strenv(PLUGIN_SHA)' "$rendered"
-"$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "|" + .metadata.name + "|" + .metadata.labels["live.openbaoconfig.io/overlay"]' "$rendered" >"$out_dir/inventory.txt"
+"$yq" -N 'select(.apiVersion | test("obco\.dev/")) | .kind + "|" + .metadata.name + "|" + .metadata.labels["live.obco.dev/overlay"]' "$rendered" >"$out_dir/inventory.txt"
 [ -s "$out_dir/inventory.txt" ] || { err "empty live kit inventory"; exit 1; }
 
 # Objects that cannot work on kind (the exceptions above) are not applied, so every applied object must get Ready.
@@ -179,7 +179,7 @@ db_ca=$(kubectl -n "$namespace" get secret live-db-client-ca -o 'jsonpath={.data
 DB_CA=$db_ca "$yq" -i '(select(.spec.caPrivateKeySecretRef.name == "live-db-client-ca") | .spec.credentialConfig.ca_cert) = strenv(DB_CA)' "$rendered"
 printf '%s\n' "${skipped[@]}" >"$out_dir/exclusions.txt"
 echo "not applied on kind: ${#skipped[@]} objects"
-"$yq" -N 'select(.apiVersion | test("openbaoconfig\.io/")) | .kind + "." + (.apiVersion | split("/") | .[0]) + "/" + .metadata.name' "$rendered" >"$out_dir/applied.txt"
+"$yq" -N 'select(.apiVersion | test("obco\.dev/")) | .kind + "." + (.apiVersion | split("/") | .[0]) + "/" + .metadata.name' "$rendered" >"$out_dir/applied.txt"
 [ -s "$out_dir/applied.txt" ] || { err "no executable live kit objects"; exit 1; }
 for label in "${labels[@]}"; do
   grep -q "/$label-" "$out_dir/applied.txt" || { err "no executable objects for $label"; exit 1; }
@@ -194,7 +194,7 @@ types=$(cut -d/ -f1 "$out_dir/applied.txt" | sort -u | paste -sd, -)
 not_ready() {
   {
     printf 'want %s\n' "${names[@]}"
-    kubectl -n "$namespace" get "$types" -l live.openbaoconfig.io/overlay \
+    kubectl -n "$namespace" get "$types" -l live.obco.dev/overlay \
       -o 'jsonpath={range .items[*]}{.status.conditions[?(@.type=="Ready")].status}|{.metadata.generation}/{.status.observedGeneration}/{.status.conditions[?(@.type=="Ready")].observedGeneration}|{.spec.connectionRef.name}|{.spec.managementPolicy}|{.status.conditions[?(@.type=="Synced")].status}|{.status.conditions[?(@.type=="Synced")].observedGeneration}|{.kind}.{.apiVersion}/{.metadata.name}{"\n"}{end}' |
       awk -F'|' '$1 == "True" {
         split($2, g, "/")
@@ -303,7 +303,7 @@ for login in "$tenant_ns|$child_role|$child_sa" "root|$tenant_role|$tenant_sa"; 
   [ "$got" = "$tenant_ns=allowed root=denied $sibling_ns=denied " ] || boundary_failed=1
 done
 
-# Prints the operator leader pod and its openbao_writes_total by kind, one "<kind> <count>" line each.
+# Prints the operator leader pod and its obco_writes_total by kind, one "<kind> <count>" line each.
 operator_writes() {
   local holder pod pf body=""
   holder=$(kubectl -n "$operator_ns" get lease openbao-config-operator.openbaoconfig.io -o 'jsonpath={.spec.holderIdentity}')
@@ -321,7 +321,7 @@ operator_writes() {
     return 1
   fi
   echo "leader $pod"
-  awk -F'"' '/^openbao_writes_total\{/ { n = split($3, v, " "); s[$2] += v[n] } END { for (k in s) print k, s[k] }' <<<"$body"
+  awk -F'"' '/^obco_writes_total\{/ { n = split($3, v, " "); s[$2] += v[n] } END { for (k in s) print k, s[k] }' <<<"$body"
 }
 
 kubectl -n "$operator_ns" create serviceaccount livekit-metrics --dry-run=client -o yaml | kubectl apply -f - >/dev/null
@@ -342,7 +342,7 @@ wait_openbao
 echo "deleting the active OpenBao node ${active[0]} after root/full entered Observe"
 kubectl -n openbao delete pod "${active[0]}" --wait=false
 # Refresh every generation without briefly reverting the observed objects to Manage.
-"$yq" -i 'select(.metadata.labels["live.openbaoconfig.io/overlay"] != "root-full")' "$rendered"
+"$yq" -i 'select(.metadata.labels["live.obco.dev/overlay"] != "root-full")' "$rendered"
 "$yq" -i '(select(.spec.connectionRef != null) | .spec.driftInterval) = "31s"' "$rendered"
 kubectl apply -f "$rendered" >/dev/null
 "$yq" -i '(select(.spec.connectionRef != null) | .spec.driftInterval) = "32s"' "$observed"

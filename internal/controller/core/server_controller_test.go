@@ -25,20 +25,20 @@ func newServerReconciler(probe probeFunc, objs ...client.Object) *serverReconcil
 	return &serverReconciler{Client: c, resolver: &connection.Resolver{Client: c}, probe: probe}
 }
 
-func unprobedServer() *corev1alpha1.OpenBaoServer {
+func unprobedServer() *corev1alpha1.BaoServer {
 	s := testServer()
-	s.Status = corev1alpha1.OpenBaoServerStatus{}
+	s.Status = corev1alpha1.BaoServerStatus{}
 	return s
 }
 
-func reconcileServer(t *testing.T, r *serverReconciler) (ctrl.Result, *corev1alpha1.OpenBaoServer) {
+func reconcileServer(t *testing.T, r *serverReconciler) (ctrl.Result, *corev1alpha1.BaoServer) {
 	t.Helper()
 	key := client.ObjectKey{Name: openbaoName}
 	res, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: key})
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	got := &corev1alpha1.OpenBaoServer{}
+	got := &corev1alpha1.BaoServer{}
 	if err := r.Get(context.Background(), key, got); err != nil {
 		t.Fatal(err)
 	}
@@ -83,19 +83,19 @@ func TestServerReconcileReady(t *testing.T) {
 }
 
 func TestServerReconcileNotReady(t *testing.T) {
-	withCA := func(s *corev1alpha1.OpenBaoServer) {
+	withCA := func(s *corev1alpha1.BaoServer) {
 		s.Spec.CABundle = &corev1alpha1.CABundleSource{
 			ConfigMapRef: &corev1alpha1.NamespacedCABundleReference{Namespace: openbaoName, Name: "absent"},
 		}
 	}
-	badSelector := func(s *corev1alpha1.OpenBaoServer) {
+	badSelector := func(s *corev1alpha1.BaoServer) {
 		s.Spec.AllowedNamespaces = &metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{
 			{Key: tenantLabel, Operator: "Bogus"},
 		}}
 	}
 	cases := []struct {
 		name       string
-		mutate     func(*corev1alpha1.OpenBaoServer)
+		mutate     func(*corev1alpha1.BaoServer)
 		probe      probeFunc
 		wantReason string
 		wantSealed bool
@@ -197,9 +197,9 @@ func TestServerCARotationReprobesEnvtest(t *testing.T) {
 
 	cm := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "carotation-ca"},
 		Data: map[string]string{corev1alpha1.DefaultCABundleKey: "ca-v1"}}
-	server := &corev1alpha1.OpenBaoServer{
+	server := &corev1alpha1.BaoServer{
 		ObjectMeta: metav1.ObjectMeta{Name: "carotation"},
-		Spec: corev1alpha1.OpenBaoServerSpec{Address: testAddress, CABundle: &corev1alpha1.CABundleSource{
+		Spec: corev1alpha1.BaoServerSpec{Address: testAddress, CABundle: &corev1alpha1.CABundleSource{
 			ConfigMapRef: &corev1alpha1.NamespacedCABundleReference{Namespace: cm.Namespace, Name: cm.Name},
 		}},
 	}

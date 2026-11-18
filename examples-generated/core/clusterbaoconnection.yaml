@@ -1,0 +1,42 @@
+# ClusterBaoConnection (core.obco.dev/v1alpha1)
+# ClusterBaoConnection is a cluster-scoped login to a BaoServer owned by the platform team, usable by resources in
+# every namespace its allowedNamespaces selects (spec.connectionRef.kind: ClusterBaoConnection).
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# The Secrets after it hold fake values for the secret references. Required spec fields: auth, serverRef.
+#
+# Reference: https://docs.obco.dev/reference/api/core/#clusterbaoconnection
+# Curated example: examples/core/clusterbaoconnection.yaml
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
+metadata:
+  name: example
+spec:
+  allowedNamespaces:
+    matchExpressions:
+    - key: example
+      operator: In
+      values:
+      - example
+    matchLabels:
+      example: example
+  auth:
+    token:
+      secretRef:
+        key: value
+        name: clusterbaoconnection-secret-ref
+        namespace: openbao-config
+  openbaoAuthNamespace: example
+  openbaoNamespace: example
+  serverRef:
+    name: example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: clusterbaoconnection-secret-ref
+  namespace: openbao-config
+stringData:
+  value: fake-value-not-a-secret
+type: Opaque

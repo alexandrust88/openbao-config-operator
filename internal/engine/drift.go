@@ -16,23 +16,23 @@ const (
 
 var (
 	driftLag = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "openbao_drift_lag_seconds",
+		Name: "obco_drift_lag_seconds",
 		Help: "How far the last drift read of a connection ran behind its schedule.",
 	}, []string{"connection"})
 	driftRepairs = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "openbao_drift_repairs_total",
+		Name: "obco_drift_repairs_total",
 		Help: "Writes that repaired an out-of-band change, by kind.",
 	}, []string{labelKind})
 	conflictsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "openbao_conflicts_total",
+		Name: "obco_conflicts_total",
 		Help: "Reconciles refused because another resource owns the OpenBao path or object, by kind.",
 	}, []string{labelKind})
 	resourceReady = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "openbao_resource_ready",
+		Name: "obco_resource_ready",
 		Help: "1 when a managed resource is Ready, else 0, labelled with the reason of its Ready condition.",
 	}, []string{labelKind, "namespace", "name", "reason"})
 	budgetExhausted = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "openbao_write_budget_exhausted_total",
+		Name: "obco_write_budget_exhausted_total",
 		Help: "Writes held back because the server's write budget was spent, by server.",
 	}, []string{"server"})
 )
@@ -52,7 +52,7 @@ func (r *Reconciler[T]) driftInterval(obj T) time.Duration {
 	return r.opts.DriftIntervalStandard
 }
 
-// readiness keeps openbao_resource_ready at one series per resource, deleting the series of a previous reason.
+// readiness keeps obco_resource_ready at one series per resource, deleting the series of a previous reason.
 type readiness struct {
 	mu     sync.Mutex
 	reason map[types.NamespacedName]string
@@ -84,7 +84,7 @@ func (r *readiness) forget(kind string, key types.NamespacedName) {
 	}
 }
 
-// schedule remembers when each resource's next drift check is due, to measure openbao_drift_lag_seconds.
+// schedule remembers when each resource's next drift check is due, to measure obco_drift_lag_seconds.
 type schedule struct {
 	mu  sync.Mutex
 	due map[types.NamespacedName]time.Time

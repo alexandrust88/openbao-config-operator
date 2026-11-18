@@ -1,4 +1,4 @@
-// Package auth holds the adapters for the auth.openbaoconfig.io kinds.
+// Package auth holds the adapters for the auth.obco.dev kinds.
 package auth
 
 import (
@@ -101,9 +101,9 @@ func putDefaults(p, defaults engine.Payload) {
 	}
 }
 
-// +kubebuilder:rbac:groups=sys.openbaoconfig.io,resources=policies,verbs=get;list;watch
+// +kubebuilder:rbac:groups=sys.obco.dev,resources=aclpolicies,verbs=get;list;watch
 
-// putTokenFields adds the set token_* keys of t to p, with the OpenBao names of the Policy resources that t
+// putTokenFields adds the set token_* keys of t to p, with the OpenBao names of the ACLPolicy resources that t
 // references merged into token_policies.
 func putTokenFields(ctx context.Context, r engine.Resolver, obj engine.Object, p engine.Payload, t authv1alpha1.TokenFields) error {
 	PutTokenFields(p, t)
@@ -113,7 +113,7 @@ func putTokenFields(ctx context.Context, r engine.Resolver, obj engine.Object, p
 	names := slices.Clone(t.TokenPolicies)
 	spec := obj.GetResourceSpec()
 	for _, ref := range t.PolicyRefs {
-		var policy sysv1alpha1.Policy
+		var policy sysv1alpha1.ACLPolicy
 		if err := r.Object(ctx, client.ObjectKey{Namespace: obj.GetNamespace(), Name: ref.Name}, &policy); err != nil {
 			return fmt.Errorf("policy %s: %w", ref.Name, err)
 		}

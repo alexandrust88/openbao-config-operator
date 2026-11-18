@@ -5,83 +5,97 @@ description: Declare an OpenBao ACL policy as a Kubernetes custom resource, veri
 
 # Manage OpenBao policies with Kubernetes
 
-Use a `Policy` resource to keep an OpenBao ACL policy in Git. The operator writes its HCL to
-OpenBao and reconciles later changes. Creating the policy does not grant anyone access: an auth
-role or identity group must attach it to a login.
+Use an `ACLPolicy` resource to keep an OpenBao ACL policy in Git. The OpenBao Config Operator writes
+its HCL to OpenBao and reconciles later changes. Creating the policy does not grant anyone access:
+an auth role or identity group must attach it to a login.
 
 ## Before you begin
 
-- Install the operator and create a [Ready connection](../get-started/connect.md).
-- This example uses connection `openbao` in Kubernetes namespace `openbao-config`.
-- The connection's OpenBao identity needs `create`, `read` and `update` on
-  `sys/policies/acl/guide-app-read`. See [permissions for the operator](../operate/openbao-policy.md).
-- Use an unused policy name. To take over an existing policy, first follow the
-  [import guide](import.md) and review its current permissions.
+- The operator is installed and the `BaoConnection` named `openbao` in the Kubernetes namespace
+  `openbao-config` is `Ready` ([Install](../get-started/install.md),
+  [Connect to OpenBao](../get-started/connect.md)).
+- The connection's OpenBao policy allows these paths
+  ([OpenBao policy for the operator](../operate/openbao-policy.md)):
 
-The example grants read access to application data in a KV v2 mount named `apps`. The policy
-can be created before that mount exists; [Kubernetes auth](kubernetes-auth.md) creates the mount
-and connects a workload to this policy.
+    ```hcl
+    path "sys/policies/acl/app-read" { capabilities = ["create", "read", "update"] }
+    ```
 
-## Declare the policy
+    Append these lines to `openbao-configurer.hcl`, the connection's policy from Connect to OpenBao,
+    and write it again with `bao policy write openbao-configurer openbao-configurer.hcl`.
+
+- Use an unused policy name. To take over an existing policy, first follow
+  [Import existing OpenBao configuration safely](import.md) and review its current permissions.
+- The `bao` CLI, with `BAO_ADDR` and a token that can read the paths in the last step.
+
+The example grants read access to application data in the KV version 2 mount `secret`. The policy
+can be created before that mount exists; [Manage KV secrets from Kubernetes](kv-secrets.md) creates
+the mount, and [Configure Kubernetes authentication](kubernetes-auth.md) attaches the policy to a
+workload login.
+
+## 1. Declare the policy
 
 Save this as `app-read.yaml`:
 
 ```yaml
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
-  name: guide-app-read
+  name: app-read
   namespace: openbao-config
 spec:
   connectionRef:
     name: openbao
   deletionPolicy: Orphan
-  name: guide-app-read
+  name: app-read
   policy: |
-    path "apps/data/app/*" {
+    path "secret/data/app/*" {
       capabilities = ["read"]
     }
 ```
 
 ```bash
 kubectl apply -f app-read.yaml
-kubectl -n openbao-config wait policy/guide-app-read --for=condition=Ready --timeout=2m
-kubectl -n openbao-config get policy guide-app-read
+kubectl -n openbao-config wait aclpolicies.sys.obco.dev/app-read --for=condition=Ready --timeout=2m
 ```
 
-Expect `READY` and `SYNCED` to be `True`. If the resource is not ready, inspect its conditions
-and events with `kubectl -n openbao-config describe policy guide-app-read`.
+## 2. Check that it worked
 
-## Verify the OpenBao result
-
-Point the `bao` CLI at the same server and OpenBao namespace as the connection, using an identity
-allowed to read this policy:
+Confirm the Kubernetes resource is ready, then that OpenBao holds the policy:
 
 ```bash
-bao policy read guide-app-read
+kubectl -n openbao-config get aclpolicies.sys.obco.dev app-read
+bao policy read app-read
 ```
 
-The returned HCL must contain the `apps/data/app/*` path and only the `read` capability.
-`metadata.name` identifies the Kubernetes object; `spec.name` identifies the policy in OpenBao.
-They happen to match here.
+Expect `READY` and `SYNCED` to be `True`. After a later edit, check `SYNCED` as well, because
+`READY` keeps its last value while a write fails. The returned HCL must contain the `secret/data/app/*` path
+and only the `read` capability. `metadata.name` identifies the Kubernetes object; `spec.name`
+identifies the policy in OpenBao. They match here.
 
-Attach the policy through a role's `policyRefs`, as in [Kubernetes authentication](kubernetes-auth.md),
-or through an identity [Group](identity.md). Keep policy changes in the manifest and let your
-[GitOps delivery](argocd.md) apply them. Avoid having another tool continuously write the same
-OpenBao policy.
+Attach the policy through a role's `policyRefs`, as in
+[Configure Kubernetes authentication](kubernetes-auth.md), or through an identity group
+([Manage OpenBao identity with Kubernetes](identity.md)). Keep policy changes in the manifest and
+let your GitOps delivery ([Deliver OpenBao configuration with Argo CD](argocd.md)) apply them.
+Do not let another tool write the same OpenBao policy: the operator restores its own text at every
+drift check.
 
-## Remove the Kubernetes resource
+Deleting the `ACLPolicy` resource keeps the OpenBao policy because of `deletionPolicy: Orphan`.
+Deleting the policy in OpenBao removes access from every token that carries it, so review its
+users first.
 
-If another resource names this Policy through `policyRefs`, update that reference before deleting
-the Policy resource. Otherwise the dependent resource reports `ReferenceNotReady`.
+## Troubleshooting
 
-```bash
-kubectl -n openbao-config delete policy guide-app-read
-```
+| symptom | check |
+|---------|-------|
+| the resource is not `Ready` | `kubectl -n openbao-config describe aclpolicies.sys.obco.dev app-read` for conditions and events |
+| OpenBao returns a permission error on `bao policy read` | the token can read `sys/policies/acl/app-read`, `BAO_ADDR` points at the connection's server, and `BAO_NAMESPACE` at its OpenBao namespace (unset for the root) |
+| a dependent role reports `ReferenceNotReady` after you delete the `ACLPolicy` | update that role's `policyRefs` before deleting the `ACLPolicy` resource |
 
-This example explicitly uses `deletionPolicy: Orphan`, so the OpenBao policy remains. Removing a
-policy from OpenBao is a separate access change: review its users first. For lifecycle choices,
-see [ownership and deletion](../operate/backup-restore.md#deletion-policy-and-orphaned-objects).
+## Related
 
-For identity-based path templates, continue with [templated policies](templated-policies.md).
-The [Policy API reference](../reference/api/sys.md#policy) documents all fields.
+- API reference: [ACLPolicy](../reference/api/sys.md#aclpolicy).
+- [Configure Kubernetes authentication](kubernetes-auth.md)
+- [Manage OpenBao identity with Kubernetes](identity.md)
+- [Write OpenBao templated policies with Kubernetes](templated-policies.md)
+- [Backup and restore: deletion policy and orphaned objects](../operate/backup-restore.md#deletion-policy-and-orphaned-objects)

@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcscopes,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcscopes/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=identity.openbaoconfig.io,resources=oidcscopes/finalizers,verbs=update
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcscopes,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcscopes/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=identity.obco.dev,resources=oidcscopes/finalizers,verbs=update
 
 // SetupOIDCScope registers the OIDCScope controller with the manager.
 func SetupOIDCScope(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

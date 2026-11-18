@@ -15,7 +15,7 @@ class ArgoTests(unittest.TestCase):
         rendered = subprocess.run(['kubectl', 'kustomize', str(argocd.EXAMPLES / 'applications')],
                                   text=True, capture_output=True, check=True).stdout
         for value in ('https://openbao.github.io/openbao-helm',
-                      'https://alexandrust88.github.io/openbao-config-operator/charts',
+                      'https://docs.obco.dev/charts',
                       'chart: openbao-config-operator', 'targetRevision: 0.4.0',
                       'path: gitops/config', 'path: gitops/openbao/bootstrap'):
             self.assertIn(value, rendered)
@@ -34,7 +34,7 @@ class ArgoTests(unittest.TestCase):
         allowed = {item['kind'] for item in project['namespaceResourceWhitelist']}
         self.assertFalse({'Secret', 'Deployment', 'RoleBinding', 'Application', '*'} & allowed)
         self.assertEqual(project['destinations'], [{'server': 'https://kubernetes.default.svc', 'namespace': 'obco-gitops'}])
-        self.assertEqual(project['clusterResourceWhitelist'], [{'group': 'core.openbaoconfig.io', 'kind': 'OpenBaoServer'}])
+        self.assertEqual(project['clusterResourceWhitelist'], [{'group': 'core.obco.dev', 'kind': 'BaoServer'}])
 
     def test_exact_revision_override_preserves_chart_versions(self):
         base = {'spec': {'source': {'path': 'gitops/argocd/applications'}}}

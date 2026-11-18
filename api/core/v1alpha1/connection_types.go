@@ -16,26 +16,26 @@ const (
 // DefaultCABundleKey is the key read from a CA bundle Secret or ConfigMap when none is set.
 const DefaultCABundleKey = "ca.crt"
 
-// ConnectionSpec holds the fields shared by OpenBaoConnection and ClusterOpenBaoConnection.
+// ConnectionSpec holds the fields shared by BaoConnection and ClusterBaoConnection.
 type ConnectionSpec struct {
-	// OpenBaoServer to connect to; it supplies the address, CA bundle and limits, and must allow this connection's namespace and token audiences.
+	// BaoServer to connect to; it supplies the address, CA bundle and limits, and must allow this connection's namespace and token audiences.
 	// +required
 	ServerRef ServerReference `json:"serverRef"`
-	// Base OpenBao namespace for every request made through this connection; a resource's own namespace field is relative to it. Empty means the root namespace. Example: team-a
+	// Base OpenBao namespace for every request made through this connection; a resource's own openbaoNamespace field is relative to it. Empty means the root namespace. Example: team-a
 	// +optional
 	// +kubebuilder:validation:MaxLength=256
 	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9_-][A-Za-z0-9._-]*(/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$`
-	Namespace string `json:"namespace,omitempty"`
-	// Absolute OpenBao namespace that holds the auth mount used to log in. Unset: log in in the connection's namespace. "": log in at the root namespace and operate in the child namespace set by namespace. Example: team-a
+	Namespace string `json:"openbaoNamespace,omitempty"`
+	// Absolute OpenBao namespace that holds the auth mount used to log in. Unset: log in in the connection's namespace. "": log in at the root namespace and operate in the child namespace set by openbaoNamespace. Example: team-a
 	// +kubebuilder:validation:MaxLength=256
 	// +kubebuilder:validation:Pattern=`^$|^[A-Za-z0-9_-][A-Za-z0-9._-]*(/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$`
 	// +optional
-	AuthNamespace *string `json:"authNamespace,omitempty"`
+	AuthNamespace *string `json:"openbaoAuthNamespace,omitempty"`
 }
 
-// ServerReference names an OpenBaoServer.
+// ServerReference names a BaoServer.
 type ServerReference struct {
-	// Name of the cluster-scoped OpenBaoServer. Example: openbao
+	// Name of the cluster-scoped BaoServer. Example: openbao
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:MaxLength=253
 	// +required
@@ -52,13 +52,13 @@ type ConnectionStatus struct {
 	// The metadata.generation of this connection that the operator last checked.
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
-	// OpenBao version, copied from the OpenBaoServer status. Example: 2.7.2
+	// OpenBao version, copied from the BaoServer status. Example: 2.7.2
 	// +optional
 	Version string `json:"version,omitempty"`
-	// True when the server is sealed or not initialized, copied from the OpenBaoServer status.
+	// True when the server is sealed or not initialized, copied from the BaoServer status.
 	// +optional
 	Sealed bool `json:"sealed"`
-	// True when the probed node is a standby, copied from the OpenBaoServer status.
+	// True when the probed node is a standby, copied from the BaoServer status.
 	// +optional
 	Standby bool `json:"standby"`
 	// True when the last login and token lookup (auth/token/lookup-self) succeeded.
@@ -114,13 +114,13 @@ type NamespacedObjectReference struct {
 }
 
 // GetConnectionSpec returns the spec fields shared by both connection kinds.
-func (c *OpenBaoConnection) GetConnectionSpec() *ConnectionSpec { return &c.Spec.ConnectionSpec }
+func (c *BaoConnection) GetConnectionSpec() *ConnectionSpec { return &c.Spec.ConnectionSpec }
 
 // GetConnectionSpec returns the spec fields shared by both connection kinds.
-func (c *ClusterOpenBaoConnection) GetConnectionSpec() *ConnectionSpec { return &c.Spec.ConnectionSpec }
+func (c *ClusterBaoConnection) GetConnectionSpec() *ConnectionSpec { return &c.Spec.ConnectionSpec }
 
 // GetConnectionStatus returns the status shared by both connection kinds.
-func (c *OpenBaoConnection) GetConnectionStatus() *ConnectionStatus { return &c.Status }
+func (c *BaoConnection) GetConnectionStatus() *ConnectionStatus { return &c.Status }
 
 // GetConnectionStatus returns the status shared by both connection kinds.
-func (c *ClusterOpenBaoConnection) GetConnectionStatus() *ConnectionStatus { return &c.Status }
+func (c *ClusterBaoConnection) GetConnectionStatus() *ConnectionStatus { return &c.Status }

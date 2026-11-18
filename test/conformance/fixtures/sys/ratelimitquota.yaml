@@ -1,14 +1,14 @@
 # Omitting path in the defaults test makes this quota global. Keep its rate above the shared
 # harness traffic so setting/removing optional fields cannot throttle other kinds' namespace setup.
 # secret/ is the KV mount every bao server -dev has.
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: RateLimitQuota
 metadata:
   name: obco-kv-limit
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Delete

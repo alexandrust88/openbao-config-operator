@@ -1,5 +1,5 @@
-// Package connection resolves OpenBaoConnection and ClusterOpenBaoConnection objects, together with the
-// OpenBaoServer they name, into OpenBao clients, and enforces the tenant boundary.
+// Package connection resolves BaoConnection and ClusterBaoConnection objects, together with the
+// BaoServer they name, into OpenBao clients, and enforces the tenant boundary.
 package connection
 
 import (
@@ -37,7 +37,7 @@ import (
 )
 
 // DefaultTokenFile is the projected ServiceAccount token with a dedicated audience that the chart mounts into the
-// operator pod, used by a ClusterOpenBaoConnection injected identity without tokenPath. The kubelet rotates it, so it
+// operator pod, used by a ClusterBaoConnection injected identity without tokenPath. The kubelet rotates it, so it
 // is read at every login.
 const DefaultTokenFile = "/var/run/secrets/openbao/token"
 
@@ -59,12 +59,12 @@ const tokenExpirationSeconds = 600
 // ErrReferenceNotFound is returned when a Secret, ConfigMap or key a connection references is missing.
 var ErrReferenceNotFound = errors.New("referenced object or key not found")
 
-// ErrInsecureAddress is returned for an OpenBaoServer address that is not https while allowInsecureHTTP is false.
+// ErrInsecureAddress is returned for a BaoServer address that is not https while allowInsecureHTTP is false.
 var ErrInsecureAddress = errors.New("address must use https unless allowInsecureHTTP is true")
 
-// ErrServerNotFound is returned, together with engine.ErrConnectionNotReady, when the OpenBaoServer a connection
+// ErrServerNotFound is returned, together with engine.ErrConnectionNotReady, when the BaoServer a connection
 // names does not exist.
-var ErrServerNotFound = errors.New("openbaoserver not found")
+var ErrServerNotFound = errors.New("baoserver not found")
 
 // Pool is the part of *openbao.Pool the resolver uses.
 type Pool interface {
@@ -141,7 +141,7 @@ func (r *Resolver) resolve(ctx context.Context, fromNamespace string, ref common
 	return c, nil
 }
 
-// ClusterConnectionError is what a resource using a ClusterOpenBaoConnection sees of the connection's configuration
+// ClusterConnectionError is what a resource using a ClusterBaoConnection sees of the connection's configuration
 // or login error: the platform's Secret, ServiceAccount and file names stay on the connection's own status. Err keeps
 // the cause for errors.Is and errors.As.
 type ClusterConnectionError struct {
@@ -150,13 +150,13 @@ type ClusterConnectionError struct {
 }
 
 func (e *ClusterConnectionError) Error() string {
-	return fmt.Sprintf("ClusterOpenBaoConnection %s is not ready (see its status)", e.Name)
+	return fmt.Sprintf("ClusterBaoConnection %s is not ready (see its status)", e.Name)
 }
 
 func (e *ClusterConnectionError) Unwrap() error { return e.Err }
 
 func consumerError(conn client.Object, err error) error {
-	if _, ok := conn.(*corev1alpha1.ClusterOpenBaoConnection); !ok || err == nil {
+	if _, ok := conn.(*corev1alpha1.ClusterBaoConnection); !ok || err == nil {
 		return err
 	}
 	return &ClusterConnectionError{Name: conn.GetName(), Err: err}
@@ -167,7 +167,7 @@ func (r *Resolver) Forget(key string) {
 	r.last.Delete(key)
 }
 
-// ServerFor returns the OpenBaoServer behind a connection reference without logging in.
+// ServerFor returns the BaoServer behind a connection reference without logging in.
 func (r *Resolver) ServerFor(ctx context.Context, fromNamespace string, ref commonv1alpha1.ConnectionReference) (
 	engine.Server, error) {
 	conn, err := r.object(ctx, fromNamespace, ref)
@@ -199,13 +199,13 @@ func (r *Resolver) object(ctx context.Context, fromNamespace string, ref commonv
 	client.Object, error) {
 	switch ref.Kind {
 	case "", commonv1alpha1.ConnectionKindNamespaced:
-		conn := &corev1alpha1.OpenBaoConnection{}
+		conn := &corev1alpha1.BaoConnection{}
 		if err := r.get(ctx, client.ObjectKey{Namespace: fromNamespace, Name: ref.Name}, conn); err != nil {
 			return nil, err
 		}
 		return conn, nil
 	case commonv1alpha1.ConnectionKindCluster:
-		conn := &corev1alpha1.ClusterOpenBaoConnection{}
+		conn := &corev1alpha1.ClusterBaoConnection{}
 		if err := r.get(ctx, client.ObjectKey{Name: ref.Name}, conn); err != nil {
 			return nil, err
 		}
@@ -236,24 +236,24 @@ func ready(conn client.Object, status corev1alpha1.ConnectionStatus) bool {
 	return cond.ObservedGeneration == conn.GetGeneration() || !conn.GetDeletionTimestamp().IsZero()
 }
 
-func (r *Resolver) allowed(ctx context.Context, conn *corev1alpha1.ClusterOpenBaoConnection, fromNamespace string) error {
+func (r *Resolver) allowed(ctx context.Context, conn *corev1alpha1.ClusterBaoConnection, fromNamespace string) error {
 	if conn.Spec.AllowedNamespaces == nil {
-		return fmt.Errorf("%w: ClusterOpenBaoConnection %s allows no namespaces", engine.ErrConnectionDenied, conn.Name)
+		return fmt.Errorf("%w: ClusterBaoConnection %s allows no namespaces", engine.ErrConnectionDenied, conn.Name)
 	}
 	if err := r.selects(ctx, conn.Spec.AllowedNamespaces, fromNamespace); err != nil {
-		return fmt.Errorf("ClusterOpenBaoConnection %s: %w", conn.Name, err)
+		return fmt.Errorf("ClusterBaoConnection %s: %w", conn.Name, err)
 	}
 	return nil
 }
 
 // ClusterAdmits reports whether conn's allowedNamespaces selects namespace.
-func (r *Resolver) ClusterAdmits(ctx context.Context, conn *corev1alpha1.ClusterOpenBaoConnection, namespace string) (
+func (r *Resolver) ClusterAdmits(ctx context.Context, conn *corev1alpha1.ClusterBaoConnection, namespace string) (
 	bool, error) {
 	return admitted(r.allowed(ctx, conn, namespace))
 }
 
-// ServerAdmits reports whether server's allowedNamespaces selects namespace for an OpenBaoConnection.
-func (r *Resolver) ServerAdmits(ctx context.Context, server *corev1alpha1.OpenBaoServer, namespace string) (bool, error) {
+// ServerAdmits reports whether server's allowedNamespaces selects namespace for a BaoConnection.
+func (r *Resolver) ServerAdmits(ctx context.Context, server *corev1alpha1.BaoServer, namespace string) (bool, error) {
 	if server.Spec.AllowedNamespaces == nil {
 		return false, nil
 	}
@@ -268,24 +268,24 @@ func admitted(err error) (bool, error) {
 	return err == nil, err
 }
 
-// Server returns the OpenBaoServer a connection names.
-func (r *Resolver) Server(ctx context.Context, conn client.Object) (*corev1alpha1.OpenBaoServer, error) {
+// Server returns the BaoServer a connection names.
+func (r *Resolver) Server(ctx context.Context, conn client.Object) (*corev1alpha1.BaoServer, error) {
 	spec, err := connectionSpec(conn)
 	if err != nil {
 		return nil, err
 	}
-	server := &corev1alpha1.OpenBaoServer{}
+	server := &corev1alpha1.BaoServer{}
 	err = r.Client.Get(ctx, client.ObjectKey{Name: spec.ServerRef.Name}, server)
 	if apierrors.IsNotFound(err) {
 		return nil, fmt.Errorf("%w: %w: %s", engine.ErrConnectionNotReady, ErrServerNotFound, spec.ServerRef.Name)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("get openbaoserver %s: %w", spec.ServerRef.Name, err)
+		return nil, fmt.Errorf("get baoserver %s: %w", spec.ServerRef.Name, err)
 	}
 	return server, nil
 }
 
-// Config builds the client configuration of a connection and the OpenBaoServer it names. Credentials are read
+// Config builds the client configuration of a connection and the BaoServer it names. Credentials are read
 // lazily by the auth closures.
 func (r *Resolver) Config(ctx context.Context, conn client.Object) (openbao.Config, error) {
 	server, err := r.Server(ctx, conn)
@@ -297,7 +297,7 @@ func (r *Resolver) Config(ctx context.Context, conn client.Object) (openbao.Conf
 
 // ConfigFor builds the client configuration of a connection to server. A namespaced connection that server does
 // not admit gets engine.ErrConnectionDenied before any credential is read or requested.
-func (r *Resolver) ConfigFor(ctx context.Context, conn client.Object, server *corev1alpha1.OpenBaoServer) (
+func (r *Resolver) ConfigFor(ctx context.Context, conn client.Object, server *corev1alpha1.BaoServer) (
 	openbao.Config, error) {
 	s, err := settingsOf(conn)
 	if err != nil {
@@ -326,9 +326,9 @@ func (r *Resolver) ConfigFor(ctx context.Context, conn client.Object, server *co
 	return cfg, nil
 }
 
-// ServerConfig builds the part of a client configuration an OpenBaoServer defines: address, CA bundle, request
+// ServerConfig builds the part of a client configuration a BaoServer defines: address, CA bundle, request
 // timeout and rate limit.
-func (r *Resolver) ServerConfig(ctx context.Context, server *corev1alpha1.OpenBaoServer) (openbao.Config, error) {
+func (r *Resolver) ServerConfig(ctx context.Context, server *corev1alpha1.BaoServer) (openbao.Config, error) {
 	if !strings.HasPrefix(server.Spec.Address, "https://") && !server.Spec.AllowInsecureHTTP {
 		return openbao.Config{}, ErrInsecureAddress
 	}
@@ -351,12 +351,12 @@ func (r *Resolver) ServerConfig(ctx context.Context, server *corev1alpha1.OpenBa
 
 // admit enforces the tenant boundary: the server must select the connection's namespace and allow every
 // requested audience, and no audience may be one the Kubernetes API server accepts.
-func (r *Resolver) admit(ctx context.Context, s settings, server *corev1alpha1.OpenBaoServer) error {
+func (r *Resolver) admit(ctx context.Context, s settings, server *corev1alpha1.BaoServer) error {
 	if server.Spec.AllowedNamespaces == nil {
-		return fmt.Errorf("%w: OpenBaoServer %s allows no namespaces", engine.ErrConnectionDenied, server.Name)
+		return fmt.Errorf("%w: BaoServer %s allows no namespaces", engine.ErrConnectionDenied, server.Name)
 	}
 	if err := r.selects(ctx, server.Spec.AllowedNamespaces, s.tenant); err != nil {
-		return fmt.Errorf("OpenBaoServer %s: %w", server.Name, err)
+		return fmt.Errorf("BaoServer %s: %w", server.Name, err)
 	}
 	if s.saLogin == nil {
 		return nil
@@ -366,14 +366,14 @@ func (r *Resolver) admit(ctx context.Context, s settings, server *corev1alpha1.O
 			return err
 		}
 		if !slices.Contains(server.Spec.AllowedAudiences, audience) {
-			return fmt.Errorf("%w: audience %q is not in the allowedAudiences of OpenBaoServer %s",
+			return fmt.Errorf("%w: audience %q is not in the allowedAudiences of BaoServer %s",
 				engine.ErrConnectionDenied, audience, server.Name)
 		}
 	}
 	return nil
 }
 
-// platformAudiences applies the API server audience rules to a ClusterOpenBaoConnection that requests a token for a
+// platformAudiences applies the API server audience rules to a ClusterBaoConnection that requests a token for a
 // named ServiceAccount: audiences are required, and none may be one the Kubernetes API server accepts.
 func (r *Resolver) platformAudiences(s settings) error {
 	if s.saLogin == nil || s.saLogin.serviceAccount == nil {
@@ -425,7 +425,7 @@ type cachedAuth struct {
 // CacheKey implements openbao.Auth.
 func (a cachedAuth) CacheKey() string { return a.key }
 
-func cacheKey(conn client.Object, server *corev1alpha1.OpenBaoServer, auth openbao.Auth) string {
+func cacheKey(conn client.Object, server *corev1alpha1.BaoServer, auth openbao.Auth) string {
 	credential := sha256.Sum256([]byte(auth.CacheKey()))
 	return fmt.Sprintf("%s/%d/%d/%s", conn.GetUID(), conn.GetGeneration(), server.Generation,
 		hex.EncodeToString(credential[:]))

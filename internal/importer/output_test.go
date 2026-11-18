@@ -12,9 +12,9 @@ import (
 	sysv1alpha1 "github.com/alexandrust88/openbao-config-operator/api/sys/v1alpha1"
 )
 
-func testPolicy(name string) *sysv1alpha1.Policy {
-	p := &sysv1alpha1.Policy{}
-	p.SetGroupVersionKind(sysv1alpha1.GroupVersion.WithKind("Policy"))
+func testPolicy(name string) *sysv1alpha1.ACLPolicy {
+	p := &sysv1alpha1.ACLPolicy{}
+	p.SetGroupVersionKind(sysv1alpha1.GroupVersion.WithKind("ACLPolicy"))
 	p.Name, p.Namespace = name, litObco
 	p.Spec.Name, p.Spec.Policy = name, `path "x" { capabilities = ["read"] }`
 	return p
@@ -25,8 +25,8 @@ func TestWriteStream(t *testing.T) {
 	if err := WriteStream(&buf, []client.Object{testPolicy("a"), testPolicy("b")}); err != nil {
 		t.Fatal(err)
 	}
-	want := `apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+	want := `apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: a
   namespace: obco
@@ -36,8 +36,8 @@ spec:
   name: a
   policy: path "x" { capabilities = ["read"] }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: b
   namespace: obco
@@ -58,7 +58,7 @@ func TestWriteDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(dir, "out", "sys-policy.yaml")
+	want := filepath.Join(dir, "out", "sys-aclpolicy.yaml")
 	if !slices.Equal(files, []string{want}) {
 		t.Fatalf("files = %v, want %v", files, []string{want})
 	}
@@ -66,7 +66,7 @@ func TestWriteDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Count(data, []byte("kind: Policy")) != 2 {
+	if bytes.Count(data, []byte("kind: ACLPolicy")) != 2 {
 		t.Errorf("file holds:\n%s", data)
 	}
 	if err := os.Chmod(want, 0o644); err != nil {

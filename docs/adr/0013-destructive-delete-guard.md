@@ -4,7 +4,9 @@ description: "Design decision for OpenBao Config Operator: destructive-delete gu
 
 # 0013. Destructive-delete guard
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; implemented, including key material, MFA methods and entities. Date: 2026-11-14.
+
+Update 2026-11-18: `KVSecretMetadata` is also a destructive kind: deleting it destroys every stored version of the secret (`internal/controller/secrets/kvsecretmetadata.go`).
 
 ## Context
 

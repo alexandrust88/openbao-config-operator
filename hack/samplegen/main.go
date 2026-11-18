@@ -1,5 +1,5 @@
 // Command samplegen writes examples-generated/<group>/<kind>.yaml, a sample with every spec field set and a header
-// comment linking the API reference and the curated example, for every openbaoconfig.io CRD in config/crd/bases.
+// comment linking the API reference and the curated example, for every obco.dev CRD in config/crd/bases.
 package main
 
 import (
@@ -13,7 +13,7 @@ import (
 func main() {
 	crdDir := flag.String("crds", "config/crd/bases", "directory with the generated CRDs")
 	outDir := flag.String("out", "examples-generated", "directory the samples are written to")
-	site := flag.String("site", "https://alexandrust88.github.io/openbao-config-operator/",
+	site := flag.String("site", "https://docs.obco.dev/",
 		"documentation site the sample headers link to")
 	examples := flag.String("examples", "examples", "directory of the curated examples the sample headers link to")
 	flag.Parse()

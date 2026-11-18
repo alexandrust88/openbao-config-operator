@@ -94,19 +94,19 @@ func newWindow(samples []sample, errorLines int) window {
 	first, last := samples[0], samples[len(samples)-1]
 	d := delta(first.metrics, last.metrics)
 	w.Seconds = seconds(last.at.Sub(first.at))
-	w.OpenBaoRequests = d["openbao_requests_total"]
-	w.OpenBaoByMethod = labelled(d, "openbao_requests_total:method=")
-	w.OpenBaoErrors = d["openbao_requests_total:code=error"]
+	w.OpenBaoRequests = d["obco_requests_total"]
+	w.OpenBaoByMethod = labelled(d, "obco_requests_total:method=")
+	w.OpenBaoErrors = d["obco_requests_total:code=error"]
 	if w.Seconds > 0 {
 		w.OpenBaoPerSecond = round(w.OpenBaoRequests / w.Seconds)
 	}
 	for i, q := range []float64{0.5, 0.95, 0.99} {
-		w.OpenBaoLatencyMs[i] = round(d.quantile("openbao_request_duration_seconds_bucket", q) * 1000)
+		w.OpenBaoLatencyMs[i] = round(d.quantile("obco_request_duration_seconds_bucket", q) * 1000)
 		w.ReconcileLatencyMs[i] = round(d.quantile("controller_runtime_reconcile_time_seconds_bucket", q) * 1000)
 	}
-	w.Logins = d["openbao_logins_total"]
-	w.Writes = d["openbao_writes_total"]
-	w.WritesByKind = labelled(d, "openbao_writes_total:kind=")
+	w.Logins = d["obco_logins_total"]
+	w.Writes = d["obco_writes_total"]
+	w.WritesByKind = labelled(d, "obco_writes_total:kind=")
 	w.Reconciles = d["controller_runtime_reconcile_total"]
 	w.ReconcilesByResult = labelled(d, "controller_runtime_reconcile_total:result=")
 	w.ReconcileErrors = d["controller_runtime_reconcile_errors_total"]
@@ -194,8 +194,8 @@ func writeTimeseries(path string, start time.Time, samples []sample) error {
 		m := s.metrics
 		fmt.Fprintf(&b, "%.1f,%.1f,%.2f,%.0f,%.1f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.1f\n",
 			s.at.Sub(start).Seconds(), s.rssKB/1024, s.cpuSec, m["go_goroutines"],
-			m["go_memstats_heap_inuse_bytes"]/(1<<20), m["openbao_requests_total"],
-			m["openbao_requests_total:code=error"], m["openbao_writes_total"], m["controller_runtime_reconcile_total"],
+			m["go_memstats_heap_inuse_bytes"]/(1<<20), m["obco_requests_total"],
+			m["obco_requests_total:code=error"], m["obco_writes_total"], m["controller_runtime_reconcile_total"],
 			m["controller_runtime_reconcile_errors_total"], m["workqueue_depth"], m["workqueue_retries_total"],
 			m["rest_client_requests_total"], s.baoKB/1024)
 	}

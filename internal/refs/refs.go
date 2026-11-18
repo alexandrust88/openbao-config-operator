@@ -48,8 +48,8 @@ type Target struct {
 var (
 	AuthMount    = Target{GVK: sysv1alpha1.GroupVersion.WithKind("AuthMount"), Lookup: AuthMountAccessor}
 	SecretsMount = Target{GVK: sysv1alpha1.GroupVersion.WithKind("SecretsMount")}
-	Entity       = Target{GVK: identityv1alpha1.GroupVersion.WithKind("Entity"), Lookup: EntityID}
-	Group        = Target{GVK: identityv1alpha1.GroupVersion.WithKind("Group"), Lookup: GroupID}
+	Entity       = Target{GVK: identityv1alpha1.GroupVersion.WithKind("IdentityEntity"), Lookup: EntityID}
+	Group        = Target{GVK: identityv1alpha1.GroupVersion.WithKind("IdentityGroup"), Lookup: GroupID}
 )
 
 // Reader reads referents from Kubernetes; a controller-runtime client.Client satisfies it.
@@ -70,7 +70,7 @@ type Resolver struct {
 }
 
 // For returns a Resolver for obj that reaches OpenBao the way the engine does: through the object's
-// connectionRef, scoped to spec.namespace.
+// connectionRef, scoped to spec.openbaoNamespace.
 func For(reader Reader, conns engine.Connections, obj engine.Object) Resolver {
 	return Resolver{
 		Reader:    reader,
@@ -281,7 +281,7 @@ func (r Resolver) SecretsMountPath(ctx context.Context, ref Ref) (string, error)
 }
 
 // mountPath reads a mount's path from the referent's status.path (sys/auth/<path> or sys/mounts/<path> under
-// status.namespace), or finds a literal accessor in the mount table.
+// status.openbaoNamespace), or finds a literal accessor in the mount table.
 func (r Resolver) mountPath(ctx context.Context, gvk schema.GroupVersionKind, table string, ref Ref) (string, error) {
 	if err := ref.validate(); err != nil {
 		return "", err

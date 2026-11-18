@@ -1,6 +1,6 @@
 //go:build integration
 
-// Package integration runs the Policy and OpenBaoEndpoint controllers against envtest and a real `bao server -dev`.
+// Package integration runs the ACLPolicy and BaoEndpoint controllers against envtest and a real `bao server -dev`.
 package integration
 
 import (
@@ -76,9 +76,9 @@ func TestIntegration(t *testing.T) {
 func testPolicy(ctx context.Context, t *testing.T, e env) {
 	const path = "sys/policies/acl/itest-reader"
 	text := "path \"secret/*\" {\n  capabilities = [\"read\"]\n}\n"
-	policy := &sysv1alpha1.Policy{
+	policy := &sysv1alpha1.ACLPolicy{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-reader", Namespace: namespace},
-		Spec: sysv1alpha1.PolicySpec{
+		Spec: sysv1alpha1.ACLPolicySpec{
 			ResourceSpec: commonv1alpha1.ResourceSpec{
 				ConnectionRef:  commonv1alpha1.ConnectionReference{Name: "dev"},
 				DeletionPolicy: commonv1alpha1.DeletionPolicyDelete,
@@ -91,12 +91,12 @@ func testPolicy(ctx context.Context, t *testing.T, e env) {
 	waitFor(t, "policy created", func() error { return expectPolicy(ctx, e.bao, path, text) })
 	waitFor(t, "policy ready", func() error { return expectReady(ctx, e.k8s, policy) })
 
-	for field, mutate := range map[string]func(*sysv1alpha1.PolicySpec){
-		"namespace":     func(s *sysv1alpha1.PolicySpec) { s.Namespace = "other" },
-		"name":          func(s *sysv1alpha1.PolicySpec) { s.Name = "other" },
-		"connectionRef": func(s *sysv1alpha1.PolicySpec) { s.ConnectionRef.Name = "other" },
+	for field, mutate := range map[string]func(*sysv1alpha1.ACLPolicySpec){
+		"openbaoNamespace": func(s *sysv1alpha1.ACLPolicySpec) { s.Namespace = "other" },
+		"name":             func(s *sysv1alpha1.ACLPolicySpec) { s.Name = "other" },
+		"connectionRef":    func(s *sysv1alpha1.ACLPolicySpec) { s.ConnectionRef.Name = "other" },
 	} {
-		changed := &sysv1alpha1.Policy{}
+		changed := &sysv1alpha1.ACLPolicy{}
 		if err := e.k8s.Get(ctx, client.ObjectKeyFromObject(policy), changed); err != nil {
 			t.Fatal(err)
 		}
@@ -129,10 +129,10 @@ func testEndpoint(ctx context.Context, t *testing.T, e env) {
 		ObjectMeta: metav1.ObjectMeta{Name: "app-creds", Namespace: namespace},
 		Data:       map[string][]byte{"payload": []byte(`{"password":"first"}`)},
 	})
-	endpoint := &corev1alpha1.OpenBaoEndpoint{
+	endpoint := &corev1alpha1.BaoEndpoint{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-app", Namespace: namespace,
 			Annotations: map[string]string{commonv1alpha1.AnnotationAllowDestructiveDelete: "true"}},
-		Spec: corev1alpha1.OpenBaoEndpointSpec{
+		Spec: corev1alpha1.BaoEndpointSpec{
 			ResourceSpec: commonv1alpha1.ResourceSpec{
 				ConnectionRef:  commonv1alpha1.ConnectionReference{Name: "dev"},
 				DeletionPolicy: commonv1alpha1.DeletionPolicyDelete,
@@ -183,9 +183,9 @@ func setup(ctx context.Context, t *testing.T) env {
 		BinaryAssetsDirectory: assets,
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
-				filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_policies.yaml"),
-				filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_authmounts.yaml"),
-				filepath.Join(root, "config", "crd", "bases", "core.openbaoconfig.io_openbaoendpoints.yaml"),
+				filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_aclpolicies.yaml"),
+				filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_authmounts.yaml"),
+				filepath.Join(root, "config", "crd", "bases", "core.obco.dev_baoendpoints.yaml"),
 			},
 			ErrorIfPathMissing: true,
 		},
@@ -217,10 +217,10 @@ func setup(ctx context.Context, t *testing.T) env {
 	}
 	conns := staticConnections{client: bao}
 	opts := itestEngineOptions()
-	if err := sys.SetupPolicy(mgr, conns, opts); err != nil {
+	if err := sys.SetupACLPolicy(mgr, conns, opts); err != nil {
 		t.Fatal(err)
 	}
-	if err := core.SetupOpenBaoEndpoint(mgr, conns, opts); err != nil {
+	if err := core.SetupBaoEndpoint(mgr, conns, opts); err != nil {
 		t.Fatal(err)
 	}
 

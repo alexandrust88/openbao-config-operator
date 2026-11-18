@@ -20,12 +20,12 @@ func TestTransitAdmissionPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	k8s := secretsStartEnv(t, root, []string{"secrets.openbaoconfig.io_transitkeys.yaml"})
+	k8s := secretsStartEnv(t, root, []string{"secrets.obco.dev_transitkeys.yaml"})
 	ctx := context.Background()
 	for _, name := range []string{"guarded", "unrestricted"} {
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name}}
 		if name == "guarded" {
-			ns.Labels = map[string]string{"openbaoconfig.io/non-exportable-transit": "true"}
+			ns.Labels = map[string]string{"obco.dev/non-exportable-transit": "true"}
 		}
 		if err := k8s.Create(ctx, ns); err != nil {
 			t.Fatal(err)
@@ -37,7 +37,7 @@ func TestTransitAdmissionPolicy(t *testing.T) {
 		}
 	}
 	key := func(namespace, name string) *unstructured.Unstructured {
-		obj := secretsDecodeString(t, `apiVersion: secrets.openbaoconfig.io/v1alpha1
+		obj := secretsDecodeString(t, `apiVersion: secrets.obco.dev/v1alpha1
 kind: TransitKey
 metadata: {name: key}
 spec: {connectionRef: {name: openbao}}`)

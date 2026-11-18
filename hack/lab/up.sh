@@ -43,11 +43,11 @@ configmap=$(lab_kubectl -n openbao get configmap openbao --ignore-not-found -o n
 if [[ -z $statefulset && -z $configmap ]]; then
   hack/e2e/tls.sh
   lab_kubectl apply -f hack/e2e/openbao.yaml -f test/e2e/testdata/openbao-auth.yaml
-  lab_kubectl -n openbao label statefulset/openbao configmap/openbao "lab.openbaoconfig.io/cluster=$cluster"
+  lab_kubectl -n openbao label statefulset/openbao configmap/openbao "lab.obco.dev/cluster=$cluster"
 elif [[ -n $statefulset && -n $configmap ]]; then
   # Add-ons can extend the config and image; never replace them with the base fixture on reuse.
   for resource in statefulset/openbao configmap/openbao; do
-    owner=$(lab_kubectl -n openbao get "$resource" -o 'jsonpath={.metadata.labels.lab\.openbaoconfig\.io/cluster}')
+    owner=$(lab_kubectl -n openbao get "$resource" -o 'jsonpath={.metadata.labels.lab\.obco\.dev/cluster}')
     [[ $owner == "$cluster" ]] || { echo "$resource is not owned by lab $cluster; refusing to replace it" >&2; exit 1; }
   done
   echo "Reusing the lab's OpenBao configuration and image, including installed add-ons"

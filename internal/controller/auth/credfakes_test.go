@@ -92,7 +92,7 @@ func (r credResolver) Object(_ context.Context, key client.ObjectKey, obj client
 			return nil
 		}
 		return fmt.Errorf("%w: %w", engine.ErrReferenceNotReady,
-			apierrors.NewNotFound(schema.GroupResource{Group: "auth.openbaoconfig.io", Resource: "approles"}, key.Name))
+			apierrors.NewNotFound(schema.GroupResource{Group: "auth.obco.dev", Resource: "approles"}, key.Name))
 	}
 	return fmt.Errorf("unexpected object %T", obj)
 }

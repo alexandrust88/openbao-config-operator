@@ -35,7 +35,7 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/test/testenv"
 )
 
-// TestIntegrationIdentity runs Entity, Group, EntityAlias, GroupAlias and GroupMembership against envtest and
+// TestIntegrationIdentity runs IdentityEntity, IdentityGroup, IdentityEntityAlias, IdentityGroupAlias and IdentityGroupMembership against envtest and
 // bao server -dev.
 func TestIntegrationIdentity(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -60,9 +60,9 @@ func identityRevDeleteSpec() commonv1alpha1.ResourceSpec {
 
 func testEntity(ctx context.Context, t *testing.T, e env) {
 	const path = "identity/entity/name/itest-alice"
-	entity := &identityv1alpha1.Entity{
+	entity := &identityv1alpha1.IdentityEntity{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-alice", Namespace: namespace},
-		Spec: identityv1alpha1.EntitySpec{
+		Spec: identityv1alpha1.IdentityEntitySpec{
 			ResourceSpec: identitySpec(),
 			Policies:     []string{"reader", "writer"},
 			Metadata:     map[string]string{"team": "a"},
@@ -72,7 +72,7 @@ func testEntity(ctx context.Context, t *testing.T, e env) {
 	waitFor(t, "entity created", func() error { return identityExpectPolicies(ctx, e.bao, path, "reader", "writer") })
 	waitFor(t, "entity ready", func() error { return identityExpectID(ctx, e.k8s, entity) })
 
-	changed := &identityv1alpha1.Entity{}
+	changed := &identityv1alpha1.IdentityEntity{}
 	if err := e.k8s.Get(ctx, client.ObjectKeyFromObject(entity), changed); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func testEntity(ctx context.Context, t *testing.T, e env) {
 	mustWrite(ctx, t, e.bao, path, map[string]any{"policies": []string{"reader"}})
 	waitFor(t, "entity drift repaired", func() error { return identityExpectPolicies(ctx, e.bao, path, "reader", "writer") })
 	mustWrite(ctx, t, e.bao, path, map[string]any{"policies": []string{"writer", "reader"}})
-	identityExpectNoWrites(t, "Entity")
+	identityExpectNoWrites(t, "IdentityEntity")
 
 	if err := e.k8s.Delete(ctx, entity); err != nil {
 		t.Fatal(err)
@@ -96,19 +96,19 @@ func testEntity(ctx context.Context, t *testing.T, e env) {
 }
 
 func testGroupMembership(ctx context.Context, t *testing.T, e env) {
-	group := &identityv1alpha1.Group{
+	group := &identityv1alpha1.IdentityGroup{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-devs", Namespace: namespace},
-		Spec:       identityv1alpha1.GroupSpec{ResourceSpec: identitySpec(), Policies: []string{"reader"}},
+		Spec:       identityv1alpha1.IdentityGroupSpec{ResourceSpec: identitySpec(), Policies: []string{"reader"}},
 	}
 	mustCreate(ctx, t, e.k8s, group)
 	waitFor(t, "group ready", func() error { return identityExpectID(ctx, e.k8s, group) })
 	groupPath := "identity/group/id/" + group.Status.ID
 
-	members := make([]*identityv1alpha1.Entity, 0, 2)
+	members := make([]*identityv1alpha1.IdentityEntity, 0, 2)
 	for _, name := range []string{"itest-m1", "itest-m2"} {
-		m := &identityv1alpha1.Entity{
+		m := &identityv1alpha1.IdentityEntity{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Labels: map[string]string{"itest-team": "devs"}},
-			Spec:       identityv1alpha1.EntitySpec{ResourceSpec: identitySpec()},
+			Spec:       identityv1alpha1.IdentityEntitySpec{ResourceSpec: identitySpec()},
 		}
 		mustCreate(ctx, t, e.k8s, m)
 		waitFor(t, name+" ready", func() error { return identityExpectID(ctx, e.k8s, m) })
@@ -121,9 +121,9 @@ func testGroupMembership(ctx context.Context, t *testing.T, e env) {
 	outsiderID := outsider["id"].(string)
 	mustWrite(ctx, t, e.bao, groupPath, map[string]any{"member_entity_ids": []string{outsiderID}})
 
-	membership := &identityv1alpha1.GroupMembership{
+	membership := &identityv1alpha1.IdentityGroupMembership{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-devs-members", Namespace: namespace},
-		Spec: identityv1alpha1.GroupMembershipSpec{
+		Spec: identityv1alpha1.IdentityGroupMembershipSpec{
 			ResourceSpec:   identityRevDeleteSpec(),
 			GroupRef:       &commonv1alpha1.LocalObjectReference{Name: "itest-devs"},
 			EntitySelector: &commonv1alpha1.LabelSelector{MatchLabels: map[string]string{"itest-team": "devs"}},
@@ -136,7 +136,7 @@ func testGroupMembership(ctx context.Context, t *testing.T, e env) {
 
 	mustWrite(ctx, t, e.bao, groupPath, map[string]any{"member_entity_ids": []string{outsiderID, members[1].Status.ID}})
 	waitFor(t, "removed member restored", func() error { return identityExpectMembers(ctx, e.bao, groupPath, all...) })
-	identityExpectNoWrites(t, "GroupMembership")
+	identityExpectNoWrites(t, "IdentityGroupMembership")
 
 	patched := group.DeepCopy()
 	patched.Spec.Policies = []string{"reader", "auditor"}
@@ -145,7 +145,7 @@ func testGroupMembership(ctx context.Context, t *testing.T, e env) {
 	}
 	waitFor(t, "group policies updated", func() error { return identityExpectPolicies(ctx, e.bao, groupPath, "auditor", "reader") })
 	if err := identityExpectMembers(ctx, e.bao, groupPath, all...); err != nil {
-		t.Errorf("a Group write must keep members: %v", err)
+		t.Errorf("an IdentityGroup write must keep members: %v", err)
 	}
 
 	relabelled := members[1].DeepCopy()
@@ -157,15 +157,15 @@ func testGroupMembership(ctx context.Context, t *testing.T, e env) {
 		return identityExpectMembers(ctx, e.bao, groupPath, outsiderID, members[0].Status.ID)
 	})
 
-	child := &identityv1alpha1.Group{
+	child := &identityv1alpha1.IdentityGroup{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-child", Namespace: namespace},
-		Spec:       identityv1alpha1.GroupSpec{ResourceSpec: identitySpec()},
+		Spec:       identityv1alpha1.IdentityGroupSpec{ResourceSpec: identitySpec()},
 	}
 	mustCreate(ctx, t, e.k8s, child)
 	waitFor(t, "child group ready", func() error { return identityExpectID(ctx, e.k8s, child) })
-	nested := &identityv1alpha1.GroupMembership{
+	nested := &identityv1alpha1.IdentityGroupMembership{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-devs-child", Namespace: namespace},
-		Spec: identityv1alpha1.GroupMembershipSpec{
+		Spec: identityv1alpha1.IdentityGroupMembershipSpec{
 			ResourceSpec:    identityRevDeleteSpec(),
 			GroupName:       "itest-devs",
 			MemberGroupName: "itest-child",
@@ -178,9 +178,9 @@ func testGroupMembership(ctx context.Context, t *testing.T, e env) {
 	}
 	waitFor(t, "member group removed", func() error { return identityExpectMemberGroups(ctx, e.bao, groupPath) })
 
-	shared := &identityv1alpha1.GroupMembership{
+	shared := &identityv1alpha1.IdentityGroupMembership{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-devs-m1", Namespace: namespace},
-		Spec: identityv1alpha1.GroupMembershipSpec{
+		Spec: identityv1alpha1.IdentityGroupMembershipSpec{
 			ResourceSpec: identityRevDeleteSpec(),
 			GroupRef:     &commonv1alpha1.LocalObjectReference{Name: "itest-devs"},
 			EntityID:     members[0].Status.ID,
@@ -202,15 +202,15 @@ func testGroupMembership(ctx context.Context, t *testing.T, e env) {
 	waitFor(t, "claimed members removed", func() error { return identityExpectMembers(ctx, e.bao, groupPath, outsiderID) })
 	waitFor(t, "shared membership resource gone", func() error { return expectGone(ctx, e.k8s, shared) })
 
-	external := &identityv1alpha1.Group{
+	external := &identityv1alpha1.IdentityGroup{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-external", Namespace: namespace},
-		Spec:       identityv1alpha1.GroupSpec{ResourceSpec: identitySpec(), Type: identityv1alpha1.GroupTypeExternal},
+		Spec:       identityv1alpha1.IdentityGroupSpec{ResourceSpec: identitySpec(), Type: identityv1alpha1.GroupTypeExternal},
 	}
 	mustCreate(ctx, t, e.k8s, external)
 	waitFor(t, "external group ready", func() error { return identityExpectID(ctx, e.k8s, external) })
-	refused := &identityv1alpha1.GroupMembership{
+	refused := &identityv1alpha1.IdentityGroupMembership{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-external-members", Namespace: namespace},
-		Spec: identityv1alpha1.GroupMembershipSpec{
+		Spec: identityv1alpha1.IdentityGroupMembershipSpec{
 			ResourceSpec: identitySpec(),
 			GroupRef:     &commonv1alpha1.LocalObjectReference{Name: "itest-external"},
 			EntityID:     outsiderID,
@@ -223,16 +223,16 @@ func testGroupMembership(ctx context.Context, t *testing.T, e env) {
 func testEntityAlias(ctx context.Context, t *testing.T, e env) {
 	mustWrite(ctx, t, e.bao, "sys/auth/itest-userpass", map[string]any{"type": "userpass"})
 	accessor := identityAccessor(ctx, t, e.bao, "itest-userpass")
-	entity := &identityv1alpha1.Entity{
+	entity := &identityv1alpha1.IdentityEntity{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-bob", Namespace: namespace},
-		Spec:       identityv1alpha1.EntitySpec{ResourceSpec: identitySpec()},
+		Spec:       identityv1alpha1.IdentityEntitySpec{ResourceSpec: identitySpec()},
 	}
 	mustCreate(ctx, t, e.k8s, entity)
 	waitFor(t, "entity ready", func() error { return identityExpectID(ctx, e.k8s, entity) })
 
-	alias := &identityv1alpha1.EntityAlias{
+	alias := &identityv1alpha1.IdentityEntityAlias{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-bob-userpass", Namespace: namespace},
-		Spec: identityv1alpha1.EntityAliasSpec{
+		Spec: identityv1alpha1.IdentityEntityAliasSpec{
 			ResourceSpec:   identityRevDeleteSpec(),
 			AliasName:      "bob",
 			MountPath:      "itest-userpass",
@@ -248,7 +248,7 @@ func testEntityAlias(ctx context.Context, t *testing.T, e env) {
 		t.Fatal(err)
 	}
 
-	changed := &identityv1alpha1.EntityAlias{}
+	changed := &identityv1alpha1.IdentityEntityAlias{}
 	if err := e.k8s.Get(ctx, client.ObjectKeyFromObject(alias), changed); err != nil {
 		t.Fatal(err)
 	}
@@ -261,16 +261,16 @@ func testEntityAlias(ctx context.Context, t *testing.T, e env) {
 	waitFor(t, "alias drift repaired", func() error {
 		return identityExpectFields(ctx, e.bao, aliasPath, map[string]any{"custom_metadata": map[string]any{"source": "itest"}})
 	})
-	identityExpectNoWrites(t, "EntityAlias")
+	identityExpectNoWrites(t, "IdentityEntityAlias")
 
-	carol := &identityv1alpha1.Entity{
+	carol := &identityv1alpha1.IdentityEntity{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-carol", Namespace: namespace},
-		Spec:       identityv1alpha1.EntitySpec{ResourceSpec: identitySpec()},
+		Spec:       identityv1alpha1.IdentityEntitySpec{ResourceSpec: identitySpec()},
 	}
 	mustCreate(ctx, t, e.k8s, carol)
-	second := &identityv1alpha1.EntityAlias{
+	second := &identityv1alpha1.IdentityEntityAlias{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-carol-userpass", Namespace: namespace},
-		Spec: identityv1alpha1.EntityAliasSpec{ResourceSpec: identitySpec(), AliasName: "carol",
+		Spec: identityv1alpha1.IdentityEntityAliasSpec{ResourceSpec: identitySpec(), AliasName: "carol",
 			MountPath: "itest-userpass", EntityRef: &commonv1alpha1.LocalObjectReference{Name: "itest-carol"}},
 	}
 	mustCreate(ctx, t, e.k8s, second)
@@ -304,16 +304,16 @@ func testGroupAlias(ctx context.Context, t *testing.T, e env) {
 		t.Fatal(err)
 	}
 
-	group := &identityv1alpha1.Group{
+	group := &identityv1alpha1.IdentityGroup{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-kc-devs", Namespace: namespace},
-		Spec:       identityv1alpha1.GroupSpec{ResourceSpec: identitySpec(), Type: identityv1alpha1.GroupTypeExternal},
+		Spec:       identityv1alpha1.IdentityGroupSpec{ResourceSpec: identitySpec(), Type: identityv1alpha1.GroupTypeExternal},
 	}
 	mustCreate(ctx, t, e.k8s, group)
 	waitFor(t, "external group ready", func() error { return identityExpectID(ctx, e.k8s, group) })
 
-	alias := &identityv1alpha1.GroupAlias{
+	alias := &identityv1alpha1.IdentityGroupAlias{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-kc-devs", Namespace: namespace},
-		Spec: identityv1alpha1.GroupAliasSpec{
+		Spec: identityv1alpha1.IdentityGroupAliasSpec{
 			ResourceSpec: identityRevDeleteSpec(),
 			AliasName:    "kc-devs",
 			MountRef:     &commonv1alpha1.LocalObjectReference{Name: "itest-oidc"},
@@ -327,7 +327,7 @@ func testGroupAlias(ctx context.Context, t *testing.T, e env) {
 	if err := identityExpectFields(ctx, e.bao, aliasPath, want); err != nil {
 		t.Fatal(err)
 	}
-	identityExpectNoWrites(t, "GroupAlias")
+	identityExpectNoWrites(t, "IdentityGroupAlias")
 
 	if err := e.k8s.Delete(ctx, alias); err != nil {
 		t.Fatal(err)
@@ -357,9 +357,9 @@ func identitySetup(ctx context.Context, t *testing.T) env {
 		t.Fatalf("openbao client: %v", err)
 	}
 
-	crds := append(make([]string, 0, 6), filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_authmounts.yaml"))
-	for _, name := range []string{"entities", "groups", "entityaliases", "groupaliases", "groupmemberships"} {
-		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "identity.openbaoconfig.io_"+name+".yaml"))
+	crds := append(make([]string, 0, 6), filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_authmounts.yaml"))
+	for _, name := range []string{"identityentities", "identitygroups", "identityentityaliases", "identitygroupaliases", "identitygroupmemberships"} {
+		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "identity.obco.dev_"+name+".yaml"))
 	}
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,
@@ -394,8 +394,8 @@ func identitySetup(ctx context.Context, t *testing.T) env {
 	conns := staticConnections{client: bao}
 	opts := itestEngineOptions()
 	for _, setupKind := range []func(ctrl.Manager, engine.Connections, engine.Options) error{
-		identity.SetupEntity, identity.SetupGroup, identity.SetupEntityAlias, identity.SetupGroupAlias,
-		identity.SetupGroupMembership,
+		identity.SetupIdentityEntity, identity.SetupIdentityGroup, identity.SetupIdentityEntityAlias, identity.SetupIdentityGroupAlias,
+		identity.SetupIdentityGroupMembership,
 	} {
 		if err := setupKind(mgr, conns, opts); err != nil {
 			t.Fatal(err)
@@ -443,7 +443,7 @@ func identityExpectPolicies(ctx context.Context, bao openbao.Client, path string
 	return identityExpectList(data, "policies", want)
 }
 
-func identityRevExpectClaim(ctx context.Context, k8s client.Client, m *identityv1alpha1.GroupMembership, id string) error {
+func identityRevExpectClaim(ctx context.Context, k8s client.Client, m *identityv1alpha1.IdentityGroupMembership, id string) error {
 	if err := k8s.Get(ctx, client.ObjectKeyFromObject(m), m); err != nil {
 		return err
 	}
@@ -527,7 +527,7 @@ func identityWrites(t *testing.T, kind string) float64 {
 		t.Fatal(err)
 	}
 	for _, family := range families {
-		if family.GetName() != "openbao_writes_total" {
+		if family.GetName() != "obco_writes_total" {
 			continue
 		}
 		for _, m := range family.GetMetric() {

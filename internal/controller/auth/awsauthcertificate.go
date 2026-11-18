@@ -11,9 +11,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthcertificates,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthcertificates/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=awsauthcertificates/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthcertificates,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthcertificates/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=awsauthcertificates/finalizers,verbs=update
 
 // SetupAWSAuthCertificate registers the AWSAuthCertificate controller with the manager.
 func SetupAWSAuthCertificate(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

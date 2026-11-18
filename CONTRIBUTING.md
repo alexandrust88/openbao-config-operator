@@ -10,6 +10,8 @@ changes. Open an issue to discuss larger changes before writing code.
 - Read the [ADRs](docs/adr/). A change that contradicts one needs a new ADR.
 - Check [docs/kinds.md](docs/kinds.md) for the name, group and phase of a kind you want to add.
 - Coding agents and humans follow the same rules, listed in [AGENTS.md](AGENTS.md).
+- Looking for a task? See [first issues](docs/community/first-issues.md). Questions go to the channels in
+  [SUPPORT.md](SUPPORT.md).
 
 ## Development setup
 
@@ -32,12 +34,13 @@ What each check proves, and what it does not, is in the
 
 `make manifests generate chart-sync samples` regenerates the CRDs, RBAC, deepcopy code, the chart
 copies and `examples-generated/`. Commit the generated files; CI runs `make verify-generated` and
-fails when regenerating produces a diff.
+fails when regenerating produces a diff. `make helm-values-docs` regenerates `docs/reference/helm-values.md` from the
+chart's `values.yaml` and `values.schema.json`.
 
 To try an unreleased change on a kind cluster, for example the one the
 [quickstart](docs/get-started/quickstart.md) creates, build the image and install the chart from the clone:
 
-```sh
+```bash
 make docker-build IMG=openbao-config-operator:dev
 kind load docker-image openbao-config-operator:dev --name openbao-quickstart
 helm upgrade --install openbao-config-operator charts/openbao-config-operator \
@@ -53,7 +56,7 @@ upgrades and support; document contributor workflows here.
 CRD templates and manager RBAC rules are generated. Update the API markers or RBAC sources,
 then run these commands from the repository root:
 
-```sh
+```bash
 make manifests generate chart-sync
 make helm-lint
 bin/helm unittest charts/openbao-config-operator

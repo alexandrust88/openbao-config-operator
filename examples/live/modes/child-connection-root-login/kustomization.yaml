@@ -9,8 +9,8 @@ replacements:
       fieldPath: data.rootAuthMountPath
     targets:
       - select:
-          group: core.openbaoconfig.io
-          kind: (Cluster)?OpenBaoConnection
+          group: core.obco.dev
+          kind: (Cluster)?BaoConnection
         fieldPaths:
           - spec.auth.kubernetes.mountPath
   - source:
@@ -19,8 +19,8 @@ replacements:
       fieldPath: data.tenantAuthRole
     targets:
       - select:
-          group: core.openbaoconfig.io
-          kind: (Cluster)?OpenBaoConnection
+          group: core.obco.dev
+          kind: (Cluster)?BaoConnection
         fieldPaths:
           - spec.auth.kubernetes.role
   - source:
@@ -29,8 +29,8 @@ replacements:
       fieldPath: data.tenantServiceAccount
     targets:
       - select:
-          group: core.openbaoconfig.io
-          kind: (Cluster)?OpenBaoConnection
+          group: core.obco.dev
+          kind: (Cluster)?BaoConnection
         fieldPaths:
           - spec.auth.kubernetes.serviceAccountRef.name
   - source:
@@ -39,7 +39,7 @@ replacements:
       fieldPath: data.tenantNamespace
     targets:
       - select:
-          group: core.openbaoconfig.io
-          kind: (Cluster)?OpenBaoConnection
+          group: core.obco.dev
+          kind: (Cluster)?BaoConnection
         fieldPaths:
-          - spec.namespace
+          - spec.openbaoNamespace

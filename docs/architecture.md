@@ -4,19 +4,19 @@ description: "Understand how OpenBao Config Operator reconciles Kubernetes resou
 
 # Architecture
 
-openbao-config-operator keeps the configuration of an existing OpenBao server in the state that
+The OpenBao Config Operator keeps the configuration of an existing OpenBao server in the state that
 Kubernetes custom resources declare. One custom resource is one object at one API path, such as a
 policy, an auth role, a mount or an entity. The operator does not deploy, initialise, unseal or
 upgrade the server.
 
-This page describes the design and why it is shaped this way. What is planned, and in which release, is in the
+This is the design and the reasons behind it. What is planned, and in which release, is in the
 [roadmap](maintainers/roadmap.md); exact timings and limits are in [constants and timings](reference/constants.md);
 what does not work yet is in the [known limitations](reference/limitations.md).
 
 ## Scope
 
 - In scope: the common configuration objects (sys, auth, secrets engines, identity, OIDC), one
-  raw `OpenBaoEndpoint` kind for every other path, and multiple tenants on one server.
+  raw `BaoEndpoint` kind for every other path, and multiple tenants on one server.
 - OpenBao only, minimum 2.6, current 2.7.2 ([ADR 0009](adr/0009-openbao-only-target.md)). No flavour
   detection; features OpenBao does not have get no kind.
 - Out of scope: server lifecycle (OpenBao Helm chart, KubeBao operator, self-init), syncing secret
@@ -25,15 +25,13 @@ what does not work yet is in the [known limitations](reference/limitations.md).
 
 ## Design rules
 
-These rules describe the design contract. The engine enforces shared lifecycle controls, while
-full desired-field coverage still depends on adapters (rule 3 below). The numbers are stable, so other pages and tests
-cite them.
+These rules describe the design contract. The numbers are stable because other pages cite them.
+Rule 3 is not enforced yet, so it is listed under [Not yet enforced](#not-yet-enforced) and the list
+below skips from 2 to 4.
 
-- **1. Steady-state reconcile reads and does not write.** `openbao_writes_total` is zero at rest.
-  Proven on a live OpenBao 2.7.2 cluster (81 objects of 55 kinds, zero rewrites across drift
-  intervals and a manager restart), and checked per kind by the no-write and default conformance tests ([CI gates](#ci-gates)).
+- **1. Steady-state reconcile reads and does not write.** `obco_writes_total` is zero at rest.
 - **2. One cached client per connection.** The operator logs in once and renews. Logging in on every
-  reconcile would grow entities, aliases and leases without bound; `openbao_logins_total` makes
+  reconcile would grow entities, aliases and leases without bound; `obco_logins_total` makes
   this visible. A new login follows only a 401 or a 403 whose lookup-self fails (see
   [client cache](#client-cache)).
 - **4. One path has one owner.** A second CR on the same server, namespace and path gets `Conflict`
@@ -41,68 +39,69 @@ cite them.
 - **5. Create by default, adopt on request.** `creationPolicy` defaults to `Create`.
 - **6. Retain by default.** `deletionPolicy` defaults to `Orphan`; `Delete` is opt-in and only then
   is a finalizer added. Destructive kinds need a second explicit guard, the annotation
-  `openbaoconfig.io/allow-destructive-delete`: mounts, namespaces, KV data, audit devices, key material
-  (`TransitKey`, `PKIIssuer`, `PKIKey`, `SSHCA`, `TOTPKey`), MFA methods, entities and `OpenBaoEndpoint`. The
-  human access of `AccessLayout` has its own guard, the annotation `openbaoconfig.io/allow-disruptive-update`.
+  `obco.dev/allow-destructive-delete`: mounts, namespaces, KV data, audit devices, key material
+  (`TransitKey`, `PKIIssuer`, `PKIKey`, `SSHCA`, `TOTPKey`), MFA methods, entities and `BaoEndpoint`. The
+  human access of `AccessLayout` has its own guard, the annotation `obco.dev/allow-disruptive-update`.
 - **7. Secrets only by reference.** Secret material comes from `SecretKeySelector` references. Nothing
   secret appears in a spec, status, event or log.
 - **8. A tenant acts only as itself.** A namespaced connection never uses the operator's identity,
-  files or network position. The address comes only from the platform's `OpenBaoServer`.
+  files or network position. The address comes only from the platform's `BaoServer`.
 - **9. No root token at runtime.** OpenBao self-init creates the operator's auth role and policy at
-  first boot and revokes the transient root token. The [self-init guide](guides/self-init.md) has a
-  tested example.
+  first boot and revokes the transient root token. The [self-init guide](guides/self-init.md) has an
+  example.
 - **10. `Ready` and `Synced` conditions with typed reasons and `observedGeneration` on every kind**,
   so Argo CD and Flux health checks and sync waves work. The [Argo CD guide](guides/argocd.md) ships an Argo
   CD health check.
 
 ### Not yet enforced
 
-- **3. The spec is the whole desired state.** Each adapter's `Desired` returns every typed field, an omitted
-  optional field at the server default the adapter declares, so removing a field from the spec writes the default
-  back ([ADR 0011](adr/0011-full-field-comparison.md)). The default conformance test sets and removes each optional
-  field per kind. The adapters follow the rule, but the engine does not enforce it yet:
-    - no test yet checks that each kind's `Desired` covers every field of its CRD schema
-      ([BL-012](project/backlog.md#bl-012-remaining-v2-rule-gaps)), so a field an adapter leaves out is not unset;
+- **3. The spec is the whole desired state.** The operator compares every typed field of a kind, and an
+  omitted optional field means the OpenBao default for that field, so removing a field from the spec writes the
+  default back ([ADR 0011](adr/0011-full-field-comparison.md)). Every kind is written to follow the rule, but
+  nothing enforces it yet:
+    - nothing yet checks that each kind covers every field of its CRD schema
+      ([known limitations](reference/limitations.md)), so a field a kind leaves out is not unset;
     - some fields cannot return to a default because OpenBao keeps the stored value, such as a pinned mount
-      `plugin_version`, and some kinds cannot run on `bao server -dev`; `test/conformance/exceptions.yaml` lists
-      each case with its reason.
+      `plugin_version`, and some kinds need a clustered or sealed OpenBao rather than a development server.
 
-Typed kinds give validation, references and accurate status; `OpenBaoEndpoint` covers any path without a
+Typed kinds give validation, references and accurate status; `BaoEndpoint` covers any path without a
 typed kind ([ADR 0006](adr/0006-endpoint-escape-hatch.md)).
 
 ## API groups
 
-All groups are version `v1alpha1` under the API group domain `openbaoconfig.io`, which is final
-([ADR 0008](adr/0008-provisional-api-group-domain.md)). All kinds except `OpenBaoServer` and
-`ClusterOpenBaoConnection` are namespaced. Every kind is in the `openbao` category, so
-`kubectl get openbao` lists them all. Short names such as `policy` collide with other operators
-(Kyverno); use the full resource name, for example `policies.sys.openbaoconfig.io`, in scripts.
+All groups are version `v1alpha1` under the API group domain `obco.dev`, which the project owns. All kinds except
+`BaoServer` and `ClusterBaoConnection` are namespaced. Every kind is in the category `obco` and in the
+category `obco-<group>`, so `kubectl get obco` lists them all and `kubectl get obco-sys` lists one group. The
+most used kinds have `bao*` short names, such as `baopol` for `ACLPolicy`; use the full resource name, for
+example `aclpolicies.sys.obco.dev`, in scripts.
 
 | group | built-in kinds |
 |-------|----------------|
-| `core.openbaoconfig.io` | `OpenBaoServer`, `OpenBaoConnection`, `ClusterOpenBaoConnection`, `OpenBaoEndpoint` |
-| `sys.openbaoconfig.io` | `Policy`, `PasswordPolicy`, `OpenBaoNamespace`, `AuthMount`, `SecretsMount`, `Audit`, `AuditRequestHeader`, `RateLimitQuota`, `QuotaConfig`, `Plugin`, `CORSConfig`, `UIHeader`, `Logger`, `KeyRotationConfig`, `RaftAutopilot`, `Workflow` |
-| `auth.openbaoconfig.io` | `KubernetesAuthConfig`, `KubernetesAuthRole`, `JWTAuthConfig`, `JWTAuthRole`, `JWTCELRole`, `AppRole`, `AppRoleSecretID`, `TokenRole`, `CertAuthConfig`, `CertAuthRole`, `CertAuthCRL`, `UserpassUser` |
-| `secrets.openbaoconfig.io` | `KVSecret`, `KVConfig`, `KVSecretMetadata`, `RandomSecret`, `DatabaseConnection`, `DatabaseRole`, `DatabaseStaticRole`, `PKIIssuer`, `PKIKey`, `PKIRole`, `PKICELRole`, `PKIKeyConfig`, `PKIConfig`, `PKIACMEConfig`, `PKIAutoTidy`, `TransitKey`, `TransitCacheConfig`, `TransitKeyConfig`, `SSHCA`, `SSHRole`, `KubernetesSecretsConfig`, `KubernetesSecretsRole`, `RabbitMQConfig`, `RabbitMQRole`, `TOTPKey` |
-| `identity.openbaoconfig.io` | `Entity`, `EntityAlias`, `Group`, `GroupAlias`, `GroupMembership`, `OIDCConfig`, `OIDCProvider`, `OIDCClient`, `OIDCKey`, `OIDCRole`, `OIDCScope`, `OIDCAssignment`, `MFAMethod`, `MFALoginEnforcement` |
-| `access.openbaoconfig.io` | `AccessLevel`, `AccessGrant`, `AccessLayout` |
+| `core.obco.dev` | `BaoServer`, `BaoConnection`, `ClusterBaoConnection`, `BaoEndpoint` |
+| `sys.obco.dev` | `ACLPolicy`, `PasswordPolicy`, `BaoNamespace`, `AuthMount`, `SecretsMount`, `Audit`, `AuditRequestHeader`, `RateLimitQuota`, `QuotaConfig`, `Plugin`, `CORSConfig`, `UIHeader`, `Logger`, `KeyRotationConfig`, `RaftAutopilot`, `BaoWorkflow` |
+| `auth.obco.dev` | `KubernetesAuthConfig`, `KubernetesAuthRole`, `JWTAuthConfig`, `JWTAuthRole`, `JWTCELRole`, `AppRole`, `AppRoleSecretID`, `TokenRole`, `CertAuthConfig`, `CertAuthRole`, `CertAuthCRL`, `UserpassUser` |
+| `secrets.obco.dev` | `KVSecret`, `KVConfig`, `KVSecretMetadata`, `RandomSecret`, `DatabaseConnection`, `DatabaseRole`, `DatabaseStaticRole`, `PKIIssuer`, `PKIKey`, `PKIRole`, `PKICELRole`, `PKIKeyConfig`, `PKIConfig`, `PKIACMEConfig`, `PKIAutoTidy`, `TransitKey`, `TransitCacheConfig`, `TransitKeyConfig`, `SSHCA`, `SSHRole`, `KubernetesSecretsConfig`, `KubernetesSecretsRole`, `RabbitMQConfig`, `RabbitMQRole`, `TOTPKey` |
+| `identity.obco.dev` | `IdentityEntity`, `IdentityEntityAlias`, `IdentityGroup`, `IdentityGroupAlias`, `IdentityGroupMembership`, `OIDCConfig`, `OIDCProvider`, `OIDCClient`, `OIDCKey`, `OIDCRole`, `OIDCScope`, `OIDCAssignment`, `MFAMethod`, `MFALoginEnforcement` |
+| `access.obco.dev` | `AccessLevel`, `AccessGrant`, `AccessLayout` |
 
 The `auth` and `secrets` groups also hold 52 experimental external-plugin kinds (LDAP, Kerberos, RADIUS, the
 cloud methods and engines, and others). They stay in the code but are disabled by default behind
 `--enable-plugin-kinds` (chart `pluginKinds.enabled`), are not run against a server, and count towards no
-coverage figure, until [plugin support](#plugin-support) works end to end. [kinds.md](kinds.md) lists every kind
+coverage figure, until [plugin support](#plugin-support) works end to end. The [kind catalogue](kinds.md) lists every kind
 with its status.
 
-Kinds are not prefixed. The exceptions are the connection kinds, `OpenBaoServer`,
-`OpenBaoNamespace` and `OpenBaoEndpoint`, whose bare names would collide with core Kubernetes kinds.
+Kinds are not prefixed, with three exceptions. The connection kinds, `BaoServer`, `BaoNamespace` and
+`BaoEndpoint` take `Bao`, because their bare names would collide with core Kubernetes kinds. `ACLPolicy` and
+`BaoWorkflow` avoid the plurals `policies` and `workflows`, which other operators use. The identity kinds take
+OpenBao's `identity/` prefix (`IdentityEntity`, `IdentityGroup` and their aliases and memberships).
 
 ### Coverage policy
 
-- **Any path:** `OpenBaoEndpoint` reaches every OpenBao API.
-- **Built-in kinds first:** every object compiled into OpenBao gets a typed kind, tested against
-  `bao server -dev` and listed in [kinds.md](kinds.md).
+- **Any path:** `BaoEndpoint` reaches every OpenBao API.
+- **Built-in kinds first:** every object compiled into OpenBao gets a typed kind, listed in the
+  [Kind catalogue](kinds.md).
 - **Plugin kinds after plugin support:** kinds for external plugins stay gated until a plugin can be
-  registered and tested in CI, and are then enabled one backend at a time
+  registered and exercised end to end, and are then enabled one backend at a time
   ([roadmap](maintainers/roadmap.md)). Until the plugin is mounted, a plugin kind reports `Unsupported` and
   re-checks at the drift interval.
 - **Not typed:** features OpenBao does not have (Sentinel, KMIP, Transform, managed keys,
@@ -113,7 +112,7 @@ Kinds are not prefixed. The exceptions are the connection kinds, `OpenBaoServer`
 - **No generated types:** CRD types are written by hand with an explicit `Desired` per kind. The
   OpenBao OpenAPI spec has no enums, almost no `required` fields, no write-only or create-only
   markers, and duplicate operation IDs that overwrite schemas (`JwtWriteRoleRequest` holds the CEL
-  role fields). A pinned snapshot is still used in CI to check path coverage.
+  role fields). A pinned OpenAPI snapshot still drives path-coverage checks.
 
 ## Components
 
@@ -127,11 +126,6 @@ internal/connection              resolves a connectionRef into a client (Secrets
 internal/engine                  generic reconciler, Adapter contract, compare, HMAC key, Secret and reference indexes
 internal/refs                    flexible references between kinds
 internal/controller/<group>      one small Adapter per kind, plus the connection controller
-test/integration                 adapters against envtest + a real `bao server -dev`
-test/conformance                 per-kind no-write and default tests
-test/nsmatrix                    every kind in every namespace mode
-test/load                        load and scale harness
-test/e2e                         kind + Helm chart + OpenBao
 charts/openbao-config-operator   Helm chart (CRDs as templates)
 ```
 
@@ -143,7 +137,7 @@ The API packages import nothing from `internal/`, so other projects can import t
 |-------|----------|------|------------|
 | API types | `api/common/v1alpha1`, `api/<group>/v1alpha1` | CRD schemas, defaults, CEL rules, condition and reason names | nothing in `internal/` |
 | manager | `cmd/main.go`, `cmd/controllers.go` | flags, metrics and health servers, leader election, the hash key, the table of kind controllers | every layer below |
-| connections | `internal/connection`, `internal/controller/core` | resolving a `connectionRef`, the tenant boundary, credential sources, `OpenBaoServer` and connection status | engine contract, OpenBao client |
+| connections | `internal/connection`, `internal/controller/core` | resolving a `connectionRef`, the tenant boundary, credential sources, `BaoServer` and connection status | engine contract, OpenBao client |
 | OpenBao client | `internal/openbao` | HTTP, TLS, login and renewal, the per-connection client pool, the per-server rate limit, request metrics, the attribution header | OpenBao |
 | engine | `internal/engine` | the reconcile sequence, ownership and path index, drift schedule, write budget, conditions, events, engine metrics | OpenBao client |
 | adapters | `internal/controller/<group>` | per kind: path, desired payload, comparison rules, optional custom read, write, delete and status | engine contract, `internal/refs` |
@@ -153,10 +147,10 @@ The API packages import nothing from `internal/`, so other projects can import t
 
 | controller | kinds | reconciler | name in metrics and logs |
 |------------|-------|------------|--------------------------|
-| server | `OpenBaoServer` | `internal/controller/core/server_controller.go` | `openbaoserver` |
-| connection | `OpenBaoConnection`, `ClusterOpenBaoConnection` | `internal/controller/core/connection_controller.go`, one per kind | `openbaoconnection`, `clusteropenbaoconnection` |
-| access level | `AccessLevel` | `internal/controller/access/accesslevel.go`; writes nothing to OpenBao | `accesslevel.access.openbaoconfig.io` |
-| engine | every other kind, one controller per kind; external-plugin kinds only with `--enable-plugin-kinds` | `engine.Reconciler` with the kind's adapter | `<kind>.<group>` in lower case, for example `policy.sys.openbaoconfig.io` |
+| server | `BaoServer` | `internal/controller/core/server_controller.go` | `baoserver` |
+| connection | `BaoConnection`, `ClusterBaoConnection` | `internal/controller/core/connection_controller.go`, one per kind | `baoconnection`, `clusterbaoconnection` |
+| access level | `AccessLevel` | `internal/controller/access/accesslevel.go`; writes nothing to OpenBao | `accesslevel.access.obco.dev` |
+| engine | every other kind, one controller per kind; external-plugin kinds only with `--enable-plugin-kinds` | `engine.Reconciler` with the kind's adapter | `<kind>.<group>` in lower case, for example `aclpolicy.sys.obco.dev` |
 
 A default install runs 74 controllers, one per built-in kind. Every controller runs only on the leader. Engine
 controllers run `--max-concurrent-reconciles` workers each, or `--max-concurrent-reconciles-high-volume` for the
@@ -166,14 +160,14 @@ kinds that usually have many objects.
 
 | status | written by | when | read by |
 |--------|------------|------|---------|
-| `conditions`, `observedGeneration` of managed kinds | engine | at the end of every pass that changes them | Argo CD and Flux health checks, referrers (a referent must be `Ready` for its generation), `openbao_resource_ready` |
-| `path`, `namespace`, `serverID` | engine | as a claim right before a create; again after a successful pass; cleared on `Conflict` and after a create that wrote nothing | the path index (one owner per path), deletion, the `NamespaceChanged` and `ServerChanged` checks |
+| `conditions`, `observedGeneration` of managed kinds | engine | at the end of every pass that changes them | Argo CD and Flux health checks, referrers (a referent must be `Ready` for its generation), `obco_resource_ready` |
+| `path`, `openbaoNamespace`, `serverID` | engine | as a claim right before a create; again after a successful pass; cleared on `Conflict` and after a create that wrote nothing | the path index (one owner per path), deletion, the `NamespaceChanged` and `ServerChanged` checks |
 | `acquired` | engine | once the object is created or adopted; cleared on `Conflict` | ownership checks, deletion (only an acquired object is deleted) |
 | `writeOnlyHash`, `rotationNonce` | engine | after a successful write | the next pass, to decide whether write-only or write-once inputs must be sent again |
 | `id` and kind-specific fields (`children`, `roles`, `managedKeys`, `latestVersion` and others) | the kind's adapter (`StatusWriter`, or the composite kinds' own bookkeeping), inside the engine's pass | after a successful sync or observe | referrers (`status.id`), the adapter's next pass and deletion |
-| `citedBy` and conditions of `AccessLevel` | access level controller | on every change of a citing resource | its `openbaoconfig.io/in-use` finalizer |
-| `OpenBaoServer` status | server controller | after a probe that changed something | connection controller (a connection is `Ready` only when its server is) |
-| connection status | connection controller | after a check that changed something | the resolver (resources wait while the connection is not `Ready` for its generation), `openbao_connection_ready` |
+| `citedBy` and conditions of `AccessLevel` | access level controller | on every change of a citing resource | its `obco.dev/in-use` finalizer |
+| `BaoServer` status | server controller | after a probe that changed something | connection controller (a connection is `Ready` only when its server is) |
+| connection status | connection controller | after a check that changed something | the resolver (resources wait while the connection is not `Ready` for its generation), `obco_connection_ready` |
 
 No status is written by more than one controller. The exact fields and reasons are in
 [status and events](reference/status-and-events.md).
@@ -182,12 +176,12 @@ No status is written by more than one controller. The exact fields and reasons a
 
 | kind | scope | owner | holds |
 |------|-------|-------|-------|
-| `OpenBaoServer` | cluster | platform | `address`, CA bundle, `allowedNamespaces`, `allowedAudiences`, `rateLimit`, `requestTimeout` |
-| `OpenBaoConnection` | namespaced | tenant | `serverRef`, `namespace`, `authNamespace`, `auth` |
-| `ClusterOpenBaoConnection` | cluster | platform | same, plus `allowedNamespaces`; may use the operator's own identity |
+| `BaoServer` | cluster | platform | `address`, CA bundle, `allowedNamespaces`, `allowedAudiences`, `rateLimit`, `requestTimeout` |
+| `BaoConnection` | namespaced | tenant | `serverRef`, `openbaoNamespace`, `openbaoAuthNamespace`, `auth` |
+| `ClusterBaoConnection` | cluster | platform | same, plus `allowedNamespaces`; may use the operator's own identity |
 
 Resources reference a connection with `spec.connectionRef: {kind, name}`; `kind` defaults to
-`OpenBaoConnection`, which must be in the same namespace. Both fields are immutable (CEL). The fields,
+`BaoConnection`, which must be in the same namespace. Both fields are immutable (CEL). The fields,
 credential sources and their CEL rules are in the [connections reference](reference/connections.md).
 
 Credentials are read at each login, so rotation needs no restart. A namespaced connection logs in with a
@@ -198,9 +192,9 @@ platform admins create it; that right is as strong as the operator's own OpenBao
 What a tenant cannot do:
 
 - **choose the address:** connections have no address field; `serverRef` must name an
-  `OpenBaoServer` whose `allowedNamespaces` selects the tenant's namespace (resolver check, reason
+  `BaoServer` whose `allowedNamespaces` selects the tenant's namespace (resolver check, reason
   `ConnectionDenied`);
-- **use the operator identity:** `OpenBaoConnection` has no `injectedIdentity` or `filesystem`
+- **use the operator identity:** `BaoConnection` has no `injectedIdentity` or `filesystem`
   field, CEL requires `serviceAccountRef` and `audiences`, and the resolver refuses a namespaced
   Kubernetes or JWT login without them when validation was bypassed;
 - **mint a general token:** every audience must be in the server's `allowedAudiences`, and the API
@@ -210,29 +204,27 @@ What a tenant cannot do:
 - **exceed its OpenBao policy:** the policy bound to the tenant's ServiceAccount is the limit of
   what it can configure ([ADR 0003](adr/0003-connections-and-tenant-boundary.md)).
 
-The two-tenant e2e test (`test/e2e/isolation_test.go`) proves these controls end to end: a second tenant is
-refused when it writes outside its OpenBao namespace and policy, references another tenant's connection, Secret
-or ServiceAccount, or uses a server or cluster connection that excludes it, and none of the objects it tried to
-create exists in OpenBao. What is not proven end to end is in the
-[known limitations](reference/limitations.md#verification). The default install also holds cluster-wide Secret
-and TokenRequest rights ([security model](#security-model), RR-01).
+A tenant cannot write outside its OpenBao namespace and policy, reference another tenant's
+connection, Secret or ServiceAccount, or use a server or cluster connection that excludes it.
+Remaining verification gaps are in the [known limitations](reference/limitations.md#verification). The default install also holds
+cluster-wide Secret and TokenRequest rights ([security model](#security-model), RR-01).
 
-`OpenBaoServer` status reports `Ready`, `version`, `sealed` and `standby` from the unauthenticated
+`BaoServer` status reports `Ready`, `version`, `sealed` and `standby` from the unauthenticated
 `sys/seal-status` and `sys/health` in the root namespace. Connection status copies those and adds
 `authenticated`, checked with `auth/token/lookup-self`; a connection is `Ready` only when its server
 is. Both statuses are written only when they change.
 
 ### Namespace scope
 
-A resource's effective OpenBao namespace is the connection's `namespace` joined with its own
-`spec.namespace`, which is relative and cannot climb out: CEL rejects a leading `/` and `.`/`..`
+A resource's effective OpenBao namespace is the connection's `openbaoNamespace` joined with its own
+`spec.openbaoNamespace`, which is relative and cannot climb out: CEL rejects a leading `/` and `.`/`..`
 segments, and the engine (`openbao.ValidateNamespace`) refuses them again with `InvalidSpec`. Two
 login patterns follow:
 
 | pattern | connection | reaches |
 |---------|------------|---------|
-| log in at the root | `namespace` unset, or `namespace: team-a` with `authNamespace: ""` | the root and every child namespace the token's policy allows |
-| log in in a child | `namespace: team-a`, `authNamespace` unset, auth mount inside `team-a` | `team-a` and its descendants only; a parent or sibling answers 403, reported as `PermissionDenied` with nothing written |
+| log in at the root | `openbaoNamespace` unset, or `openbaoNamespace: team-a` with `openbaoAuthNamespace: ""` | the root and every child namespace the token's policy allows |
+| log in in a child | `openbaoNamespace: team-a`, `openbaoAuthNamespace` unset, auth mount inside `team-a` | `team-a` and its descendants only; a parent or sibling answers 403, reported as `PermissionDenied` with nothing written |
 
 Every built-in kind works in any namespace except the root-only kinds `Audit`, `AuditRequestHeader`,
 `RateLimitQuota`, `QuotaConfig`, `Plugin`, `CORSConfig`, `UIHeader`, `Logger` and `RaftAutopilot`:
@@ -240,8 +232,7 @@ OpenBao 2.7.2 answers 400 ("operation only available in root namespace", "operat
 namespaces") or 404 (plugin catalog) for them in a child. Their adapters implement `engine.RootOnly`,
 and the engine stops such a resource whose effective namespace is not the root with `Ready=False`
 reason `RootOnlyKind`, before any OpenBao call. `KeyRotationConfig` needs the root or a sealable
-namespace and reports `Unsupported` elsewhere. `test/nsmatrix` proves each kind in every mode
-against `bao server -dev`.
+namespace and reports `Unsupported` elsewhere.
 
 ### Client cache
 
@@ -260,7 +251,7 @@ value logs in again and revokes the token of the replaced login. Each client:
 - logs in again after a 401 or a failed lookup-self at most once per 5 s, so a dead credential cannot cause a
   login storm;
 - retries 429 and 5xx with backoff, inside one token bucket per server shared by every connection
-  to it (`OpenBaoServer.spec.rateLimit`); every HTTP attempt takes a token, retries, logins and token
+  to it (`BaoServer.spec.rateLimit`); every HTTP attempt takes a token, retries, logins and token
   renewals included; drift reads go without priority, so spec changes go first;
 - never follows a redirect;
 - serves another OpenBao namespace from a clone (`WithNamespace`) without changing the shared
@@ -282,7 +273,7 @@ Every kind embeds `common.ResourceSpec` inline:
 | field | default | meaning |
 |-------|---------|---------|
 | `connectionRef` | required | which connection to use; immutable |
-| `namespace` | `""` | OpenBao namespace relative to the connection namespace; immutable |
+| `openbaoNamespace` | `""` | OpenBao namespace relative to the connection's OpenBao namespace; immutable |
 | `creationPolicy` | `Create` | `Create`: refuse an existing object it does not own. `Adopt`: manage only an existing object. `CreateOrAdopt`: either |
 | `deletionPolicy` | `Orphan` | `Orphan`: leave the object. `Delete`: remove it on CR delete |
 | `driftDetection` | `Enabled` | `Disabled`: never re-read on a schedule; a pass runs on a spec, Secret or referent change, and once after an operator restart |
@@ -297,13 +288,13 @@ setting to its default.
 ### Common status
 
 Every kind embeds `common.ResourceStatus`: the conditions `Ready` and `Synced`, `observedGeneration`, the full
-OpenBao `path`, the absolute `namespace`, the `serverID` the object was acquired on, `acquired`, `writeOnlyHash`,
+OpenBao `path`, the absolute `openbaoNamespace`, the `serverID` the object was acquired on, `acquired`, `writeOnlyHash`,
 `id` and `rotationNonce`. Each field is defined in
 [status and events](reference/status-and-events.md#common-to-every-managed-kind); the rules below are why they
 exist.
 
 Observing never acquires, transfers, relinquishes or preserves ownership: under `managementPolicy:
-Observe` the engine leaves `acquired`, `path`, `namespace` and claims as they are, and `serverID`
+Observe` the engine leaves `acquired`, `path`, `openbaoNamespace` and claims as they are, and `serverID`
 too while the resource holds a path. A resource that never held a path records in `serverID` the
 server its observed `id` came from, which references check. `path` is canonical: leading and
 trailing slashes are dropped, as OpenBao ignores them, so `sys/policies/acl/foo/` and
@@ -312,7 +303,7 @@ trailing slashes are dropped, as OpenBao ignores them, so `sys/policies/acl/foo/
 A resource counts as settled (the drift check may be skipped) only while `Ready` and `Synced` are
 both `True` for its current generation (`engine.Reconciled`); a failed pass leaves an earlier `Ready`
 in place, so the retry applies the spec change. Adapters that report fields OpenBao cannot return
-(`OpenBaoEndpoint` with `disableRead`, a versioned `Plugin`) use the same check and skip the read
+(`BaoEndpoint` with `disableRead`, a versioned `Plugin`) use the same check and skip the read
 after the write. With `driftDetection: Disabled` the skip also needs the desired payload, values
 rendered from referents (an accessor, an id) included, to equal what the last successful pass of this
 process applied, so a referent change is written; the digest lives in memory, hence one read per
@@ -351,7 +342,7 @@ with a type assertion, so a kind pays only for what it uses.
 | `Marker` | writes and reads the server-side ownership marker where the object has metadata |
 | `RotationNonce` | supplies the nonce that re-sends `WriteOnce` fields |
 | `ReadBackSkipper` | skips the read after a write for objects that cannot be read back |
-| `SharedPath` | writes to a path another resource owns on purpose (`GroupMembership`, claim-only edge kinds); left out of the path index and the marker |
+| `SharedPath` | writes to a path another resource owns on purpose (`IdentityGroupMembership`, claim-only edge kinds); left out of the path index and the marker |
 | `Singleton` | marks configuration that always exists with defaults; adopted whatever the `creationPolicy` |
 | `RootOnly` (`rootonly.go`) | refuses a child namespace with `RootOnlyKind` before any OpenBao call |
 | `ReferenceWatcher` (`references.go`) | names the referenced kinds, which the engine watches to re-queue referrers |
@@ -386,7 +377,7 @@ The comparison in `internal/engine/compare.go` treats each key by its class
 
 A nil value, an absent key, an empty list and an empty map are equal to one another; `""`, `0` and `false` are
 not equal to absent. Only the keys `Desired` returns are compared, which is why rule 3 depends on each adapter
-returning every typed field ([not yet enforced](#not-yet-enforced)). `OpenBaoEndpoint` compares only its data keys,
+returning every typed field ([not yet enforced](#not-yet-enforced)). `BaoEndpoint` compares only its data keys,
 so a key removed from `data` is not unset on the server.
 
 ### Reconcile sequence
@@ -394,10 +385,10 @@ so a key removed from `data` is not unset on the server.
 `engine.Reconciler.Reconcile` (`internal/engine/reconciler.go`) runs these steps in order; any step can end the
 pass with a condition and a requeue:
 
-1. **Pause.** The `openbaoconfig.io/paused` annotation on the resource, its Kubernetes Namespace or its
-   `OpenBaoServer` stops the pass with `Paused`: no read, write or delete.
+1. **Pause.** The `obco.dev/paused` annotation on the resource, its Kubernetes namespace or its
+   `BaoServer` stops the pass with `Paused`: no read, write or delete.
 2. **Deletion.** A resource being deleted goes to [deletion](#deletion) instead.
-3. **Connect.** Resolve the connection (`ConnectionNotReady`, `ConnectionDenied`), validate `spec.namespace`
+3. **Connect.** Resolve the connection (`ConnectionNotReady`, `ConnectionDenied`), validate `spec.openbaoNamespace`
    (`InvalidSpec`), refuse a root-only kind in a child namespace (`RootOnlyKind`), compare the recorded namespace
    (`NamespaceChanged`), resolve the server and its cluster id, and compare the recorded `serverID`
    (`ServerChanged`).
@@ -475,7 +466,7 @@ Acquisition is bound to the server: `status.serverID` holds the server's cluster
 `sys/health` reports without a token and which survives restarts. Each client caches it briefly and reads it
 again, past the cache, right before a create, a recreate and a delete, so a
 different server behind the same address (a DNS or load balancer change, a re-initialised server)
-gets none of them. If a connection or `OpenBaoServer` change makes the resource reach another
+gets none of them. If a connection or `BaoServer` change makes the resource reach another
 cluster, reconciling stops with `ServerChanged` and nothing is written or deleted there. This holds
 under `managementPolicy: Observe` too: Observe never rebinds a recorded `serverID` while the
 resource holds a path, so switching to Observe and back cannot take over the other server's
@@ -490,7 +481,7 @@ purpose, release it: clear its status (`kubectl patch <kind> <name> --subresourc
 - `Delete`: finalizer; the engine deletes `status.path`. A 404 counts as success, and a child whose
   parent mount or namespace is gone counts as deleted. If the connection or a credential is gone,
   the finalizer stays with `Synced=False` reason `CleanupBlocked` and the engine retries.
-- A terminating Kubernetes Namespace leaves the object behind in two cases, because holding the finalizer would
+- A terminating Kubernetes namespace leaves the object behind in two cases, because holding the finalizer would
   block the Namespace forever: the connection is not ready, or the kind is destructive and the resource lacks
   the destructive annotation. The engine then removes the finalizer, leaves the object in OpenBao and records a
   Warning event with reason `Orphaned`.
@@ -499,7 +490,7 @@ purpose, release it: clear its status (`kubectl patch <kind> <name> --subresourc
   object: another server (`ServerChanged`) or a marker naming another cluster or resource (`Conflict`) leaves the
   object in OpenBao, removes the finalizer and records a Warning event. The same applies when an older
   resource owns the path.
-- [Destructive kinds](kinds.md) delete only with the annotation `openbaoconfig.io/allow-destructive-delete: "true"`;
+- [Destructive kinds](kinds.md) delete only with the annotation `obco.dev/allow-destructive-delete: "true"`;
   otherwise, in a live Namespace, the finalizer holds with reason `DeleteGuarded`. The same annotation gates an
   update that would recreate the object ([ADR 0013](adr/0013-destructive-delete-guard.md)).
 - `KVSecret` and `RandomSecret` retain KV v2 metadata. For an operator-created path with destructive
@@ -519,12 +510,12 @@ purpose, release it: clear its status (`kubectl patch <kind> <name> --subresourc
   Kubernetes referents must be `Ready` for their current generation, provide the value in
   `status.id`, and have been reconciled on the referrer's server (`status.serverID`) and OpenBao
   namespace. A referent change re-queues the referrer at once only for the kinds whose adapter implements
-  `ReferenceWatcher` (`Policy`, `AuthMount`, `SecretsMount`) and for `AccessGrant` and `AccessLayout`, which watch
+  `ReferenceWatcher` (`ACLPolicy`, `AuthMount`, `SecretsMount`) and for `AccessGrant` and `AccessLayout`, which watch
   `AccessLevel`; every other referrer picks the change up at its next `ReferenceNotReady` retry.
 - One-time outputs use `writeSecretRef: {name}`. The operator writes the Secret only if it is
   absent or already owned by the CR, and sets itself as owner; it refuses any other Secret.
   Every `OutputWriter` adapter also implements `OutputSecretNamer`, so that refusal comes before
-  anything is generated in OpenBao (a test in `cmd/` enforces it).
+  anything is generated in OpenBao.
 - The engine watches the output Secrets it owns (`Owns`, metadata only), so a deleted or edited Secret
   re-queues its resource.
 - A Secret write can still fail after OpenBao generated the value. The value is never kept in
@@ -540,13 +531,13 @@ purpose, release it: clear its status (`kubectl patch <kind> <name> --subresourc
   `key_id`, so a Secret left from an earlier key does not count. A generated `TOTPKey` stores an HMAC
   fingerprint of its URL, keyed with the engine hash key, in `status.id` and in the output Secret's
   `fingerprint` key, so a Secret left over after the key was regenerated out of band is detected as not
-  delivered ([BL-015](project/backlog.md#bl-015-totp-output-delivery-after-an-out-of-band-key-rotation)).
+  delivered.
 - Observe mode makes no remote change: `AppRoleSecretID` destroys retired secret IDs only under
   `managementPolicy: Manage`.
 
-### `OpenBaoEndpoint`, the escape hatch
+### `BaoEndpoint`, the escape hatch
 
-`OpenBaoEndpoint` writes any payload to any path:
+`BaoEndpoint` writes any payload to any path:
 
 | field | meaning |
 |-------|---------|
@@ -557,7 +548,7 @@ purpose, release it: clear its status (`kubectl patch <kind> <name> --subresourc
 | `deletePath` | an optional different path to delete |
 
 A typed kind adds validation, references and drift behaviour on top. Because `path` and `deletePath` can name a
-mount or a namespace, `OpenBaoEndpoint` is a destructive kind.
+mount or a namespace, `BaoEndpoint` is a destructive kind.
 
 ## Access models
 
@@ -575,7 +566,7 @@ through the same engine.
   per role and OIDC mount, with a group alias and a rendered policy.
 
 An `in-use` finalizer stops a level from being deleted while cited. Removing human access requires
-the annotation `openbaoconfig.io/allow-disruptive-update: "true"`.
+the annotation `obco.dev/allow-disruptive-update: "true"`.
 
 ## Validation
 
@@ -589,7 +580,7 @@ the annotation `openbaoconfig.io/allow-disruptive-update: "true"`.
 
 | threat | control |
 |--------|---------|
-| tenant makes the operator call any URL | only the platform sets the address, on `OpenBaoServer`; redirects are never followed |
+| tenant makes the operator call any URL | only the platform sets the address, on `BaoServer`; redirects are never followed |
 | tenant borrows the operator identity | no injected or filesystem sources on namespaced connections; resolver backstop |
 | API server token minted for a tenant SA | audiences required and in `allowedAudiences`; the API server audience always rejected |
 | another namespace's Secret read | every `*SecretRef` is same-namespace |
@@ -606,23 +597,23 @@ The HMAC key is the immutable Secret `openbao-config-operator-hash-key` (flag
 first start. It cannot be rotated without rewriting every write-only field once.
 
 Operator permissions: Secrets get/list/watch (references; the cache keeps metadata
-only), Secrets create/update/patch (outputs and the HMAC key), ConfigMaps and Namespaces get/list/watch (CA
+only), Secrets create/update (outputs and the HMAC key), ConfigMaps and Namespaces get/list/watch (CA
 bundles, namespace selectors and the pause annotation), `serviceaccounts/token` create
 (TokenRequest), cluster-wide by default and per namespace with `--watch-namespaces`. In OpenBao: its own role,
-used only by `ClusterOpenBaoConnection`. Other residual risks: one-time outputs live
+used only by `ClusterBaoConnection`. Other residual risks: one-time outputs live
 in Kubernetes Secrets (etcd encryption and RBAC apply), and drift in write-only fields is
-invisible. Details in [security.md](security.md) and the [threat model](security/threat-model.md).
+invisible. Details in [security](security.md) and the [threat model](security/threat-model.md).
 
 ## Scale and drift
 
 Reads per second = objects / interval ([ADR 0014](adr/0014-drift-tiers-and-request-budget.md)).
 Every interval is jittered.
 
-- Two tiers, both operator flags: access-critical (`Policy`, `AuthMount`, every kind of the `auth` group,
-  `Audit`, `Group`, `GroupMembership`, `AccessGrant`, `AccessLayout`) every 15 minutes and standard (everything else) every
+- Two tiers, both operator flags: access-critical (`ACLPolicy`, `AuthMount`, every kind of the `auth` group,
+  `Audit`, `IdentityGroup`, `IdentityGroupMembership`, `AccessGrant`, `AccessLayout`) every 15 minutes and standard (everything else) every
   hour; `spec.driftDetection: Disabled` and `spec.driftInterval` per object.
-- `OpenBaoServer.spec.rateLimit`: one token bucket shared by every connection to that server; drift
-  reads wait, spec-change reconciles go first; `openbao_drift_lag_seconds` shows the lag.
+- `BaoServer.spec.rateLimit`: one token bucket shared by every connection to that server; drift
+  reads wait, spec-change reconciles go first; `obco_drift_lag_seconds` shows the lag.
 - Mount reads are shared: kinds that look up a mount share one read of `sys/mounts` or `sys/auth` per connection,
   OpenBao namespace and table for 2 s, not one read per object, so a large mount table is not read N times. An
   out-of-band mount change can show up to 2 s later.
@@ -639,16 +630,16 @@ pessimistic; counts are exact):
 - **The operator idles at about 3,900 to 4,400 goroutines**, from the workers, informers and queues of its
   controllers, flat across every scenario.
 
-The figures have not been repeated on CI hardware.
+The figures come from one laptop and have not been repeated on other hardware.
 
 ## OpenBao-native features
 
 The design leans on features only OpenBao has:
 
 - self-init (2.4): the operator's mount, role and policy at first boot, transient root revoked;
-- namespaces: the unit of tenancy; `OpenBaoNamespace` handles the asynchronous delete;
+- namespaces: the unit of tenancy; `BaoNamespace` handles the asynchronous delete;
 - OCI plugins (2.5): `Plugin` registers what the server configuration downloads;
-- `sys/workflows` (2.6): the `Workflow` kind;
+- `sys/workflows` (2.6): the `BaoWorkflow` kind;
 - `JWTCELRole`: JWT roles with CEL, an OpenBao-only kind.
 
 Horizontal read scaling (2.5) and namespace sealing (2.6) are not used yet; the
@@ -665,15 +656,15 @@ Horizontal read scaling (2.5) and namespace sealing (2.6) are not used yet; the
   Sent on create and when a rotation nonce changes, never re-sent otherwise, so a stale Secret does not undo a
   rotate-root inside OpenBao.
 - **Write circuit breaker** ([ADR 0018](adr/0018-write-circuit-breaker.md)). Rewrites of objects the operator
-  already owns, with an unchanged spec and unchanged input Secrets, are capped per `OpenBaoServer`
+  already owns, with an unchanged spec and unchanged input Secrets, are capped per `BaoServer`
   (`--write-budget-per-minute`). Creates, adoptions, spec changes and changed input Secrets (a new
   `status.writeOnlyHash`) are user-intended and exempt, so onboarding and Secret rotation are not throttled; a
   regenerated one-time output (a new secret ID while the last one is undelivered) is not exempt. At the cap the
   engine holds further rewrites to that server, sets `Synced=False` with reason `WriteBudgetExceeded` (a stable
   message, so retries do not patch status) and an event, and spreads the retries over the next minute. The
   budget lives in process memory, so a restart starts a fresh window.
-- **Pause** ([ADR 0019](adr/0019-pause-annotation.md)). `openbaoconfig.io/paused: "true"` on an object, its
-  Kubernetes Namespace or its `OpenBaoServer` stops reconciling (no reads, writes or deletes; a deletion keeps
+- **Pause** ([ADR 0019](adr/0019-pause-annotation.md)). `obco.dev/paused: "true"` on an object, its
+  Kubernetes namespace or its `BaoServer` stops reconciling (no reads, writes or deletes; a deletion keeps
   the finalizer) with reason `Paused`.
 - **CRD versioning without webhooks** ([ADR 0020](adr/0020-crd-versioning-without-webhooks.md)). Version bumps
   stay schema-compatible (additive; storage version migration with kube-storage-version-migrator). A conversion
@@ -685,7 +676,7 @@ Horizontal read scaling (2.5) and namespace sealing (2.6) are not used yet; the
   `X-Openbao-Config-Resource: <group>/<kind>/<k8s-namespace>/<name>`; an `AuditRequestHeader` example
   (`examples/sys/auditrequestheader-attribution.yaml`) makes OpenBao log it, so each audit entry traces to a Git
   object.
-- **Tenant object limits.** Kubernetes `ResourceQuota` object counts (`count/policies.sys.openbaoconfig.io` and
+- **Tenant object limits.** Kubernetes `ResourceQuota` object counts (`count/aclpolicies.sys.obco.dev` and
   so on) stop one tenant from exhausting the drift budget; see [tenant quotas](operate/tenant-quotas.md).
 
 ## Plugin support
@@ -696,9 +687,8 @@ catalog entry (name, type, version, sha256; adopts an auto-registered one) and r
 `Ready=False` with reason `PluginNotRegistered`, re-checked at the drift interval without a loop. A version
 change on `Plugin` re-registers and reloads; mounts are not recreated.
 
-The plugin-backed kinds are experimental and gated until their plugin and backend run in CI; the
-[roadmap](maintainers/roadmap.md) orders them. `RabbitMQConfig` and `RabbitMQRole` are built into 2.7.2 and
-integration-tested.
+The plugin-backed kinds are experimental and gated until their plugin and backend are verified end to end; the
+[roadmap](maintainers/roadmap.md) orders them. `RabbitMQConfig` and `RabbitMQRole` are built into 2.7.2.
 
 ## Observability
 
@@ -707,35 +697,37 @@ rules are in [observability](operate/observability.md).
 
 | metric | labels | shows |
 |--------|--------|-------|
-| `openbao_requests_total` | connection, method, code | the request load on OpenBao, retries included |
-| `openbao_request_duration_seconds` | connection, method | OpenBao latency |
-| `openbao_logins_total` | connection, result | rule 2: flat at rest |
-| `openbao_token_renewals_total` | connection, result | rule 2: tokens are renewed, not replaced by logins |
-| `openbao_writes_total` | kind | rule 1: zero at rest |
-| `openbao_drift_repairs_total`, `openbao_conflicts_total` | kind | out-of-band changes repaired; passes refused under rule 4 |
-| `openbao_drift_lag_seconds` | connection | how far drift reads run behind their schedule |
-| `openbao_resource_ready` | kind, namespace, name, reason | rule 10: each resource is `Ready`, and why not |
-| `openbao_write_budget_exhausted_total` | server | the write circuit breaker held writes back |
-| `openbao_connection_ready` | kind, namespace, name | each connection can log in and serve clients |
+| `obco_requests_total` | connection, method, code | the request load on OpenBao, retries included |
+| `obco_request_duration_seconds` | connection, method | OpenBao latency |
+| `obco_logins_total` | connection, result | rule 2: flat at rest |
+| `obco_token_renewals_total` | connection, result | rule 2: tokens are renewed, not replaced by logins |
+| `obco_writes_total` | kind | rule 1: zero at rest |
+| `obco_drift_repairs_total`, `obco_conflicts_total` | kind | out-of-band changes repaired; passes refused under rule 4 |
+| `obco_drift_lag_seconds` | connection | how far drift reads run behind their schedule |
+| `obco_resource_ready` | kind, namespace, name, reason | rule 10: each resource is `Ready`, and why not |
+| `obco_write_budget_exhausted_total` | server | the write circuit breaker held writes back |
+| `obco_connection_ready` | kind, namespace, name | each connection can log in and serve clients |
 
 Events name the keys that differed, never values ([events](reference/status-and-events.md#events)). Logs never
 contain tokens, secret values or OpenBao response bodies.
 
-## CI gates
+## Verification { #ci-gates }
 
-The pull-request gate runs lint, unit tests, envtest, integration of every adapter against
-`bao server -dev`, `verify-generated`, govulncheck, a kind e2e test with the chart, and the per-kind
-no-write and default conformance tests for the kinds the pull request touches, every kind of a group whose Go code changes,
-or every kind when shared code changes (`hack/ci/conformance-kinds.sh`). The full no-write and default
-conformance tests run on pushes to `main`, weekly and on demand, with the exceptions in
-`test/conformance/exceptions.yaml`. Remaining gaps: integration against every supported OpenBao minor and field-level API coverage.
+The OpenBao versions the operator is verified against are in [compatibility](reference/compatibility.md).
+Remaining gaps, including runtime verification on every supported OpenBao minor and field-level API
+coverage, are in the [known limitations](reference/limitations.md#verification).
 
 ## Delivery
 
 - Images are multi-arch (amd64, arm64) and distroless, published to ghcr.io and tagged by version
   and digest.
-- A `v*` tag triggers a GitHub release with the image, the Helm chart (OCI) and `install.yaml`,
+- A `v*` tag publishes a GitHub release with the image, the Helm chart (OCI) and `install.yaml`,
   signed with keyless cosign and carrying an SBOM attestation and build provenance (forms and SLSA levels in
-  [verify the release](security/hardening.md#verify-the-release)). Since v0.3.0 the chart package is also signed
+  [verify the release](security/hardening.md#verify-the-release)). The chart package is also signed
   with the project's GPG key (Helm provenance, a `.prov` file), which `helm install --verify` checks.
-- Workflow actions are pinned by SHA; Renovate keeps those pins and Go modules current.
+
+## Related
+
+- [Concepts](concepts/index.md)
+- [Security](security.md)
+- [Constants and timings](reference/constants.md)

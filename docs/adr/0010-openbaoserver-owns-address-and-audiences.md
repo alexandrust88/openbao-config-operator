@@ -4,7 +4,7 @@ description: "Design decision for OpenBao Config Operator: openBaoServer owns th
 
 # 0010. OpenBaoServer owns the address and audiences
 
-Status: accepted. Date: 2026-11-14.
+Status: accepted; implemented. Date: 2026-11-14.
 
 ## Context
 

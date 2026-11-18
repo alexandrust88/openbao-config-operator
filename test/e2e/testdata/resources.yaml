@@ -8,8 +8,8 @@ stringData:
   username: app
   password: e2e-password-not-real
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: e2e-policy
   namespace: e2e-tenant
@@ -23,13 +23,13 @@ spec:
       capabilities = ["read"]
     }
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVSecret
 metadata:
   name: e2e-app
   namespace: e2e-tenant
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
     name: openbao
@@ -41,13 +41,13 @@ spec:
     - secretRef:
         name: e2e-app
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoEndpoint
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoEndpoint
 metadata:
   name: e2e-password-policy
   namespace: e2e-tenant
   annotations:
-    openbaoconfig.io/allow-destructive-delete: "true"
+    obco.dev/allow-destructive-delete: "true"
 spec:
   connectionRef:
     name: openbao

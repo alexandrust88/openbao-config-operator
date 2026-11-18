@@ -115,21 +115,21 @@ tests:
           of: ClusterRole
       - notMatchRegex:
           path: rules[*].resources[*]
-          pattern: ^(policies|openbaoconnections|openbaoendpoints|kvsecrets|secrets|configmaps)(/.*)?$
+          pattern: ^(aclpolicies|baoconnections|baoendpoints|kvsecrets|secrets|configmaps)(/.*)?$
       - notMatchRegex:
           path: rules[*].apiGroups[*]
-          pattern: ^(access|auth|identity|secrets|sys)\.openbaoconfig\.io$
+          pattern: ^(access|auth|identity|secrets|sys)\.obco\.dev$
       - contains:
           path: rules
           content:
-            apiGroups: [core.openbaoconfig.io]
-            resources: [clusteropenbaoconnections, openbaoservers]
+            apiGroups: [core.obco.dev]
+            resources: [baoservers, clusterbaoconnections]
             verbs: [get, list, patch, update, watch]
       - contains:
           path: rules
           content:
-            apiGroups: [core.openbaoconfig.io]
-            resources: [clusteropenbaoconnections/status, openbaoservers/status]
+            apiGroups: [core.obco.dev]
+            resources: [baoservers/status, clusterbaoconnections/status]
             verbs: [get, patch, update]
       - contains:
           path: rules
@@ -149,55 +149,55 @@ tests:
       watchNamespaces: [team-a, team-b]
     asserts:
       - contains:
-          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].resources
-          content: policies
+          path: rules[?(@.apiGroups[0] == "sys.obco.dev" && @.verbs[1] == "list")].resources
+          content: aclpolicies
         documentIndex: 2
       - equal:
-          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].verbs
+          path: rules[?(@.apiGroups[0] == "sys.obco.dev" && @.verbs[1] == "list")].verbs
           value: [get, list, patch, update, watch]
         documentIndex: 2
       - contains:
-          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].resources
-          content: policies
+          path: rules[?(@.apiGroups[0] == "sys.obco.dev" && @.verbs[1] == "list")].resources
+          content: aclpolicies
         documentIndex: 4
       - equal:
-          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].verbs
+          path: rules[?(@.apiGroups[0] == "sys.obco.dev" && @.verbs[1] == "list")].verbs
           value: [get, list, patch, update, watch]
         documentIndex: 4
       - contains:
-          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].resources
-          content: policies
+          path: rules[?(@.apiGroups[0] == "sys.obco.dev" && @.verbs[1] == "list")].resources
+          content: aclpolicies
         documentIndex: 2
       - equal:
-          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].verbs
+          path: rules[?(@.apiGroups[0] == "sys.obco.dev" && @.verbs[1] == "list")].verbs
           value: [get, list, patch, update, watch]
         documentIndex: 2
       - contains:
-          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "patch")].resources
-          content: policies/status
+          path: rules[?(@.apiGroups[0] == "sys.obco.dev" && @.verbs[1] == "patch")].resources
+          content: aclpolicies/status
         documentIndex: 4
       - equal:
-          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "patch")].verbs
+          path: rules[?(@.apiGroups[0] == "sys.obco.dev" && @.verbs[1] == "patch")].verbs
           value: [get, patch, update]
         documentIndex: 4
       - contains:
-          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[0] == "update")].resources
-          content: policies/finalizers
+          path: rules[?(@.apiGroups[0] == "sys.obco.dev" && @.verbs[0] == "update")].resources
+          content: aclpolicies/finalizers
         documentIndex: 2
       - equal:
-          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[0] == "update")].verbs
+          path: rules[?(@.apiGroups[0] == "sys.obco.dev" && @.verbs[0] == "update")].verbs
           value: [update]
         documentIndex: 2
       - contains:
           path: rules
           content:
-            apiGroups: [core.openbaoconfig.io]
-            resources: [openbaoconnections, openbaoendpoints]
+            apiGroups: [core.obco.dev]
+            resources: [baoconnections, baoendpoints]
             verbs: [get, list, patch, update, watch]
         documentIndex: 2
       - notMatchRegex:
           path: rules[*].resources[*]
-          pattern: ^(openbaoservers|clusteropenbaoconnections|namespaces)(/.*)?$
+          pattern: ^(baoservers|clusterbaoconnections|namespaces)(/.*)?$
         documentIndex: 2
 
   - it: keeps namespaced managed kinds in the ClusterRole by default
@@ -205,22 +205,22 @@ tests:
     documentIndex: 0
     asserts:
       - contains:
-          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].resources
-          content: policies
+          path: rules[?(@.apiGroups[0] == "sys.obco.dev" && @.verbs[1] == "list")].resources
+          content: aclpolicies
       - equal:
-          path: rules[?(@.apiGroups[0] == "sys.openbaoconfig.io" && @.verbs[1] == "list")].verbs
+          path: rules[?(@.apiGroups[0] == "sys.obco.dev" && @.verbs[1] == "list")].verbs
           value: [get, list, patch, update, watch]
       - contains:
           path: rules
           content:
-            apiGroups: [core.openbaoconfig.io]
-            resources: [openbaoconnections, openbaoendpoints]
+            apiGroups: [core.obco.dev]
+            resources: [baoconnections, baoendpoints]
             verbs: [get, list, patch, update, watch]
       - contains:
           path: rules
           content:
-            apiGroups: [core.openbaoconfig.io]
-            resources: [clusteropenbaoconnections, openbaoservers]
+            apiGroups: [core.obco.dev]
+            resources: [baoservers, clusterbaoconnections]
             verbs: [get, list, patch, update, watch]
 
   - it: grants only the hash-key Secret in the release namespace when it is not watched
@@ -349,7 +349,7 @@ tests:
     asserts:
       - notMatchRegex:
           path: rules[*].resources[*]
-          pattern: openbaoconnections|^secrets$
+          pattern: baoconnections|^secrets$
       - notContains:
           path: rules
           content:
@@ -363,17 +363,33 @@ tests:
     asserts:
       - notMatchRegex:
           path: rules[*].resources[*]
-          pattern: ^(openbaoservers|clusteropenbaoconnections)(/status)?$
+          pattern: ^(baoservers|clusterbaoconnections)(/status)?$
 
   - it: leaves the configured kinds out of the tenant editor
     template: templates/rbac/user-roles.yaml
     documentIndex: 0
     set:
-      rbac.tenantEditor.excludeKinds: [openbaoendpoints]
+      rbac.tenantEditor.excludeKinds: [baoendpoints]
     asserts:
       - notMatchRegex:
           path: rules[*].resources[*]
-          pattern: ^openbaoendpoints(/status)?$
+          pattern: ^baoendpoints(/status)?$
+
+  - it: grants the tenant editor nothing on servers and connections
+    template: templates/rbac/user-roles.yaml
+    documentIndex: 0
+    asserts:
+      - notMatchRegex:
+          path: rules[*].resources[*]
+          pattern: ^(baoservers|baoconnections|clusterbaoconnections)(/.*)?$
+
+  - it: fails on an excluded kind that matches no CRD plural
+    template: templates/rbac/user-roles.yaml
+    set:
+      rbac.tenantEditor.excludeKinds: [openbaoendpoints]
+    asserts:
+      - failedTemplate:
+          errorMessage: 'rbac.tenantEditor.excludeKinds: "openbaoendpoints" is not the plural of a kind of this chart'
 
   - it: drops aggregation labels when disabled
     template: templates/rbac/user-roles.yaml
@@ -417,14 +433,14 @@ tests:
           path: rules[2].resources
           content: ldapauthconfigs
 
-  - it: keeps OpenBaoServers out of the tenant roles
+  - it: keeps BaoServers out of the tenant roles
     template: templates/rbac/user-roles.yaml
     asserts:
       - notMatchRegex:
           path: rules[*].resources[*]
-          pattern: ^openbaoservers
+          pattern: ^baoservers
         documentIndex: 0
       - notMatchRegex:
           path: rules[*].resources[*]
-          pattern: ^openbaoservers
+          pattern: ^baoservers
         documentIndex: 1

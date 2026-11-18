@@ -10,7 +10,7 @@ Every writable (POST, PUT, PATCH, DELETE) path template in the pinned OpenAPI sn
 OpenBao minor is classified exactly once in `api-coverage/classification.yaml`:
 
 - **typed**: a kind of this operator configures the object behind the path.
-- **Endpoint only**: configuration without a typed kind; use the `OpenBaoEndpoint` kind.
+- **Endpoint only**: configuration without a typed kind; use the `BaoEndpoint` kind.
   **unreviewed** paths are Endpoint only paths that nobody has classified yet.
 - **action**: a one-off operation, not configuration (login, issue, sign, rotate, revoke, tidy, ...).
 
@@ -47,7 +47,7 @@ coverage and live-tested compatibility are separate; see the [compatibility refe
 
 ## Endpoint-only paths
 
-Configuration paths without a typed kind. Manage them with the `OpenBaoEndpoint` kind; each is a candidate
+Configuration paths without a typed kind. Manage them with the `BaoEndpoint` kind; each is a candidate
 for a typed kind.
 
 | path | OpenBao | reason |
@@ -61,5 +61,5 @@ for a typed kind.
 | `/sys/raw/{path}` | 2.6, 2.7 | raw storage access, break-glass only; deliberately untyped |
 | `/{ldap_mount_path}/library/{name}` | 2.6 | external plugin library set; not tested until the plugin is in CI |
 | `/{openldap_mount_path}/library/{name}` | 2.6 | external plugin library set; not tested until the plugin is in CI |
-| `/{ssh_mount_path}/config/zeroaddress` | 2.6, 2.7 | allowlist of roles that may use any source address; set it with OpenBaoEndpoint |
+| `/{ssh_mount_path}/config/zeroaddress` | 2.6, 2.7 | allowlist of roles that may use any source address; set it with BaoEndpoint |
 | `/{ssh_mount_path}/issuer/{issuer_ref}` | 2.6, 2.7 | renames or deletes an issuer; SSHCA owns the default CA through config/ca |

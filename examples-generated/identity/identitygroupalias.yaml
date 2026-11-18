@@ -1,0 +1,27 @@
+# IdentityGroupAlias (identity.obco.dev/v1alpha1)
+# IdentityGroupAlias links a group of an identity provider to an external OpenBao group (`identity/group-alias`).
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: aliasName, connectionRef.
+#
+# Reference: https://docs.obco.dev/reference/api/identity/#identitygroupalias
+# Curated example: examples/identity/identitygroupalias.yaml
+apiVersion: identity.obco.dev/v1alpha1
+kind: IdentityGroupAlias
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  aliasName: example
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: Create
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  groupID: example
+  managementPolicy: Manage
+  mountAccessor: example
+  openbaoNamespace: example

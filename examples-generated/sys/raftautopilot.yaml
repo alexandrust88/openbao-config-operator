@@ -1,4 +1,4 @@
-# RaftAutopilot (sys.openbaoconfig.io/v1alpha1)
+# RaftAutopilot (sys.obco.dev/v1alpha1)
 # RaftAutopilot manages the raft autopilot settings at sys/storage/raft/autopilot/configuration: dead server cleanup,
 # health thresholds and voter promotion.
 #
@@ -6,9 +6,9 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/sys/#raftautopilot
+# Reference: https://docs.obco.dev/reference/api/sys/#raftautopilot
 # Curated example: examples/sys/raftautopilot.yaml
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: RaftAutopilot
 metadata:
   name: example
@@ -16,7 +16,7 @@ metadata:
 spec:
   cleanupDeadServers: true
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deadServerLastContactThreshold: 1h

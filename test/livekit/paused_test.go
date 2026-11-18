@@ -15,7 +15,7 @@ import (
 func verifyPausedPolicies(ctx context.Context, t testing.TB, k8s client.Client, r *run) {
 	t.Helper()
 	for _, obj := range r.objs {
-		if obj.GetKind() != "Policy" || obj.GetAnnotations()["openbaoconfig.io/paused"] != "true" {
+		if obj.GetKind() != "ACLPolicy" || obj.GetAnnotations()["obco.dev/paused"] != "true" {
 			continue
 		}
 		cur := obj.DeepCopy()
@@ -48,14 +48,14 @@ func resourceNamespace(t testing.TB, objs []*unstructured.Unstructured, obj *uns
 	name, _, _ := unstructured.NestedString(obj.Object, keySpec, "connectionRef", keyName)
 	kind, _, _ := unstructured.NestedString(obj.Object, keySpec, "connectionRef", "kind")
 	if kind == "" {
-		kind = "OpenBaoConnection"
+		kind = "BaoConnection"
 	}
 	for _, conn := range objs {
 		if conn.GetKind() != kind || conn.GetName() != name {
 			continue
 		}
-		base, _, _ := unstructured.NestedString(conn.Object, keySpec, "namespace")
-		target, _, _ := unstructured.NestedString(obj.Object, keySpec, "namespace")
+		base, _, _ := unstructured.NestedString(conn.Object, keySpec, "openbaoNamespace")
+		target, _, _ := unstructured.NestedString(obj.Object, keySpec, "openbaoNamespace")
 		return strings.Trim(strings.Trim(base, "/")+"/"+strings.Trim(target, "/"), "/")
 	}
 	t.Fatalf("%s/%s has no rendered connection %s/%s", obj.GetKind(), obj.GetName(), kind, name)

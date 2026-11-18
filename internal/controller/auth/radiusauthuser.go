@@ -10,9 +10,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=radiusauthusers,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=radiusauthusers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=auth.openbaoconfig.io,resources=radiusauthusers/finalizers,verbs=update
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=radiusauthusers,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=radiusauthusers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=auth.obco.dev,resources=radiusauthusers/finalizers,verbs=update
 
 // SetupRADIUSAuthUser registers the RADIUSAuthUser controller with the manager.
 func SetupRADIUSAuthUser(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

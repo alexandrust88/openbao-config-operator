@@ -6,13 +6,13 @@ type: Opaque
 stringData:
   keytab: fake-keytab-bytes-replace-with-kubectl-create-secret-from-file
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KerberosAuthConfig
 metadata:
   name: kerberos
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan

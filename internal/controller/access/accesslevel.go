@@ -20,10 +20,10 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accesslevels,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accesslevels/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accesslevels/finalizers,verbs=update
-// +kubebuilder:rbac:groups=access.openbaoconfig.io,resources=accessgrants;accesslayouts,verbs=get;list;watch
+// +kubebuilder:rbac:groups=access.obco.dev,resources=accesslevels,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=access.obco.dev,resources=accesslevels/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=access.obco.dev,resources=accesslevels/finalizers,verbs=update
+// +kubebuilder:rbac:groups=access.obco.dev,resources=accessgrants;accesslayouts,verbs=get;list;watch
 
 // SetupAccessLevel registers the AccessLevel controller with the manager. A level writes nothing to
 // OpenBao, so the connections and engine options are not used.
@@ -37,7 +37,7 @@ func SetupAccessLevel(mgr ctrl.Manager, _ engine.Connections, opts engine.Option
 		For(&accessv1alpha1.AccessLevel{}).
 		Watches(&accessv1alpha1.AccessGrant{}, cited).
 		Watches(&accessv1alpha1.AccessLayout{}, cited).
-		Named("accesslevel.access.openbaoconfig.io").
+		Named("accesslevel.access.obco.dev").
 		Complete(r)
 }
 

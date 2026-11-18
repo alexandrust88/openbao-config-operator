@@ -14,11 +14,12 @@ before you begin a large one.
 
 ## Where we are
 
-- v0.1.1, v0.2.0, v0.3.0 and v0.3.1 are released: a multi-arch image, the Helm chart, `install.yaml` and `crds.yaml`,
-  signed with keyless cosign, from the [GitHub releases](https://github.com/alexandrust88/openbao-config-operator/releases).
-  Since v0.2.0 a release also carries an examples bundle, and since v0.3.0 the chart has a GPG Helm provenance file.
-  The [changelog](../../CHANGELOG.md) lists the changes of each release; v0.1.0 has no GitHub release.
-- The API group domain `openbaoconfig.io` is final ([ADR 0008](../adr/0008-provisional-api-group-domain.md)).
+- 1.0.0 is the first release: a multi-arch image, the Helm chart, `install.yaml`, `crds.yaml` and an examples
+  bundle, signed with keyless cosign, and the chart also with a GPG Helm provenance file, from the
+  [GitHub releases](https://github.com/alexandrust88/openbao-config-operator/releases). The earlier pre-releases
+  (0.1.x to 0.5.0) were withdrawn. The [changelog](../../CHANGELOG.md) lists the changes of each release.
+- The API groups are `<area>.obco.dev/v1alpha1`, under a domain the project owns
+  ([ADR 0025](../adr/0025-move-the-api-to-obco-dev.md)).
 - 74 built-in kinds implemented and integration-tested against `bao server -dev`, and 52 experimental plugin
   kinds behind `--enable-plugin-kinds` ([kind catalogue](../kinds.md)).
 - Engine: path-index ownership with a server-side marker, `Create`/`Orphan` defaults, the destructive-delete
@@ -40,8 +41,8 @@ current engine and are retrofitted to its rules as the engine lands.
 
 | phase | scope | exit test | release | state |
 |-------|-------|-----------|---------|-------|
-| 1 | engine and tenant boundary: `OpenBaoServer`, connections, field classes, ownership and path index, observe mode, write-once fields, write circuit breaker, `Policy`, `OpenBaoEndpoint`, chart, CI | no-write and default tests for built-in kinds; a namespaced connection cannot reach the operator identity (e2e); the self-init example boots with no root token left | next | conformance done (no-write and default tests on pull requests); operator-identity e2e done (`test/e2e/isolation_test.go`); self-init CI gate open |
-| 2 | tenant and cluster onboarding: `OpenBaoNamespace`, mounts, Kubernetes, JWT and AppRole auth, `TokenRole`, `KubernetesSecrets*` | one commit onboards a tenant namespace and a remote cluster, including dynamic tokens | next | kinds done; exit test open |
+| 1 | engine and tenant boundary: `BaoServer`, connections, field classes, ownership and path index, observe mode, write-once fields, write circuit breaker, `ACLPolicy`, `BaoEndpoint`, chart, CI | no-write and default tests for built-in kinds; a namespaced connection cannot reach the operator identity (e2e); the self-init example boots with no root token left | next | conformance done (no-write and default tests on pull requests); operator-identity e2e done (`test/e2e/isolation_test.go`); self-init CI gate open |
+| 2 | tenant and cluster onboarding: `BaoNamespace`, mounts, Kubernetes, JWT and AppRole auth, `TokenRole`, `KubernetesSecrets*` | one commit onboards a tenant namespace and a remote cluster, including dynamic tokens | next | kinds done; exit test open |
 | 3 | identity with the ownership marker | wiping status then reconciling makes zero writes for marked kinds | next | kinds and marker done; exit test open |
 | 4 | secrets engines, the rest of sys, OIDC and MFA | 10,000 objects hold a 1 h drift interval inside the request budget | after next | kinds done; scale test open |
 | 5 | plugin support: `Plugin` registers OCI plugins, mounts wait for it | the LDAP plugin from OCI and OpenLDAP in CI | later | open |
@@ -51,14 +52,10 @@ current engine and are retrofitted to its rules as the engine lands.
 `after 6` in the catalogue marks plugin kinds outside the core plan (cloud, GitHub, Okta, OCI, CF, Consul,
 Nomad, Terraform Cloud, MongoDB Atlas, Quay); they stay gated until each has a plugin and backend in CI.
 
-## v0.1.1 to v0.3.1: released
+## Open from the first plan
 
-v0.1.1 was the first complete GitHub release, then v0.2.0 (the destructive-delete guard for key material, faster drift
-reads, the documentation site) and v0.3.0 (the signed chart and the role tutorials). v0.3.1 tightened chart value validation
-and namespace-scoped watches; it made no CRD changes. The API group domain was
-decided before v0.1.0 ([BL-001](../project/backlog.md#bl-001-pick-an-owned-api-group-domain-before-the-first-release)).
-The goals in the next two sections were planned for v0.2 and v0.3; those releases shipped without them. Still open
-from the v0.1 plan:
+The API group domain is decided ([BL-001](../project/backlog.md#bl-001-pick-an-owned-api-group-domain-before-the-first-release)).
+Still open:
 
 | item | source | status |
 |------|--------|--------|
@@ -105,15 +102,15 @@ Goal: large shared servers with many tenants.
 | phase 5 plugin support | [phases](#phases), [architecture](../architecture.md#plugin-support), [BL-005](../project/backlog.md#bl-005-external-plugin-kinds) |
 | phase 6 plugin-backed kinds against real backends, each un-gated when its backend runs in CI | [phases](#phases), [TD-004](../project/tech-debt.md#td-004-unconfirmed-paths-and-external-plugin-kinds) |
 | hash key rotation without rewriting every write-only field | [known limitations](../reference/limitations.md#ownership-and-restore) |
-| sharding by `OpenBaoServer` label for very large fleets | [architecture](../architecture.md#scale-and-drift) |
-| namespace sealing support in `OpenBaoNamespace`, with shares through `writeSecretRef` | [architecture](../architecture.md#openbao-native-features) |
+| sharding by `BaoServer` label for very large fleets | [architecture](../architecture.md#scale-and-drift) |
+| namespace sealing support in `BaoNamespace`, with shares through `writeSecretRef` | [architecture](../architecture.md#openbao-native-features) |
 | `v1beta1`, when the conditions in the [release process](release-process.md#versioning) hold | [ADR 0020](../adr/0020-crd-versioning-without-webhooks.md) |
 
 ## Open questions
 
 - Are LDAP, Kerberos and RADIUS still built in on 2.7? RabbitMQ is built into 2.7.2; does it stay?
 - What is the sealed-namespace API (create parameters, key share return)?
-- Which kinds have metadata for the ownership marker (entities, groups and namespaces do; KV version 2 to test)?
+- Which other kinds have metadata for the ownership marker (`IdentityEntity`, `IdentityGroup`, `BaoNamespace` and `KVSecretMetadata` carry it)?
 - How can a read be forced to the active node after a write?
 
 ## Not planned

@@ -1,0 +1,28 @@
+# BaoNamespace (sys.obco.dev/v1alpha1)
+# BaoNamespace creates an OpenBao namespace at sys/namespaces/<name> inside the parent namespace selected by
+# openbaoNamespace (the connection namespace when unset).
+#
+# Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
+# passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
+# Required spec fields: connectionRef.
+#
+# Reference: https://docs.obco.dev/reference/api/sys/#baonamespace
+# Curated example: examples/sys/baonamespace.yaml
+apiVersion: sys.obco.dev/v1alpha1
+kind: BaoNamespace
+metadata:
+  name: example
+  namespace: openbao-config
+spec:
+  connectionRef:
+    kind: BaoConnection
+    name: openbao
+  creationPolicy: Create
+  customMetadata:
+    example: example
+  deletionPolicy: Orphan
+  driftDetection: Enabled
+  driftInterval: 1h
+  managementPolicy: Manage
+  name: example
+  openbaoNamespace: example

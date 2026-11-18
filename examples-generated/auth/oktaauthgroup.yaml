@@ -1,4 +1,4 @@
-# OktaAuthGroup (auth.openbaoconfig.io/v1alpha1)
+# OktaAuthGroup (auth.obco.dev/v1alpha1)
 # OktaAuthGroup manages the policy mapping of an Okta group in an OpenBao Okta auth method at
 # auth/<mountPath>/groups/<name>.
 #
@@ -6,16 +6,16 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#oktaauthgroup
+# Reference: https://docs.obco.dev/reference/api/auth/#oktaauthgroup
 # Curated example: examples/auth/oktaauthgroup.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: OktaAuthGroup
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -24,6 +24,6 @@ spec:
   managementPolicy: Manage
   mountPath: okta
   name: example
-  namespace: example
+  openbaoNamespace: example
   policies:
   - default

@@ -1,5 +1,5 @@
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: openbao
 spec:
@@ -14,8 +14,8 @@ spec:
       audiences:
         - openbao-config-operator
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: ClusterOpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
 metadata:
   name: openbao-cluster
 spec:

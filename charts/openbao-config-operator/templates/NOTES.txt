@@ -8,13 +8,13 @@ Check the manager:
 
 The manager watches only: {{ include "openbao-config-operator.watchNamespaces" . }}.
 Secrets, ConfigMaps and ServiceAccount tokens are readable only there, so list every namespace that holds
-credentials or CA bundles referenced by a ClusterOpenBaoConnection.
+credentials or CA bundles referenced by a ClusterBaoConnection.
 {{- end }}
 
 Next steps:
-  1. Create an OpenBaoServer and a connection to your existing OpenBao server:
-     https://alexandrust88.github.io/openbao-config-operator/get-started/connect/
-  2. List managed resources: kubectl get openbao -A
+  1. Create a BaoServer and a connection to your existing OpenBao server:
+     https://docs.obco.dev/get-started/connect/
+  2. List managed resources: kubectl get obco -A
 {{- if .Values.rbac.userRoles }}
 
 User roles: {{ .Release.Name }}-tenant-editor (namespaced configuration resources; excludes connections) and {{ .Release.Name }}-viewer.

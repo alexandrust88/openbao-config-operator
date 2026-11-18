@@ -1,4 +1,4 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: SecretsMount
 metadata:
   name: db
@@ -7,7 +7,7 @@ spec:
     name: openbao
   type: database
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: DatabaseConnection
 metadata:
   name: db-postgres
@@ -26,7 +26,7 @@ spec:
     connectionURL: postgresql://{{username}}:{{password}}@postgres.postgres.svc:5432/app?sslmode=disable
     username: openbao
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: DatabaseRole
 metadata:
   name: db-app
@@ -38,7 +38,7 @@ spec:
   creationStatements:
     - CREATE ROLE "{{name}}" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: DatabaseStaticRole
 metadata:
   name: db-app-static

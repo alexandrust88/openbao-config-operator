@@ -28,9 +28,9 @@ func TestSecretsExamples(t *testing.T) {
 		t.Fatal(err)
 	}
 	k8s := secretsStartEnv(t, root, []string{
-		"secrets.openbaoconfig.io_kvsecrets.yaml",
-		"secrets.openbaoconfig.io_randomsecrets.yaml",
-		"secrets.openbaoconfig.io_kvconfigs.yaml",
+		"secrets.obco.dev_kvsecrets.yaml",
+		"secrets.obco.dev_randomsecrets.yaml",
+		"secrets.obco.dev_kvconfigs.yaml",
 	})
 	ctx := context.Background()
 	if err := k8s.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openbao-config"}}); err != nil {
@@ -52,48 +52,48 @@ func TestSecretsExamples(t *testing.T) {
 			name, doc, wantErr string
 		}{
 			{name: "kvsecret without data", wantErr: "set dataFrom or data", doc: `
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVSecret
 metadata: {name: no-data, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, mountPath: secret, path: app}`},
 			{name: "kvsecret version 3", wantErr: "kvVersion", doc: `
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVSecret
 metadata: {name: bad-version, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, mountPath: secret, path: app, kvVersion: 3,
   dataFrom: [{secretRef: {name: s}}]}`},
 			{name: "kvsecret leading slash", wantErr: "spec.path", doc: `
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVSecret
 metadata: {name: bad-path, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, mountPath: secret, path: /app, dataFrom: [{secretRef: {name: s}}]}`},
 			{name: "randomsecret policy and generator", wantErr: "set at most one of passwordPolicyName and generator", doc: `
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: RandomSecret
 metadata: {name: both, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, mountPath: secret, path: app, passwordPolicyName: p, generator: {length: 16}}`},
 			{name: "randomsecret short generator", wantErr: "spec.generator.length", doc: `
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: RandomSecret
 metadata: {name: short, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, mountPath: secret, path: app, generator: {length: 4}}`},
 			{name: "kvconfig delete policy", wantErr: "deletionPolicy must be Orphan", doc: `
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVConfig
 metadata: {name: delete, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, mountPath: secret, deletionPolicy: Delete}`},
 			{name: "kvconfig bad duration", wantErr: "must be -1, integer seconds or a duration", doc: `
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVConfig
 metadata: {name: bad-duration, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, mountPath: secret, deleteVersionAfter: 500ms}`},
 			{name: "kvconfig negative seconds", wantErr: "must be -1, integer seconds or a duration", doc: `
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVConfig
 metadata: {name: negative, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, mountPath: secret, deleteVersionAfter: -5}`},
 			{name: "kvconfig disabled", doc: `
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVConfig
 metadata: {name: disabled, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, mountPath: secret, deleteVersionAfter: -1}`},
@@ -112,17 +112,17 @@ spec: {connectionRef: {name: openbao}, mountPath: secret, deleteVersionAfter: -1
 	t.Run("immutable", func(t *testing.T) {
 		docs := map[string]string{
 			"KVSecret": `
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVSecret
 metadata: {name: immutable, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, mountPath: secret, path: app, dataFrom: [{secretRef: {name: s}}]}`,
 			"RandomSecret": `
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: RandomSecret
 metadata: {name: immutable, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, mountPath: secret, path: app}`,
 			"KVConfig": `
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVConfig
 metadata: {name: immutable, namespace: openbao-config}
 spec: {connectionRef: {name: openbao}, mountPath: secret}`,

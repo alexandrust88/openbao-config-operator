@@ -30,7 +30,7 @@ const (
 )
 
 // TestDeleteEverythingTogetherAgainstDevServer deletes a Delete-policy resource together with its connection,
-// the connection's token Secret and the OpenBaoServer, as a Namespace deletion does (envtest cannot delete
+// the connection's token Secret and the BaoServer, as a Namespace deletion does (envtest cannot delete
 // Namespaces). The connection and server stay until the resource has removed its OpenBao object, then all go.
 func TestDeleteEverythingTogetherAgainstDevServer(t *testing.T) {
 	requireEnvtest(t)
@@ -50,7 +50,7 @@ func TestDeleteEverythingTogetherAgainstDevServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := SetupOpenBaoEndpoint(mgr, resolver, engine.Options{DriftIntervalCritical: time.Minute, DriftIntervalStandard: time.Minute}); err != nil {
+	if err := SetupBaoEndpoint(mgr, resolver, engine.Options{DriftIntervalCritical: time.Minute, DriftIntervalStandard: time.Minute}); err != nil {
 		t.Fatal(err)
 	}
 	mgrCtx, stop := context.WithCancel(ctx)
@@ -63,9 +63,9 @@ func TestDeleteEverythingTogetherAgainstDevServer(t *testing.T) {
 		}
 	})
 
-	server := &corev1alpha1.OpenBaoServer{
+	server := &corev1alpha1.BaoServer{
 		ObjectMeta: metav1.ObjectMeta{Name: inUseName},
-		Spec: corev1alpha1.OpenBaoServerSpec{
+		Spec: corev1alpha1.BaoServerSpec{
 			Address:           address,
 			AllowInsecureHTTP: true,
 			AllowedNamespaces: &metav1.LabelSelector{MatchLabels: map[string]string{tenantLabel: inUseName}},
@@ -75,19 +75,19 @@ func TestDeleteEverythingTogetherAgainstDevServer(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: litRoot, Namespace: inUseNS},
 		Data:       map[string][]byte{tokenKey: []byte(litRoot)},
 	}
-	conn := &corev1alpha1.OpenBaoConnection{
+	conn := &corev1alpha1.BaoConnection{
 		ObjectMeta: metav1.ObjectMeta{Name: inUseName, Namespace: inUseNS},
-		Spec: corev1alpha1.OpenBaoConnectionSpec{
+		Spec: corev1alpha1.BaoConnectionSpec{
 			ConnectionSpec: corev1alpha1.ConnectionSpec{ServerRef: corev1alpha1.ServerReference{Name: inUseName}},
 			Auth: corev1alpha1.ConnectionAuth{Token: &corev1alpha1.TokenAuth{
 				SecretRef: commonv1alpha1.SecretKeySelector{Name: litRoot, Key: tokenKey},
 			}},
 		},
 	}
-	endpoint := &corev1alpha1.OpenBaoEndpoint{
+	endpoint := &corev1alpha1.BaoEndpoint{
 		ObjectMeta: metav1.ObjectMeta{Name: inUseName, Namespace: inUseNS,
 			Annotations: map[string]string{commonv1alpha1.AnnotationAllowDestructiveDelete: "true"}},
-		Spec: corev1alpha1.OpenBaoEndpointSpec{
+		Spec: corev1alpha1.BaoEndpointSpec{
 			ResourceSpec: commonv1alpha1.ResourceSpec{
 				ConnectionRef:  commonv1alpha1.ConnectionReference{Name: inUseName},
 				DeletionPolicy: commonv1alpha1.DeletionPolicyDelete,
@@ -108,7 +108,7 @@ func TestDeleteEverythingTogetherAgainstDevServer(t *testing.T) {
 
 	root := injectedRootClient(t, address)
 	eventually(t, "the endpoint to be Ready and its policy written", func() bool {
-		got := &corev1alpha1.OpenBaoEndpoint{}
+		got := &corev1alpha1.BaoEndpoint{}
 		if err := envtestClient.Get(ctx, client.ObjectKeyFromObject(endpoint), got); err != nil {
 			return false
 		}
@@ -117,7 +117,7 @@ func TestDeleteEverythingTogetherAgainstDevServer(t *testing.T) {
 	})
 	gauge := connectionReady.WithLabelValues(string(commonv1alpha1.ConnectionKindNamespaced), inUseNS, inUseName)
 	if v := testutil.ToFloat64(gauge); v != 1 {
-		t.Errorf("openbao_connection_ready = %v, want 1", v)
+		t.Errorf("obco_connection_ready = %v, want 1", v)
 	}
 
 	for _, obj := range []client.Object{token, server, conn, endpoint} {

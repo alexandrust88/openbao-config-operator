@@ -1,6 +1,6 @@
 # Logs in to the second OpenBao as the operator itself, like the connection platform does for the first one.
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: ClusterOpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: ClusterBaoConnection
 metadata:
   name: platform-2
 spec:

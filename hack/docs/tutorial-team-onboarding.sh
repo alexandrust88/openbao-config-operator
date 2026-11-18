@@ -57,16 +57,16 @@ kubectl --as tenant-a-admin apply -f examples/tutorials/team-onboarding/payments
 
 # --8<-- [start:wait]
 kubectl --as tenant-a-admin -n tenant-a wait --for=condition=Ready --timeout=3m \
-  openbaonamespace.sys.openbaoconfig.io/devteam \
-  openbaonamespace.sys.openbaoconfig.io/payments \
-  secretsmount.sys.openbaoconfig.io/devteam-secret \
-  secretsmount.sys.openbaoconfig.io/payments-secret \
-  randomsecret.secrets.openbaoconfig.io/devteam-app \
-  randomsecret.secrets.openbaoconfig.io/payments-app \
-  policy.sys.openbaoconfig.io/team-devteam \
-  policy.sys.openbaoconfig.io/team-payments \
-  kubernetesauthrole.auth.openbaoconfig.io/team-devteam \
-  kubernetesauthrole.auth.openbaoconfig.io/team-payments
+  baonamespace.sys.obco.dev/devteam \
+  baonamespace.sys.obco.dev/payments \
+  secretsmount.sys.obco.dev/devteam-secret \
+  secretsmount.sys.obco.dev/payments-secret \
+  randomsecret.secrets.obco.dev/devteam-app \
+  randomsecret.secrets.obco.dev/payments-app \
+  aclpolicy.sys.obco.dev/team-devteam \
+  aclpolicy.sys.obco.dev/team-payments \
+  kubernetesauthrole.auth.obco.dev/team-devteam \
+  kubernetesauthrole.auth.obco.dev/team-payments
 # --8<-- [end:wait]
 
 # --8<-- [start:verify]
@@ -106,16 +106,16 @@ grep -qiE 'permission denied|403' <<<"$denied" || fail "devteam's read of paymen
 kubectl --as tenant-a-admin apply -f examples/tutorials/team-onboarding/reach-root.yaml
 # --8<-- [end:reach-root]
 
-synced_reason policy.sys.openbaoconfig.io/reach-root ConnectionDenied
+synced_reason aclpolicy.sys.obco.dev/reach-root ConnectionDenied
 
 # --8<-- [start:reach-root-status]
-kubectl --as tenant-a-admin -n tenant-a get policy.sys.openbaoconfig.io/reach-root \
+kubectl --as tenant-a-admin -n tenant-a get aclpolicy.sys.obco.dev/reach-root \
   -o jsonpath='{.status.conditions[?(@.type=="Synced")].message}{"\n"}'
 # --8<-- [end:reach-root-status]
 
-[ "$(kubectl -n tenant-a get policy.sys.openbaoconfig.io/reach-root \
+[ "$(kubectl -n tenant-a get aclpolicy.sys.obco.dev/reach-root \
   -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')" = False ] || fail "reach-root is Ready"
-message=$(kubectl -n tenant-a get policy.sys.openbaoconfig.io/reach-root \
+message=$(kubectl -n tenant-a get aclpolicy.sys.obco.dev/reach-root \
   -o jsonpath='{.status.conditions[?(@.type=="Synced")].message}')
 grep -q 'namespace tenant-a is not in allowedNamespaces' <<<"$message" ||
   fail "reach-root was refused for another reason: $message"

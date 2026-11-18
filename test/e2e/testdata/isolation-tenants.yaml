@@ -1,15 +1,15 @@
 # The tenants of the isolation test, applied together: tenant-a's resources must get Ready while every tenant-b
-# attempt on tenant-a, on the platform connection or outside its policy is refused. Policy names that tenant-b must
+# attempt on tenant-a, on the platform connection or outside its policy is refused. ACLPolicy names that tenant-b must
 # never write anywhere are listed in deniedPolicies in isolation_test.go.
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: tenant-a
   namespace: e2e-tenant-a
 spec:
   serverRef:
     name: e2e-isolation
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   auth:
     kubernetes:
       role: operator
@@ -18,15 +18,15 @@ spec:
       audiences:
         - openbao
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: a-only
   namespace: e2e-tenant-a
 spec:
   serverRef:
     name: e2e-isolation-tenant-a-only
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   auth:
     kubernetes:
       role: operator
@@ -35,8 +35,8 @@ spec:
       audiences:
         - openbao
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: app
   namespace: e2e-tenant-a
@@ -49,7 +49,7 @@ spec:
       capabilities = ["read"]
     }
 ---
-apiVersion: secrets.openbaoconfig.io/v1alpha1
+apiVersion: secrets.obco.dev/v1alpha1
 kind: KVSecret
 metadata:
   name: app
@@ -64,15 +64,15 @@ spec:
     - secretRef:
         name: app-a
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: tenant-b
   namespace: e2e-tenant-b
 spec:
   serverRef:
     name: e2e-isolation
-  namespace: tenant-b
+  openbaoNamespace: tenant-b
   auth:
     kubernetes:
       role: operator
@@ -81,8 +81,8 @@ spec:
       audiences:
         - openbao
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: app
   namespace: e2e-tenant-b
@@ -95,8 +95,8 @@ spec:
       capabilities = ["read"]
     }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: escalate
   namespace: e2e-tenant-b
@@ -109,23 +109,23 @@ spec:
       capabilities = ["create", "read", "update", "delete", "list", "sudo"]
     }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: cross-namespace
   namespace: e2e-tenant-b
 spec:
   connectionRef:
     name: tenant-b
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   name: app-b-cross
   policy: |
     path "secret/data/app" {
       capabilities = ["read"]
     }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: foreign-connection
   namespace: e2e-tenant-b
@@ -138,15 +138,15 @@ spec:
       capabilities = ["read"]
     }
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: into-tenant-a
   namespace: e2e-tenant-b
 spec:
   serverRef:
     name: e2e-isolation
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   auth:
     kubernetes:
       role: operator
@@ -155,8 +155,8 @@ spec:
       audiences:
         - openbao
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: via-into-tenant-a
   namespace: e2e-tenant-b
@@ -169,31 +169,31 @@ spec:
       capabilities = ["read"]
     }
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: via-platform
   namespace: e2e-tenant-b
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: e2e-isolation-platform
-  namespace: tenant-a
+  openbaoNamespace: tenant-a
   name: app-b-platform
   policy: |
     path "secret/data/app" {
       capabilities = ["read"]
     }
 ---
-apiVersion: core.openbaoconfig.io/v1alpha1
-kind: OpenBaoConnection
+apiVersion: core.obco.dev/v1alpha1
+kind: BaoConnection
 metadata:
   name: a-only
   namespace: e2e-tenant-b
 spec:
   serverRef:
     name: e2e-isolation-tenant-a-only
-  namespace: tenant-b
+  openbaoNamespace: tenant-b
   auth:
     kubernetes:
       role: operator
@@ -202,8 +202,8 @@ spec:
       audiences:
         - openbao
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: via-a-only
   namespace: e2e-tenant-b

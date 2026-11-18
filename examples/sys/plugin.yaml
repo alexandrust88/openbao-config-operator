@@ -7,14 +7,14 @@ type: Opaque
 stringData:
   https-proxy: http://obco-plugin:fake-proxy-password@proxy.example.com:3128
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: Plugin
 metadata:
   name: obco-ldap-auth-plugin
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan
@@ -35,14 +35,14 @@ spec:
   version: v0.1.0
   oci: false
 ---
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: Plugin
 metadata:
   name: obco-nomad-secrets-plugin
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: CreateOrAdopt
   deletionPolicy: Orphan

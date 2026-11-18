@@ -7,15 +7,15 @@ nameReference:
         kind: OIDCClient
       - path: spec/allowedClients/clientSelector/matchLabels/oidc-provider-client
         kind: OIDCProvider
-  - kind: Entity
+  - kind: IdentityEntity
     fieldSpecs:
       - path: metadata/labels/oidc-assignment-entity
-        kind: Entity
+        kind: IdentityEntity
       - path: spec/entities/entitySelector/matchLabels/oidc-assignment-entity
         kind: OIDCAssignment
-  - kind: Group
+  - kind: IdentityGroup
     fieldSpecs:
       - path: metadata/labels/oidc-assignment-group
-        kind: Group
+        kind: IdentityGroup
       - path: spec/groups/groupSelector/matchLabels/oidc-assignment-group
         kind: OIDCAssignment

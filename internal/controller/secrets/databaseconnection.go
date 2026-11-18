@@ -17,9 +17,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=databaseconnections,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=databaseconnections/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=databaseconnections/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=databaseconnections,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=databaseconnections/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=databaseconnections/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // SetupDatabaseConnection registers the DatabaseConnection controller with the manager.

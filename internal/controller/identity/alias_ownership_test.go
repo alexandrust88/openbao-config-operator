@@ -28,8 +28,8 @@ func aliasOwnershipClient(t *testing.T, objs ...client.Object) (client.Client, *
 		}
 	}
 	k8s := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).WithStatusSubresource(objs...).
-		WithIndex(&identityv1alpha1.EntityAlias{}, engine.PathIndex, engine.PathIndexFunc).
-		WithIndex(&identityv1alpha1.GroupAlias{}, engine.PathIndex, engine.PathIndexFunc).Build()
+		WithIndex(&identityv1alpha1.IdentityEntityAlias{}, engine.PathIndex, engine.PathIndexFunc).
+		WithIndex(&identityv1alpha1.IdentityGroupAlias{}, engine.PathIndex, engine.PathIndexFunc).Build()
 	return k8s, scheme
 }
 
@@ -56,8 +56,8 @@ func TestEntityAliasAdoptRefusesOwnedAlias(t *testing.T) {
 	bao.data["identity/entity-alias/id/"+idtAliasID] = aliasRead()
 	bao.responses["identity/lookup/entity"] = map[string]any{"id": idtEntityID, litAliases: []any{aliasRead()}}
 	conns := idtConns{client: bao}
-	r := engine.New(k8s, scheme, events.NewFakeRecorder(100), conns, EntityAliasAdapter{Reader: k8s, Conns: conns},
-		func() *identityv1alpha1.EntityAlias { return &identityv1alpha1.EntityAlias{} }, engine.Options{})
+	r := engine.New(k8s, scheme, events.NewFakeRecorder(100), conns, IdentityEntityAliasAdapter{Reader: k8s, Conns: conns},
+		func() *identityv1alpha1.IdentityEntityAlias { return &identityv1alpha1.IdentityEntityAlias{} }, engine.Options{})
 	_, _ = r.Reconcile(context.Background(), ctrl.Request{NamespacedName: client.ObjectKeyFromObject(intruder)})
 
 	if got := bao.data["identity/entity-alias/id/"+idtAliasID][litCanonicalID]; got != idtEntityID {
@@ -98,12 +98,12 @@ func TestEntityAliasAdoptRefusesOwnedAlias(t *testing.T) {
 // TestGroupAliasAdoptRefusesOwnedAlias: the same rule for group aliases.
 func TestGroupAliasAdoptRefusesOwnedAlias(t *testing.T) {
 	const aliasID = "1637fa8d"
-	spec := identityv1alpha1.GroupAliasSpec{AliasName: litKcDevs, MountAccessor: idtAccessor}
+	spec := identityv1alpha1.IdentityGroupAliasSpec{AliasName: litKcDevs, MountAccessor: idtAccessor}
 	spec.ConnectionRef = commonv1alpha1.ConnectionReference{Name: "bao"}
-	owner := &identityv1alpha1.GroupAlias{ObjectMeta: idtMeta("owner"), Spec: spec}
+	owner := &identityv1alpha1.IdentityGroupAlias{ObjectMeta: idtMeta("owner"), Spec: spec}
 	owner.Spec.GroupID, owner.UID = idtExtGroupID, types.UID("owner")
 	owner = acquiredAlias(owner, "identity/group-alias/id/"+aliasID, aliasID)
-	intruder := &identityv1alpha1.GroupAlias{ObjectMeta: idtMeta("intruder"), Spec: spec}
+	intruder := &identityv1alpha1.IdentityGroupAlias{ObjectMeta: idtMeta("intruder"), Spec: spec}
 	intruder.Spec.GroupID, intruder.UID, intruder.Generation = "another-group", types.UID("intruder"), 1
 	intruder.Spec.CreationPolicy = commonv1alpha1.CreationPolicyCreateOrAdopt
 	k8s, scheme := aliasOwnershipClient(t, owner, intruder)
@@ -113,8 +113,8 @@ func TestGroupAliasAdoptRefusesOwnedAlias(t *testing.T) {
 	bao.data["identity/group-alias/id/"+aliasID] = stored
 	bao.responses["identity/lookup/group"] = groupLookup()
 	conns := idtConns{client: bao}
-	r := engine.New(k8s, scheme, events.NewFakeRecorder(100), conns, GroupAliasAdapter{Reader: k8s, Conns: conns},
-		func() *identityv1alpha1.GroupAlias { return &identityv1alpha1.GroupAlias{} }, engine.Options{})
+	r := engine.New(k8s, scheme, events.NewFakeRecorder(100), conns, IdentityGroupAliasAdapter{Reader: k8s, Conns: conns},
+		func() *identityv1alpha1.IdentityGroupAlias { return &identityv1alpha1.IdentityGroupAlias{} }, engine.Options{})
 	_, _ = r.Reconcile(context.Background(), ctrl.Request{NamespacedName: client.ObjectKeyFromObject(intruder)})
 
 	if got := bao.data["identity/group-alias/id/"+aliasID][litCanonicalID]; got != idtExtGroupID {

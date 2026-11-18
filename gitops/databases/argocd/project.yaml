@@ -10,12 +10,12 @@ spec:
     - server: https://kubernetes.default.svc
       namespace: obco-gitops
   namespaceResourceWhitelist:
-    - {group: sys.openbaoconfig.io, kind: OpenBaoNamespace}
-    - {group: sys.openbaoconfig.io, kind: SecretsMount}
-    - {group: sys.openbaoconfig.io, kind: AuthMount}
-    - {group: sys.openbaoconfig.io, kind: Policy}
-    - {group: auth.openbaoconfig.io, kind: KubernetesAuthConfig}
-    - {group: auth.openbaoconfig.io, kind: KubernetesAuthRole}
-    - {group: secrets.openbaoconfig.io, kind: DatabaseConnection}
-    - {group: secrets.openbaoconfig.io, kind: DatabaseRole}
+    - {group: sys.obco.dev, kind: BaoNamespace}
+    - {group: sys.obco.dev, kind: SecretsMount}
+    - {group: sys.obco.dev, kind: AuthMount}
+    - {group: sys.obco.dev, kind: ACLPolicy}
+    - {group: auth.obco.dev, kind: KubernetesAuthConfig}
+    - {group: auth.obco.dev, kind: KubernetesAuthRole}
+    - {group: secrets.obco.dev, kind: DatabaseConnection}
+    - {group: secrets.obco.dev, kind: DatabaseRole}
   clusterResourceWhitelist: []

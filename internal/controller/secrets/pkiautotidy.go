@@ -9,9 +9,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/engine"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiautotidies,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiautotidies/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=pkiautotidies/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiautotidies,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiautotidies/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=pkiautotidies/finalizers,verbs=update
 
 // SetupPKIAutoTidy registers the PKIAutoTidy controller with the manager.
 func SetupPKIAutoTidy(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

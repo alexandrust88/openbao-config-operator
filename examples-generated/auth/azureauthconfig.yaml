@@ -1,4 +1,4 @@
-# AzureAuthConfig (auth.openbaoconfig.io/v1alpha1)
+# AzureAuthConfig (auth.obco.dev/v1alpha1)
 # AzureAuthConfig manages the configuration of an OpenBao Azure auth method at auth/<mountPath>/config.
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
@@ -6,9 +6,9 @@
 # The Secrets after it hold fake values for the secret references. Required spec fields: connectionRef, resource,
 # tenantID.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/auth/#azureauthconfig
+# Reference: https://docs.obco.dev/reference/api/auth/#azureauthconfig
 # Curated example: examples/auth/azureauthconfig.yaml
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AzureAuthConfig
 metadata:
   name: example
@@ -19,7 +19,7 @@ spec:
     key: value
     name: azureauthconfig-client-secret-secret-ref
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -30,7 +30,7 @@ spec:
   maxRetries: 1
   maxRetryDelay: 1h
   mountPath: azure
-  namespace: example
+  openbaoNamespace: example
   resource: example
   retryDelay: 1h
   tenantID: example

@@ -316,16 +316,16 @@ func nsmStartCluster(t *testing.T, assets, crdDir, dir string) nsmCluster {
 	return nsmCluster{k8s: k8s, kubeconfig: kubeconfig}
 }
 
-// nsmConnect creates the Kubernetes namespace of mode m, its OpenBaoServer, the AppRole Secret and the
-// OpenBaoConnection, and waits for the connection to be Ready.
+// nsmConnect creates the Kubernetes namespace of mode m, its BaoServer, the AppRole Secret and the
+// BaoConnection, and waits for the connection to be Ready.
 func nsmConnect(ctx context.Context, k8s client.Client, m *nsmMode) error {
 	if err := k8s.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: m.k8sNS}}); err != nil &&
 		!apierrors.IsAlreadyExists(err) {
 		return err
 	}
 	server := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "core.openbaoconfig.io/v1alpha1",
-		"kind":       "OpenBaoServer",
+		"apiVersion": "core.obco.dev/v1alpha1",
+		"kind":       "BaoServer",
 		"metadata":   map[string]any{nsmKeyName: m.k8sNS},
 		"spec": map[string]any{"address": m.bao.addr, "allowInsecureHTTP": true, "requestTimeout": "10s",
 			"allowedNamespaces": map[string]any{}},
@@ -354,13 +354,13 @@ func nsmConnect(ctx context.Context, k8s client.Client, m *nsmMode) error {
 		}},
 	}
 	if m.connNamespace != "" {
-		spec["namespace"] = m.connNamespace
+		spec["openbaoNamespace"] = m.connNamespace
 	}
 	if m.authNamespace != nil {
-		spec["authNamespace"] = *m.authNamespace
+		spec["openbaoAuthNamespace"] = *m.authNamespace
 	}
 	conn := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "core.openbaoconfig.io/v1alpha1",
+		"apiVersion": "core.obco.dev/v1alpha1",
 		"kind":       nsmKindConnection,
 		"metadata":   map[string]any{nsmKeyName: nsmConnection, "namespace": m.k8sNS},
 		nsmKeySpec:   spec,

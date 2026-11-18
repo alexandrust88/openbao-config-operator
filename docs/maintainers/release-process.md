@@ -21,9 +21,9 @@ The project version and the API version are separate:
 
 | project version | API versions | compatibility promise |
 |-----------------|--------------|-----------------------|
-| `0.y.z` | `v1alpha1` | a minor release may break the API; breaking changes are called out in the release notes and follow the [deprecation policy](#deprecation-policy) for alpha |
-| `0.y.z`, late | `v1alpha1` and `v1beta1` served | `v1beta1` added as a schema-compatible version ([ADR 0020](../adr/0020-crd-versioning-without-webhooks.md)); `v1alpha1` stays the storage version for at least one minor |
-| `1.0.0` and later | `v1beta1` (then `v1`) as storage version | breaking changes only in a major release; beta deprecation rules apply |
+| `1.y.z` (now, from the first release 1.0.0) | `v1alpha1` | fields can still change in a minor release; changes are called out in the release notes and follow the [deprecation policy](#deprecation-policy) for alpha |
+| `1.y.z`, later | `v1alpha1` and `v1beta1` served | `v1beta1` added as a schema-compatible version ([ADR 0020](../adr/0020-crd-versioning-without-webhooks.md)); `v1alpha1` stays the storage version for at least one minor |
+| once `v1beta1` is the storage version | `v1beta1` (then `v1`) as storage version | beta deprecation rules apply |
 
 Conditions for adding `v1beta1` (tracked in the [roadmap](roadmap.md)):
 
@@ -40,23 +40,23 @@ title is a [conventional commit](https://www.conventionalcommits.org) (enforced 
 at the end of the pull request description. [release-please](https://github.com/googleapis/release-please) reads
 those commits:
 
-| commit | before 1.0.0 | from 1.0.0 |
-|--------|--------------|------------|
-| `fix:`, `perf:` | patch | patch |
-| `feat:` | minor | minor |
-| `feat!:`, `fix!:` or a `BREAKING CHANGE:` footer | minor | major |
-| `docs:`, `chore:`, `ci:`, `test:`, `refactor:`, `build:`, `style:` | no release on their own | no release on their own |
+| commit | release |
+|--------|---------|
+| `fix:`, `perf:` | patch |
+| `feat:` | minor |
+| `feat!:`, `fix!:` or a `BREAKING CHANGE:` footer | major |
+| `docs:`, `chore:`, `ci:`, `test:`, `refactor:`, `build:`, `style:` | no release on their own |
 
 The configuration is in [`.github/release-please-config.json`](../../.github/release-please-config.json) and the
 current version in [`.github/.release-please-manifest.json`](../../.github/.release-please-manifest.json). To force
 a version, for example a release candidate, end the description of the next pull request with a
-`Release-As: 0.2.0-rc.1` footer; edit the description before you merge, because the squash commit copies it.
+`Release-As: 1.1.0-rc.1` footer; edit the description before you merge, because the squash commit copies it.
 
 release-please runs only when the `release-please` environment has the GitHub App configured
 ([repository settings](#repository-settings-this-process-relies-on)). Without the app, the `Release pull request`
 job of [`release-please.yml`](../../.github/workflows/release-please.yml) logs "release-please skipped" and opens
-no pull request. The app is not configured yet, so v0.1.0 to v0.3.1 were released through the
-[manual path](#cutting-a-release), and the maintainer chose each version by the same rules.
+no pull request. The app is not configured yet, so releases follow the
+[manual path](#cutting-a-release), and the maintainer chooses each version by the same rules.
 
 ## Repository settings this process relies on
 
@@ -65,10 +65,11 @@ Set these once when the repository is created:
 - Pull requests: allow squash merging only; default squash commit message "Pull request title and description".
 - A ruleset on `main` and `release-X.Y`: require pull requests, the `ci` jobs and `Conventional commit title`, and
   block force pushes. Approvals are required only once there are two maintainers
-  ([solo and strict mode](github-settings.md#solo-and-strict-mode)). Only maintainers may create `release-X.Y`
-  branches.
+  ([solo and strict mode](github-settings.md#solo-and-strict-mode)). Only the bypass list (the repository admin
+  role, which on a personal repository is the owner) may create `release-X.Y` branches.
 - Release immutability on: a published release cannot be changed.
-- A tag ruleset on `v*`: only maintainers may create tags; tags cannot be updated or deleted.
+- A tag ruleset on `v*`: only the bypass list (the repository admin role, which on a personal repository is the
+  owner) may create tags; tags cannot be updated or deleted.
 - Environment `release`, with the owner as required reviewer, for every publishing job, and the environment
   secrets `HELM_SIGNING_KEY` and `HELM_SIGNING_PASSPHRASE` ([chart signing key](#chart-signing-key)).
 - Environment `release-please`, limited to `main` and `release-X.Y`. Optional, recommended: a GitHub App with
@@ -81,8 +82,8 @@ Set these once when the repository is created:
 
 ## Before the first release
 
-Both steps were done for `v0.1.0`: the image and chart packages are public. Repeat them when the repository moves to
-a new owner.
+Do both steps for the first release, 1.0.0, unless the image and chart packages are already public, and again when
+the repository moves to a new owner.
 
 1. **Rehearse in a fork.** Fork the repository into a throwaway account, enable Actions in the fork, run `hack/github/apply-settings.sh` against
    it, push a throwaway tag such as `v0.0.1-rehearsal.1` and let the release workflow run to the end. Check the
@@ -90,11 +91,26 @@ a new owner.
    `REPOSITORY=<owner>/openbao-config-operator hack/release/verify-release.sh v0.0.1-rehearsal.1`. Delete the fork and
    its packages afterwards; nothing it published is used.
 2. **Make the packages public after the first release.** New packages are private, so the
-   `v0.1.0` image and chart cannot be pulled anonymously. When the release workflow has finished, open the
+   image and chart of the first release cannot be pulled anonymously. When the release workflow has finished, open the
    owner's Packages tab, set the `openbao-config-operator` image package and the
    `charts/openbao-config-operator` chart package to public (Package settings > Change visibility), and connect
-   both to this repository. Then run `hack/release/verify-release.sh v0.1.0` from a machine that is not logged in to
+   both to this repository. Then run `hack/release/verify-release.sh v1.0.0` from a machine that is not logged in to
    `ghcr.io`.
+
+## First release after the API rename (1.0.0)
+
+1. **Force the version.** `.github/.release-please-manifest.json` still names a withdrawn pre-release, so end the
+   description of the pull request that cuts the release with the footer `Release-As: 1.0.0`. On the manual path,
+   set the manifest to `1.0.0` in the changelog pull request.
+2. **Release** as in [cutting a release](#cutting-a-release), and verify it.
+3. **Pin the GitOps example to the published chart**, in one pull request after the release workflow has finished,
+   because the Flux digest exists only once the chart is pushed:
+   - `gitops/argocd/applications/gitops-operator.yaml`: `targetRevision: 1.0.0`;
+   - `gitops/flux/operator/source.yaml`: `tag: 1.0.0` and the `digest` of the published OCI chart
+     (`crane digest ghcr.io/alexandrust88/charts/openbao-config-operator:1.0.0`);
+   - `hack/lab/gitops/test_argocd.py`: the asserted `targetRevision`;
+   - the copies of these files inlined in `docs/guides/argocd.md` and `docs/guides/flux.md`, which
+     `TestInlinedExampleMatchesFile` in `make test-docs` compares with the files.
 
 ## Chart signing key
 
@@ -105,7 +121,7 @@ the OCI chart, and `artifacthub.io/signKey` names the key's fingerprint and its 
 when that `.prov` file exists. The job fails when either secret is missing or when the signature does not verify
 with the committed public key, so set the key up before the next tag:
 
-```sh
+```bash
 gpg --quick-gen-key "openbao-config-operator chart signing key" rsa4096 sign never
 FPR=$(gpg --with-colons --list-secret-keys "openbao-config-operator chart signing key" | awk -F: '$1 == "fpr" {print $10; exit}')
 echo "$FPR"
@@ -131,8 +147,7 @@ signed; their cosign signatures still verify.
 
 There are two paths, and both end with a tag push that starts the release workflow. With release-please, a
 maintainer merges the release pull request. On the manual path, a maintainer writes the changelog entry and pushes
-the tag. v0.1.0 to v0.3.1 were tagged by hand without a changelog pull request; their entries were added afterwards.
-Steps 2 and 5 differ by path.
+the tag. Steps 2 and 5 differ by path.
 
 1. **Check main.** The latest `ci`, `e2e` and weekly `conformance` runs on `main` are green, and no
    `priority/critical-urgent` issue is open for the release.
@@ -155,7 +170,7 @@ Steps 2 and 5 differ by path.
    green.
 6. **Tag the merge commit** with an annotated tag and push it:
 
-   ```sh
+   ```bash
    git fetch origin
    git switch --detach origin/main
    git log -1 --format='%H %s'
@@ -184,7 +199,7 @@ Steps 2 and 5 differ by path.
    crane, jq, yq, curl and Helm v4, because Helm v3 cannot read the armoured chart signing key; `make helm` downloads
    the pinned Helm v4 into `bin/`:
 
-   ```sh
+   ```bash
    make helm
    HELM="$PWD/bin/helm" hack/release/verify-release.sh vX.Y.Z
    ```
@@ -211,7 +226,7 @@ version and tag of the release. The archive is reproducible (sorted entries, the
 owner 0:0, `gzip -n`) and is built before the checksums, so `sha256sums.txt`, its signature and the provenance cover it. Users
 download it from `https://github.com/alexandrust88/openbao-config-operator/releases/download/<tag>/examples-<version>.tar.gz`.
 `hack/release/verify-release.sh` with `ASSETS_DIR` checks that the bundle is listed in `sha256sums.txt`, is covered by
-the provenance and holds only those two directories (releases up to v0.1.1 have no bundle), and `make release-dry-run`
+the provenance and holds only those two directories, and `make release-dry-run`
 builds it twice and fails unless both archives are identical.
 
 If the release workflow fails after the tag is pushed, fix the cause on `main` and release the next patch
@@ -239,7 +254,7 @@ release with a migration note.
 
 - Release branches are named `release-X.Y` and are created from the release tag when the first backport is needed:
 
-  ```sh
+  ```bash
   git switch -c release-X.Y vX.Y.0
   git push origin release-X.Y
   ```
@@ -257,10 +272,8 @@ release with a migration note.
 
 ### Operator releases
 
-| phase | supported releases |
-|-------|--------------------|
-| `0.y` | the latest minor; critical security fixes only for the previous minor, for 30 days after the next minor is released, at the maintainers' discretion |
-| from `1.0.0` | the latest two minors; security fixes for the previous minor until three months after the next minor is released |
+The latest two minors are supported: the latest minor gets every fix, and the previous minor gets security fixes
+until three months after the next minor is released.
 
 This matches [SECURITY.md](../../SECURITY.md#supported-versions); change both together.
 
@@ -288,7 +301,7 @@ release that deprecates it and again in the release that removes it.
 
 | API version | rule |
 |-------------|------|
-| `v1alpha1` | a field to be removed or renamed is deprecated first and kept for at least one minor release ([upgrade.md](../operate/upgrade.md#api-compatibility)); a renamed field keeps working under its old name during that release |
+| `v1alpha1` | a field to be removed or renamed is deprecated first and kept for at least one minor release ([Upgrade](../operate/upgrade.md#api-compatibility)); a renamed field keeps working under its old name during that release |
 | `v1beta1` | a deprecated field is kept for at least three minor releases or nine months, whichever is longer |
 | `v1` | fields are not removed; a removal needs a new API version |
 

@@ -13,9 +13,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=rabbitmqroles,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=rabbitmqroles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=rabbitmqroles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=rabbitmqroles,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=rabbitmqroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=rabbitmqroles/finalizers,verbs=update
 
 // SetupRabbitMQRole registers the RabbitMQRole controller with the manager.
 func SetupRabbitMQRole(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

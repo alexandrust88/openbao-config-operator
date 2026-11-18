@@ -16,7 +16,7 @@ import (
 )
 
 // ConnectionIndex is the field index that maps a resource to the connection it references, in the form
-// "OpenBaoConnection/<namespace>/<name>" or "ClusterOpenBaoConnection/<name>".
+// "BaoConnection/<namespace>/<name>" or "ClusterBaoConnection/<name>".
 const ConnectionIndex = ".spec.connectionRef.key"
 
 // ConnectionIndexFunc extracts the ConnectionIndex value; it is exported for fake clients in tests.
@@ -32,7 +32,7 @@ func ConnectionIndexFunc(o client.Object) []string {
 // instead of waiting for the ConnectionNotReady retry. Connection kinds that the scheme or the API server do not
 // serve are skipped.
 func (r *Reconciler[T]) watchConnections(mgr ctrl.Manager, b *builder.Builder) error {
-	for _, conn := range []client.Object{&corev1alpha1.OpenBaoConnection{}, &corev1alpha1.ClusterOpenBaoConnection{}} {
+	for _, conn := range []client.Object{&corev1alpha1.BaoConnection{}, &corev1alpha1.ClusterBaoConnection{}} {
 		served, err := r.served(mgr, conn)
 		if err != nil {
 			return err
@@ -42,7 +42,7 @@ func (r *Reconciler[T]) watchConnections(mgr ctrl.Manager, b *builder.Builder) e
 		}
 		enqueue, err := enqueueByIndex(mgr.GetClient(), r.scheme, r.newObj(), ConnectionIndex, func(c client.Object) []string {
 			ref := commonv1alpha1.ConnectionReference{Kind: commonv1alpha1.ConnectionKindNamespaced, Name: c.GetName()}
-			if _, cluster := c.(*corev1alpha1.ClusterOpenBaoConnection); cluster {
+			if _, cluster := c.(*corev1alpha1.ClusterBaoConnection); cluster {
 				ref.Kind = commonv1alpha1.ConnectionKindCluster
 			}
 			return []string{ConnectionKey(c.GetNamespace(), ref)}

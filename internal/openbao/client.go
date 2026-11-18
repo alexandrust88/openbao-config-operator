@@ -309,7 +309,7 @@ func newAPIClient(cfg Config, connection string) (*api.Client, *http.Client, err
 	if !ok {
 		return nil, nil, errors.New("api config: unexpected transport type")
 	}
-	// cleanhttp honours HTTP(S)_PROXY; only the OpenBaoServer spec may decide where tokens are sent.
+	// cleanhttp honours HTTP(S)_PROXY; only the BaoServer spec may decide where tokens are sent.
 	tr.Proxy = nil
 	tr.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 	if len(cfg.CABundle) > 0 {

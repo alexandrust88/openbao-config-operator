@@ -1,4 +1,4 @@
-apiVersion: sys.openbaoconfig.io/v1alpha1
+apiVersion: sys.obco.dev/v1alpha1
 kind: AuthMount
 metadata:
   name: approle
@@ -7,7 +7,7 @@ spec:
     name: openbao
   type: approle
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AppRole
 metadata:
   name: approle-ci
@@ -16,7 +16,7 @@ spec:
     name: openbao
   mountPath: approle
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: AppRoleSecretID
 metadata:
   name: approle-ci-secret
@@ -28,7 +28,7 @@ spec:
   writeSecretRef:
     name: approle-ci-secret
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: TokenRole
 metadata:
   name: approle-token

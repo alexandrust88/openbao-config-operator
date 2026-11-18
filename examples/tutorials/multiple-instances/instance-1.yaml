@@ -1,27 +1,27 @@
 # Configuration only the first OpenBao gets: a policy that reads the quickstart's secret, and a Kubernetes auth role
 # that gives it to the ServiceAccount app of the namespace quickstart.
-apiVersion: sys.openbaoconfig.io/v1alpha1
-kind: Policy
+apiVersion: sys.obco.dev/v1alpha1
+kind: ACLPolicy
 metadata:
   name: instance-1-app
   namespace: platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: platform
   policy: |
     path "quickstart-kv/data/app" {
       capabilities = ["read"]
     }
 ---
-apiVersion: auth.openbaoconfig.io/v1alpha1
+apiVersion: auth.obco.dev/v1alpha1
 kind: KubernetesAuthRole
 metadata:
   name: instance-1-app
   namespace: platform
 spec:
   connectionRef:
-    kind: ClusterOpenBaoConnection
+    kind: ClusterBaoConnection
     name: platform
   boundServiceAccountNames:
     - app

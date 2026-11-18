@@ -25,8 +25,9 @@ image:
   repository: ghcr.io/alexandrust88/openbao-config-operator
   # -- Image tag. Defaults to the chart appVersion.
   tag: ""
-  # -- Image digest (sha256:...). When set, the image is pulled by digest.
+  # -- Image digest (sha256:...). When set, the image is pulled by digest. The released chart sets it.
   digest: ""
+  # -- Image pull policy.
   pullPolicy: IfNotPresent
 
 # -- Image pull secrets, as a list of {name: ...}.
@@ -41,17 +42,17 @@ leaderElection:
 
 # -- Namespaces the manager watches. Empty means cluster-wide. When set, access to Secrets, ConfigMaps,
 # ServiceAccount tokens, Events and every namespaced managed kind is granted through a Role in each listed namespace
-# instead of a ClusterRole.
+# instead of a ClusterRole. The release namespace, unless listed, gets only the hash-key Secret.
 watchNamespaces: []
 
 # -- Audiences the Kubernetes API server accepts besides the built-in ones (https://kubernetes.default.svc,
 # https://kubernetes.default.svc.cluster.local, kubernetes.default.svc, rke2, k3s) and the service account issuer
-# the operator discovers. A tenant OpenBaoConnection is never given a token for them.
+# the operator discovers. A tenant BaoConnection is never given a token for them.
 apiServerAudiences: []
 
 injectedIdentity:
   projectedToken:
-    # -- Mount a projected ServiceAccount token with its own audience for ClusterOpenBaoConnection
+    # -- Mount a projected ServiceAccount token with its own audience for ClusterBaoConnection
     # injectedIdentity logins. The CRD's default tokenPath is the default path; the operator never sends the
     # automounted token, so a connection with injectedIdentity needs this or another projected token.
     enabled: true
@@ -59,23 +60,27 @@ injectedIdentity:
     audience: openbao-config-operator
     # -- Token lifetime in seconds. The kubelet rotates the file before it expires.
     expirationSeconds: 3600
-    # -- Token file in the manager container. Its directory must not hold other mounts.
+    # -- Token file in the manager container. Its directory must not hold other mounts. It is also the CRD's
+    # default tokenPath: if you change it, set the connection's tokenPath to the same file.
     path: /var/run/secrets/openbao/token
 
 serviceAccount:
   # -- Create the ServiceAccount.
   create: true
-  # -- ServiceAccount name. Defaults to the full name; required when create is false.
+  # -- ServiceAccount name. Defaults to the full name; required when create is false. The name default is refused,
+  # so the manager rights never land on the namespace's default ServiceAccount.
   name: ""
+  # -- Annotations of the ServiceAccount.
   annotations: {}
 
 rbac:
   # -- Create the manager ClusterRole, Roles and bindings.
   create: true
-  # -- Create the user-facing <release>-tenant-editor and <release>-viewer ClusterRoles.
+  # -- Create the user-facing `<release>-tenant-editor` and `<release>-viewer` ClusterRoles. The viewer never
+  # includes BaoServer or ClusterBaoConnection.
   userRoles: true
   tenantEditor:
-    # -- Plurals to leave out of the tenant-editor role, for example openbaoendpoints to keep the raw-path kind
+    # -- Plurals to leave out of the tenant-editor role, for example baoendpoints to keep the raw-path kind
     # for platform admins (ADR 0006).
     excludeKinds: []
   aggregate:
@@ -89,32 +94,43 @@ rbac:
 metrics:
   # -- Serve metrics over HTTPS on metrics.port, protected by Kubernetes authentication and authorization.
   enabled: true
+  # -- Metrics port.
   port: 8443
   # -- Secret (tls.crt, tls.key) with the metrics serving certificate. Empty uses a self-signed certificate.
   certSecret: ""
   service:
     # -- Only ClusterIP: the metrics endpoint is for in-cluster scrapers.
     type: ClusterIP
+    # -- Annotations of the metrics Service.
     annotations: {}
 
 serviceMonitor:
-  # -- Create a prometheus-operator ServiceMonitor.
+  # -- Create a prometheus-operator ServiceMonitor. Needs metrics.enabled.
   enabled: false
+  # -- Labels of the ServiceMonitor, for your Prometheus selector.
   labels: {}
+  # -- Scrape interval.
   interval: 30s
+  # -- Scrape timeout.
   scrapeTimeout: 10s
   # -- TLS configuration for scraping metrics. The default skips verification of the generated self-signed certificate.
   # With metrics.certSecret, provide ca (or caFile) and serverName; insecureSkipVerify must be false.
   tlsConfig:
+    # -- Fits only the self-signed certificate. Values are merged with this default, so set it to false explicitly
+    # when you provide ca.
     insecureSkipVerify: true
+  # -- Relabelings of the scrape endpoint.
   relabelings: []
+  # -- Metric relabelings of the scrape endpoint.
   metricRelabelings: []
 
 prometheusRule:
-  # -- Create a prometheus-operator PrometheusRule with the alerts described at runbookBaseURL.
+  # -- Create a prometheus-operator PrometheusRule with the alerts described at runbookBaseURL. Needs
+  # metrics.enabled.
   enabled: false
+  # -- Labels of the PrometheusRule object.
   labels: {}
-  # -- Series selector of the operator's metrics. Empty means job="<fullname>-metrics" in the release namespace.
+  # -- Series selector of the operator's metrics. Empty means `job="<fullname>-metrics"` in the release namespace.
   selector: ""
   # -- Labels added to every alert, for example for routing.
   alertLabels: {}
@@ -127,20 +143,23 @@ prometheusRule:
   # -- How long writes must continue before OpenBaoConfigOperatorSteadyStateWrites fires.
   steadyStateWritesFor: 30m
   # -- Base URL of each alert's runbook_url; the lower-case alert name is appended as the anchor.
-  runbookBaseURL: https://alexandrust88.github.io/openbao-config-operator/operate/runbooks/
+  runbookBaseURL: https://docs.obco.dev/operate/runbooks/
 
 health:
+  # -- Port of the /healthz and /readyz endpoints that the liveness and readiness probes call.
   port: 8081
 
 pprof:
   # -- Serve Go pprof profiles on 127.0.0.1 inside the pod (no Service); reach them with kubectl port-forward.
   # A heap profile holds OpenBao tokens, so whoever may port-forward to the pod can then read them.
   enabled: false
+  # -- pprof port.
   port: 8082
 
-# -- Extra manager arguments. Flags the chart sets from a value (--leader-elect, --metrics-secure, --metrics-bind-address,
-# --metrics-cert-path, --pprof-bind-address, --health-probe-bind-address, --watch-namespaces, --apiserver-audiences,
-# --enable-plugin-kinds) and --hash-key-secret, whose name the namespace-scoped Role pins, are refused here.
+# -- Extra manager arguments. Flags the chart sets from a value (`--leader-elect`, `--metrics-secure`,
+# `--metrics-bind-address`, `--metrics-cert-path`, `--pprof-bind-address`, `--health-probe-bind-address`,
+# `--watch-namespaces`, `--apiserver-audiences`, `--enable-plugin-kinds`) and `--hash-key-secret`, whose name the
+# namespace-scoped Role pins, are refused here.
 extraArgs: []
 # -- Extra manager environment variables. POD_NAMESPACE is refused: the chart sets it.
 extraEnv: []
@@ -149,41 +168,65 @@ extraVolumes: []
 # -- Extra volume mounts of the manager container.
 extraVolumeMounts: []
 
+# -- Manager container resources.
 resources:
   requests:
+    # -- CPU request.
     cpu: 50m
+    # -- Memory request.
     memory: 128Mi
   limits:
+    # -- Memory limit.
     memory: 512Mi
 
+# -- Pod security context.
 podSecurityContext:
+  # -- Run as a non-root user.
   runAsNonRoot: true
+  # -- User ID. Set it to null where the platform assigns UIDs (OpenShift).
   runAsUser: 65532
+  # -- Group ID. Set it to null where the platform assigns UIDs (OpenShift).
   runAsGroup: 65532
   seccompProfile:
+    # -- Seccomp profile of the pod.
     type: RuntimeDefault
 
+# -- Manager container security context. allowPrivilegeEscalation, readOnlyRootFilesystem and runAsNonRoot are
+# required; added capabilities are refused.
 securityContext:
+  # -- Block privilege escalation.
   allowPrivilegeEscalation: false
+  # -- Run unprivileged.
   privileged: false
+  # -- Mount the root file system read-only.
   readOnlyRootFilesystem: true
+  # -- Run as a non-root user.
   runAsNonRoot: true
   capabilities:
+    # -- Capabilities to drop.
     drop:
       - ALL
   seccompProfile:
+    # -- Seccomp profile of the container.
     type: RuntimeDefault
 
+# -- Merged into the httpGet liveness probe on /healthz.
 livenessProbe:
+  # -- Seconds before the first liveness check.
   initialDelaySeconds: 15
+  # -- Seconds between liveness checks.
   periodSeconds: 20
+# -- Merged into the httpGet readiness probe on /readyz.
 readinessProbe:
+  # -- Seconds before the first readiness check.
   initialDelaySeconds: 5
+  # -- Seconds between readiness checks.
   periodSeconds: 10
 
 podDisruptionBudget:
   # -- Create a PodDisruptionBudget when replicas > 1.
   enabled: true
+  # -- Minimum available pods, as a number or a percentage.
   minAvailable: 1
   # -- Used instead of minAvailable when set.
   maxUnavailable: ""
@@ -194,16 +237,25 @@ topologySpreadConstraints:
     topologyKey: kubernetes.io/hostname
     whenUnsatisfiable: ScheduleAnyway
 
+# -- Pod priority class.
 priorityClassName: ""
+# -- Pod node selector.
 nodeSelector: {}
+# -- Pod tolerations.
 tolerations: []
+# -- Pod affinity.
 affinity: {}
 
+# -- Seconds the pod gets to shut down.
 terminationGracePeriodSeconds: 10
+# -- Old ReplicaSets the Deployment keeps.
 revisionHistoryLimit: 10
 
+# -- Annotations of the pod.
 podAnnotations: {}
+# -- Labels of the pod.
 podLabels: {}
+# -- Annotations of the Deployment.
 annotations: {}
 
 networkPolicy:
@@ -211,7 +263,7 @@ networkPolicy:
   enabled: true
   # -- kubernetes renders a NetworkPolicy; cilium renders a CiliumNetworkPolicy that reaches the API server through
   # the kube-apiserver entity, which an ipBlock does not match on Cilium. metrics.from, dns.to, apiServer.cidrs and
-  # openbao.to apply to the kubernetes flavor only.
+  # openbao.to apply to the kubernetes flavour only.
   flavor: kubernetes
   metrics:
     # -- Namespace of the metrics scraper. With an empty from, the release namespace and this namespace may scrape.
@@ -219,6 +271,7 @@ networkPolicy:
     # -- NetworkPolicy peers allowed to scrape metrics, replacing the release and monitoring namespaces.
     from: []
   dns:
+    # -- DNS peers. The default is the kube-dns pods in kube-system.
     to:
       - namespaceSelector:
           matchLabels:
@@ -229,20 +282,23 @@ networkPolicy:
     nodeLocalDNS:
       # -- Also allow DNS to NodeLocal DNSCache.
       enabled: false
+      # -- NodeLocal DNSCache address.
       address: 169.254.20.10
   apiServer:
     # -- API server CIDRs. Empty allows any destination on the API server ports.
     cidrs: []
+    # -- API server ports.
     ports:
       - 443
       - 6443
   openbao:
     # -- OpenBao peers. Empty allows any destination on the OpenBao ports.
     to: []
-    # -- OpenBao host names for the cilium flavor (toFQDNs, needs the Cilium DNS proxy). Empty allows any
+    # -- OpenBao host names for the cilium flavour (toFQDNs, needs the Cilium DNS proxy). Empty allows any
     # destination on the OpenBao ports.
     fqdns: []
+    # -- OpenBao ports.
     ports:
       - 8200
-  # -- Extra egress rules, in the syntax of the selected flavor.
+  # -- Extra egress rules, in the syntax of the selected flavour.
   extraEgress: []

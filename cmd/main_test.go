@@ -185,7 +185,7 @@ func TestPluginKindsMatchCatalogueAndChart(t *testing.T) {
 	for _, c := range pluginKindControllers {
 		group, kind, _ := strings.Cut(c.name, "/")
 		kinds = append(kinds, kind)
-		files = append(files, group+".openbaoconfig.io_"+strings.ToLower(kind)+"s.yaml")
+		files = append(files, group+".obco.dev_"+strings.ToLower(kind)+"s.yaml")
 	}
 	slices.Sort(catalogue)
 	slices.Sort(kinds)
@@ -204,7 +204,7 @@ func TestPluginKindsMatchCatalogueAndChart(t *testing.T) {
 }
 
 func TestRequireCRDs(t *testing.T) {
-	gv := schema.GroupVersion{Group: "auth.openbaoconfig.io", Version: "v1alpha1"}
+	gv := schema.GroupVersion{Group: "auth.obco.dev", Version: "v1alpha1"}
 	mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{gv})
 	mapper.Add(gv.WithKind("LDAPAuthConfig"), meta.RESTScopeNamespace)
 	present := []kindController{{name: "auth/LDAPAuthConfig"}}

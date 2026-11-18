@@ -1,6 +1,6 @@
 suite: plugin kinds
 templates:
-  - templates/crds/auth.openbaoconfig.io_ldapauthconfigs.yaml
+  - templates/crds/auth.obco.dev_ldapauthconfigs.yaml
 release:
   name: obc
   namespace: openbao-system

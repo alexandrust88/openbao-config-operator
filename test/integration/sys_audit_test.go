@@ -276,7 +276,7 @@ func audWrites(t *testing.T) float64 {
 		t.Fatal(err)
 	}
 	for _, family := range families {
-		if family.GetName() != "openbao_writes_total" {
+		if family.GetName() != "obco_writes_total" {
 			continue
 		}
 		for _, m := range family.GetMetric() {
@@ -306,7 +306,7 @@ func audSetup(ctx context.Context, t *testing.T) audEnv {
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,
 		CRDInstallOptions: envtest.CRDInstallOptions{
-			Paths:              []string{filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_audits.yaml")},
+			Paths:              []string{filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_audits.yaml")},
 			ErrorIfPathMissing: true,
 		},
 	}

@@ -1,0 +1,382 @@
+{{- if .Values.crds.install }}
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+    {{- with include "openbao-config-operator.crdAnnotations" . }}
+    {{- . | nindent 4 }}
+    {{- end }}
+  name: jwtauthconfigs.auth.obco.dev
+  labels:
+    {{- include "openbao-config-operator.labels" . | nindent 4 }}
+    {{- with .Values.crds.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  group: auth.obco.dev
+  names:
+    categories:
+      - obco
+      - obco-auth
+    kind: JWTAuthConfig
+    listKind: JWTAuthConfigList
+    plural: jwtauthconfigs
+    singular: jwtauthconfig
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .status.conditions[?(@.type=="Ready")].status
+          name: Ready
+          type: string
+        - jsonPath: .status.conditions[?(@.type=="Synced")].status
+          name: Synced
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+      name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: "JWTAuthConfig manages the configuration of an OpenBao JWT/OIDC auth method at auth/<mountPath>/config. Use it to set how JWTs are verified (OIDC discovery, JWKS URL or static keys) and the OIDC client for browser logins; one per mount.\n\nExample:\n\n\tspec:\n\t  connectionRef:\n\t    name: openbao\n\t  mountPath: oidc\n\t  oidcDiscoveryURL: https://keycloak.example.com/realms/platform\n\t  oidcClientID: openbao\n\t  oidcClientSecretSecretRef: {name: oidc-client, key: client-secret}\n\t  defaultRole: default\n\t  deletionPolicy: Orphan"
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: 'Desired state of a JWT/OIDC auth method configuration, written to auth/<mountPath>/config. OpenBao replaces the whole configuration on every write, so unset fields are reset to their OpenBao defaults. Set exactly one key source: oidcDiscoveryURL, jwksURL, jwtValidationPubkeys or a kubernetes providerConfig. deletionPolicy must be Orphan.'
+              properties:
+                boundIssuer:
+                  description: 'Value the iss claim of every JWT must equal. Unset skips the issuer check. Maps to `bound_issuer`. Example: https://keycloak.example.com/realms/platform'
+                  maxLength: 2048
+                  type: string
+                connectionRef:
+                  description: Connection used to reach and log in to OpenBao. Immutable.
+                  properties:
+                    kind:
+                      default: BaoConnection
+                      description: 'Kind of the connection: BaoConnection (in the same Kubernetes namespace as this resource) or ClusterBaoConnection (cluster-scoped; its allowedNamespaces must select this namespace). Default: BaoConnection.'
+                      enum:
+                        - BaoConnection
+                        - ClusterBaoConnection
+                      type: string
+                    name:
+                      description: 'Name of the BaoConnection or ClusterBaoConnection. Example: openbao'
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                  required:
+                    - name
+                  type: object
+                creationPolicy:
+                  default: Create
+                  description: 'How an object that already exists in OpenBao, and is not yet owned by this resource, is treated. Create (default): create the object; an existing one is refused with reason Conflict. Adopt: take over an existing object and never create one. CreateOrAdopt: create it, or take over an existing one. Settings that always exist in OpenBao (configuration singletons) need Adopt or CreateOrAdopt.'
+                  enum:
+                    - Create
+                    - Adopt
+                    - CreateOrAdopt
+                  type: string
+                defaultRole:
+                  description: 'Role used when a login request does not name one. Unset makes the role mandatory at login. Maps to `default_role`. Example: default'
+                  maxLength: 128
+                  pattern: ^[a-z0-9_.-]*$
+                  type: string
+                deletionPolicy:
+                  default: Orphan
+                  description: 'What happens in OpenBao when this resource is deleted. Orphan (default): the OpenBao object stays. Delete: the object is removed (a configuration singleton is reset to its defaults); data and key holders (mounts, namespaces, KV data, audit devices, endpoints, transit, PKI, SSH CA and TOTP keys, MFA methods, entities) are removed only while the resource carries the annotation obco.dev/allow-destructive-delete: "true". Kinds whose OpenBao object cannot be deleted reject Delete.'
+                  enum:
+                    - Delete
+                    - Orphan
+                  type: string
+                driftDetection:
+                  default: Enabled
+                  description: 'Whether OpenBao is re-read periodically to detect and repair out-of-band changes. Enabled (default): re-read every driftInterval. Disabled: write only when the spec or a referenced Secret changes.'
+                  enum:
+                    - Enabled
+                    - Disabled
+                  type: string
+                driftInterval:
+                  description: 'How often OpenBao is re-read for drift, as a duration of at least 30s. Default: the operator''s interval for the kind (15m for kinds that grant access such as policies, auth mounts and roles, 1h for the rest), with jitter. Example: 30m'
+                  maxLength: 32
+                  type: string
+                  x-kubernetes-validations:
+                    - message: driftInterval must be at least 30s
+                      rule: duration(self) >= duration('30s')
+                jwksCAPEM:
+                  description: 'PEM-encoded CA certificate or chain used to verify TLS to jwksURL. Unset uses the system trust store. Maps to `jwks_ca_pem`. Example: "-----BEGIN CERTIFICATE-----\n..."'
+                  maxLength: 65536
+                  type: string
+                jwksURL:
+                  description: 'URL of a JSON Web Key Set used to verify JWT signatures. Excludes oidcDiscoveryURL and jwtValidationPubkeys. Maps to `jwks_url`. Example: https://issuer.example.com/.well-known/jwks.json'
+                  maxLength: 2048
+                  minLength: 1
+                  type: string
+                jwtSupportedAlgs:
+                  description: 'JWT signing algorithms accepted, such as RS256, RS512, ES256 or EdDSA. OpenBao defaults to RS256. Maps to `jwt_supported_algs`. Example: [RS256, ES256]'
+                  items:
+                    maxLength: 16
+                    type: string
+                  maxItems: 16
+                  type: array
+                  x-kubernetes-list-type: set
+                jwtValidationPubkeys:
+                  description: 'PEM-encoded public keys used to verify JWT signatures locally, without contacting the issuer. Excludes oidcDiscoveryURL and jwksURL. Maps to `jwt_validation_pubkeys`. Example: ["-----BEGIN PUBLIC KEY-----\n..."]'
+                  items:
+                    maxLength: 16384
+                    type: string
+                  maxItems: 32
+                  minItems: 1
+                  type: array
+                  x-kubernetes-list-type: set
+                managementPolicy:
+                  default: Manage
+                  description: 'Whether the operator writes to OpenBao. Manage (default): converge OpenBao to the spec, create and delete as the policies say. Observe: only read the object and report drift in the conditions; never write or delete.'
+                  enum:
+                    - Manage
+                    - Observe
+                  type: string
+                mountPath:
+                  default: jwt
+                  description: 'Path of the JWT/OIDC auth method, without the auth/ prefix. Defaults to jwt. Immutable. Example: oidc'
+                  maxLength: 128
+                  minLength: 1
+                  pattern: ^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*$
+                  type: string
+                namespaceInState:
+                  description: 'When true, the OpenBao namespace is passed in the OIDC state parameter instead of as a query parameter, so redirect URIs need no namespace. OpenBao defaults to true for a new configuration and keeps the current value when unset. Maps to `namespace_in_state`. Example: true'
+                  type: boolean
+                oidcClientID:
+                  description: 'OAuth2 client ID registered with the OIDC provider, needed for the browser OIDC login flow. Must be set together with oidcClientSecretSecretRef and requires oidcDiscoveryURL. Maps to `oidc_client_id`. Example: openbao'
+                  maxLength: 512
+                  minLength: 1
+                  type: string
+                oidcClientSecretSecretRef:
+                  description: 'Secret key holding the OAuth2 client secret. Read from this Secret key; the value is never stored in status. OpenBao never returns it, so it is compared only through status.writeOnlyHash and a Secret change forces a write. Must be set together with oidcClientID. Maps to `oidc_client_secret`. Example: {name: oidc-client, key: client-secret}'
+                  properties:
+                    key:
+                      description: 'Key in the Secret''s data whose value is used. Example: password'
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                    name:
+                      description: 'Name of the Kubernetes Secret, in the same namespace as this resource. Example: openbao-credentials'
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                  required:
+                    - key
+                    - name
+                  type: object
+                oidcDiscoveryCAPEM:
+                  description: 'PEM-encoded CA certificate or chain used to verify TLS to oidcDiscoveryURL. Unset uses the system trust store. Maps to `oidc_discovery_ca_pem`. Example: "-----BEGIN CERTIFICATE-----\n..."'
+                  maxLength: 65536
+                  type: string
+                oidcDiscoveryURL:
+                  description: 'Issuer URL used for OIDC discovery, without the /.well-known/openid-configuration suffix. Excludes jwksURL and jwtValidationPubkeys; required by oidcClientID. Maps to `oidc_discovery_url`. Example: https://keycloak.example.com/realms/platform'
+                  maxLength: 2048
+                  minLength: 1
+                  type: string
+                  x-kubernetes-validations:
+                    - message: oidcDiscoveryURL must not contain the .well-known component
+                      rule: '!self.contains(''.well-known'')'
+                oidcResponseMode:
+                  description: 'OAuth2 response mode of the OIDC login: query or form_post. OpenBao defaults to query; the id_token response type requires form_post. Maps to `oidc_response_mode`. Example: form_post'
+                  enum:
+                    - query
+                    - form_post
+                  type: string
+                oidcResponseTypes:
+                  description: 'OAuth2 response types to request: code, id_token or both. OpenBao defaults to [code]; id_token requires oidcResponseMode form_post. Maps to `oidc_response_types`. Example: [code]'
+                  items:
+                    description: 'OAuth2 response type OpenBao requests from the OIDC provider: code or id_token.'
+                    enum:
+                      - code
+                      - id_token
+                    type: string
+                  maxItems: 2
+                  type: array
+                  x-kubernetes-list-type: set
+                openbaoNamespace:
+                  description: 'OpenBao namespace of the object, relative to the connection''s base namespace; empty means the connection namespace itself. Segments are separated by "/", without leading or trailing slash. Immutable: it cannot be added, changed or removed after creation. Example: team-a/apps'
+                  maxLength: 256
+                  pattern: ^[A-Za-z0-9_-][A-Za-z0-9._-]*(/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$
+                  type: string
+                overrideAllowedServerNames:
+                  description: 'Host names accepted during TLS verification of oidcDiscoveryURL and jwksURL, instead of the host name in the URL. Maps to `override_allowed_server_names`. Example: [keycloak.internal]'
+                  items:
+                    maxLength: 253
+                    type: string
+                  maxItems: 32
+                  type: array
+                  x-kubernetes-list-type: set
+                providerConfig:
+                  description: 'Provider-specific configuration, for example group fetching from Azure or Google Workspace, or kubernetes as the key source. Maps to `provider_config`. Example: {provider: azure, settings: {fetch_groups: true}}'
+                  properties:
+                    provider:
+                      description: 'Provider integration to enable. One of azure, gsuite, secureauth, ibmisam or kubernetes. kubernetes is a key source on its own; the others also need oidcDiscoveryURL. Required. Maps to `provider_config.provider`. Example: azure'
+                      enum:
+                        - azure
+                        - gsuite
+                        - secureauth
+                        - ibmisam
+                        - kubernetes
+                      type: string
+                    secretRef:
+                      description: 'Secret key holding a JSON object merged over settings, for sensitive keys such as gsuite_service_account. Read from this Secret key; the value is never stored in status. OpenBao does not return sensitive keys, so when this is set the whole provider configuration is compared only through status.writeOnlyHash and a Secret change forces a write. Example: {name: gsuite-provider, key: config.json}'
+                      properties:
+                        key:
+                          description: 'Key in the Secret''s data whose value is used. Example: password'
+                          maxLength: 253
+                          minLength: 1
+                          type: string
+                        name:
+                          description: 'Name of the Kubernetes Secret, in the same namespace as this resource. Example: openbao-credentials'
+                          maxLength: 253
+                          minLength: 1
+                          type: string
+                      required:
+                        - key
+                        - name
+                      type: object
+                    settings:
+                      additionalProperties:
+                        x-kubernetes-preserve-unknown-fields: true
+                      description: 'Other non-sensitive provider keys as a JSON object, at most 64 keys. Put sensitive keys in secretRef instead. Maps to the remaining `provider_config` keys. Example: {fetch_groups: true, groups_recurse_max_depth: 5}'
+                      maxProperties: 64
+                      type: object
+                  required:
+                    - provider
+                  type: object
+                skipJWKSValidation:
+                  description: 'When true, the configuration is accepted even if oidcDiscoveryURL or jwksURL cannot be reached at write time. OpenBao does not store it; it is tracked through status.writeOnlyHash. Maps to `skip_jwks_validation`. Example: true'
+                  type: boolean
+              required:
+                - connectionRef
+              type: object
+              x-kubernetes-validations:
+                - message: mountPath is immutable
+                  rule: has(self.mountPath) == has(oldSelf.mountPath) && (!has(self.mountPath) || self.mountPath == oldSelf.mountPath)
+                - message: 'deletionPolicy must be Orphan: the auth method configuration cannot be deleted, only replaced'
+                  rule: '!has(self.deletionPolicy) || self.deletionPolicy == ''Orphan'''
+                - message: set exactly one of oidcDiscoveryURL, jwksURL, jwtValidationPubkeys and a kubernetes providerConfig
+                  rule: '[has(self.oidcDiscoveryURL), has(self.jwksURL), has(self.jwtValidationPubkeys), has(self.providerConfig) && self.providerConfig.provider == ''kubernetes''].filter(x, x).size() == 1'
+                - message: oidcClientID and oidcClientSecretSecretRef must be set together
+                  rule: has(self.oidcClientID) == has(self.oidcClientSecretSecretRef)
+                - message: oidcClientID requires oidcDiscoveryURL
+                  rule: '!has(self.oidcClientID) || has(self.oidcDiscoveryURL)'
+                - message: the id_token response type requires oidcResponseMode form_post
+                  rule: '!has(self.oidcResponseTypes) || !self.oidcResponseTypes.exists(t, t == ''id_token'') || (has(self.oidcResponseMode) && self.oidcResponseMode == ''form_post'')'
+                - message: openbaoNamespace is immutable
+                  rule: has(self.openbaoNamespace) == has(oldSelf.openbaoNamespace) && (!has(self.openbaoNamespace) || self.openbaoNamespace == oldSelf.openbaoNamespace)
+                - message: connectionRef is immutable
+                  rule: self.connectionRef == oldSelf.connectionRef
+            status:
+              description: Observed state of the auth method configuration, written by the operator.
+              properties:
+                acquired:
+                  description: 'How the operator came to own the object: Created (it created it) or Adopted (it took over an existing one). Empty until owned.'
+                  type: string
+                conditions:
+                  description: 'Current state as conditions: Ready (the OpenBao object matches the spec) and Synced (the last reconcile succeeded), each with a reason such as Available, Drifted, Conflict, ConnectionNotReady or PermissionDenied, and the generation it describes.'
+                  items:
+                    description: Condition contains details for one aspect of the current state of this API Resource.
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          lastTransitionTime is the last time the condition transitioned from one status to another.
+                          This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                        format: date-time
+                        type: string
+                      message:
+                        description: |-
+                          message is a human readable message indicating details about the transition.
+                          This may be an empty string.
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        description: |-
+                          observedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                          with respect to the current state of the instance.
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        description: |-
+                          reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                          Producers of specific condition types may define expected values and meanings for this field,
+                          and whether the values are considered a guaranteed API.
+                          The value should be a CamelCase string.
+                          This field may not be empty.
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        description: status of the condition, one of True, False, Unknown.
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                        type: string
+                      type:
+                        description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+                id:
+                  description: 'Identifier OpenBao generated for the object (an entity, group or alias ID, or a mount accessor), for kinds that have one; other resources reference it. Example: 6c9f3e0a-1b2c-4d5e-8f90-123456789abc'
+                  type: string
+                observedGeneration:
+                  description: The metadata.generation of this resource that the operator last reconciled.
+                  format: int64
+                  type: integer
+                openbaoNamespace:
+                  description: 'Absolute OpenBao namespace the object was written in; empty means the root namespace. If it later differs from the spec, reconciling stops with reason NamespaceChanged. Example: team-a/apps'
+                  type: string
+                path:
+                  description: 'Full OpenBao API path of the object, including its namespace, as last written; deletion uses it even after the spec changed. Example: team-a/sys/policies/acl/app-read'
+                  type: string
+                rotationNonce:
+                  description: Value of the resource's rotation nonce when one-time inputs, such as a root credential that OpenBao rotates afterwards, were last sent; changing the nonce in the spec sends them again.
+                  type: string
+                serverID:
+                  description: 'Cluster ID of the OpenBao server the object was acquired on. If the connection later reaches another server, reconciling stops with reason ServerChanged and nothing is written or deleted. Example: 80f7de92-c12e-e960-4754-255c32fc6b53'
+                  type: string
+                writeOnlyHash:
+                  description: Keyed hash (HMAC-SHA256) of the write-only inputs, such as passwords read from Secrets; a change forces a write. It never contains or reveals the values.
+                  type: string
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+{{- end }}

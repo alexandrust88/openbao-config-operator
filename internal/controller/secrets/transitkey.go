@@ -14,9 +14,9 @@ import (
 	"github.com/alexandrust88/openbao-config-operator/internal/openbao"
 )
 
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=transitkeys,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=transitkeys/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=secrets.openbaoconfig.io,resources=transitkeys/finalizers,verbs=update
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=transitkeys,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=transitkeys/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=secrets.obco.dev,resources=transitkeys/finalizers,verbs=update
 
 // SetupTransitKey registers the TransitKey controller with the manager.
 func SetupTransitKey(mgr ctrl.Manager, conns engine.Connections, opts engine.Options) error {

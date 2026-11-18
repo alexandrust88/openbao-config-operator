@@ -98,8 +98,8 @@ func testTACLSteadyState(ctx context.Context, t *testing.T, e taclEnv) {
 	for _, path := range counted {
 		counts[path] = taclCount(ctx, t, e.bao, path)
 	}
-	kinds := []string{"AuthMount", "SecretsMount", "Policy", "OpenBaoNamespace", "KubernetesAuthConfig",
-		"KubernetesAuthRole", "Entity", "EntityAlias", "Group", "GroupMembership", "AccessGrant"}
+	kinds := []string{"AuthMount", "SecretsMount", "ACLPolicy", "BaoNamespace", "KubernetesAuthConfig",
+		"KubernetesAuthRole", "IdentityEntity", "IdentityEntityAlias", "IdentityGroup", "IdentityGroupMembership", "AccessGrant"}
 	before := map[string]float64{}
 	for _, kind := range kinds {
 		if before[kind] = writesFor(t, kind); before[kind] == 0 {
@@ -160,26 +160,26 @@ func testTACLRoot(ctx context.Context, t *testing.T, e taclEnv) {
 		taclRW("apps/data/group/{{identity.groups.names.tacl-devs.id}}/*"))
 	role := taclRole(taclRootConn, "tacl-apps", "tacl-sa", "tacl-entity", "tacl-group")
 
-	alice := &identityv1alpha1.Entity{
+	alice := &identityv1alpha1.IdentityEntity{
 		ObjectMeta: metav1.ObjectMeta{Name: "tacl-alice", Namespace: namespace},
-		Spec:       identityv1alpha1.EntitySpec{ResourceSpec: taclSpec(taclRootConn)},
+		Spec:       identityv1alpha1.IdentityEntitySpec{ResourceSpec: taclSpec(taclRootConn)},
 	}
-	aliceAlias := &identityv1alpha1.EntityAlias{
+	aliceAlias := &identityv1alpha1.IdentityEntityAlias{
 		ObjectMeta: metav1.ObjectMeta{Name: "tacl-alice-k8s", Namespace: namespace},
-		Spec: identityv1alpha1.EntityAliasSpec{
+		Spec: identityv1alpha1.IdentityEntityAliasSpec{
 			ResourceSpec: taclSpec(taclRootConn),
 			AliasName:    string(e.sas["tacl-a"].UID),
 			MountRef:     &commonv1alpha1.LocalObjectReference{Name: "tacl-kubernetes"},
 			EntityRef:    &commonv1alpha1.LocalObjectReference{Name: "tacl-alice"},
 		},
 	}
-	devs := &identityv1alpha1.Group{
+	devs := &identityv1alpha1.IdentityGroup{
 		ObjectMeta: metav1.ObjectMeta{Name: "tacl-devs", Namespace: namespace},
-		Spec:       identityv1alpha1.GroupSpec{ResourceSpec: taclSpec(taclRootConn)},
+		Spec:       identityv1alpha1.IdentityGroupSpec{ResourceSpec: taclSpec(taclRootConn)},
 	}
-	membership := &identityv1alpha1.GroupMembership{
+	membership := &identityv1alpha1.IdentityGroupMembership{
 		ObjectMeta: metav1.ObjectMeta{Name: "tacl-devs-alice", Namespace: namespace},
-		Spec: identityv1alpha1.GroupMembershipSpec{
+		Spec: identityv1alpha1.IdentityGroupMembershipSpec{
 			ResourceSpec: taclSpec(taclRootConn),
 			GroupRef:     &commonv1alpha1.LocalObjectReference{Name: "tacl-devs"},
 			EntityRef:    &commonv1alpha1.LocalObjectReference{Name: "tacl-alice"},
@@ -273,9 +273,9 @@ func testTACLAccessGrant(ctx context.Context, t *testing.T, e taclEnv) {
 }
 
 func testTACLChildNamespace(ctx context.Context, t *testing.T, e taclEnv) {
-	ns := &sysv1alpha1.OpenBaoNamespace{
+	ns := &sysv1alpha1.BaoNamespace{
 		ObjectMeta: metav1.ObjectMeta{Name: taclTeamNS, Namespace: namespace},
-		Spec:       sysv1alpha1.OpenBaoNamespaceSpec{ResourceSpec: taclSpec(taclRootConn)},
+		Spec:       sysv1alpha1.BaoNamespaceSpec{ResourceSpec: taclSpec(taclRootConn)},
 	}
 	mustCreate(ctx, t, e.k8s, ns)
 	waitFor(t, "namespace ready", func() error { return expectReady(ctx, e.k8s, ns) })
@@ -293,7 +293,7 @@ func testTACLChildNamespace(ctx context.Context, t *testing.T, e taclEnv) {
 		waitFor(t, obj.GetName()+" ready", func() error { return expectReady(ctx, e.k8s, obj) })
 	}
 	if got := idPolicy.Status.Namespace; strings.Trim(got, "/") != taclTeamNS {
-		t.Errorf("status.namespace of the spec.namespace policy = %q, want %s", got, taclTeamNS)
+		t.Errorf("status.openbaoNamespace of the spec.openbaoNamespace policy = %q, want %s", got, taclTeamNS)
 	}
 	if _, err := e.bao.Read(ctx, "sys/policies/acl/tacl-entity-id"); !errors.Is(err, openbao.ErrNotFound) {
 		t.Errorf("child-namespace policy leaked into the root namespace: %v", err)
@@ -374,10 +374,10 @@ func taclKubernetes(ctx context.Context, t *testing.T, e *taclEnv) {
 	})
 }
 
-func taclPolicy(conn, name, baoNamespace, text string) *sysv1alpha1.Policy {
-	p := &sysv1alpha1.Policy{
+func taclPolicy(conn, name, baoNamespace, text string) *sysv1alpha1.ACLPolicy {
+	p := &sysv1alpha1.ACLPolicy{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
-		Spec:       sysv1alpha1.PolicySpec{ResourceSpec: taclSpec(conn), Policy: text},
+		Spec:       sysv1alpha1.ACLPolicySpec{ResourceSpec: taclSpec(conn), Policy: text},
 	}
 	p.Spec.Namespace = baoNamespace
 	return p
@@ -561,16 +561,16 @@ func taclSetup(ctx context.Context, t *testing.T) taclEnv {
 	}
 
 	crdNames := map[string][]string{
-		"sys":      {"authmounts", "secretsmounts", "policies", "openbaonamespaces", "plugins"},
+		"sys":      {"authmounts", "secretsmounts", "aclpolicies", "baonamespaces", "plugins"},
 		"auth":     {"kubernetesauthconfigs", "kubernetesauthroles"},
-		"identity": {"entities", "entityaliases", "groups", "groupmemberships"},
+		"identity": {"identityentities", "identityentityaliases", "identitygroups", "identitygroupmemberships"},
 		"access":   {"accesslevels", "accessgrants"},
-		"core":     {"openbaoconnections"},
+		"core":     {"baoconnections"},
 	}
 	var crds []string
 	for group, plurals := range crdNames {
 		for _, plural := range plurals {
-			crds = append(crds, filepath.Join(root, "config", "crd", "bases", group+".openbaoconfig.io_"+plural+".yaml"))
+			crds = append(crds, filepath.Join(root, "config", "crd", "bases", group+".obco.dev_"+plural+".yaml"))
 		}
 	}
 	testEnv := &envtest.Environment{
@@ -609,9 +609,9 @@ func taclSetup(ctx context.Context, t *testing.T) taclEnv {
 	conns := taclConnections{taclRootConn: bao, taclTeamConn: bao.WithNamespace(taclTeamNS)}
 	opts := itestEngineOptions()
 	for _, setupKind := range []func(ctrl.Manager, engine.Connections, engine.Options) error{
-		sys.SetupAuthMount, sys.SetupSecretsMount, sys.SetupPolicy, sys.SetupOpenBaoNamespace,
+		sys.SetupAuthMount, sys.SetupSecretsMount, sys.SetupACLPolicy, sys.SetupBaoNamespace,
 		auth.SetupKubernetesAuthConfig, auth.SetupKubernetesAuthRole,
-		identity.SetupEntity, identity.SetupEntityAlias, identity.SetupGroup, identity.SetupGroupMembership,
+		identity.SetupIdentityEntity, identity.SetupIdentityEntityAlias, identity.SetupIdentityGroup, identity.SetupIdentityGroupMembership,
 		access.SetupAccessLevel, access.SetupAccessGrant,
 	} {
 		if err := setupKind(mgr, conns, opts); err != nil {

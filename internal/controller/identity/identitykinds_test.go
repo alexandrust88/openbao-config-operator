@@ -98,8 +98,8 @@ func idtReader(t *testing.T, objs ...client.Object) client.Client {
 		}
 	}
 	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).
-		WithIndex(&identityv1alpha1.EntityAlias{}, engine.PathIndex, engine.PathIndexFunc).
-		WithIndex(&identityv1alpha1.GroupAlias{}, engine.PathIndex, engine.PathIndexFunc).Build()
+		WithIndex(&identityv1alpha1.IdentityEntityAlias{}, engine.PathIndex, engine.PathIndexFunc).
+		WithIndex(&identityv1alpha1.IdentityGroupAlias{}, engine.PathIndex, engine.PathIndexFunc).Build()
 }
 
 func idtReady[T commonv1alpha1.Managed](obj T, id string) T {
@@ -138,8 +138,8 @@ func entityRead() engine.Payload {
 }
 
 func TestEntity(t *testing.T) {
-	a := EntityAdapter{}
-	e := &identityv1alpha1.Entity{ObjectMeta: idtMeta(litAlice), Spec: identityv1alpha1.EntitySpec{
+	a := IdentityEntityAdapter{}
+	e := &identityv1alpha1.IdentityEntity{ObjectMeta: idtMeta(litAlice), Spec: identityv1alpha1.IdentityEntitySpec{
 		Policies: []string{litWriter, litReader}, Metadata: map[string]string{litTeam: "a"}, Disabled: new(false),
 	}}
 	if got := a.Path(e); got != "identity/entity/name/alice" {
@@ -160,7 +160,7 @@ func TestEntity(t *testing.T) {
 	changed[litPolicies] = []any{litReader}
 	idtDiff(t, desired, changed, a.Fields(), "disabled", litPolicies)
 
-	bare := &identityv1alpha1.Entity{ObjectMeta: idtMeta("x"), Spec: identityv1alpha1.EntitySpec{Name: "svc@team"}}
+	bare := &identityv1alpha1.IdentityEntity{ObjectMeta: idtMeta("x"), Spec: identityv1alpha1.IdentityEntitySpec{Name: "svc@team"}}
 	if got := a.Path(bare); got != "identity/entity/name/svc@team" {
 		t.Errorf("spec name path = %q", got)
 	}
@@ -190,8 +190,8 @@ func groupRead() map[string]any {
 }
 
 func TestGroup(t *testing.T) {
-	a := GroupAdapter{}
-	g := &identityv1alpha1.Group{ObjectMeta: idtMeta(litDevs), Spec: identityv1alpha1.GroupSpec{
+	a := IdentityGroupAdapter{}
+	g := &identityv1alpha1.IdentityGroup{ObjectMeta: idtMeta(litDevs), Spec: identityv1alpha1.IdentityGroupSpec{
 		Type: identityv1alpha1.GroupTypeInternal, Policies: []string{litReader}, Metadata: map[string]string{litTeam: "a"},
 	}}
 	desired, err := a.Desired(context.Background(), nil, g)
@@ -223,7 +223,7 @@ func TestGroup(t *testing.T) {
 	if _, _, err := a.Observe(context.Background(), bao, ext); err == nil || !strings.Contains(err.Error(), "cannot change") {
 		t.Errorf("type mismatch: err = %v", err)
 	}
-	if _, found, err := a.Observe(context.Background(), bao, &identityv1alpha1.Group{ObjectMeta: idtMeta("gone")}); found || err != nil {
+	if _, found, err := a.Observe(context.Background(), bao, &identityv1alpha1.IdentityGroup{ObjectMeta: idtMeta("gone")}); found || err != nil {
 		t.Errorf("absent: found=%v err=%v", found, err)
 	}
 	if err := a.WriteStatus(context.Background(), nil, g, observed); err != nil || g.Status.ID != idtGroupID {
@@ -241,8 +241,8 @@ func aliasRead() map[string]any {
 	}
 }
 
-func newEntityAlias() *identityv1alpha1.EntityAlias {
-	return &identityv1alpha1.EntityAlias{ObjectMeta: idtMeta("alice-userpass"), Spec: identityv1alpha1.EntityAliasSpec{
+func newEntityAlias() *identityv1alpha1.IdentityEntityAlias {
+	return &identityv1alpha1.IdentityEntityAlias{ObjectMeta: idtMeta("alice-userpass"), Spec: identityv1alpha1.IdentityEntityAliasSpec{
 		AliasName: litAlice, MountPath: litUserpass,
 		EntityRef:      &commonv1alpha1.LocalObjectReference{Name: litAlice},
 		CustomMetadata: map[string]string{"k": "v"},
@@ -251,8 +251,8 @@ func newEntityAlias() *identityv1alpha1.EntityAlias {
 
 func TestEntityAliasDesired(t *testing.T) {
 	bao := newIdtBao()
-	entity := idtReady(&identityv1alpha1.Entity{ObjectMeta: idtMeta(litAlice)}, idtEntityID)
-	a := EntityAliasAdapter{Reader: idtReader(t, entity), Conns: idtConns{client: bao}}
+	entity := idtReady(&identityv1alpha1.IdentityEntity{ObjectMeta: idtMeta(litAlice)}, idtEntityID)
+	a := IdentityEntityAliasAdapter{Reader: idtReader(t, entity), Conns: idtConns{client: bao}}
 
 	desired, err := a.Desired(context.Background(), nil, newEntityAlias())
 	if err != nil {
@@ -283,7 +283,7 @@ func TestEntityAliasDesired(t *testing.T) {
 	if _, err := a.Desired(context.Background(), nil, missingMount); !errors.Is(err, engine.ErrReferenceNotReady) {
 		t.Errorf("missing mount: err = %v", err)
 	}
-	notReady := EntityAliasAdapter{Reader: idtReader(t, &identityv1alpha1.Entity{ObjectMeta: idtMeta(litAlice)}), Conns: idtConns{client: bao}}
+	notReady := IdentityEntityAliasAdapter{Reader: idtReader(t, &identityv1alpha1.IdentityEntity{ObjectMeta: idtMeta(litAlice)}), Conns: idtConns{client: bao}}
 	if _, err := notReady.Desired(context.Background(), nil, newEntityAlias()); !errors.Is(err, engine.ErrReferenceNotReady) {
 		t.Errorf("entity not ready: err = %v", err)
 	}
@@ -291,8 +291,8 @@ func TestEntityAliasDesired(t *testing.T) {
 
 func TestEntityAliasObserveDelete(t *testing.T) {
 	bao := newIdtBao()
-	entity := idtReady(&identityv1alpha1.Entity{ObjectMeta: idtMeta(litAlice)}, idtEntityID)
-	a := EntityAliasAdapter{Reader: idtReader(t, entity), Conns: idtConns{client: bao}}
+	entity := idtReady(&identityv1alpha1.IdentityEntity{ObjectMeta: idtMeta(litAlice)}, idtEntityID)
+	a := IdentityEntityAliasAdapter{Reader: idtReader(t, entity), Conns: idtConns{client: bao}}
 	ea := newEntityAlias()
 	ctx := context.Background()
 
@@ -326,9 +326,9 @@ func TestEntityAliasObserveDelete(t *testing.T) {
 	if got := a.Path(newEntityAlias()); got != entityAliasCollection {
 		t.Errorf("path before create = %q, want the collection", got)
 	}
-	ga := &identityv1alpha1.GroupAlias{}
+	ga := &identityv1alpha1.IdentityGroupAlias{}
 	ga.Status.ID = "g1"
-	if got := (GroupAliasAdapter{}).Path(ga); got != "identity/group-alias/id/g1" {
+	if got := (IdentityGroupAliasAdapter{}).Path(ga); got != "identity/group-alias/id/g1" {
 		t.Errorf("group alias path = %q", got)
 	}
 
@@ -351,8 +351,8 @@ func TestEntityAliasObserveDelete(t *testing.T) {
 func TestEntityAliasWrite(t *testing.T) {
 	ctx := context.Background()
 	bao := newIdtBao()
-	entity := idtReady(&identityv1alpha1.Entity{ObjectMeta: idtMeta(litAlice)}, idtEntityID)
-	a := EntityAliasAdapter{Reader: idtReader(t, entity), Conns: idtConns{client: bao}}
+	entity := idtReady(&identityv1alpha1.IdentityEntity{ObjectMeta: idtMeta(litAlice)}, idtEntityID)
+	a := IdentityEntityAliasAdapter{Reader: idtReader(t, entity), Conns: idtConns{client: bao}}
 	ea := newEntityAlias()
 	desired, err := a.Desired(ctx, nil, ea)
 	if err != nil {
@@ -398,9 +398,9 @@ func groupLookup() map[string]any {
 
 func TestGroupAlias(t *testing.T) {
 	bao := newIdtBao()
-	group := &identityv1alpha1.Group{ObjectMeta: metav1.ObjectMeta{Name: "ext", Namespace: litTeam, Labels: map[string]string{"idp": "keycloak"}}}
-	a := GroupAliasAdapter{Reader: idtReader(t, idtReady(group, idtExtGroupID)), Conns: idtConns{client: bao}}
-	ga := &identityv1alpha1.GroupAlias{ObjectMeta: idtMeta(litKcDevs), Spec: identityv1alpha1.GroupAliasSpec{
+	group := &identityv1alpha1.IdentityGroup{ObjectMeta: metav1.ObjectMeta{Name: "ext", Namespace: litTeam, Labels: map[string]string{"idp": "keycloak"}}}
+	a := IdentityGroupAliasAdapter{Reader: idtReader(t, idtReady(group, idtExtGroupID)), Conns: idtConns{client: bao}}
+	ga := &identityv1alpha1.IdentityGroupAlias{ObjectMeta: idtMeta(litKcDevs), Spec: identityv1alpha1.IdentityGroupAliasSpec{
 		AliasName: litKcDevs, MountSelector: nil, MountAccessor: idtAccessor,
 		GroupSelector: &commonv1alpha1.LabelSelector{MatchLabels: map[string]string{"idp": "keycloak"}},
 	}}
@@ -437,10 +437,10 @@ func TestGroupAlias(t *testing.T) {
 	}
 }
 
-func newMembership(status identityv1alpha1.GroupMembershipStatus) *identityv1alpha1.GroupMembership {
-	return &identityv1alpha1.GroupMembership{
+func newMembership(status identityv1alpha1.IdentityGroupMembershipStatus) *identityv1alpha1.IdentityGroupMembership {
+	return &identityv1alpha1.IdentityGroupMembership{
 		ObjectMeta: idtMeta("devs-alice"),
-		Spec: identityv1alpha1.GroupMembershipSpec{
+		Spec: identityv1alpha1.IdentityGroupMembershipSpec{
 			GroupRef:       &commonv1alpha1.LocalObjectReference{Name: litDevs},
 			EntitySelector: &commonv1alpha1.LabelSelector{MatchLabels: map[string]string{litTeam: "a"}},
 		},
@@ -448,7 +448,7 @@ func newMembership(status identityv1alpha1.GroupMembershipStatus) *identityv1alp
 	}
 }
 
-func membershipFixture(t *testing.T) (GroupMembershipAdapter, *idtBao) {
+func membershipFixture(t *testing.T) (IdentityGroupMembershipAdapter, *idtBao) {
 	t.Helper()
 	bao := newIdtBao()
 	bao.data["identity/group/id/"+idtGroupID] = groupRead()
@@ -458,17 +458,17 @@ func membershipFixture(t *testing.T) (GroupMembershipAdapter, *idtBao) {
 		return m
 	}
 	reader := idtReader(t,
-		idtReady(&identityv1alpha1.Group{ObjectMeta: idtMeta(litDevs)}, idtGroupID),
-		idtReady(&identityv1alpha1.Entity{ObjectMeta: labelled(litAlice)}, litEAlice),
-		idtReady(&identityv1alpha1.Entity{ObjectMeta: labelled("bob")}, litEBob),
+		idtReady(&identityv1alpha1.IdentityGroup{ObjectMeta: idtMeta(litDevs)}, idtGroupID),
+		idtReady(&identityv1alpha1.IdentityEntity{ObjectMeta: labelled(litAlice)}, litEAlice),
+		idtReady(&identityv1alpha1.IdentityEntity{ObjectMeta: labelled("bob")}, litEBob),
 	)
-	return GroupMembershipAdapter{Reader: reader, Conns: idtConns{client: bao}}, bao
+	return IdentityGroupMembershipAdapter{Reader: reader, Conns: idtConns{client: bao}}, bao
 }
 
 func TestGroupMembershipLifecycle(t *testing.T) {
 	a, bao := membershipFixture(t)
 	ctx := context.Background()
-	m := newMembership(identityv1alpha1.GroupMembershipStatus{})
+	m := newMembership(identityv1alpha1.IdentityGroupMembershipStatus{})
 	members := func() []string { return stringList(bao.data["identity/group/id/"+idtGroupID][litMemberEntityIDs]) }
 
 	desired, err := a.Desired(ctx, nil, m)
@@ -505,7 +505,7 @@ func TestGroupMembershipLifecycle(t *testing.T) {
 		t.Errorf("path = %q", a.Path(m))
 	}
 
-	bob := &identityv1alpha1.Entity{}
+	bob := &identityv1alpha1.IdentityEntity{}
 	if err := a.Reader.Get(ctx, client.ObjectKey{Namespace: litTeam, Name: "bob"}, bob); err != nil {
 		t.Fatal(err)
 	}
@@ -544,7 +544,7 @@ func TestGroupMembershipRules(t *testing.T) {
 	t.Run("external group", func(t *testing.T) {
 		a, bao := membershipFixture(t)
 		bao.data["identity/group/id/"+idtGroupID][litType] = "external"
-		if _, _, err := a.Observe(ctx, bao, newMembership(identityv1alpha1.GroupMembershipStatus{})); err == nil ||
+		if _, _, err := a.Observe(ctx, bao, newMembership(identityv1alpha1.IdentityGroupMembershipStatus{})); err == nil ||
 			!strings.Contains(err.Error(), "external") {
 			t.Errorf("err = %v", err)
 		}
@@ -553,7 +553,7 @@ func TestGroupMembershipRules(t *testing.T) {
 	t.Run("group missing", func(t *testing.T) {
 		a, bao := membershipFixture(t)
 		delete(bao.data, "identity/group/id/"+idtGroupID)
-		if _, _, err := a.Observe(ctx, bao, newMembership(identityv1alpha1.GroupMembershipStatus{})); !errors.Is(err, engine.ErrReferenceNotReady) {
+		if _, _, err := a.Observe(ctx, bao, newMembership(identityv1alpha1.IdentityGroupMembershipStatus{})); !errors.Is(err, engine.ErrReferenceNotReady) {
 			t.Errorf("err = %v", err)
 		}
 	})
@@ -561,7 +561,7 @@ func TestGroupMembershipRules(t *testing.T) {
 	t.Run("member group by name", func(t *testing.T) {
 		a, bao := membershipFixture(t)
 		bao.data["identity/group/name/child"] = map[string]any{"id": "g-child"}
-		m := newMembership(identityv1alpha1.GroupMembershipStatus{})
+		m := newMembership(identityv1alpha1.IdentityGroupMembershipStatus{})
 		m.Spec.EntitySelector, m.Spec.MemberGroupName = nil, "child"
 		desired, err := a.Desired(ctx, nil, m)
 		if err != nil {
@@ -582,7 +582,7 @@ func TestGroupMembershipRules(t *testing.T) {
 	t.Run("claims follow a group change", func(t *testing.T) {
 		a, bao := membershipFixture(t)
 		bao.data["identity/group/id/old"] = map[string]any{litType: litInternal, litMemberEntityIDs: []any{"x", litEAlice}}
-		m := newMembership(identityv1alpha1.GroupMembershipStatus{GroupID: "old", MemberEntityIDs: []string{litEAlice}})
+		m := newMembership(identityv1alpha1.IdentityGroupMembershipStatus{GroupID: "old", MemberEntityIDs: []string{litEAlice}})
 		desired, err := a.Desired(ctx, nil, m)
 		if err != nil {
 			t.Fatal(err)
@@ -600,7 +600,7 @@ func TestGroupMembershipRules(t *testing.T) {
 
 	t.Run("empty selection exists", func(t *testing.T) {
 		a, bao := membershipFixture(t)
-		m := newMembership(identityv1alpha1.GroupMembershipStatus{})
+		m := newMembership(identityv1alpha1.IdentityGroupMembershipStatus{})
 		m.Spec.EntitySelector.MatchLabels = map[string]string{litTeam: litNobody}
 		desired, _ := a.Desired(ctx, nil, m)
 		observed, found, err := a.Observe(ctx, bao, m)
@@ -615,10 +615,10 @@ func TestGroupMembershipResolvePath(t *testing.T) {
 	ctx := context.Background()
 	a, bao := membershipFixture(t)
 	bao.data["identity/group/name/devs"] = map[string]any{"id": idtGroupID}
-	byRef := newMembership(identityv1alpha1.GroupMembershipStatus{})
-	byName := newMembership(identityv1alpha1.GroupMembershipStatus{})
+	byRef := newMembership(identityv1alpha1.IdentityGroupMembershipStatus{})
+	byName := newMembership(identityv1alpha1.IdentityGroupMembershipStatus{})
 	byName.Spec.GroupRef, byName.Spec.GroupName = nil, litDevs
-	for name, m := range map[string]*identityv1alpha1.GroupMembership{"ref": byRef, "name": byName} {
+	for name, m := range map[string]*identityv1alpha1.IdentityGroupMembership{"ref": byRef, "name": byName} {
 		if got, err := a.ResolvePath(ctx, nil, bao, m); err != nil || got != "identity/group/id/"+idtGroupID {
 			t.Errorf("%s: path %q err %v, want the group by ID", name, got, err)
 		}
@@ -633,7 +633,7 @@ func TestGroupMembershipFound(t *testing.T) {
 	ctx := context.Background()
 	a, bao := membershipFixture(t)
 	bao.data["identity/group/id/"+idtGroupID][litMemberEntityIDs] = []any{litEAlice}
-	m := newMembership(identityv1alpha1.GroupMembershipStatus{})
+	m := newMembership(identityv1alpha1.IdentityGroupMembershipStatus{})
 	if _, found, err := a.Observe(ctx, bao, m); err != nil || found {
 		t.Errorf("partly present before acquire: found=%v err=%v, want absent so that it is created", found, err)
 	}
@@ -653,24 +653,24 @@ func TestGroupMembershipFound(t *testing.T) {
 
 func TestGroupMembershipSharedClaims(t *testing.T) {
 	ctx := context.Background()
-	shared := func(t *testing.T) (GroupMembershipAdapter, *idtBao, *identityv1alpha1.GroupMembership) {
+	shared := func(t *testing.T) (IdentityGroupMembershipAdapter, *idtBao, *identityv1alpha1.IdentityGroupMembership) {
 		t.Helper()
 		bao := newIdtBao()
 		bao.data["identity/group/id/"+idtGroupID] = map[string]any{litType: litInternal,
 			litMemberEntityIDs: []any{litOtherEntity, litEAlice, litEBob}}
 		labelled := idtMeta(litAlice)
 		labelled.Labels = map[string]string{litTeam: "a"}
-		claimed := identityv1alpha1.GroupMembershipStatus{GroupID: idtGroupID, MemberEntityIDs: []string{litEAlice}}
+		claimed := identityv1alpha1.IdentityGroupMembershipStatus{GroupID: idtGroupID, MemberEntityIDs: []string{litEAlice}}
 		claimed.Namespace = litTenant
-		other := &identityv1alpha1.GroupMembership{ObjectMeta: idtMeta("other-alice"), Status: claimed}
+		other := &identityv1alpha1.IdentityGroupMembership{ObjectMeta: idtMeta("other-alice"), Status: claimed}
 		reader := idtReader(t,
-			idtReady(&identityv1alpha1.Group{ObjectMeta: idtMeta(litDevs)}, idtGroupID),
-			idtReady(&identityv1alpha1.Entity{ObjectMeta: labelled}, litEAlice),
+			idtReady(&identityv1alpha1.IdentityGroup{ObjectMeta: idtMeta(litDevs)}, idtGroupID),
+			idtReady(&identityv1alpha1.IdentityEntity{ObjectMeta: labelled}, litEAlice),
 			other,
 		)
-		status := identityv1alpha1.GroupMembershipStatus{GroupID: idtGroupID, MemberEntityIDs: []string{litEAlice, litEBob}}
+		status := identityv1alpha1.IdentityGroupMembershipStatus{GroupID: idtGroupID, MemberEntityIDs: []string{litEAlice, litEBob}}
 		status.Namespace = litTenant
-		return GroupMembershipAdapter{Reader: reader, Conns: idtConns{client: bao}}, bao, newMembership(status)
+		return IdentityGroupMembershipAdapter{Reader: reader, Conns: idtConns{client: bao}}, bao, newMembership(status)
 	}
 	members := func(bao *idtBao) []string {
 		return stringList(bao.data["identity/group/id/"+idtGroupID][litMemberEntityIDs])
@@ -713,7 +713,7 @@ func TestGroupMembershipSharedClaims(t *testing.T) {
 
 	t.Run("a deleting membership does not hold a claim", func(t *testing.T) {
 		a, bao, m := shared(t)
-		other := &identityv1alpha1.GroupMembership{}
+		other := &identityv1alpha1.IdentityGroupMembership{}
 		if err := a.Reader.Get(ctx, client.ObjectKey{Namespace: litTeam, Name: "other-alice"}, other); err != nil {
 			t.Fatal(err)
 		}

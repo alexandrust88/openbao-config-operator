@@ -24,7 +24,7 @@ import (
 
 // +kubebuilder:validation:XValidation:rule="has(self.name) == has(oldSelf.name) && (!has(self.name) || self.name == oldSelf.name)",message="name is immutable"
 // +kubebuilder:validation:XValidation:rule="has(self.role) == has(oldSelf.role) && (!has(self.role) || self.role == oldSelf.role)",message="role is immutable"
-// +kubebuilder:validation:XValidation:rule="!has(self.__namespace__) || self.__namespace__ == ''",message="rate limit quotas exist only in the root namespace; scope them with path"
+// +kubebuilder:validation:XValidation:rule="!has(self.openbaoNamespace) || self.openbaoNamespace == ''",message="rate limit quotas exist only in the root namespace; scope them with path"
 // +kubebuilder:validation:XValidation:rule="!has(self.role) || has(self.path)",message="role requires path to name an auth method mount"
 // +kubebuilder:validation:XValidation:rule="double(self.rate) > 0.0",message="rate must be greater than 0"
 // +kubebuilder:validation:XValidation:rule="!has(self.interval) || duration(self.interval) >= duration('1s')",message="interval must be at least 1s"
@@ -80,7 +80,7 @@ type RateLimitQuotaStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=openbao
+// +kubebuilder:resource:categories=obco;obco-sys
 // +kubebuilder:printcolumn:name="Rate",type=string,JSONPath=`.spec.rate`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`

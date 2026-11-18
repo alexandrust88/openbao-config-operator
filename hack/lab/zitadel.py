@@ -211,10 +211,10 @@ def apply():
     current = state()
     kube = lab.Kube(identity.CONTEXT)
     objects = lab.render(current, identity.NAMESPACE, identity.CONNECTION)
-    namespaces = [obj for obj in objects if obj['kind'] == 'OpenBaoNamespace']
+    namespaces = [obj for obj in objects if obj['kind'] == 'BaoNamespace']
     kube.apply(namespaces)
     kube.wait(namespaces)
-    kube.apply([obj for obj in objects if obj['kind'] != 'OpenBaoNamespace'])
+    kube.apply([obj for obj in objects if obj['kind'] != 'BaoNamespace'])
     kube.wait(objects)
     print('ZITADEL operator configuration Ready')
 

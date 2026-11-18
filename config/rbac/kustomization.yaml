@@ -22,13 +22,13 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the openbao-config-operator itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
-- sys_policy_admin_role.yaml
-- sys_policy_editor_role.yaml
-- sys_policy_viewer_role.yaml
-- core_clusteropenbaoconnection_admin_role.yaml
-- core_clusteropenbaoconnection_editor_role.yaml
-- core_clusteropenbaoconnection_viewer_role.yaml
-- core_openbaoconnection_admin_role.yaml
-- core_openbaoconnection_editor_role.yaml
-- core_openbaoconnection_viewer_role.yaml
+- sys_aclpolicy_admin_role.yaml
+- sys_aclpolicy_editor_role.yaml
+- sys_aclpolicy_viewer_role.yaml
+- core_clusterbaoconnection_admin_role.yaml
+- core_clusterbaoconnection_editor_role.yaml
+- core_clusterbaoconnection_viewer_role.yaml
+- core_baoconnection_admin_role.yaml
+- core_baoconnection_editor_role.yaml
+- core_baoconnection_viewer_role.yaml
 

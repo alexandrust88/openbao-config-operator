@@ -1,4 +1,4 @@
-# OIDCConfig (identity.openbaoconfig.io/v1alpha1)
+# OIDCConfig (identity.obco.dev/v1alpha1)
 # OIDCConfig sets the identity token (OIDC) configuration of an OpenBao namespace at `identity/oidc/config`, a
 # singleton.
 #
@@ -6,16 +6,16 @@
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: connectionRef, issuer.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/identity/#oidcconfig
+# Reference: https://docs.obco.dev/reference/api/identity/#oidcconfig
 # Curated example: examples/identity/oidcconfig.yaml
-apiVersion: identity.openbaoconfig.io/v1alpha1
+apiVersion: identity.obco.dev/v1alpha1
 kind: OIDCConfig
 metadata:
   name: example
   namespace: openbao-config
 spec:
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -23,4 +23,4 @@ spec:
   driftInterval: 1h
   issuer: https://openbao.example.com:8200
   managementPolicy: Manage
-  namespace: example
+  openbaoNamespace: example

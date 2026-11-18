@@ -21,10 +21,10 @@ func TestSecretsEngineExamples(t *testing.T) {
 		t.Fatal(err)
 	}
 	k8s := secretsStartEnv(t, root, []string{
-		"secrets.openbaoconfig.io_transitkeys.yaml",
-		"secrets.openbaoconfig.io_sshcas.yaml",
-		"secrets.openbaoconfig.io_sshroles.yaml",
-		"secrets.openbaoconfig.io_totpkeys.yaml",
+		"secrets.obco.dev_transitkeys.yaml",
+		"secrets.obco.dev_sshcas.yaml",
+		"secrets.obco.dev_sshroles.yaml",
+		"secrets.obco.dev_totpkeys.yaml",
 	})
 	ctx := context.Background()
 	if err := k8s.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openbao-config"}}); err != nil {
@@ -41,7 +41,7 @@ func TestSecretsEngineExamples(t *testing.T) {
 		})
 	}
 
-	const head = "apiVersion: secrets.openbaoconfig.io/v1alpha1\nmetadata: {name: x, namespace: openbao-config}\n"
+	const head = "apiVersion: secrets.obco.dev/v1alpha1\nmetadata: {name: x, namespace: openbao-config}\n"
 	t.Run("validation", func(t *testing.T) {
 		for _, tt := range []struct {
 			name, doc, wantErr string
@@ -117,7 +117,7 @@ func TestSecretsEngineExamples(t *testing.T) {
 			{kind: "TOTPKey", spec: "{connectionRef: {name: openbao}, issuer: i, accountName: a, generate: {writeSecretRef: {name: out}}}", change: map[string]any{"generate": map[string]any{"writeSecretRef": map[string]any{"name": "other"}}}, wantErr: "generate is immutable"},
 			{kind: "TOTPKey", spec: "{connectionRef: {name: openbao}, issuer: i, keySecretRef: {name: s, key: k}}", change: map[string]any{"issuer": "j", "digits": int64(8)}},
 		} {
-			obj := secretsDecodeString(t, "apiVersion: secrets.openbaoconfig.io/v1alpha1\nkind: "+tt.kind+
+			obj := secretsDecodeString(t, "apiVersion: secrets.obco.dev/v1alpha1\nkind: "+tt.kind+
 				"\nmetadata: {generateName: immutable-, namespace: openbao-config}\nspec: "+tt.spec)
 			if err := k8s.Create(ctx, obj); err != nil {
 				t.Fatalf("%s %s: %v", tt.kind, tt.spec, err)

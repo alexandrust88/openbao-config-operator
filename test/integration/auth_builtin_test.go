@@ -57,7 +57,7 @@ func TestIntegrationBuiltinAuth(t *testing.T) {
 	t.Run("defaults", func(t *testing.T) { testBuiltinAuthDefaults(ctx, t, e, caPEM, pubPEM) })
 }
 
-// testBuiltinAuthPolicyRefs proves that a role waits for a referenced Policy and then merges its name.
+// testBuiltinAuthPolicyRefs proves that a role waits for a referenced ACLPolicy and then merges its name.
 func testBuiltinAuthPolicyRefs(ctx context.Context, t *testing.T, e env) {
 	const path = "auth/kubernetes/role/itest-refs"
 	role := &authv1alpha1.KubernetesAuthRole{
@@ -73,7 +73,7 @@ func testBuiltinAuthPolicyRefs(ctx context.Context, t *testing.T, e env) {
 		},
 	}
 	mustCreate(ctx, t, e.k8s, role)
-	waitFor(t, "role waits for the Policy", func() error {
+	waitFor(t, "role waits for the ACLPolicy", func() error {
 		if err := e.k8s.Get(ctx, client.ObjectKeyFromObject(role), role); err != nil {
 			return err
 		}
@@ -84,12 +84,12 @@ func testBuiltinAuthPolicyRefs(ctx context.Context, t *testing.T, e env) {
 		return nil
 	})
 	if err := expectAbsent(ctx, e.bao, path); err != nil {
-		t.Errorf("a role with an unready Policy must not be written: %v", err)
+		t.Errorf("a role with an unready ACLPolicy must not be written: %v", err)
 	}
 
-	policy := &sysv1alpha1.Policy{
+	policy := &sysv1alpha1.ACLPolicy{
 		ObjectMeta: metav1.ObjectMeta{Name: "itest-refs-policy", Namespace: namespace},
-		Spec: sysv1alpha1.PolicySpec{
+		Spec: sysv1alpha1.ACLPolicySpec{
 			ResourceSpec: builtinAuthSpec(),
 			Name:         "itest-refs-reader",
 			Policy:       "path \"secret/*\" {\n  capabilities = [\"read\"]\n}\n",
@@ -97,7 +97,7 @@ func testBuiltinAuthPolicyRefs(ctx context.Context, t *testing.T, e env) {
 	}
 	mustCreate(ctx, t, e.k8s, policy)
 	want := map[string]any{authITTokenPolicies: []any{"literal", "itest-refs-reader"}}
-	waitFor(t, "role written with the Policy name", func() error { return builtinAuthExpect(ctx, e.bao, path, want) })
+	waitFor(t, "role written with the ACLPolicy name", func() error { return builtinAuthExpect(ctx, e.bao, path, want) })
 	waitFor(t, "role ready", func() error { return expectReady(ctx, e.k8s, role) })
 	expectNoWrites(t, "KubernetesAuthRole")
 }
@@ -485,10 +485,10 @@ func builtinAuthSetup(ctx context.Context, t *testing.T) env {
 	names := []string{"kubernetesauthconfigs", "kubernetesauthroles", "jwtauthconfigs", "jwtauthroles", "jwtcelroles"}
 	crds := make([]string, 0, len(names)+1)
 	for _, name := range names {
-		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "auth.openbaoconfig.io_"+name+".yaml"))
+		crds = append(crds, filepath.Join(root, "config", "crd", "bases", "auth.obco.dev_"+name+".yaml"))
 	}
-	crds = append(crds, filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_policies.yaml"),
-		filepath.Join(root, "config", "crd", "bases", "sys.openbaoconfig.io_authmounts.yaml"))
+	crds = append(crds, filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_aclpolicies.yaml"),
+		filepath.Join(root, "config", "crd", "bases", "sys.obco.dev_authmounts.yaml"))
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: assets,
 		CRDInstallOptions:     envtest.CRDInstallOptions{Paths: crds, ErrorIfPathMissing: true},
@@ -523,7 +523,7 @@ func builtinAuthSetup(ctx context.Context, t *testing.T) env {
 	opts := engine.Options{DriftIntervalCritical: driftInterval, DriftIntervalStandard: driftInterval}
 	for _, setupKind := range []func(ctrl.Manager, engine.Connections, engine.Options) error{
 		auth.SetupKubernetesAuthConfig, auth.SetupKubernetesAuthRole, auth.SetupJWTAuthConfig,
-		auth.SetupJWTAuthRole, auth.SetupJWTCELRole, sys.SetupPolicy,
+		auth.SetupJWTAuthRole, auth.SetupJWTCELRole, sys.SetupACLPolicy,
 	} {
 		if err := setupKind(mgr, conns, opts); err != nil {
 			t.Fatal(err)

@@ -1,13 +1,13 @@
-# AccessLayout (access.openbaoconfig.io/v1alpha1)
+# AccessLayout (access.obco.dev/v1alpha1)
 # AccessLayout gives people, by identity provider group, access to KV version 2 secrets (the human access model).
 #
 # Generated from the CRD by hack/samplegen (make samples); do not edit. Every spec field is set to a placeholder that
 # passes the CRD's OpenAPI and CEL validation, so the sample shows the shape of the kind, not a working configuration.
 # Required spec fields: authMounts, connectionRef, paths, roles.
 #
-# Reference: https://alexandrust88.github.io/openbao-config-operator/reference/api/access/#accesslayout
+# Reference: https://docs.obco.dev/reference/api/access/#accesslayout
 # Curated example: examples/access/accesslayout.yaml
-apiVersion: access.openbaoconfig.io/v1alpha1
+apiVersion: access.obco.dev/v1alpha1
 kind: AccessLayout
 metadata:
   name: example
@@ -16,7 +16,7 @@ spec:
   authMounts:
   - example
   connectionRef:
-    kind: OpenBaoConnection
+    kind: BaoConnection
     name: openbao
   creationPolicy: Create
   deletionPolicy: Orphan
@@ -24,7 +24,7 @@ spec:
   driftInterval: 1h
   groupAliasTemplate: '{role}'
   managementPolicy: Manage
-  namespace: example
+  openbaoNamespace: example
   paths:
   - metadataPath: example
     mount: example
@@ -32,5 +32,5 @@ spec:
   roles:
   - levels:
     - level: example
-      namespace: ""
+      openbaoNamespace: ""
     name: example

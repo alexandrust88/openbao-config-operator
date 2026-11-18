@@ -144,7 +144,7 @@ func oidcExamplesEnv(t *testing.T, root string, kinds []string) client.Client {
 	paths := make([]string, 0, len(kinds))
 	for _, kind := range kinds {
 		plural := kind + "s"
-		paths = append(paths, filepath.Join(root, "config", "crd", "bases", "identity.openbaoconfig.io_"+plural+".yaml"))
+		paths = append(paths, filepath.Join(root, "config", "crd", "bases", "identity.obco.dev_"+plural+".yaml"))
 	}
 	env := &envtest.Environment{
 		BinaryAssetsDirectory: assets,
@@ -196,7 +196,7 @@ func oidcExamplesDoc(t *testing.T, doc string) *unstructured.Unstructured {
 	if err := utilyaml.NewYAMLOrJSONDecoder(strings.NewReader(doc), 4096).Decode(&obj.Object); err != nil {
 		t.Fatal(err)
 	}
-	obj.SetAPIVersion("identity.openbaoconfig.io/v1alpha1")
+	obj.SetAPIVersion("identity.obco.dev/v1alpha1")
 	obj.SetNamespace("openbao-config")
 	return obj
 }

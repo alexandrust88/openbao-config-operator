@@ -27,7 +27,7 @@ const (
 
 // secretsCloudDoc renders a minimal object of kind whose spec holds the connectionRef plus spec.
 func secretsCloudDoc(kind, spec string) string {
-	return "apiVersion: secrets.openbaoconfig.io/v1alpha1\nkind: " + kind + "\nmetadata: {name: x, namespace: " +
+	return "apiVersion: secrets.obco.dev/v1alpha1\nkind: " + kind + "\nmetadata: {name: x, namespace: " +
 		secretsCloudNamespace + "}\nspec: {connectionRef: {name: openbao}, " + spec + "}"
 }
 
@@ -40,7 +40,7 @@ func TestSecretsCloudExamples(t *testing.T) {
 	}
 	crds := make([]string, 0, len(secretsCloudKinds))
 	for _, kind := range secretsCloudKinds {
-		crds = append(crds, "secrets.openbaoconfig.io_"+kind+"s.yaml")
+		crds = append(crds, "secrets.obco.dev_"+kind+"s.yaml")
 	}
 	k8s := secretsStartEnv(t, root, crds)
 	ctx := context.Background()

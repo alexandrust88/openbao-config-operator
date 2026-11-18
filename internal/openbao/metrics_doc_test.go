@@ -28,7 +28,7 @@ func TestDocumentedClientMetricsAreScraped(t *testing.T) {
 	}
 	_, section, _ := strings.Cut(string(raw), "\n## Observability\n")
 	section, _, _ = strings.Cut(section, "\n## ")
-	row := regexp.MustCompile("^\\| `(openbao_[a-z_]+)` \\| ([a-z, ]+) \\|")
+	row := regexp.MustCompile("^\\| `(obco_[a-z_]+)` \\| ([a-z, ]+) \\|")
 	documented := map[string][]string{}
 	for line := range strings.SplitSeq(section, "\n") {
 		if m := row.FindStringSubmatch(line); m != nil {
@@ -53,8 +53,8 @@ func TestDocumentedClientMetricsAreScraped(t *testing.T) {
 			gathered[fam.GetName()] = labels
 		}
 	}
-	for _, metric := range []string{"openbao_requests_total", "openbao_request_duration_seconds",
-		"openbao_logins_total", "openbao_token_renewals_total"} {
+	for _, metric := range []string{"obco_requests_total", "obco_request_duration_seconds",
+		"obco_logins_total", "obco_token_renewals_total"} {
 		want, ok := documented[metric]
 		if !ok {
 			t.Errorf("%s is not in the architecture Observability table", metric)

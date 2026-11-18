@@ -47,7 +47,7 @@
 - kind: AppRoleSecretID
   field: spec.rotation
   reason: the operator's schedule for replacing the secret ID before it expires, not an OpenBao field; setting or removing it writes nothing until a replacement is due
-- kind: Policy
+- kind: ACLPolicy
   field: spec.accessorRefs
   reason: an operator-side setting that resolves auth mount accessors into the rendered policy, not an OpenBao field of its own
 - kind: OIDCRole
@@ -131,25 +131,25 @@
 - kind: AppRoleSecretID
   test: optional-fields
   reason: OpenBao cannot update a secret ID; every optional field (cidrList, metadata, numUses, ttl, tokenBoundCIDRs, the role) is fixed at creation and immutable in the CRD
-- kind: GroupAlias
+- kind: IdentityGroupAlias
   test: optional-fields
   reason: every optional field is one of the one-of, immutable selectors of the alias's group or mount, so none can be set and removed on a live object
-- kind: GroupMembership
+- kind: IdentityGroupMembership
   test: optional-fields
   reason: every optional field is one of the one-of, immutable selectors of the group or member, so none can be set and removed on a live object
-- kind: OpenBaoEndpoint
+- kind: BaoEndpoint
   field: spec.deletePath
   reason: used only when the resource is deleted with deletionPolicy Delete; setting or removing it writes nothing
-- kind: OpenBaoEndpoint
+- kind: BaoEndpoint
   field: spec.disableRead
   reason: switches the operator's read-back off or on; the payload stays the same, so neither step writes
-- kind: OpenBaoEndpoint
+- kind: BaoEndpoint
   field: spec.writeOnlyFields
   reason: lists the data keys the operator leaves out of the comparison; it changes no payload, so setting or removing it writes nothing
-- kind: OpenBaoEndpoint
+- kind: BaoEndpoint
   field: spec.readPath
   reason: moves the operator's read to another path; any value other than the written path reads an object that does not hold the payload, so it cannot be set on its own
-- kind: OpenBaoEndpoint
+- kind: BaoEndpoint
   field: spec.dataSecretRef
   reason: the only example value is the generated example's Secret, which holds no JSON object for this endpoint; merging a Secret over data is covered by the adapter unit tests
 
